@@ -12,6 +12,8 @@ const statusCode = require("../messages/english.json");
 const Authentication = require("../models/authenticationSchema");
 const sendEmail = require("../helpers/sendEmail");
 const pdf = require("html-pdf");
+const NotificationService = require("./notificationService");
+const notificationService = new NotificationService();
 
 class InvoiceService {
   // Get Client list  ------   AGENCY API
@@ -199,7 +201,7 @@ class InvoiceService {
   };
 
   // Add   Invoice    ------   AGENCY API
-  addInvoice = async (payload, user_id) => {
+  addInvoice = async (payload, user) => {
     try {
       const {
         due_date,
@@ -222,7 +224,7 @@ class InvoiceService {
       // If invoice_number is not provided, generate a new one based on count
       if (!invoice_number) {
         let invoiceCount = await Invoice.countDocuments({
-          agency_id: user_id,
+          agency_id: user.reference_id,
         });
 
         // Generate a new invoice number and ensure it's unique
@@ -231,14 +233,14 @@ class InvoiceService {
           newInvoiceNumber = `INV-${invoiceCount}`;
           var existingInvoice = await Invoice.findOne({
             invoice_number: newInvoiceNumber,
-            agency_id: user_id,
+            agency_id: user.reference_id,
           });
         } while (existingInvoice);
       } else {
         newInvoiceNumber = invoice_number;
         const isInvoice = await Invoice.findOne({
           invoice_number: newInvoiceNumber,
-          agency_id: user_id,
+          agency_id: user.reference_id,
         });
         if (isInvoice) {
           return throwError(returnMessage("invoice", "invoiceNumberExists"));
@@ -266,7 +268,7 @@ class InvoiceService {
         sub_total,
         invoice_content: invoiceItems,
         client_id,
-        agency_id: user_id,
+        agency_id: user.reference_id,
         status: getInvoiceStatus._id,
       });
 
@@ -966,6 +968,26 @@ class InvoiceService {
           returnMessage("invoice", "invoiceSubject") + invoice?.invoice_number,
         message: formattedInquiryEmail,
       });
+
+      if (
+        invoiceData[0].status === "draft" ||
+        invoiceData[0].status === "unpaid"
+      ) {
+        // ----------------  Notification start    -----------------
+
+        await notificationService.addNotification(
+          {
+            receiver_name: invoiceData[0].to.client_full_name,
+            sender_name: invoiceData[0].from.agency_full_name,
+            receiver_id: invoiceData[0].to._id,
+            invoice_number: invoiceData[0].invoice_number,
+            module_name: "invoice",
+            action_type: "create",
+          },
+          invoiceData[0]._id
+        );
+        // ----------------  Notification end    -----------------
+      }
 
       return true;
     } catch (error) {

@@ -37,10 +37,7 @@ exports.getInvoiceInformation = catchAsyncError(async (req, res, next) => {
 // Add Invoice ------   AGENCY API
 
 exports.addInvoice = catchAsyncError(async (req, res, next) => {
-  const addedInvoice = await invoiceService.addInvoice(
-    req.body,
-    req?.user?.reference_id
-  );
+  const addedInvoice = await invoiceService.addInvoice(req.body, req?.user);
   sendResponse(
     res,
     true,

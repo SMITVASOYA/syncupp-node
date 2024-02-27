@@ -49,5 +49,8 @@
   "agreement": {
     "create": "Hi ${receiver_name}! An agreement titled ${title} has been created by ${sender_name}. Please review the agreement content and provide your consent.",
     "statusUpdate": "Agreed: Hi ${sender_name}! An agreement titled ${title} has been agreed by ${receiver_name}."
+  },
+  "invoice": {
+    "create": "Hi ${receiver_name}! An invoice with number ${invoice_number} has been created by ${sender_name}."
   }
 }

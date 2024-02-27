@@ -740,7 +740,7 @@ class AgreementService {
           },
         ];
         agreement = await Agreement.aggregate(aggregationPipeline);
-
+        console.log(agreement);
         if (status === "sent") {
           var data = {
             title: agreement[0].title,
@@ -768,10 +768,11 @@ class AgreementService {
             {
               receiver_name: agreement[0].receiver_fullName,
               sender_name: agreement[0].sender_fullName,
-              receiver_id: agreement[0].receiver_id,
+              sender_id: agreement[0].sender_id,
               title: agreement[0].title,
               module_name: "agreement",
               action_type: "create",
+              receiver_id: agreement[0].receiver_id,
             },
             agreement[0]._id
           );
@@ -799,6 +800,7 @@ class AgreementService {
             title: agreement[0].title,
             module_name: "agreement",
             action_type: "statusUpdate",
+            sender_id: agreement[0].sender_id,
           },
           agreement[0]._id
         );

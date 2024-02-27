@@ -108,7 +108,8 @@ class NotificationService {
       // Agreement
 
       if (module_name === "agreement") {
-        const { action_type, receiver_id } = payload;
+        const { action_type, receiver_id, sender_id } = payload;
+        console.log(sender_id);
         let message_type;
         if (action_type === "create") message_type = "create";
         if (action_type === "statusUpdate") message_type = "statusUpdate";
@@ -131,7 +132,38 @@ class NotificationService {
             userId
           );
         };
+        if (action_type === "create")
+          await createAndEmitNotification(receiver_id, message_type);
+        if (action_type === "statusUpdate")
+          await createAndEmitNotification(sender_id, message_type);
+      }
 
+      // Invoice
+
+      if (module_name === "invoice") {
+        const { action_type, receiver_id, sender_id } = payload;
+        let message_type;
+        if (action_type === "create") message_type = "create";
+        if (action_type === "statusUpdate") message_type = "statusUpdate";
+
+        const createAndEmitNotification = async (userId, messageType) => {
+          const message = replaceFields(
+            returnNotification("invoice", messageType),
+            { ...payload }
+          );
+          const notification = await Notification.create({
+            user_id: userId,
+            type: "invoice",
+            data_reference_id: id,
+            message: message,
+          });
+
+          eventEmitter(
+            "NOTIFICATION",
+            await with_unread_count(notification, userId),
+            userId
+          );
+        };
         await createAndEmitNotification(receiver_id, message_type);
       }
 
