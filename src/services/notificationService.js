@@ -11,10 +11,14 @@ const { eventEmitter } = require("../socket");
 
 class NotificationService {
   // Add Notification
-  addNotification = async (payload, activity_id) => {
-    try {
-      console.log(payload);
+  addNotification = async (payload, id) => {
+    let { module_name, activity_type_action, client_id, assign_to, agenda } =
+      payload;
 
+    if (payload.agenda) payload.agenda = extractTextFromHtml(agenda);
+    console.log(payload);
+    console.log(id);
+    try {
       const with_unread_count = async (notification_data, user_id) => {
         const un_read_count = await Notification.countDocuments({
           user_id: user_id,
@@ -28,323 +32,107 @@ class NotificationService {
       };
 
       // Activity
-      if (payload.module_name === "activity") {
-        if (payload.activity_type_action === "create_call_meeting") {
-          const clientMessage = replaceFields(
-            returnNotification(
-              "activity",
-              "createCallMeeting",
-              "clientMessage"
-            ),
-            {
-              ...payload,
-              agenda: extractTextFromHtml(payload.agenda),
-            }
-          );
-          const clientNotification = await Notification.create({
-            user_id: payload.client_id,
-            type: "activity",
-            data_reference_id: activity_id,
-            message: clientMessage,
-          });
-          eventEmitter(
-            "NOTIFICATION",
-            await with_unread_count(clientNotification, payload.client_id),
-            payload.client_id
-          );
-          const assignToMessage = replaceFields(
-            returnNotification(
-              "activity",
-              "createCallMeeting",
-              "assignToMessage"
-            ),
-            { ...payload, agenda: extractTextFromHtml(payload.agenda) }
-          );
-          const assignToNotification = await Notification.create({
-            user_id: payload.assign_to,
-            type: "activity",
-            data_reference_id: activity_id,
-            message: assignToMessage,
-          });
+      if (module_name === "activity") {
+        let message_type;
+        if (activity_type_action === "create_call_meeting")
+          message_type = "createCallMeeting";
+        if (activity_type_action === "update") message_type = "activityUpdated";
+        if (activity_type_action === "cancel")
+          message_type = "activityCancelled";
+        if (activity_type_action === "inProgress")
+          message_type = "activityInProgress";
+        if (activity_type_action === "completed")
+          message_type = "activityCompleted";
 
-          eventEmitter(
-            "NOTIFICATION",
-            await with_unread_count(assignToNotification, payload.assign_to),
-            payload.assign_to
-          );
-        }
-        if (payload.activity_type_action === "update") {
-          const clientMessage = replaceFields(
-            returnNotification("activity", "activityUpdated", "clientMessage"),
+        const createAndEmitNotification = async (userId, messageType) => {
+          const message = replaceFields(
+            returnNotification("activity", messageType, "clientMessage"),
             { ...payload }
           );
-          const clientNotification = await Notification.create({
-            user_id: payload.client_id,
+
+          const notification = await Notification.create({
+            user_id: userId,
             type: "activity",
-            data_reference_id: activity_id,
-            message: clientMessage,
-          });
-          eventEmitter(
-            "NOTIFICATION",
-            await with_unread_count(clientNotification, payload.client_id),
-            payload.client_id
-          );
-          const assignToMessage = replaceFields(
-            returnNotification(
-              "activity",
-              "activityUpdated",
-              "assignToMessage"
-            ),
-            { ...payload }
-          );
-          const assignToNotification = await Notification.create({
-            user_id: payload.assign_to,
-            type: "activity",
-            data_reference_id: activity_id,
-            message: assignToMessage,
+            data_reference_id: id,
+            message: message,
           });
 
           eventEmitter(
             "NOTIFICATION",
-            await with_unread_count(assignToNotification, payload.assign_to),
-            payload.assign_to
+            await with_unread_count(notification, userId),
+            userId
           );
-        }
+        };
 
-        if (payload.activity_type_action === "cancel") {
-          const clientMessage = replaceFields(
-            returnNotification(
-              "activity",
-              "activityCancelled",
-              "clientMessage"
-            ),
-            {
-              ...payload,
-              agenda: extractTextFromHtml(payload.agenda),
-            }
-          );
-          const clientNotification = await Notification.create({
-            user_id: payload.client_id,
-            type: "activity",
-            data_reference_id: activity_id,
-            message: clientMessage,
-          });
-          eventEmitter(
-            "NOTIFICATION",
-            await with_unread_count(clientNotification, payload.client_id),
-            payload.client_id
-          );
-          const assignToMessage = replaceFields(
-            returnNotification(
-              "activity",
-              "activityCancelled",
-              "assignToMessage"
-            ),
-            { ...payload, agenda: extractTextFromHtml(payload.agenda) }
-          );
-          const assignToNotification = await Notification.create({
-            user_id: payload.assign_to,
-            type: "activity",
-            data_reference_id: activity_id,
-            message: assignToMessage,
-          });
-
-          eventEmitter(
-            "NOTIFICATION",
-            await with_unread_count(assignToNotification, payload.assign_to),
-            payload.assign_to
-          );
-        }
-        if (payload.activity_type_action === "completed") {
-          const clientMessage = replaceFields(
-            returnNotification(
-              "activity",
-              "activityCompleted",
-              "clientMessage"
-            ),
-            {
-              ...payload,
-            }
-          );
-          const clientNotification = await Notification.create({
-            user_id: payload.client_id,
-            type: "activity",
-            data_reference_id: activity_id,
-            message: clientMessage,
-          });
-          eventEmitter(
-            "NOTIFICATION",
-            await with_unread_count(clientNotification, payload.client_id),
-            payload.client_id
-          );
-          const assignToMessage = replaceFields(
-            returnNotification(
-              "activity",
-              "activityCompleted",
-              "assignToMessage"
-            ),
-            { ...payload }
-          );
-          const assignToNotification = await Notification.create({
-            user_id: payload.assign_to,
-            type: "activity",
-            data_reference_id: activity_id,
-            message: assignToMessage,
-          });
-
-          eventEmitter(
-            "NOTIFICATION",
-            await with_unread_count(assignToNotification, payload.assign_to),
-            payload.assign_to
-          );
-        }
+        await createAndEmitNotification(client_id, message_type);
+        await createAndEmitNotification(assign_to, message_type);
       }
 
       // Task
 
-      if (payload.module_name === "task") {
-        if (payload.activity_type_action === "createTask") {
-          const clientMessage = replaceFields(
-            returnNotification("activity", "createTask", "clientMessage"),
-            {
-              ...payload,
-            }
-          );
-          console.log(clientMessage);
-          const clientNotification = await Notification.create({
-            user_id: payload.client_id,
-            type: "task",
-            data_reference_id: activity_id,
-            message: clientMessage,
-          });
-          eventEmitter(
-            "NOTIFICATION",
-            await with_unread_count(clientNotification, payload.client_id),
-            payload.client_id
-          );
-          const assignToMessage = replaceFields(
-            returnNotification("activity", "createTask", "assignToMessage"),
+      if (module_name === "task") {
+        let message_type;
+        if (activity_type_action === "createTask") message_type = "createTask";
+        if (activity_type_action === "completed")
+          message_type = "taskCompleted";
+        if (activity_type_action === "update") message_type = "taskUpdated";
+        if (activity_type_action === "deleted") message_type = "taskDeleted";
+        if (activity_type_action === "cancel") message_type = "taskCancelled";
+        if (activity_type_action === "inProgress")
+          message_type = "taskInProgress";
+
+        const createAndEmitNotification = async (userId, messageType) => {
+          const message = replaceFields(
+            returnNotification("activity", messageType, "clientMessage"),
             { ...payload }
           );
 
-          const assignToNotification = await Notification.create({
-            user_id: payload.assign_to,
+          const notification = await Notification.create({
+            user_id: userId,
             type: "task",
-            data_reference_id: activity_id,
-            message: assignToMessage,
+            data_reference_id: id,
+            message: message,
           });
-          eventEmitter(
-            "NOTIFICATION",
-            await with_unread_count(assignToNotification, payload.assign_to),
-            payload.assign_to
-          );
-        }
 
-        if (payload.activity_type_action === "completed") {
-          const clientMessage = replaceFields(
-            returnNotification("activity", "taskCompleted", "clientMessage"),
-            {
-              ...payload,
-            }
-          );
-          const clientNotification = await Notification.create({
-            user_id: payload.client_id,
-            type: "task",
-            data_reference_id: activity_id,
-            message: clientMessage,
-          });
           eventEmitter(
             "NOTIFICATION",
-            await with_unread_count(clientNotification, payload.client_id),
-            payload.client_id
+            await with_unread_count(notification, userId),
+            userId
           );
-          const assignToMessage = replaceFields(
-            returnNotification("activity", "taskCompleted", "assignToMessage"),
+        };
+
+        await createAndEmitNotification(client_id, message_type);
+        await createAndEmitNotification(assign_to, message_type);
+      }
+
+      // Agreement
+
+      if (module_name === "agreement") {
+        const { action_type, receiver_id } = payload;
+        let message_type;
+        if (action_type === "create") message_type = "create";
+        if (action_type === "statusUpdate") message_type = "statusUpdate";
+
+        const createAndEmitNotification = async (userId, messageType) => {
+          const message = replaceFields(
+            returnNotification("agreement", messageType),
             { ...payload }
           );
-          const assignToNotification = await Notification.create({
-            user_id: payload.assign_to,
-            type: "task",
-            data_reference_id: activity_id,
-            message: assignToMessage,
+          const notification = await Notification.create({
+            user_id: userId,
+            type: "agreement",
+            data_reference_id: id,
+            message: message,
           });
 
           eventEmitter(
             "NOTIFICATION",
-            await with_unread_count(assignToNotification, payload.assign_to),
-            payload.assign_to
+            await with_unread_count(notification, userId),
+            userId
           );
-        }
+        };
 
-        if (payload.activity_type_action === "update") {
-          const clientMessage = replaceFields(
-            returnNotification("activity", "taskUpdated", "clientMessage"),
-            {
-              ...payload,
-            }
-          );
-          const clientNotification = await Notification.create({
-            user_id: payload.client_id,
-            type: "task",
-            data_reference_id: activity_id,
-            message: clientMessage,
-          });
-          eventEmitter(
-            "NOTIFICATION",
-            await with_unread_count(clientNotification, payload.client_id),
-            payload.client_id
-          );
-          const assignToMessage = replaceFields(
-            returnNotification("activity", "taskUpdated", "assignToMessage"),
-            { ...payload }
-          );
-          const assignToNotification = await Notification.create({
-            user_id: payload.assign_to,
-            type: "task",
-            data_reference_id: activity_id,
-            message: assignToMessage,
-          });
-
-          eventEmitter(
-            "NOTIFICATION",
-            await with_unread_count(assignToNotification, payload.assign_to),
-            payload.assign_to
-          );
-        }
-        if (payload.activity_type_action === "deleted") {
-          console.log("first");
-          const clientMessage = replaceFields(
-            returnNotification("activity", "taskDeleted", "clientMessage"),
-            { ...payload }
-          );
-          const clientNotification = await Notification.create({
-            user_id: payload.client_id,
-            type: "task",
-            data_reference_id: activity_id,
-            message: clientMessage,
-          });
-          eventEmitter(
-            "NOTIFICATION",
-            await with_unread_count(clientNotification, payload.client_id),
-            payload.client_id
-          );
-          const assignToMessage = replaceFields(
-            returnNotification("activity", "taskDeleted", "assignToMessage"),
-            { ...payload }
-          );
-          const assignToNotification = await Notification.create({
-            user_id: payload.assign_to,
-            type: "task",
-            data_reference_id: activity_id,
-            message: assignToMessage,
-          });
-
-          eventEmitter(
-            "NOTIFICATION",
-            await with_unread_count(assignToNotification, payload.assign_to),
-            payload.assign_to
-          );
-        }
+        await createAndEmitNotification(receiver_id, message_type);
       }
 
       return;

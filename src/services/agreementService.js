@@ -18,6 +18,8 @@ const Handlebars = require("handlebars");
 const pdf = require("html-pdf");
 const moment = require("moment");
 const { ObjectId } = require("mongodb");
+const NotificationService = require("./notificationService");
+const notificationService = new NotificationService();
 
 class AgreementService {
   // Add   Agreement
@@ -154,7 +156,23 @@ class AgreementService {
           { new: true }
         );
         payload.status = "sent";
+
+        // ----------------  Notification start    -----------------
+        await notificationService.addNotification(
+          {
+            receiver_name: agreement[0].receiver_fullName,
+            sender_name: agreement[0].sender_fullName,
+            receiver_id: receiver,
+            title,
+            agreement_content,
+            module_name: "agreement",
+            action_type: "create",
+          },
+          agreement[0]._id
+        );
+        // ----------------  Notification end    -----------------
       }
+
       return agreements;
     } catch (error) {
       logger.error(`Error while Admin add Agreement, ${error}`);
@@ -601,6 +619,24 @@ class AgreementService {
         );
       }
 
+      // ----------------  Notification start    -----------------
+
+      if (agreements.status === "draft") {
+        await notificationService.addNotification(
+          {
+            receiver_name: agreement[0].receiver_fullName,
+            sender_name: agreement[0].sender_fullName,
+            receiver_id: agreement[0].receiver_id,
+            title: agreement[0].title,
+            module_name: "agreement",
+            action_type: "create",
+          },
+          agreementId
+        );
+      }
+
+      // ----------------  Notification end    -----------------
+
       return true;
     } catch (error) {
       logger.error(`Error while send Agreement, ${error}`);
@@ -623,8 +659,8 @@ class AgreementService {
       if (status === "draft") {
         return throwError(returnMessage("agreement", "canNotUpdate"));
       }
-
-      if (status === "sent") {
+      let agreement;
+      if (status === "sent" || status === "agreed") {
         const agreements = await Agreement.findOne({
           _id: agreementId,
           is_deleted: false,
@@ -632,7 +668,6 @@ class AgreementService {
         const clientDetails = await Authentication.findOne({
           _id: agreements.receiver,
         });
-        // const agreement_detail = await this.getAgreement(agreementId);
         const aggregationPipeline = [
           {
             $lookup: {
@@ -682,6 +717,7 @@ class AgreementService {
               sender_first_name: "$sender_Data.first_name",
               sender_last_name: "$sender_Data.last_name",
               sender_id: "$sender_Data._id",
+
               sender_fullName: {
                 $concat: [
                   "$sender_Data.first_name",
@@ -703,34 +739,74 @@ class AgreementService {
             },
           },
         ];
-        const agreement = await Agreement.aggregate(aggregationPipeline);
-        var data = {
-          title: agreement[0].title,
-          dueDate: moment(agreement[0].due_date).format("DD/MM/YYYY"),
-          content: agreement[0].agreement_content,
-          receiverName: agreement[0].receiver_fullName,
-          senderName: agreement[0].sender_fullName,
-          Status: agreement[0].status,
-          senderNumber: agreement[0].sender_number,
-          receiverNumber: agreement[0].receiver_number,
-          senderEmail: agreement[0].sender_email,
-          receiverEmail: agreement[0].receiver_email,
-        };
-        const ageremantMessage = agrementEmail(data);
-        await sendEmail({
-          email: clientDetails?.email,
-          subject: "Updated agreement",
-          message: ageremantMessage,
-        });
+        agreement = await Agreement.aggregate(aggregationPipeline);
+
+        if (status === "sent") {
+          var data = {
+            title: agreement[0].title,
+            dueDate: moment(agreement[0].due_date).format("DD/MM/YYYY"),
+            content: agreement[0].agreement_content,
+            receiverName: agreement[0].receiver_fullName,
+            senderName: agreement[0].sender_fullName,
+            Status: agreement[0].status,
+            senderNumber: agreement[0].sender_number,
+            receiverNumber: agreement[0].receiver_number,
+            senderEmail: agreement[0].sender_email,
+            receiverEmail: agreement[0].receiver_email,
+          };
+          const ageremantMessage = agrementEmail(data);
+          await sendEmail({
+            email: clientDetails?.email,
+            subject: "Updated agreement",
+            message: ageremantMessage,
+          });
+        }
+
+        // ----------------  Notification start    -----------------
+        if (status === "sent") {
+          await notificationService.addNotification(
+            {
+              receiver_name: agreement[0].receiver_fullName,
+              sender_name: agreement[0].sender_fullName,
+              receiver_id: agreement[0].receiver_id,
+              title: agreement[0].title,
+              module_name: "agreement",
+              action_type: "create",
+            },
+            agreement[0]._id
+          );
+        }
+
+        // ----------------  Notification end    -----------------
       }
-      const agreement = await Agreement.findOneAndUpdate(
+
+      const updatedAgreement = await Agreement.findOneAndUpdate(
         {
           _id: agreementId,
         },
         { status },
         { new: true, useFindAndModify: false }
       );
-      return agreement;
+
+      // ----------------  Notification start    -----------------
+
+      if (status === "agreed") {
+        await notificationService.addNotification(
+          {
+            receiver_name: agreement[0].receiver_fullName,
+            sender_name: agreement[0].sender_fullName,
+            receiver_id: agreement[0].receiver_id,
+            title: agreement[0].title,
+            module_name: "agreement",
+            action_type: "statusUpdate",
+          },
+          agreement[0]._id
+        );
+      }
+
+      // ----------------  Notification end    -----------------
+
+      return updatedAgreement;
     } catch (error) {
       logger.error(`Error while updating Agreement, ${error}`);
       throwError(error?.message, error?.statusCode);

@@ -999,6 +999,34 @@ class InvoiceService {
       throwError(error?.message, error?.statusCode);
     }
   };
+
+  // Overdue crone Job
+
+  overdueCronJob = async () => {
+    try {
+      const currentDate = new Date();
+      const overdue = await Invoice_Status_Master.findOne({ name: "overdue" });
+      const paid = await Invoice_Status_Master.findOne({ name: "paid" });
+      const overdueInvoices = await Invoice.find({
+        due_date: { $lt: currentDate },
+        status: { $nin: [overdue._id, paid._id] },
+      });
+
+      // Update status to "overdue" for each overdue invoice
+      const overdueStatus = await Invoice_Status_Master.findOne({
+        name: "overdue",
+      });
+      for (const invoice of overdueInvoices) {
+        invoice.status = overdueStatus._id;
+        await invoice.save();
+      }
+
+      console.log("Updated overdue statuses successfully");
+    } catch (error) {
+      logger.error(`Error while Overdue crone Job PDF, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
 }
 
 module.exports = InvoiceService;

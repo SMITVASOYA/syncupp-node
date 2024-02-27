@@ -10,8 +10,6 @@ const {
   validateRequestFields,
   taskTemplate,
   activityTemplate,
-  extractTextFromHtml,
-  formatTime,
 } = require("../utils/utils");
 const moment = require("moment");
 const { default: mongoose } = require("mongoose");
@@ -133,7 +131,6 @@ class ActivityService {
         subject: returnMessage("activity", "createSubject"),
         message: taskMessage,
       });
-
       // ----------------------- Notification Start -----------------------
       const client_data = await Authentication.findOne({
         reference_id: client_id,
@@ -151,9 +148,8 @@ class ActivityService {
           module_name: "task",
           activity_type_action: "createTask",
           activity_type: "task",
-          agenda: extractTextFromHtml(payload.agenda),
-          due_time: new Date(due_date).toTimeString().split(" ")[0],
-          due_date: new Date(due_date).toLocaleDateString("en-GB"),
+          due_time: moment(due_date).format("HH:mm"),
+          due_date: moment(due_date).format("DD-MM-YYYY"),
         },
         getTask[0]?._id
       );
@@ -860,8 +856,9 @@ class ActivityService {
         },
         {
           $match: {
-            _id: { $in: taskIdsToDelete },
-            is_deleted: false,
+            _id: {
+              $in: taskIdsToDelete.map((id) => new mongoose.Types.ObjectId(id)),
+            },
           },
         },
         {
@@ -880,13 +877,13 @@ class ActivityService {
             due_date: 1,
             due_time: 1,
             title: 1,
-            // assign_to: 1,
-            // client_id: 1,
+            assign_to: 1,
+            client_id: 1,
           },
         },
       ];
-
       const getTask = await Activity.aggregate(pipeline);
+      console.log(getTask);
       getTask.forEach(async (task) => {
         let data = {
           TaskTitle: "Deleted Task",
@@ -899,23 +896,23 @@ class ActivityService {
           assignName: task?.assigned_to_name,
         };
         const taskMessage = taskTemplate(data);
+
         await sendEmail({
           email: task?.assign_email,
           subject: returnMessage("activity", "UpdateSubject"),
           message: taskMessage,
         });
-        // await notificationService.addNotification(
-        //   {
-        //     title: task?.title,
-        //     module_name: "task",
-        //     activity_type_action: "deleted",
-        //     activity_type: "task",
-        //     assign_to: task?.assign_to,
-        //     client_id: task?.assign_by,
-        //   },
-        //   task?._id
-        // );
-        // console.log("rrr");
+        await notificationService.addNotification(
+          {
+            title: task?.title,
+            module_name: "task",
+            activity_type_action: "deleted",
+            activity_type: "task",
+            assign_to: task?.assign_to,
+            client_id: task?.client_id,
+          },
+          task?._id
+        );
         return;
       });
 
@@ -1164,14 +1161,14 @@ class ActivityService {
       });
       let taskAction = "update";
       // For Complete
-      if (mark_as_done) taskAction = "complete";
+      if (mark_as_done) taskAction = "completed";
       await notificationService.addNotification(
         {
           ...payload,
           module_name: "task",
           activity_type_action: taskAction,
           activity_type: "task",
-          agenda: extractTextFromHtml(agenda),
+          agenda: agenda,
           title: title,
           client_name: client_data.first_name + " " + client_data.last_name,
           assigned_to_name: getTask[0]?.assigned_to_name,
@@ -1416,11 +1413,36 @@ class ActivityService {
             due_time: 1,
             title: 1,
             activity_type: "$activity_type.name",
+            meeting_start_time: 1,
+            recurring_end_date: 1,
+            assign_to: 1,
+            client_id: 1,
           },
         },
       ];
 
       const getTask = await Activity.aggregate(pipeline);
+
+      const [assign_to_data, client_data] = await Promise.all([
+        Authentication.findOne({ reference_id: getTask[0].assign_to }),
+        Authentication.findOne({ reference_id: getTask[0].client_id }),
+      ]);
+
+      let task_status;
+      let emailTempKey;
+      if (payload.status == "cancel") {
+        task_status = "cancel";
+        emailTempKey = "meetingCancelled";
+      }
+      if (payload.status == "completed") {
+        task_status = "completed";
+        emailTempKey = "activityCompleted";
+      }
+      if (payload.status == "in_progress") {
+        task_status = "inProgress";
+        emailTempKey = "activityInProgress";
+      }
+
       if (getTask[0].activity_type === "task") {
         let data = {
           TaskTitle: "Updated Task status",
@@ -1440,31 +1462,18 @@ class ActivityService {
         });
       } else {
         //   ----------    Notifications start ----------
-        let task_status;
-        let emailTempKey;
-        if (payload.status == "cancel") {
-          task_status = "cancel";
-          emailTempKey = "meetingCancelled";
-        }
-        if (payload.status == "completed") {
-          task_status = "completed";
-          emailTempKey = "activityCompleted";
-        }
 
-        const activityData = await this.getActivity(id);
-        const [assign_to_data, client_data] = await Promise.all([
-          Authentication.findOne({ reference_id: activityData[0].assign_to }),
-          Authentication.findOne({ reference_id: activityData[0].client_id }),
-        ]);
         const activity_email_template = activityTemplate({
-          ...activityData[0],
-          activity_type: activityData[0].activity_type.name,
-          meeting_end_time: formatTime(activityData[0].meeting_end_time),
-          meeting_start_time: formatTime(activityData[0].meeting_start_time),
-          recurring_end_date: activityData[0]?.recurring_end_date
-            ? activityData[0]?.recurring_end_date.toTimeString().split(" ")[0]
+          ...getTask[0],
+          activity_type: getTask[0].activity_type,
+          meeting_end_time: moment(getTask[0].meeting_end_time).format("HH:mm"),
+          meeting_start_time: moment(getTask[0].meeting_start_time).format(
+            "HH:mm"
+          ),
+          recurring_end_date: getTask[0]?.recurring_end_date
+            ? getTask[0]?.recurring_end_date.toTimeString().split(" ")[0]
             : null,
-          due_date: activityData[0].due_date.toLocaleDateString("en-GB"),
+          due_date: getTask[0].due_date.toLocaleDateString("en-GB"),
         });
         sendEmail({
           email: client_data?.email,
@@ -1476,25 +1485,28 @@ class ActivityService {
           subject: returnMessage("emailTemplate", emailTempKey),
           message: activity_email_template,
         });
-        await notificationService.addNotification(
-          {
-            client_name: client_data.first_name + " " + client_data.last_name,
-            assigned_to_name:
-              assign_to_data.first_name + " " + assign_to_data.last_name,
-            ...activityData[0],
-            module_name: "activity",
-            activity_type_action: task_status,
-            activity_type:
-              activityData[0]?.activity_type.name === "others"
-                ? "activity"
-                : "call meeting",
-            meeting_start_time: formatTime(activityData[0].meeting_start_time),
-            due_date: activityData[0].due_date.toLocaleDateString("en-GB"),
-          },
-          id
-        );
-        //   ----------    Notifications end ----------
       }
+
+      await notificationService.addNotification(
+        {
+          client_name: client_data.first_name + " " + client_data.last_name,
+          assigned_to_name:
+            assign_to_data.first_name + " " + assign_to_data.last_name,
+          ...getTask[0],
+          module_name: "activity",
+          activity_type_action: task_status,
+          activity_type:
+            getTask[0]?.activity_type.name === "others"
+              ? "activity"
+              : "call meeting",
+          meeting_start_time: moment(getTask[0].meeting_start_time).format(
+            "HH:mm"
+          ),
+          due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
+        },
+        id
+      );
+      //   ----------    Notifications end ----------
 
       return updateTasks;
     } catch (error) {
@@ -2152,7 +2164,6 @@ class ActivityService {
           activity_type_action: task_status,
           activity_type:
             activity_type === "others" ? "activity" : "call meeting",
-          agenda: extractTextFromHtml(payload.agenda),
         },
         activity_id
       );

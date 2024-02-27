@@ -162,7 +162,8 @@
     "newActivityMeeting": "New activity created",
     "activityUpdated": "Activity updated",
     "meetingCancelled": "Activity cancelled",
-    "activityCompleted": "Activity completed"
+    "activityCompleted": "Activity completed",
+    "activityInProgress": "Activity in progress"
   },
 
   "client": {

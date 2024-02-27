@@ -10,12 +10,16 @@
       "assignToMessage": "Updated: Hey ${assigned_to_name}! You're assigned to a ${activity_type} titled ${title} on ${due_date} from ${meeting_start_time} to ${meeting_end_time}. Agenda: ${agenda}. Be ready!"
     },
     "activityCancelled": {
-      "clientMessage": "Hi ${client_name}! Unfortunately, the ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. ",
-      "assignToMessage": "Hi ${assigned_to_name}! Unfortunately, the ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. "
+      "clientMessage": "Hi ${client_name}! The ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. ",
+      "assignToMessage": "Hi ${assigned_to_name}! The ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. "
     },
     "activityCompleted": {
       "clientMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is complete.",
       "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is done."
+    },
+    "activityInProgress": {
+      "clientMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is in progress.",
+      "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is in progress."
     },
     "createTask": {
       "clientMessage": "Hi ${client_name}! You have a task titled ${title} due on ${due_date} before ${due_time}. Check the agenda: ${agenda}. See you there!",
@@ -29,13 +33,21 @@
       "clientMessage": "Updated: Hi ${client_name}! Your task titled ${title} now has a due date on ${due_date} before ${due_time}. See you there!",
       "assignToMessage": "Updated: Hey ${assigned_to_name}! You're assigned to a task titled ${title} due on ${due_date} before ${due_time}. Be ready!"
     },
+    "taskInProgress": {
+      "clientMessage": "Hi ${client_name}! Your task '${title}' is in progress.",
+      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is in progress."
+    },
     "taskCancelled": {
-      "clientMessage": "Hi ${client_name}! Unfortunately, the task titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. ",
-      "assignToMessage": "Hi ${assigned_to_name}! Unfortunately, the task titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. "
+      "clientMessage": "Hi ${client_name}! The task titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. ",
+      "assignToMessage": "Hi ${assigned_to_name}! The task titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. "
     },
     "taskDeleted": {
       "clientMessage": "Task '${title}' has been deleted.",
       "assignToMessage": "Task '${title}' has been deleted."
     }
+  },
+  "agreement": {
+    "create": "Hi ${receiver_name}! An agreement titled ${title} has been created by ${sender_name}. Please review the agreement content and provide your consent.",
+    "statusUpdate": "Agreed: Hi ${sender_name}! An agreement titled ${title} has been agreed by ${receiver_name}."
   }
 }
