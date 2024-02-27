@@ -1032,7 +1032,9 @@ class PaymentService {
         next_billing_price:
           subscription?.quantity * (plan_details?.item.amount / 100),
         total_sheets: sheets_detail.total_sheets,
-        available_sheets: sheets_detail.occupied_sheets.length,
+        available_sheets: Math.abs(
+          sheets_detail.total_sheets - 1 - sheets_detail.occupied_sheets.length
+        ),
         subscription,
         referral_points: {
           erned_points: earned_total, //this static data as of now

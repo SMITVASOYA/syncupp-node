@@ -698,7 +698,18 @@ class ActivityService {
             localField: "client_id",
             foreignField: "reference_id",
             as: "client_Data",
-            pipeline: [{ $project: { name: 1, first_name: 1, last_name: 1 } }],
+            pipeline: [
+              {
+                $project: {
+                  name: 1,
+                  first_name: 1,
+                  last_name: 1,
+                  assigned_by_name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                },
+              },
+            ],
           },
         },
         {
@@ -710,7 +721,18 @@ class ActivityService {
             localField: "assign_to",
             foreignField: "reference_id",
             as: "team_Data",
-            pipeline: [{ $project: { name: 1, first_name: 1, last_name: 1 } }],
+            pipeline: [
+              {
+                $project: {
+                  name: 1,
+                  first_name: 1,
+                  last_name: 1,
+                  assigned_by_name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                },
+              },
+            ],
           },
         },
         {
@@ -722,7 +744,18 @@ class ActivityService {
             localField: "assign_by",
             foreignField: "reference_id",
             as: "assign_by",
-            pipeline: [{ $project: { name: 1, first_name: 1, last_name: 1 } }],
+            pipeline: [
+              {
+                $project: {
+                  name: 1,
+                  first_name: 1,
+                  last_name: 1,
+                  assigned_by_name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                },
+              },
+            ],
           },
         },
         {
@@ -740,6 +773,16 @@ class ActivityService {
         {
           $unwind: "$status",
         },
+        {
+          $lookup: {
+            from: "activity_type_masters",
+            localField: "activity_type",
+            foreignField: "_id",
+            as: "activity_type",
+            pipeline: [{ $project: { name: 1 } }],
+          },
+        },
+        { $unwind: "$activity_type" },
         {
           $match: {
             _id: new mongoose.Types.ObjectId(id),
@@ -778,6 +821,10 @@ class ActivityService {
             assigned_to_name: {
               $concat: ["$team_Data.first_name", " ", "$team_Data.last_name"],
             },
+            meeting_start_time: 1,
+            meeting_end_time: 1,
+            recurring_end_date: 1,
+            activity_type: 1,
           },
         },
       ];
