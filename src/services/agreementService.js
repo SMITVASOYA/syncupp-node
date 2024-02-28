@@ -162,7 +162,7 @@ class AgreementService {
           {
             receiver_name: agreement[0].receiver_fullName,
             sender_name: agreement[0].sender_fullName,
-            receiver_id: receiver,
+            receiver_id: clientDetails?.reference_id,
             title,
             agreement_content,
             module_name: "agreement",
@@ -626,7 +626,7 @@ class AgreementService {
           {
             receiver_name: agreement[0].receiver_fullName,
             sender_name: agreement[0].sender_fullName,
-            receiver_id: agreement[0].receiver_id,
+            receiver_id: clientDetails.reference_id,
             title: agreement[0].title,
             module_name: "agreement",
             action_type: "create",
@@ -717,6 +717,7 @@ class AgreementService {
               sender_first_name: "$sender_Data.first_name",
               sender_last_name: "$sender_Data.last_name",
               sender_id: "$sender_Data._id",
+              sender_id_notification: "$sender_Data.reference_id",
 
               sender_fullName: {
                 $concat: [
@@ -772,7 +773,7 @@ class AgreementService {
               title: agreement[0].title,
               module_name: "agreement",
               action_type: "create",
-              receiver_id: agreement[0].receiver_id,
+              receiver_id: clientDetails?.reference_id,
             },
             agreement[0]._id
           );
@@ -800,7 +801,7 @@ class AgreementService {
             title: agreement[0].title,
             module_name: "agreement",
             action_type: "statusUpdate",
-            sender_id: agreement[0].sender_id,
+            sender_id: agreement[0].sender_id_notification,
           },
           agreement[0]._id
         );

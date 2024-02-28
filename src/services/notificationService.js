@@ -71,12 +71,16 @@ class NotificationService {
       // Task
 
       if (module_name === "task") {
+        let type = "task";
         let message_type;
         if (activity_type_action === "createTask") message_type = "createTask";
         if (activity_type_action === "completed")
           message_type = "taskCompleted";
         if (activity_type_action === "update") message_type = "taskUpdated";
-        if (activity_type_action === "deleted") message_type = "taskDeleted";
+        if (activity_type_action === "deleted") {
+          message_type = "taskDeleted";
+          type = "deleted";
+        }
         if (activity_type_action === "cancel") message_type = "taskCancelled";
         if (activity_type_action === "inProgress")
           message_type = "taskInProgress";
@@ -89,7 +93,7 @@ class NotificationService {
 
           const notification = await Notification.create({
             user_id: userId,
-            type: "task",
+            type: type,
             data_reference_id: id,
             message: message,
           });

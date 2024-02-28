@@ -274,7 +274,7 @@ class InvoiceService {
 
       if (sent === true) {
         const payload = { invoice_id: invoice._id };
-        await this.sendInvoice(payload);
+        await this.sendInvoice(payload, "create");
       }
 
       return invoice;
@@ -784,7 +784,7 @@ class InvoiceService {
 
       if (status === "unpaid") {
         const payload = { invoice_id: invoiceIdToUpdate };
-        await this.sendInvoice(payload);
+        await this.sendInvoice(payload, "updateStatus");
       }
 
       if (status === "unpaid" || status === "paid" || status === "overdue") {
@@ -932,9 +932,10 @@ class InvoiceService {
 
   // Send Invoice
 
-  sendInvoice = async (payload) => {
+  sendInvoice = async (payload, type) => {
     try {
       const { invoice_id } = payload;
+      let notification;
 
       const invoice = await Invoice.findOne({
         _id: invoice_id,
@@ -945,6 +946,7 @@ class InvoiceService {
         .populate("status");
 
       if (invoice.status.name === "draft") {
+        notification = true;
         const getInvoiceStatus = await Invoice_Status_Master.findOne({
           name: "unpaid",
         });
@@ -968,13 +970,14 @@ class InvoiceService {
           returnMessage("invoice", "invoiceSubject") + invoice?.invoice_number,
         message: formattedInquiryEmail,
       });
-
+      console.log(invoiceData[0]);
+      console.log(type);
       if (
-        invoiceData[0].status === "draft" ||
-        invoiceData[0].status === "unpaid"
+        (invoiceData[0].status === "unpaid" && type === "create") ||
+        notification ||
+        (invoiceData[0].status === "unpaid" && type === "updateStatus")
       ) {
         // ----------------  Notification start    -----------------
-
         await notificationService.addNotification(
           {
             receiver_name: invoiceData[0].to.client_full_name,
