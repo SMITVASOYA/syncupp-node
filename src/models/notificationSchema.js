@@ -1,19 +1,26 @@
 const mongoose = require("mongoose");
 const { crm_connection } = require("../config/connection");
-const { boolean } = require("webidl-conversions");
 
 const notificationSchema = new mongoose.Schema(
   {
-    user_id: {
-      type: mongoose.Types.ObjectId,
+    user_id: { type: mongoose.Types.ObjectId },
+    type: {
+      type: String,
+      enum: [
+        "chat",
+        " ",
+        "invoice",
+        "agreement",
+        "task",
+        "activity",
+        "deleted",
+      ],
     },
-    type: { type: String },
     data_reference_id: { type: mongoose.Types.ObjectId },
     message: { type: String },
-    is_read: {
-      type: Boolean,
-      default: false,
-    },
+    is_read: { type: Boolean, default: false },
+    is_deleted: { type: Boolean, default: false },
+    from_user: { type: mongoose.Types.ObjectId },
   },
   { timestamps: true }
 );

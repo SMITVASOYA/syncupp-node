@@ -6,7 +6,7 @@ const { returnMessage } = require("../utils/utils");
 const paymentService = new PaymentService();
 
 exports.createPlan = catchAsyncError(async (req, res, next) => {
-  await paymentService.createPlan();
+  await paymentService.createPlan(req.body);
   sendResponse(res, true, returnMessage("payment", "planCreated"), {}, 200);
 });
 

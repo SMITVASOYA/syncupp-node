@@ -276,5 +276,9 @@
     "fetchEvent": "Fetch event successfully."
   },
 
+  "chat": {
+    "userIdRequired": "Other users' id is required to get messages."
+  },
+
   "default": { "default": "Something went wrong." }
 }
