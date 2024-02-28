@@ -20,6 +20,7 @@ const Authentication = require("../models/authenticationSchema");
 const Configuration = require("../models/configurationSchema");
 const Competition_Point = require("../models/competitionPointSchema");
 const NotificationService = require("./notificationService");
+const Agency = require("../models/agencySchema");
 const notificationService = new NotificationService();
 
 class ActivityService {
@@ -993,8 +994,6 @@ class ActivityService {
       let status;
       if (mark_as_done === true) {
         status = await ActivityStatus.findOne({ name: "completed" }).lean();
-      } else {
-        status = await ActivityStatus.findOne({ name: "pending" }).lean();
       }
 
       const updateTasks = await Activity.findByIdAndUpdate(
@@ -1037,8 +1036,8 @@ class ActivityService {
             },
             { new: true }
           );
-          await Authentication.findOneAndUpdate(
-            { reference_id: current_activity.agency_id },
+          await Agency.findOneAndUpdate(
+            { _id: current_activity.agency_id },
             {
               $inc: {
                 total_referral_point:
@@ -1088,8 +1087,8 @@ class ActivityService {
             },
             { new: true }
           );
-          await Authentication.findOneAndUpdate(
-            { reference_id: current_activity.agency_id },
+          await Agency.findOneAndUpdate(
+            { _id: current_activity.agency_id },
             {
               $inc: {
                 total_referral_point:
@@ -1295,8 +1294,8 @@ class ActivityService {
             },
             { new: true }
           );
-          await Authentication.findOneAndUpdate(
-            { reference_id: current_activity.agency_id },
+          await Agency.findOneAndUpdate(
+            { _id: current_activity.agency_id },
             {
               $inc: {
                 total_referral_point:
@@ -1347,8 +1346,8 @@ class ActivityService {
             },
             { new: true }
           );
-          await Authentication.findOneAndUpdate(
-            { reference_id: current_activity.agency_id },
+          await Agency.findOneAndUpdate(
+            { _id: current_activity.agency_id },
             {
               $inc: {
                 total_referral_point:
