@@ -625,6 +625,69 @@ const getAllFaq = {
   },
 };
 
+const getTransactions = {
+  tags: ["Admin Panel"],
+  description:
+    "sortOrder = (asc ,desc)  ,sortField = (name , subscription and order id)  , page  = (number) , itemsPerPage=(number))",
+  summary: "Get All Transactions ",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+
+          properties: {
+            page: {
+              type: "number",
+              description: "Enter page number.",
+              default: 1,
+            },
+            items_per_page: {
+              type: "number",
+              description: "Enter item per page.",
+              default: 5,
+            },
+            sort_order: {
+              type: "string",
+              description: "Enter order of sort asc or desc.",
+              default: "desc",
+            },
+            sort_field: {
+              type: "string",
+              description: "Enter field to sort.",
+              default: "createdAt",
+            },
+            search: {
+              type: "string",
+              description: "Enter value of search",
+            },
+            agency_id: { type: "string" },
+            subscription_id: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
 const adminRoutes = {
   "/api/v1/admin/login": {
     post: loginAdmin,
@@ -667,6 +730,9 @@ const adminRoutes = {
   },
   "/api/v1/admin/update-agency": {
     patch: updateAgencyStatus,
+  },
+  "/api/v1/admin/transaction": {
+    post: getTransactions,
   },
 };
 

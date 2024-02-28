@@ -62,7 +62,8 @@
     "deleteClientReview": "Client deleted successfully.",
     "clientReviewUpdated": "Client updated successfully.",
     "getClientReviewByID": "Fetch client successfully.",
-    "agencyFetched": "Agency fetched successfully."
+    "agencyFetched": "Agency fetched successfully.",
+    "transactionFetched": "Transaction History fetched successfully."
   },
 
   "teamMember": {

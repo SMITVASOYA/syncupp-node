@@ -7,11 +7,16 @@ const {
   forgotPasswordEmailTemplate,
   validateEmail,
   passwordValidation,
+  paginationObject,
+  getKeywordType,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const sendEmail = require("../helpers/sendEmail");
+const PaymentHistory = require("../models/paymentHistorySchema");
+const PaymentService = require("./paymentService");
+const paymentService = new PaymentService();
 
 class AdminService {
   tokenGenerator = (payload) => {
@@ -211,6 +216,132 @@ class AdminService {
     } catch (error) {
       logger.error(`Error while Admin update, ${error}`);
       throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  transactionHistory = async (payload) => {
+    try {
+      const search_obj = {};
+      let match_obj = { subscription_id: { $exist: true } };
+
+      if (payload?.subscription_id && payload?.agency_id) {
+        match_obj = {
+          subscription_id: payload?.subscription_id,
+          agency_id: payload?.agency_id,
+        };
+      }
+      if (payload?.search && payload?.search !== "") {
+        search_obj["$or"] = [
+          {
+            "agency.name": {
+              $regex: payload?.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            "agency.first_name": {
+              $regex: payload?.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            "agency.last_name": {
+              $regex: payload?.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            subscription_id: {
+              $regex: payload?.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            order_id: {
+              $regex: payload?.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+        ];
+
+        const keywordType = getKeywordType(payload?.search);
+        if (keywordType === "number") {
+          search_obj["$or"].push({
+            amount: { $regex: parseInt(payload?.search), $options: "i" },
+          });
+        }
+      }
+      const pagination = paginationObject(payload);
+      const aggragate = [
+        {
+          $match: search_obj,
+        },
+        {
+          $match: match_obj,
+        },
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "agency_id",
+            foreignField: "reference_id",
+            as: "agency",
+            pipeline: [
+              {
+                $project: {
+                  first_name: 1,
+                  last_name: 1,
+                  name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                  email: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: "$agency",
+        },
+      ];
+
+      const [transactions, total_transactions] = await Promise.all([
+        PaymentHistory.aggregate(aggragate)
+          .sort(pagination.sort)
+          .skip(pagination.skip)
+          .limit(pagination.result_per_page),
+        PaymentHistory.aggregate(aggragate),
+      ]);
+
+      for (let i = 0; i < transactions.length; i++) {
+        if (
+          payload?.subscription_id &&
+          payload?.agency_id &&
+          transactions[i].order_id
+        ) {
+          const paymentDetails = await paymentService.orderPaymentDetails(
+            transactions[i].order_id
+          );
+          transactions[i].method = paymentDetails?.items[0].method;
+        } else {
+          const subscription_detail =
+            await paymentService.getSubscriptionDetail(
+              transactions[i].subscription_id
+            );
+          transactions[i].method = subscription_detail.payment_method;
+        }
+      }
+
+      return {
+        transactions,
+        page_count:
+          Math.ceil(total_transactions.length / pagination.result_per_page) ||
+          0,
+      };
+    } catch (error) {
+      logger.error(
+        `Error while fetching the Transaction history for the Admin: ${error}`
+      );
+      return throwError(error?.message, error?.statusCode);
     }
   };
 }
