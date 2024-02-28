@@ -16,8 +16,7 @@ class NotificationService {
       payload;
 
     if (payload.agenda) payload.agenda = extractTextFromHtml(agenda);
-    console.log(payload);
-    console.log(id);
+    console.log(payload, "fsggeeg");
     try {
       const with_unread_count = async (notification_data, user_id) => {
         const un_read_count = await Notification.countDocuments({
@@ -43,10 +42,16 @@ class NotificationService {
           message_type = "activityInProgress";
         if (activity_type_action === "completed")
           message_type = "activityCompleted";
+        if (activity_type_action === "pending")
+          message_type = "activityPending";
 
-        const createAndEmitNotification = async (userId, messageType) => {
+        const createAndEmitNotification = async (
+          userId,
+          messageType,
+          receiver
+        ) => {
           const message = replaceFields(
-            returnNotification("activity", messageType, "clientMessage"),
+            returnNotification("activity", messageType, receiver),
             { ...payload }
           );
 
@@ -64,13 +69,22 @@ class NotificationService {
           );
         };
 
-        await createAndEmitNotification(client_id, message_type);
-        await createAndEmitNotification(assign_to, message_type);
+        await createAndEmitNotification(
+          client_id,
+          message_type,
+          "clientMessage"
+        );
+        await createAndEmitNotification(
+          assign_to,
+          message_type,
+          "assignToMessage"
+        );
       }
 
       // Task
 
       if (module_name === "task") {
+        console.log("first");
         let type = "task";
         let message_type;
         if (activity_type_action === "createTask") message_type = "createTask";
@@ -81,13 +95,19 @@ class NotificationService {
           message_type = "taskDeleted";
           type = "deleted";
         }
+        if (activity_type_action === "pending") message_type = "taskPending";
+
         if (activity_type_action === "cancel") message_type = "taskCancelled";
         if (activity_type_action === "inProgress")
           message_type = "taskInProgress";
-
-        const createAndEmitNotification = async (userId, messageType) => {
+        console.log(message_type);
+        const createAndEmitNotification = async (
+          userId,
+          messageType,
+          receiver
+        ) => {
           const message = replaceFields(
-            returnNotification("activity", messageType, "clientMessage"),
+            returnNotification("activity", messageType, receiver),
             { ...payload }
           );
 
@@ -104,9 +124,16 @@ class NotificationService {
             userId
           );
         };
-
-        await createAndEmitNotification(client_id, message_type);
-        await createAndEmitNotification(assign_to, message_type);
+        await createAndEmitNotification(
+          client_id,
+          message_type,
+          "clientMessage"
+        );
+        await createAndEmitNotification(
+          assign_to,
+          message_type,
+          "assignToMessage"
+        );
       }
 
       // Agreement
@@ -148,7 +175,9 @@ class NotificationService {
         const { action_type, receiver_id, sender_id } = payload;
         let message_type;
         if (action_type === "create") message_type = "create";
-        if (action_type === "statusUpdate") message_type = "statusUpdate";
+        if (action_type === "updateStatusUnpaid") message_type = "create";
+        if (action_type === "overdue") message_type = "invoiceDue";
+        if (action_type === "updateStatusPaid") message_type = "invoicePaid";
 
         const createAndEmitNotification = async (userId, messageType) => {
           const message = replaceFields(

@@ -132,7 +132,7 @@
     "clientnotexist": "Client doest not exist."
   },
   "invoice": {
-    "invoiceCreated": "Invoice created successfully.",
+    "invoiceCreated": "Invoice created successfully - ",
     "invoiceNumberExists": "Invoice number already exists",
     "clientFetched": "Clients Fetched successfully",
     "getAllInvoices": "Invoices fetched successfully.",
@@ -145,7 +145,9 @@
     "agencyIdRequired": "Agency ID required.",
     "invoiceSent": "Invoice sent successfully.",
     "downloadPDF": "Download PDF successfully.",
-    "invoiceSubject": "invoiceSubject: Your Invoice - ",
+    "invoiceSubject": "Your Invoice - ",
+    "invoiceOverdue": "Your Invoice date overdue - ",
+    "invoicePaid": "Invoice paid - ",
     "invalidDueDate": "Invoice due date should not be less than invoice date."
   },
 
@@ -164,7 +166,8 @@
     "activityUpdated": "Activity updated",
     "meetingCancelled": "Activity cancelled",
     "activityCompleted": "Activity completed",
-    "activityInProgress": "Activity in progress"
+    "activityInProgress": "Activity in progress",
+    "activityInPending": "Activity in pending"
   },
 
   "client": {

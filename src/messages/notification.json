@@ -14,20 +14,28 @@
       "assignToMessage": "Hi ${assigned_to_name}! The ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. "
     },
     "activityCompleted": {
-      "clientMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is complete.",
-      "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is done."
+      "clientMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is completed.",
+      "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is completed."
     },
     "activityInProgress": {
       "clientMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is in progress.",
       "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is in progress."
+    },
+    "activityPending": {
+      "clientMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is in pending.",
+      "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is pending."
     },
     "createTask": {
       "clientMessage": "Hi ${client_name}! You have a task titled ${title} due on ${due_date} before ${due_time}. Check the agenda: ${agenda}. See you there!",
       "assignToMessage": "Hey ${assigned_to_name}! You're assigned to a task titled ${title} due on ${due_date} before ${due_time}. Agenda: ${agenda}. Be ready!"
     },
     "taskCompleted": {
-      "clientMessage": "Hi ${client_name}! Your task '${title}' is complete.",
-      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is done. Great job!"
+      "clientMessage": "Hi ${client_name}! Your task '${title}' is completed.",
+      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is completed. Great job!"
+    },
+    "taskPending": {
+      "clientMessage": "Hi ${client_name}! Your task '${title}' is pending.",
+      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is pending."
     },
     "taskUpdated": {
       "clientMessage": "Updated: Hi ${client_name}! Your task titled ${title} now has a due date on ${due_date} before ${due_time}. See you there!",
@@ -51,6 +59,8 @@
     "statusUpdate": "Agreed: Hi ${sender_name}! An agreement titled ${title} has been agreed by ${receiver_name}."
   },
   "invoice": {
-    "create": "Hi ${receiver_name}! An invoice with number ${invoice_number} has been created by ${sender_name}."
+    "create": "Hi ${receiver_name}! An invoice with number ${invoice_number} has been created by ${sender_name}.",
+    "invoiceDue": "Hi ${receiver_name}! This is a reminder that invoice number ${invoice_number} from ${sender_name} is due for payment. The due date is approaching, and we request you to process the payment at your earliest convenience.",
+    "invoicePaid": "Hi ${receiver_name}! Invoice number ${invoice_number} from ${sender_name} has been paid. Thank you for your prompt payment."
   }
 }

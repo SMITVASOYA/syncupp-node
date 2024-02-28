@@ -1489,12 +1489,16 @@ class ActivityService {
         task_status = "inProgress";
         emailTempKey = "activityInProgress";
       }
+      if (payload.status == "pending") {
+        task_status = "pending";
+        emailTempKey = "activityInPending";
+      }
 
       if (getTask[0].activity_type === "task") {
         let data = {
           TaskTitle: "Updated Task status",
           taskName: getTask[0]?.title,
-          status: status,
+          status: payload.status,
           assign_by: getTask[0]?.assigned_by_name,
           dueDate: moment(getTask[0]?.due_date)?.format("DD/MM/YYYY"),
           dueTime: getTask[0]?.due_time,
@@ -1507,6 +1511,25 @@ class ActivityService {
           subject: returnMessage("activity", "UpdateSubject"),
           message: taskMessage,
         });
+        //   ----------    Notifications start ----------
+
+        await notificationService.addNotification(
+          {
+            client_name: client_data.first_name + " " + client_data.last_name,
+            assigned_to_name:
+              assign_to_data.first_name + " " + assign_to_data.last_name,
+            ...getTask[0],
+            module_name: "task",
+            activity_type_action: task_status,
+            activity_type: "task",
+            meeting_start_time: moment(getTask[0].meeting_start_time).format(
+              "HH:mm"
+            ),
+            due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
+          },
+          id
+        );
+        //   ----------    Notifications end ----------
       } else {
         //   ----------    Notifications start ----------
 
@@ -1518,11 +1541,15 @@ class ActivityService {
             "HH:mm"
           ),
           recurring_end_date: getTask[0]?.recurring_end_date
-            ? getTask[0]?.recurring_end_date.toTimeString().split(" ")[0]
+            ? moment(getTask[0].recurring_end_date).format("DD-MM-YYYY")
             : null,
-          due_date: getTask[0].due_date.toLocaleDateString("en-GB"),
+          due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
+          status: payload.status,
+          client_name: client_data.first_name + " " + client_data.last_name,
         });
-        sendEmail({
+        console.log(activity_email_template);
+        console.log("first");
+        await sendEmail({
           email: client_data?.email,
           subject: returnMessage("emailTemplate", emailTempKey),
           message: activity_email_template,
@@ -1532,28 +1559,29 @@ class ActivityService {
           subject: returnMessage("emailTemplate", emailTempKey),
           message: activity_email_template,
         });
-      }
+        //   ----------    Notifications start ----------
 
-      await notificationService.addNotification(
-        {
-          client_name: client_data.first_name + " " + client_data.last_name,
-          assigned_to_name:
-            assign_to_data.first_name + " " + assign_to_data.last_name,
-          ...getTask[0],
-          module_name: "activity",
-          activity_type_action: task_status,
-          activity_type:
-            getTask[0]?.activity_type.name === "others"
-              ? "activity"
-              : "call meeting",
-          meeting_start_time: moment(getTask[0].meeting_start_time).format(
-            "HH:mm"
-          ),
-          due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
-        },
-        id
-      );
-      //   ----------    Notifications end ----------
+        await notificationService.addNotification(
+          {
+            client_name: client_data.first_name + " " + client_data.last_name,
+            assigned_to_name:
+              assign_to_data.first_name + " " + assign_to_data.last_name,
+            ...getTask[0],
+            module_name: "activity",
+            activity_type_action: task_status,
+            activity_type:
+              getTask[0]?.activity_type.name === "others"
+                ? "activity"
+                : "call meeting",
+            meeting_start_time: moment(getTask[0].meeting_start_time).format(
+              "HH:mm"
+            ),
+            due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
+          },
+          id
+        );
+        //   ----------    Notifications end ----------
+      }
 
       return updateTasks;
     } catch (error) {
