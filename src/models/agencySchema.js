@@ -12,6 +12,7 @@ const agencySchema = new mongoose.Schema(
     state: { type: mongoose.Schema.Types.ObjectId, ref: "state_master" },
     country: { type: mongoose.Schema.Types.ObjectId, ref: "country_master" },
     pincode: { type: String },
+    total_referral_point: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

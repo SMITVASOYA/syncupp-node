@@ -42,7 +42,7 @@ const authenticationSchema = new mongoose.Schema(
     referral_code: {
       type: String,
     },
-    total_referral_point: { type: Number, default: 0 },
+
     last_login_date: { type: Date },
   },
   { timestamps: true }

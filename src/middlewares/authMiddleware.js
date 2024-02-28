@@ -4,10 +4,11 @@ const Authentication = require("../models/authenticationSchema");
 const { throwError } = require("../helpers/errorUtil");
 const { returnMessage } = require("../utils/utils");
 const Competition_Point = require("../models/competitionPointSchema");
-const Configuration = require("../models/configurationSchema");
 
 const moment = require("moment");
 
+const Configuration = require("../models/configurationSchema");
+const Agency = require("../models/agencySchema");
 exports.protect = catchAsyncErrors(async (req, res, next) => {
   const token = req.headers.authorization || req.headers.token;
 
@@ -45,8 +46,8 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
           role: user?.role?.name,
         });
 
-        await Authentication.findOneAndUpdate(
-          { reference_id: user.reference_id },
+        await Agency.findOneAndUpdate(
+          { _id: user.reference_id },
           {
             $inc: {
               total_referral_point:

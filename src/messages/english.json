@@ -33,7 +33,7 @@
     "oldPassRequired": "Old password is required.",
     "teamAgencyIsInactive": "Your account has been deactivate by agency.",
     "sendRefferalEmail": "Referral email send successfully.",
-    "invitationEmailSubject": "Inviation to the Tacky."
+    "invitationEmailSubject": "Inviation to the SyncUpp."
   },
 
   "admin": {
@@ -250,7 +250,9 @@
     "cancellationAndRefundFetched": "Cancellation and Refund fetched successfully.",
     "cancellationAndRefundUpdate": "Cancellation and refund update successfully",
     "ShippingandDeliveryUpdate": "Shipping and delivery update successfully",
-    "ShippingandDeliveryFetched": "Shipping and delivery fetched successfully."
+    "featureUpdate": "Feature update successfully",
+    "ShippingandDeliveryFetched": "Shipping and delivery fetched successfully.",
+    "featureFetched": "Feature fetched successfully."
   },
   "notification": {
     "messageAdded": "Notification added successfully.",
@@ -271,9 +273,12 @@
     "invalidTime": "End time should be greater than start time.",
     "invalidDate": "End date should be greater than start date.",
     "invalidRecurringDate": "Recurring date should be future date.",
-    "EventScheduledForTeam": "Event is already their on scheduled day.",
+    "eventScheduledForTeam": "Event is already their on scheduled day.",
     "dateinvalid": "Date must be the present date or a future date.",
-    "fetchEvent": "Fetch event successfully."
+    "fetchEvent": "Event fetch successfully.",
+    "eventList": "Event list fetch successfully.",
+    "emailAlreadyExists": "Event for email already exist.",
+    "eventUpdate": "Event updated successfully."
   },
 
   "default": { "default": "Something went wrong." }

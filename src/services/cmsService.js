@@ -14,6 +14,7 @@ const AdminFqa = require("../models/adminFaqSchema");
 const About_Us = require("../models/cms/aboutUsSchema");
 const cancellation_and_Refund = require("../models/cms/refundSchema");
 const Shipping_and_Delivery = require("../models/cms/ShippingandDeliverySchems");
+const Feature = require("../models/cms/featureSchema");
 
 class cmsService {
   updateContactUs = async (payload) => {
@@ -252,6 +253,36 @@ class cmsService {
     } catch (error) {
       console.log(error);
       logger.error(`Error while update About Us CRM : ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  getFeature = async () => {
+    try {
+      const feature = await Feature.findOne({});
+      return feature;
+    } catch (error) {
+      console.log(error);
+      logger.error(`Error while get feature CRM : ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+  updateFeature = async (payload) => {
+    try {
+      const { description } = payload;
+      const feature = await Feature.findOne({});
+      await Feature.findOneAndUpdate(
+        {
+          _id: feature._id,
+        },
+        { description },
+        { new: true, useFindAndModify: false }
+      );
+
+      return true;
+    } catch (error) {
+      console.log(error);
+      logger.error(`Error while update feature CRM : ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
