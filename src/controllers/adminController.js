@@ -99,3 +99,15 @@ exports.getAgency = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+// below function is used to get the transaction history of the Agency
+exports.transactionHistory = catchAsyncError(async (req, res, next) => {
+  const transactions = await adminService.transactionHistory(req?.body);
+  sendResponse(
+    res,
+    true,
+    returnMessage("admin", "transactionFetched"),
+    transactions,
+    statusCode.success
+  );
+});

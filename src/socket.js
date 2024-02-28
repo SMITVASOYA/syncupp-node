@@ -9,6 +9,7 @@ exports.socket_connection = (http_server) => {
         "http://172.16.0.241:3000",
         "http://localhost:3000",
         "http://localhost",
+        "http://104.248.10.11:5010",
       ],
     },
   });

@@ -4,7 +4,10 @@ const Authentication = require("../models/authenticationSchema");
 const { throwError } = require("../helpers/errorUtil");
 const { returnMessage } = require("../utils/utils");
 const Competition_Point = require("../models/competitionPointSchema");
+const Configuration = require("../models/configurationSchema");
+
 const moment = require("moment");
+
 exports.protect = catchAsyncErrors(async (req, res, next) => {
   const token = req.headers.authorization || req.headers.token;
 

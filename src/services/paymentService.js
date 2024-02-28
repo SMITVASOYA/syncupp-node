@@ -1032,7 +1032,9 @@ class PaymentService {
         next_billing_price:
           subscription?.quantity * (plan_details?.item.amount / 100),
         total_sheets: sheets_detail.total_sheets,
-        available_sheets: sheets_detail.occupied_sheets.length,
+        available_sheets: Math.abs(
+          sheets_detail.total_sheets - 1 - sheets_detail.occupied_sheets.length
+        ),
         subscription,
         referral_points: {
           erned_points: earned_total, //this static data as of now
@@ -1502,6 +1504,45 @@ class PaymentService {
       console.log(JSON.stringify(error));
       logger.error(`Error while changing status after the payment: ${error}`);
       return { success: false };
+    }
+  };
+
+  // this function is used to get the invoice details from the subscription id
+  invoices = async (subscription_id) => {
+    try {
+      return await Promise.resolve(razorpay.invoices.all({ subscription_id }));
+    } catch (error) {
+      logger.error(
+        `Error while getting the invoices from the Subscription id :${error} `
+      );
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // this function is used to get the payment details from the Order id
+  // and the order id is generate based on the agency doing single payment
+  orderPaymentDetails = async (order_id) => {
+    try {
+      return await Promise.resolve(razorpay.orders.fetchPayments(order_id));
+    } catch (error) {
+      logger.error(
+        `Error while getting the payment details from the order id :${error} `
+      );
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // this function is used to get the subscription details from the subscription id
+  getSubscriptionDetail = async (subscription_id) => {
+    try {
+      return await Promise.resolve(
+        razorpay.subscriptions.fetch(subscription_id)
+      );
+    } catch (error) {
+      logger.error(
+        `Error while getting the invoices from the Subscription id :${error} `
+      );
+      return throwError(error?.message, error?.statusCode);
     }
   };
 }
