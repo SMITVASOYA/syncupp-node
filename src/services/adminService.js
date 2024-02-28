@@ -16,6 +16,7 @@ const crypto = require("crypto");
 const sendEmail = require("../helpers/sendEmail");
 const PaymentHistory = require("../models/paymentHistorySchema");
 const PaymentService = require("./paymentService");
+const { default: mongoose } = require("mongoose");
 const paymentService = new PaymentService();
 
 class AdminService {
@@ -222,12 +223,12 @@ class AdminService {
   transactionHistory = async (payload) => {
     try {
       const search_obj = {};
-      let match_obj = { subscription_id: { $exist: true } };
+      let match_obj = { subscription_id: { $exists: true } };
 
       if (payload?.subscription_id && payload?.agency_id) {
         match_obj = {
-          subscription_id: payload?.subscription_id,
-          agency_id: payload?.agency_id,
+          subscription_id: { $exists: false },
+          agency_id: new mongoose.Types.ObjectId(payload?.agency_id),
         };
       }
       if (payload?.search && payload?.search !== "") {
