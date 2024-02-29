@@ -277,7 +277,9 @@
   },
 
   "chat": {
-    "userIdRequired": "Other users' id is required to get messages."
+    "userIdRequired": "Other users' id is required to get messages.",
+    "usersListFetched": "List of users fetched successfully.",
+    "historyFetched": "Chat history fetched successfully."
   },
 
   "default": { "default": "Something went wrong." }

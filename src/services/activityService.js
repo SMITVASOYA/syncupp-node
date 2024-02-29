@@ -2281,7 +2281,18 @@ class ActivityService {
             ...filter["$match"],
             activity_status: activity_status?._id,
           };
+        } else if (payload?.filter?.status === "cancel") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "cancel",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
         }
+
         if (payload?.filter?.date === "today") {
           filter["$match"] = {
             ...filter["$match"],

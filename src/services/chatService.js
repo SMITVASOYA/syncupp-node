@@ -280,7 +280,7 @@ class ChatService {
             { status: { $ne: "confirm_pending" } },
           ],
         })
-          .select("name first_name last_name email")
+          .select("name first_name last_name email reference_id image_url")
           .lean(),
       ]);
 
@@ -291,9 +291,9 @@ class ChatService {
             noti?.from_user?.toString() === usr?.reference_id?.toString() &&
             noti?.user_id?.toString() === user?.reference_id?.toString()
         );
-
-        if (unread) user.unread = true;
-        else user.unread = false;
+        console.log(unread, 294);
+        if (unread) usr["unread"] = true;
+        else usr["unread"] = false;
 
         return;
       });
