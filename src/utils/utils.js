@@ -5128,7 +5128,7 @@ exports.invoiceTemplate = (invoiceData) => {
                                                                                                               font-weight: 500;">Status</span>
                                       <span
                                         style="text-align: right; width: 50%; display: inline-table;
-                                                                                                              font-weight: 600;">${
+                                                                                                              font-weight: 600;text-transform: capitalize;">${
                                                                                                                 invoiceData.status
                                                                                                               }</span>
                                     </li>

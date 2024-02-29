@@ -30,6 +30,7 @@ const Configuration = require("../models/configurationSchema");
 const Affiliate = require("../models/affiliateSchema");
 const Affiliate_Referral = require("../models/affiliateReferralSchema");
 const CompetitionPoint = require("../models/competitionPointSchema");
+const Agency = require("../models/agencySchema");
 class AuthService {
   tokenGenerator = (payload) => {
     try {
@@ -337,8 +338,8 @@ class AuthService {
               role: agency_enroll?.role?.name,
             });
 
-            await Authentication.findOneAndUpdate(
-              { reference_id: agency_enroll?.reference_id },
+            await Agency.findOneAndUpdate(
+              { _id: agency_enroll?.reference_id },
               {
                 $inc: {
                   total_referral_point:
@@ -346,6 +347,11 @@ class AuthService {
                 },
                 last_login_date: moment.utc().startOf("day"),
               },
+              { new: true }
+            );
+            await Authentication.findOneAndUpdate(
+              { reference_id: agency_enroll.reference_id },
+              { last_login_date: moment.utc().startOf("day") },
               { new: true }
             );
           }
@@ -373,8 +379,8 @@ class AuthService {
               role: existing_agency?.role?.name,
             });
 
-            await Authentication.findOneAndUpdate(
-              { reference_id: existing_agency.reference_id },
+            await Agency.findOneAndUpdate(
+              { _id: existing_agency.reference_id },
               {
                 $inc: {
                   total_referral_point:
@@ -382,6 +388,11 @@ class AuthService {
                 },
                 last_login_date: moment.utc().startOf("day"),
               },
+              { new: true }
+            );
+            await Authentication.findOneAndUpdate(
+              { reference_id: existing_agency.reference_id },
+              { last_login_date: moment.utc().startOf("day") },
               { new: true }
             );
           }
@@ -475,8 +486,8 @@ class AuthService {
               login_date: moment.utc().startOf("day"),
             });
 
-            await Authentication.findOneAndUpdate(
-              { reference_id: agency_enroll?.reference_id },
+            await Agency.findOneAndUpdate(
+              { _id: agency_enroll?.reference_id },
               {
                 $inc: {
                   total_referral_point:
@@ -484,6 +495,11 @@ class AuthService {
                 },
                 last_login_date: moment.utc().startOf("day"),
               },
+              { new: true }
+            );
+            await Authentication.findOneAndUpdate(
+              { reference_id: agency_enroll.reference_id },
+              { last_login_date: moment.utc().startOf("day") },
               { new: true }
             );
           }
@@ -503,15 +519,15 @@ class AuthService {
             const referral_data = await Configuration.findOne().lean();
 
             await CompetitionPoint.create({
-              user_id: agency_enroll?.reference_id,
+              user_id: existing_agency?.reference_id,
               agency_id: existing_agency?.reference_id,
               point: +referral_data?.competition?.successful_login?.toString(),
               type: "login",
               role: existing_agency?.role?.name,
             });
 
-            await Authentication.findOneAndUpdate(
-              { reference_id: existing_agency?.reference_id },
+            await Agency.findOneAndUpdate(
+              { _id: existing_agency?.reference_id },
               {
                 $inc: {
                   total_referral_point:
@@ -519,6 +535,11 @@ class AuthService {
                 },
                 last_login_date: moment.utc().startOf("day"),
               },
+              { new: true }
+            );
+            await Authentication.findOneAndUpdate(
+              { reference_id: existing_agency?.reference_id },
+              { last_login_date: moment.utc().startOf("day") },
               { new: true }
             );
           }
@@ -604,8 +625,8 @@ class AuthService {
             role: existing_Data?.role?.name,
           });
 
-          await Authentication.findOneAndUpdate(
-            { reference_id: existing_Data.reference_id },
+          await Agency.findOneAndUpdate(
+            { _id: existing_Data.reference_id },
             {
               $inc: {
                 total_referral_point:
@@ -613,6 +634,11 @@ class AuthService {
               },
               last_login_date: moment.utc().startOf("day"),
             },
+            { new: true }
+          );
+          await Authentication.findOneAndUpdate(
+            { reference_id: existing_Data.reference_id },
+            { last_login_date: moment.utc().startOf("day") },
             { new: true }
           );
         }
@@ -884,8 +910,11 @@ class AuthService {
 
       const referral_data = await Configuration.findOne().lean();
 
-      await Authentication.findOneAndUpdate(
-        { referral_code: referral_code },
+      let user_data = await Authentication.findOne({
+        referral_code: referral_code,
+      });
+      await Agency.findOneAndUpdate(
+        { _id: user_data?.reference_id },
         {
           $inc: {
             total_referral_point:
@@ -933,9 +962,9 @@ class AuthService {
   sendReferaal = async (user, payload) => {
     try {
       const { email } = payload;
-      if (!validateEmail(email)) return returnMessage("invalidEmail");
+      if (!validateEmail(email)) return returnMessage("auth", "invalidEmail");
       const email_exist = await Authentication.findOne({ email }).lean();
-      if (email_exist) return returnMessage("emailExist");
+      if (!email_exist) return returnMessage("auth", "emailExist");
       const link = `${process.env.REACT_APP_URL}/signup?referral=${user?.referral_code}`;
 
       const refferralEmail = invitationEmailTemplate({

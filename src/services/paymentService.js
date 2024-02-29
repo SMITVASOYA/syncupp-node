@@ -24,6 +24,7 @@ const sendEmail = require("../helpers/sendEmail");
 const Configuration = require("../models/configurationSchema");
 const CompetitionPoint = require("../models/competitionPointSchema");
 const ReferralHistory = require("../models/referralHistorySchema");
+const Agency = require("../models/agencySchema");
 const razorpay = new Razorpay({
   key_id: "rzp_test_EXMZGAhqohv4Yp",
   key_secret: "nPV5QSOiNjlmU6UMXPBdGdX2",
@@ -248,8 +249,9 @@ class PaymentService {
         { order_id: order?.id },
         { new: true }
       );
+      const referral_point = Agency.findOne({ _id: user?.reference_id });
       return {
-        referral_points: user?.total_referral_point, // this wil be change in future when the referral point will be integrate
+        referral_points: referral_point?.total_referral_point, // this wil be change in future when the referral point will be integrate
         payment_id: order?.id,
         amount: prorate_value,
         currency: plan?.currency,
@@ -1094,10 +1096,11 @@ class PaymentService {
       if (payload?.without_referral === true) {
         return await this.withoutReferralPay(payload, user);
       }
+      const agency = await Agency.findById(user.reference_id);
       const referral_data = await Configuration.findOne().lean();
       if (
         !(
-          user?.total_referral_point >=
+          agency?.total_referral_point >=
           referral_data?.referral?.redeem_required_point
         )
       )
@@ -1110,8 +1113,8 @@ class PaymentService {
       const status_change = await this.referralStatusChange(payload, user);
       if (!status_change.success) return { success: false };
 
-      await Authentication.findOneAndUpdate(
-        { reference_id: user?.reference_id },
+      await Agency.findOneAndUpdate(
+        { _id: agency?._id },
         {
           $inc: {
             total_referral_point:
@@ -1323,9 +1326,10 @@ class PaymentService {
           plan
         ) / 100
       ).toFixed(2);
-
+      const agency_data = await Agency.findById(agency.reference_id);
       const redirect_payment_page =
-        agency?.total_referral_point >= config?.referral?.redeem_required_point
+        agency_data?.total_referral_point >=
+        config?.referral?.redeem_required_point
           ? true
           : false;
 
