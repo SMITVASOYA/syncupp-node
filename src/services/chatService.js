@@ -15,6 +15,12 @@ class ChatService {
     try {
       if (!payload?.to_user)
         return throwError(returnMessage("chat", "userIdRequired"));
+      const search_obj = {};
+      if (payload?.search && payload?.search !== "") {
+        search_obj["$or"] = [
+          { message: { $regex: payload?.search.toLowerCase(), $options: "i" } },
+        ];
+      }
       return await Chat.find({
         $or: [
           {
@@ -30,6 +36,7 @@ class ChatService {
             ],
           },
         ],
+        ...search_obj,
       })
         .sort({ createdAt: 1 })
         .lean();

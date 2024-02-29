@@ -26,8 +26,8 @@ const CompetitionPoint = require("../models/competitionPointSchema");
 const ReferralHistory = require("../models/referralHistorySchema");
 const Agency = require("../models/agencySchema");
 const razorpay = new Razorpay({
-  key_id: "rzp_test_EXMZGAhqohv4Yp",
-  key_secret: "nPV5QSOiNjlmU6UMXPBdGdX2",
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_SECRET,
 });
 
 class PaymentService {
