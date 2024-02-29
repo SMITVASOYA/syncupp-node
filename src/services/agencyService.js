@@ -509,6 +509,7 @@ class AgencyService {
         paymentService.planDetails(subscription.plan_id),
       ]);
       return {
+        user_type: user?.role?.name ?? null,
         client_count: clientCount ?? null,
         team_member_count: teamMemberCount ?? null,
         client_count_month: clientCountMonth ?? null,
