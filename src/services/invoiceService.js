@@ -14,6 +14,7 @@ const sendEmail = require("../helpers/sendEmail");
 const pdf = require("html-pdf");
 const NotificationService = require("./notificationService");
 const notificationService = new NotificationService();
+const moment = require("moment");
 
 class InvoiceService {
   // Get Client list  ------   AGENCY API
@@ -743,10 +744,6 @@ class InvoiceService {
               name: "unpaid",
             });
           }
-          if (sent === true) {
-            const payload = { invoice_id: invoice._id };
-            await this.sendInvoice(payload);
-          }
 
           const invoiceItems = invoice_content;
           calculateAmount(invoiceItems);
@@ -766,6 +763,11 @@ class InvoiceService {
               },
             }
           );
+
+          if (sent === true) {
+            const payload = { invoice_id: invoice._id };
+            await this.sendInvoice(payload, "create");
+          }
         }
       } else {
         return throwError(returnMessage("invoice", "canNotUpdate"));
@@ -970,7 +972,12 @@ class InvoiceService {
         });
 
         // Use a template or format the invoice message accordingly
-        const formattedInquiryEmail = invoiceTemplate(invoiceData[0]);
+        const formattedInquiryEmail = invoiceTemplate({
+          ...invoiceData[0],
+          invoice_date: moment(invoiceData[0]?.invoice_date).format(
+            "DD-MM-YYYY"
+          ),
+        });
         let invoiceSubject = "invoiceSubject";
         if (type === "updateStatusPaid") invoiceSubject = "invoicePaid";
         if (type === "create") invoiceSubject = "invoiceCreated";
@@ -998,14 +1005,14 @@ class InvoiceService {
         // ----------------  Notification start    -----------------
         await notificationService.addNotification(
           {
-            receiver_name: invoiceData[0].to.client_full_name,
-            sender_name: invoiceData[0].from.agency_full_name,
-            receiver_id: invoiceData[0].to._id,
-            invoice_number: invoiceData[0].invoice_number,
+            receiver_name: invoiceData[0]?.to.client_full_name,
+            sender_name: invoiceData[0]?.from.agency_full_name,
+            receiver_id: invoiceData[0]?.to._id,
+            invoice_number: invoiceData[0]?.invoice_number,
             module_name: "invoice",
             action_type: type,
           },
-          invoiceData[0]._id
+          invoiceData[0]?._id
         );
         // ----------------  Notification end    -----------------
       }
@@ -1015,16 +1022,15 @@ class InvoiceService {
           // ----------------  Notification start    -----------------
           await notificationService.addNotification(
             {
-              receiver_name: invoice[0].to.client_full_name,
-              sender_name: invoice[0].from.agency_full_name,
-              receiver_id: invoice[0].to._id,
-              invoice_number: invoice[0].invoice_number,
+              receiver_name: invoice[0]?.to.client_full_name,
+              sender_name: invoice[0]?.from.agency_full_name,
+              receiver_id: invoice[0]?.to._id,
+              invoice_number: invoice[0]?.invoice_number,
               module_name: "invoice",
               action_type: "overdue",
             },
             invoiceId
           );
-          console.log(invoice[0]);
 
           const clientDetails = await Authentication.findOne({
             reference_id: invoice[0]?.to?._id,
@@ -1032,7 +1038,10 @@ class InvoiceService {
           console.log(clientDetails);
 
           // Use a template or format the invoice message accordingly
-          const formattedInquiryEmail = invoiceTemplate(invoice[0]);
+          const formattedInquiryEmail = invoiceTemplate({
+            ...invoice[0],
+            invoice_date: moment(invoice[0]?.invoice_date).format("DD-MM-YYYY"),
+          });
 
           await sendEmail({
             email: clientDetails?.email,
@@ -1056,7 +1065,10 @@ class InvoiceService {
     try {
       const { invoice_id } = payload;
       const invoice = await this.getInvoice(invoice_id);
-      const renderedHtml = invoiceTemplate(invoice[0]);
+      const renderedHtml = invoiceTemplate({
+        ...invoice[0],
+        invoice_date: moment(invoice[0]?.invoice_date).format("DD-MM-YYYY"),
+      });
       const pdfOptions = {};
       // Convert the PDF to a buffer using html-pdf
       const pdfBuffer = await new Promise((resolve, reject) => {

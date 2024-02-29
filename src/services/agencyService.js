@@ -8,7 +8,14 @@ const SubscriptionPlan = require("../models/subscriptionplanSchema");
 const PaymentService = require("./paymentService");
 const paymentService = new PaymentService();
 const ReferralService = require("./referralService");
+const Client = require("../models/clientSchema");
+const Team_Agency = require("../models/teamAgencySchema");
+const Activity = require("../models/activitySchema");
 const referralService = new ReferralService();
+const moment = require("moment");
+const Invoice = require("../models/invoiceSchema");
+const mongoose = require("mongoose");
+
 // Register Agency
 class AgencyService {
   agencyRegistration = async (payload) => {
@@ -232,6 +239,294 @@ class AgencyService {
       return;
     } catch (error) {
       logger.error(`Error while registering the agency: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // Dashboard Data
+  dashboardData = async (user) => {
+    try {
+      const currentDate = moment();
+      const startOfMonth = moment(currentDate).startOf("month");
+      const endOfMonth = moment(currentDate).endOf("month");
+      const startOfToday = moment(currentDate).startOf("day");
+      const endOfToday = moment(currentDate).endOf("day");
+
+      const subscription = await paymentService.subscripionDetail(
+        user?.subscription_id
+      );
+
+      const [
+        clientCount,
+        teamMemberCount,
+        clientCountMonth,
+        taskCount,
+        pendingTask,
+        completedTask,
+        inprogressTask,
+        overdueTask,
+        todaysCallMeeting,
+        totalAmountInvoices,
+        invoiceOverdueCount,
+        planDetailForSubscription,
+      ] = await Promise.all([
+        Client.find({
+          "agency_ids.agency_id": user.reference_id,
+          "agency_ids.status": "active",
+        }).countDocuments(),
+
+        Team_Agency.find({
+          agency_id: user.reference_id,
+        }).countDocuments(),
+
+        Client.find({
+          "agency_ids.agency_id": user.reference_id,
+          "agency_ids.status": "active",
+          createdAt: {
+            $gte: startOfMonth.toDate(),
+            $lte: endOfMonth.toDate(),
+          },
+        }).countDocuments(),
+        Activity.aggregate([
+          {
+            $lookup: {
+              from: "activity_status_masters",
+              localField: "activity_status",
+              foreignField: "_id",
+              as: "statusName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              agency_id: user.reference_id,
+              "statusName.name": { $ne: "cancel" }, // Fix: Change $nq to $ne
+            },
+          },
+          {
+            $count: "totalTaskCount",
+          },
+        ]),
+        Activity.aggregate([
+          {
+            $lookup: {
+              from: "activity_status_masters",
+              localField: "activity_status",
+              foreignField: "_id",
+              as: "statusName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              agency_id: user.reference_id,
+              "statusName.name": { $eq: "pending" }, // Fix: Change $nq to $ne
+            },
+          },
+          {
+            $count: "pendingTask",
+          },
+        ]),
+        Activity.aggregate([
+          {
+            $lookup: {
+              from: "activity_status_masters",
+              localField: "activity_status",
+              foreignField: "_id",
+              as: "statusName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              agency_id: user.reference_id,
+              "statusName.name": { $eq: "completed" }, // Fix: Change $nq to $ne
+            },
+          },
+          {
+            $count: "completedTask",
+          },
+        ]),
+        Activity.aggregate([
+          {
+            $lookup: {
+              from: "activity_status_masters",
+              localField: "activity_status",
+              foreignField: "_id",
+              as: "statusName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              agency_id: user.reference_id,
+              "statusName.name": { $eq: "in_progress" }, // Fix: Change $nq to $ne
+            },
+          },
+          {
+            $count: "inprogressTask",
+          },
+        ]),
+        Activity.aggregate([
+          {
+            $lookup: {
+              from: "activity_status_masters",
+              localField: "activity_status",
+              foreignField: "_id",
+              as: "statusName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              agency_id: user.reference_id,
+              "statusName.name": { $eq: "overdue" }, // Fix: Change $nq to $ne
+            },
+          },
+          {
+            $count: "overdueTask",
+          },
+        ]),
+        Activity.aggregate([
+          {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "activityType",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$activityType",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              agency_id: user.reference_id,
+              "activityType.name": { $eq: "call_meeting" },
+              meeting_start_time: {
+                $gte: startOfToday.toDate(),
+                $lte: endOfToday.toDate(),
+              },
+            },
+          },
+          {
+            $count: "todaysCallMeeting",
+          },
+        ]),
+
+        Invoice.aggregate([
+          {
+            $lookup: {
+              from: "invoice_status_masters",
+              localField: "status",
+              foreignField: "_id",
+              as: "invoiceStatus",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$invoiceStatus",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
+          {
+            $match: {
+              agency_id: new mongoose.Types.ObjectId(user.reference_id),
+              "invoiceStatus.name": { $eq: "paid" }, // Exclude documents with status "draft"
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalPaidAmount: { $sum: "$total" },
+            },
+          },
+        ]),
+
+        Invoice.aggregate([
+          {
+            $lookup: {
+              from: "invoice_status_masters",
+              localField: "status",
+              foreignField: "_id",
+              as: "invoiceStatus",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$invoiceStatus",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
+          {
+            $match: {
+              agency_id: new mongoose.Types.ObjectId(user.reference_id),
+              "invoiceStatus.name": { $eq: "overdue" }, // Exclude documents with status "draft"
+            },
+          },
+          {
+            $count: "invoiceOverdueCount",
+          },
+        ]),
+        paymentService.planDetails(subscription.plan_id),
+      ]);
+      return {
+        client_count: clientCount ?? null,
+        team_member_count: teamMemberCount ?? null,
+        client_count_month: clientCountMonth ?? null,
+        task_count: taskCount[0]?.totalTaskCount ?? null,
+        pending_task_count: pendingTask[0]?.pendingTask ?? null,
+        completed_task_count: completedTask[0]?.completedTask ?? null,
+        in_progress_task_count: inprogressTask[0]?.inprogressTask ?? null,
+        overdue_task_count: overdueTask[0]?.overdueTask ?? null,
+        todays_call_meeting: todaysCallMeeting[0]?.todaysCallMeeting ?? null,
+        total_invoice_amount: totalAmountInvoices[0]?.totalPaidAmount ?? null,
+        invoice_overdue_count:
+          invoiceOverdueCount[0]?.invoiceOverdueCount ?? null,
+        Next_billing_amount:
+          subscription?.quantity *
+            (planDetailForSubscription?.item.amount / 100) ?? null,
+      };
+    } catch (error) {
+      logger.error(`Error while fetch dashboard data for agency: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };

@@ -14,6 +14,7 @@ const affiliateRoute = require("./affiliateRoute");
 const cmsRoute = require("./cmsRoute");
 const referralRoute = require("./referralRoute");
 const notificationRoute = require("./notificationRoute");
+const dashboardRoute = require("./dashboardRoute");
 
 router.use("/activity", activityRoute);
 router.use("/auth", authRoute);
@@ -35,5 +36,6 @@ router.use("/agreement", agreementRoute);
 router.use("/crm", cmsRoute);
 router.use("/referral", referralRoute);
 router.use("/notification", notificationRoute);
+router.use("/dashboard", dashboardRoute);
 
 module.exports = router;

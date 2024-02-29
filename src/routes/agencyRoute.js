@@ -30,5 +30,6 @@ agencyRoute.patch(
 agencyRoute.post("/clients", clientController.clients);
 agencyRoute.get("/get-profile", agencyController.getAgencyProfile);
 agencyRoute.put("/update-profile", agencyController.updateAgencyProfile);
+agencyRoute.get("/dashboard", agencyController.dashboardData);
 
 module.exports = agencyRoute;

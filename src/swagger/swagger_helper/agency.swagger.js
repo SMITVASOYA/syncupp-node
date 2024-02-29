@@ -396,6 +396,24 @@ const getClient = {
     },
   },
 };
+const getDashboard = {
+  tags: ["Dashboard"],
+  description: "",
+  summary: "Dashboard",
+
+  responses: {
+    200: {
+      descripition: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
 
 const agenciesRoutes = {
   "/api/v1/agency/create-client": {
@@ -418,6 +436,9 @@ const agenciesRoutes = {
   },
   "/api/v1/agency/get-client/{clientId}": {
     get: getClient,
+  },
+  "/api/v1/dashboard": {
+    get: getDashboard,
   },
 };
 

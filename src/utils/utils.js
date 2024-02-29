@@ -5016,15 +5016,17 @@ exports.invoiceTemplate = (invoiceData) => {
                                                                                 ">
                                           <li style="font-weight: 600;">Invoice No,</li>
                                           <li style="font-size: 13px;">${
-                                            invoiceData.invoice_number
+                                            invoiceData?.invoice_number ??
+                                            `&nbsp;`
                                           }</li>
 
                                           <li style="font-weight: 600; padding-top: 30px;">
                                             Invoice Date
                                           </li>
-                                          <li>${new Date(
-                                            invoiceData.invoice_date
-                                          ).toLocaleDateString()}</li>
+                                          <li>${
+                                            invoiceData?.invoice_date ??
+                                            `&nbsp;`
+                                          }</li>
 
                                         </ul>
                                       </td>
