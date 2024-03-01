@@ -2673,6 +2673,7 @@ class ActivityService {
             allDay: false,
             start: act?.meeting_start_time,
             end: act?.meeting_end_time,
+            status: act?.activity_status?.name,
           };
           activity_array.push(obj);
         });
