@@ -8,6 +8,7 @@ const {
   updateAdmin,
   getAgency,
   transactionHistory,
+  dashboardData,
 } = require("../controllers/adminController");
 const validatorFunc = require("../utils/validatorFunction.helper");
 const agencyController = require("../controllers/agencyController");
@@ -134,5 +135,6 @@ adminRoute.delete(
 
 adminRoute.post("/get-coupon-list", getCouponList);
 adminRoute.post("/transaction", transactionHistory);
+adminRoute.get("/dashboard", dashboardData);
 
 module.exports = adminRoute;

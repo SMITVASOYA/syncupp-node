@@ -111,3 +111,16 @@ exports.transactionHistory = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+// Dashboard
+exports.dashboardData = catchAsyncError(async (req, res, next) => {
+  const dashboardData = await adminService.dashboardData(req?.user);
+
+  sendResponse(
+    res,
+    true,
+    returnMessage("agency", "dashboardDataFetched"),
+    dashboardData,
+    statusCode.success
+  );
+});

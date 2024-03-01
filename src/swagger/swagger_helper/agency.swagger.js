@@ -399,7 +399,45 @@ const getClient = {
 const getDashboard = {
   tags: ["Dashboard"],
   description: "",
-  summary: "Dashboard",
+  summary: "Dashboard Data",
+
+  responses: {
+    200: {
+      descripition: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
+const todaysTaskDashboard = {
+  tags: ["Dashboard"],
+  description: "",
+  summary: "Todays task - Dashboard",
+
+  responses: {
+    200: {
+      descripition: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
+const overdueTaskDashboard = {
+  tags: ["Dashboard"],
+  description: "",
+  summary: "Overdue task - Dashboard",
 
   responses: {
     200: {
@@ -439,6 +477,12 @@ const agenciesRoutes = {
   },
   "/api/v1/dashboard": {
     get: getDashboard,
+  },
+  "/api/v1/dashboard/todays-task": {
+    get: todaysTaskDashboard,
+  },
+  "/api/v1/dashboard/overdue-task": {
+    get: overdueTaskDashboard,
   },
 };
 

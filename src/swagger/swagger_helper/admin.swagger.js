@@ -688,6 +688,30 @@ const getTransactions = {
   },
 };
 
+const getDashboard = {
+  tags: ["Admin Panel"],
+  description: "",
+  summary: "Get Dashboard Data ",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
 const adminRoutes = {
   "/api/v1/admin/login": {
     post: loginAdmin,
@@ -733,6 +757,9 @@ const adminRoutes = {
   },
   "/api/v1/admin/transaction": {
     post: getTransactions,
+  },
+  "/api/v1/admin/dashboard": {
+    get: getDashboard,
   },
 };
 
