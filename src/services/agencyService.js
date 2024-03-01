@@ -252,9 +252,9 @@ class AgencyService {
       const startOfToday = moment(currentDate).startOf("day");
       const endOfToday = moment(currentDate).endOf("day");
 
-      const subscription = await paymentService.subscripionDetail(
-        user?.subscription_id
-      );
+      // const subscription = await paymentService.subscripionDetail(
+      //   user?.subscription_id
+      // );
 
       const [
         clientCount,
@@ -268,7 +268,7 @@ class AgencyService {
         todaysCallMeeting,
         totalAmountInvoices,
         invoiceOverdueCount,
-        planDetailForSubscription,
+        // planDetailForSubscription,
       ] = await Promise.all([
         Client.find({
           "agency_ids.agency_id": user.reference_id,
@@ -506,7 +506,7 @@ class AgencyService {
             $count: "invoiceOverdueCount",
           },
         ]),
-        paymentService.planDetails(subscription.plan_id),
+        // paymentService.planDetails(subscription.plan_id),
       ]);
       return {
         user_type: user?.role?.name ?? null,
@@ -522,9 +522,9 @@ class AgencyService {
         total_invoice_amount: totalAmountInvoices[0]?.totalPaidAmount ?? null,
         invoice_overdue_count:
           invoiceOverdueCount[0]?.invoiceOverdueCount ?? null,
-        Next_billing_amount:
-          subscription?.quantity *
-            (planDetailForSubscription?.item.amount / 100) ?? null,
+        // Next_billing_amount:
+        //   subscription?.quantity *
+        //     (planDetailForSubscription?.item.amount / 100) ?? null,
       };
     } catch (error) {
       logger.error(`Error while fetch dashboard data for agency: ${error}`);
