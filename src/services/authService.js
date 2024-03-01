@@ -913,6 +913,14 @@ class AuthService {
       let user_data = await Authentication.findOne({
         referral_code: referral_code,
       });
+
+      await CompetitionPoint.create({
+        user_id: referred_to?._id,
+        agency_id: referral_code_exist?._id,
+        point: referral_data?.referral?.successful_referral_point,
+        type: "referral",
+      });
+
       await Agency.findOneAndUpdate(
         { _id: user_data?.reference_id },
         {

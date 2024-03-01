@@ -15,3 +15,14 @@ exports.checkRefferal = catchAsyncError(async (req, res, next) => {
     200
   );
 });
+
+exports.referralStats = catchAsyncError(async (req, res, next) => {
+  const referralStats = await referralService.referralStatistics(req.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("referral", "checkRefferal"),
+    referralStats,
+    200
+  );
+});

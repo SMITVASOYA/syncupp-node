@@ -39,9 +39,7 @@ const authenticationSchema = new mongoose.Schema(
     subscription_id: { type: String },
     subscribe_date: { typr: String },
     order_id: { type: String },
-    referral_code: {
-      type: String,
-    },
+    referral_code: { type: String },
 
     last_login_date: { type: Date },
   },
