@@ -2,6 +2,8 @@ const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
 const Activity = require("../models/activitySchema");
 const moment = require("moment");
+const Team_Agency = require("../models/teamAgencySchema");
+const Team_Client = require("../models/teamClientSchema");
 
 // Register Agency
 class dashboardService {
@@ -9,11 +11,29 @@ class dashboardService {
 
   todayTask = async (user) => {
     let search_id;
+    let admin_id;
 
     if (user.role.name === "agency") search_id = "agency_id";
     if (user.role.name === "client") search_id = "client_id";
-    if (user.role.name === "team_agency" || user.role.name === "team_client")
-      search_id = "assign_to";
+    if (user.role.name === "team_client") {
+      const memberRole = await Team_Client.findOne({
+        _id: user.reference_id,
+      });
+      search_id = "client_id";
+      admin_id = memberRole.client_id;
+    }
+    if (user.role.name === "team_agency") {
+      const memberRole = await Team_Agency.findOne({
+        _id: user.reference_id,
+      }).populate("role");
+      if (memberRole.role.name === "team_member") {
+        search_id = "assign_to";
+      }
+      if (memberRole.role.name === "admin") {
+        search_id = "agency_id";
+        admin_id = memberRole.agency_id;
+      }
+    }
     try {
       const currentDate = moment();
       const startOfToday = moment(currentDate).startOf("day");
@@ -105,7 +125,7 @@ class dashboardService {
           },
           {
             $match: {
-              [search_id]: user.reference_id,
+              [search_id]: admin_id ? admin_id : user.reference_id,
               "statusName.name": { $ne: "cancel" }, // Fix: Change $nq to $ne
               "activity_type.name": "task", // Fix: Change $nq to $ne
               is_deleted: false,
@@ -143,11 +163,28 @@ class dashboardService {
   // Overdue task
   overdueTask = async (user) => {
     let search_id;
-
+    let admin_id;
     if (user.role.name === "agency") search_id = "agency_id";
     if (user.role.name === "client") search_id = "client_id";
-    if (user.role.name === "team_agency" || user.role.name === "team_client")
-      search_id = "assign_to";
+    if (user.role.name === "team_client") {
+      const memberRole = await Team_Client.findOne({
+        _id: user.reference_id,
+      });
+      search_id = "client_id";
+      admin_id = memberRole.client_id;
+    }
+    if (user.role.name === "team_agency") {
+      const memberRole = await Team_Agency.findOne({
+        _id: user.reference_id,
+      }).populate("role");
+      if (memberRole.role.name === "team_member") {
+        search_id = "assign_to";
+      }
+      if (memberRole.role.name === "admin") {
+        search_id = "agency_id";
+        admin_id = memberRole.agency_id;
+      }
+    }
     try {
       const [overdueTask] = await Promise.all([
         Activity.aggregate([
@@ -235,7 +272,7 @@ class dashboardService {
           },
           {
             $match: {
-              [search_id]: user.reference_id,
+              [search_id]: admin_id ? admin_id : user.reference_id,
               "statusName.name": { $eq: "overdue" },
               "activity_type.name": "task",
               is_deleted: false,
