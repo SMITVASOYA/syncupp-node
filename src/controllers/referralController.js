@@ -18,10 +18,11 @@ exports.checkRefferal = catchAsyncError(async (req, res, next) => {
 
 exports.referralStats = catchAsyncError(async (req, res, next) => {
   const referralStats = await referralService.referralStatistics(req.user);
+
   sendResponse(
     res,
     true,
-    returnMessage("referral", "checkRefferal"),
+    returnMessage("referral", "referralStats"),
     referralStats,
     200
   );
