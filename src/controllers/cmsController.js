@@ -177,6 +177,8 @@ exports.updatecancellationAndRefund = catchAsyncError(
     );
   }
 );
+
+//Shipping and Delivery
 exports.getShippingandDelivery = catchAsyncError(async (req, res, next) => {
   const data = await cmsService.getShippingandDelivery();
   sendResponse(
@@ -193,6 +195,27 @@ exports.updateShippingandDelivery = catchAsyncError(async (req, res, next) => {
     res,
     true,
     returnMessage("cms", "ShippingandDeliveryUpdate"),
+    data,
+    statusCode.success
+  );
+});
+// Feature
+exports.getFeature = catchAsyncError(async (req, res, next) => {
+  const data = await cmsService.getFeature();
+  sendResponse(
+    res,
+    true,
+    returnMessage("cms", "featureFetched"),
+    data,
+    statusCode.success
+  );
+});
+exports.updateFeature = catchAsyncError(async (req, res, next) => {
+  const data = await cmsService.updateFeature(req?.body);
+  sendResponse(
+    res,
+    true,
+    returnMessage("cms", "featureUpdate"),
     data,
     statusCode.success
   );

@@ -75,4 +75,7 @@ adminRoute.put(
   cmsController.updateShippingandDelivery
 );
 adminRoute.get("/Shipping-and-Delivery", cmsController.getShippingandDelivery);
+
+adminRoute.put("/Feature", cmsController.updateFeature);
+adminRoute.get("/Feature", cmsController.getFeature);
 module.exports = adminRoute;
