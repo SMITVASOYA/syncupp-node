@@ -2728,6 +2728,74 @@ class ActivityService {
 
     return meetingTimes;
   };
+
+  // below function is used to fetch the top 3 performar weekly and monthly
+  // This will be used in the gamification module
+  leaderboard = async (payload, agency) => {
+    try {
+      let start_date, end_date;
+      if (payload?.filter === "weekly") {
+        start_date = moment.utc().startOf("week");
+        end_date = moment.utc().endOf("week");
+      } else if (payload?.filter === "monthly") {
+        start_date = moment.utc().startOf("month");
+        end_date = moment.utc().endOf("month");
+      }
+      const aggragate = [
+        {
+          $match: {
+            agency_id: agency?.reference_id,
+            type: "task",
+            createdAt: { $gte: new Date(start_date) },
+            createdAt: { $lte: new Date(end_date) },
+          },
+        },
+        {
+          $group: {
+            _id: "$user_id",
+            totalPoints: {
+              $sum: {
+                $toInt: "$point",
+              },
+            },
+          },
+        },
+        {
+          $sort: { totalPoints: -1 },
+        },
+        {
+          $limit: 3,
+        },
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "_id",
+            foreignField: "reference_id",
+            as: "user",
+            pipeline: [
+              {
+                $project: {
+                  first_name: 1,
+                  last_name: 1,
+                  email: 1,
+                  name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: "$user",
+        },
+      ];
+      return Competition_Point.aggregate(aggragate);
+    } catch (error) {
+      logger.error(`Error while fetching the leaderboard users: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
 }
 
 module.exports = ActivityService;
