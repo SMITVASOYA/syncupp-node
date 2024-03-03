@@ -137,11 +137,5 @@ exports.getActivities = catchAsyncError(async (req, res, next) => {
 
 exports.leaderboard = catchAsyncError(async (req, res, next) => {
   const leaderboard = await activityService.leaderboard(req.body, req.user);
-  sendResponse(
-    res,
-    true,
-    returnMessage("activity", "activityListFetched"),
-    activities,
-    200
-  );
+  sendResponse(res, true, undefined, leaderboard, 200);
 });

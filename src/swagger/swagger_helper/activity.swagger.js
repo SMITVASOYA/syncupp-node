@@ -261,6 +261,41 @@ const activityList = {
   },
 };
 
+const leaderboard = {
+  tags: ["Activity - CRM Panel"],
+  description: "Give filter value either weekly or monthly",
+  summary: "Leaderboard for the agency only",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+          properties: {
+            filter: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
 const activityRoute = {
   "/api/v1/activity/call-meeting": {
     post: createActivity,
@@ -273,6 +308,9 @@ const activityRoute = {
   },
   "/api/v1/activity/list": {
     post: activityList,
+  },
+  "/api/v1/activity/leaderboard": {
+    post: leaderboard,
   },
 };
 
