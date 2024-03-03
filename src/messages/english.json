@@ -289,7 +289,13 @@
   "chat": {
     "userIdRequired": "Other users' id is required to get messages.",
     "usersListFetched": "List of users fetched successfully.",
-    "historyFetched": "Chat history fetched successfully."
+    "historyFetched": "Chat history fetched successfully.",
+    "canNotDelete": "You can only delete unseen messages.",
+    "messageDeleted": "Message deleted successfully.",
+    "largeImage": "Image file should be less than 2 MB.",
+    "largeDocument": "Document file should be less than 5 MB.",
+    "invalidImageFormat": "Image file format should be jpeg, jpg, or png.",
+    "invalidDocumentFormat": "Document file format should be xlsx, pdf, or csv."
   },
 
   "default": { "default": "Something went wrong." }

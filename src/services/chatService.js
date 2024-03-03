@@ -36,6 +36,7 @@ class ChatService {
             ],
           },
         ],
+        is_deleted: false,
         ...search_obj,
       })
         .sort({ createdAt: 1 })
