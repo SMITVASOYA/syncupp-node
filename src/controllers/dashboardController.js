@@ -21,10 +21,7 @@ exports.dashboardData = catchAsyncError(async (req, res, next) => {
   if (req?.user.role?.name === "client") {
     dashboardData = await clientService.dashboardData(req?.user);
   }
-  if (
-    req?.user.role?.name === "team_agency" ||
-    req?.user.role?.name === "team_client"
-  ) {
+  if (req?.user.role?.name === "team_agency") {
     dashboardData = await teamMemberService.dashboardData(req?.user);
   }
 

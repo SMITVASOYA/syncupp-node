@@ -268,7 +268,8 @@
   },
   "referral": {
     "checkRefferal": "Referral check successfully.",
-    "insufficientReferralPoints": "Insufficient Referral Points"
+    "insufficientReferralPoints": "Insufficient referral points.",
+    "referralStats": "Referral statistics fetched successfully."
   },
   "activityNotification": {
     "createActivityNotification": "A new meeting has been scheduled and arranged by ${activity_data[0].assigned_by_name}.The meeting is titled ${payload.title} and is set to take place on ${payload.due_date} from ${payload.meeting_start_time} to ${payload.meeting_end_time}."

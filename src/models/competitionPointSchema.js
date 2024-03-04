@@ -7,7 +7,7 @@ const competitionPointSchema = new mongoose.Schema(
     agency_id: { type: mongoose.Types.ObjectId },
     role: { type: String },
     point: { type: String },
-    type: { type: String, enum: ["task", "login"] },
+    type: { type: String, enum: ["task", "login", "referral"] },
     login_date: { type: Date },
   },
   { timestamps: true }

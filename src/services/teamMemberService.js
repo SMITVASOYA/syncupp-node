@@ -1141,6 +1141,19 @@ class TeamMemberService {
   // Dashboard Data
   dashboardData = async (user) => {
     try {
+      let search_id;
+      let admin_id;
+      const memberRole = await Team_Agency.findOne({
+        _id: user.reference_id,
+      }).populate("role");
+      if (memberRole.role.name === "team_member") {
+        search_id = "assign_to";
+      }
+      if (memberRole.role.name === "admin") {
+        search_id = "agency_id";
+        admin_id = memberRole.agency_id;
+      }
+
       const currentDate = moment();
       const startOfToday = moment(currentDate).startOf("day");
       const endOfToday = moment(currentDate).endOf("day");
@@ -1171,7 +1184,7 @@ class TeamMemberService {
           },
           {
             $match: {
-              assign_to: user.reference_id,
+              [search_id]: admin_id ? admin_id : user.reference_id,
               is_deleted: false,
               "statusName.name": { $ne: "cancel" }, // Fix: Change $nq to $ne
             },
@@ -1198,7 +1211,7 @@ class TeamMemberService {
           },
           {
             $match: {
-              assign_to: user.reference_id,
+              [search_id]: admin_id ? admin_id : user.reference_id,
               is_deleted: false,
               "statusName.name": { $eq: "pending" }, // Fix: Change $nq to $ne
             },
@@ -1225,7 +1238,7 @@ class TeamMemberService {
           },
           {
             $match: {
-              assign_to: user.reference_id,
+              [search_id]: admin_id ? admin_id : user.reference_id,
               is_deleted: false,
 
               "statusName.name": { $eq: "completed" }, // Fix: Change $nq to $ne
@@ -1253,7 +1266,7 @@ class TeamMemberService {
           },
           {
             $match: {
-              assign_to: user.reference_id,
+              [search_id]: admin_id ? admin_id : user.reference_id,
               is_deleted: false,
 
               "statusName.name": { $eq: "in_progress" }, // Fix: Change $nq to $ne
@@ -1281,7 +1294,7 @@ class TeamMemberService {
           },
           {
             $match: {
-              assign_to: user.reference_id,
+              [search_id]: admin_id ? admin_id : user.reference_id,
               is_deleted: false,
 
               "statusName.name": { $eq: "overdue" }, // Fix: Change $nq to $ne
@@ -1309,7 +1322,7 @@ class TeamMemberService {
           },
           {
             $match: {
-              assign_to: user.reference_id,
+              [search_id]: admin_id ? admin_id : user.reference_id,
               "activityType.name": { $eq: "call_meeting" },
               is_deleted: false,
               meeting_start_time: {
