@@ -114,7 +114,7 @@ class ScheduleEvent {
             due_date: start_date,
             recurring_end_date: recurring_date,
             email,
-            event_status: event_status_type._id,
+            status: event_status_type._id,
             internal_info,
           });
           return newEvent;
@@ -136,7 +136,7 @@ class ScheduleEvent {
           due_date: start_date,
           recurring_end_date: recurring_date,
           email,
-          event_status: event_status_type._id,
+          status: event_status_type._id,
           internal_info,
         });
         return newEvent;
@@ -551,6 +551,40 @@ class ScheduleEvent {
       }
     } catch (error) {
       logger.error(`Error while updating event, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  updateStatus = async (payload) => {
+    try {
+      const { status } = payload;
+      let update_status;
+      if (status === "completed") {
+        update_status = await ActivityStatus.findOne({
+          name: "completed",
+        }).lean();
+      } else if (status === "pending") {
+        update_status = await ActivityStatus.findOne({
+          name: "pending",
+        }).lean();
+      } else if (status === "cancel") {
+        update_status = await ActivityStatus.findOne({
+          name: "cancel",
+        }).lean();
+      }
+
+      const updateevent = await Event.findByIdAndUpdate(
+        {
+          _id: id,
+        },
+        {
+          status: update_status._id,
+        },
+        { new: true, useFindAndModify: false }
+      );
+      return updateevent;
+    } catch (error) {
+      logger.error(`Error while Updating status, ${error}`);
       throwError(error?.message, error?.statusCode);
     }
   };

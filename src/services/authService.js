@@ -608,25 +608,44 @@ class AuthService {
         ) {
           const referral_data = await Configuration.findOne().lean();
 
+          let agency_key;
+
+          if (existing_Data?.role?.name === "team_agency") {
+            agency_key = existing_Data.team_agency_detail.agency_id;
+            await Agency.findOneAndUpdate(
+              { _id: existing_Data.team_agency_detail.agency_id },
+              {
+                $inc: {
+                  total_referral_point:
+                    referral_data?.competition?.successful_login,
+                },
+                last_login_date: moment.utc().startOf("day"),
+              },
+              { new: true }
+            );
+          }
+
           await CompetitionPoint.create({
             user_id: existing_Data?.reference_id,
-            agency_id: existing_Data?.reference_id,
+            agency_id: agency_key ? agency_key : existing_Data?.reference_id,
             point: +referral_data?.competition?.successful_login?.toString(),
             type: "login",
             role: existing_Data?.role?.name,
           });
 
-          await Agency.findOneAndUpdate(
-            { _id: existing_Data.reference_id },
-            {
-              $inc: {
-                total_referral_point:
-                  referral_data?.competition?.successful_login,
+          if (existing_Data?.role?.name === "agency") {
+            await Agency.findOneAndUpdate(
+              { _id: existing_Data.reference_id },
+              {
+                $inc: {
+                  total_referral_point:
+                    referral_data?.competition?.successful_login,
+                },
+                last_login_date: moment.utc().startOf("day"),
               },
-              last_login_date: moment.utc().startOf("day"),
-            },
-            { new: true }
-          );
+              { new: true }
+            );
+          }
           await Authentication.findOneAndUpdate(
             { reference_id: existing_Data.reference_id },
             { last_login_date: moment.utc().startOf("day") },

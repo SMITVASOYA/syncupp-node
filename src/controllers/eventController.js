@@ -52,3 +52,17 @@ exports.updateEvent = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+exports.updateStatus = catchAsyncError(async (req, res, next) => {
+  const updateStatus = await eventService.updateStatus(
+    req?.body,
+    req.params.id
+  );
+  sendResponse(
+    res,
+    true,
+    returnMessage("activity", "updateStatus"),
+    updateStatus,
+    statusCode.success
+  );
+});
