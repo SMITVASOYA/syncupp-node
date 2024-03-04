@@ -42,7 +42,6 @@ const authenticationSchema = new mongoose.Schema(
     referral_code: { type: String },
 
     last_login_date: { type: Date },
-    click_count: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

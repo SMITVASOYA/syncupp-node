@@ -164,7 +164,7 @@ class AuthService {
           const decodedEmail = decodeURIComponent(affiliate_email);
           await this.affiliateReferralSignUp({
             referral_code: affiliate_referral_code,
-            referred_to: agency_enroll.reference_id,
+            referred_to: agency_enroll._id,
             email: decodedEmail,
             first_name: affiliate_first_name,
             last_name: affiliate_last_name,

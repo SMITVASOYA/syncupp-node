@@ -118,8 +118,7 @@
     "alreadyVerified": "You have already verified for this agency.",
     "dashboardDataFetched": "Dashboard data fetched successfully.",
     "todaysTask": "Todays fetched successfully.",
-    "overdueTask": "Overdue task fetched successfully.",
-    "affiliateDetailFetched": "Affiliate details fetched successfully."
+    "overdueTask": "Overdue task fetched successfully."
   },
 
   "agreement": {

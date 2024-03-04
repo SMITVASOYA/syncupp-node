@@ -6,14 +6,10 @@ const configurationSchema = new mongoose.Schema(
     referral: {
       successful_referral_point: { type: Number, default: 500 },
       redeem_required_point: { type: Number, default: 2000 },
-      commission_percentage: { type: Number, default: 30 },
     },
     competition: {
       successful_task_competition: { type: Number, default: 20 },
       successful_login: { type: Number, default: 10 },
-    },
-    cron_job: {
-      invoice_overdue: { type: String, default: "0 0 * * *" },
     },
   },
   { timestamps: true }
