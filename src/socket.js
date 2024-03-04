@@ -7,6 +7,7 @@ const Notification = require("./models/notificationSchema");
 const { returnMessage } = require("./utils/utils");
 const detect_file_type = require("detect-file-type");
 const fs = require("fs");
+const moment = require("moment");
 
 exports.socket_connection = (http_server) => {
   io = new Server(http_server, {
@@ -14,6 +15,7 @@ exports.socket_connection = (http_server) => {
       origin: [
         "http://172.16.0.241:3000",
         "http://localhost:3000",
+        "http://localhost:3001",
         "http://localhost",
         "http://104.248.10.11:5010",
       ],
@@ -28,21 +30,25 @@ exports.socket_connection = (http_server) => {
 
     // For user joined
     socket.on("ROOM", (obj) => {
+      console.log(31, obj);
       logger.info(obj.id, 15);
       socket.join(obj.id);
+    });
+
+    socket.on("disconnect", (obj) => {
+      console.log("39", obj);
     });
 
     // When Data delivered
     socket.on("CONFIRMATION", (payload) => {
       logger.info(`Event Confirmation : ${payload.name} ${payload.id}`);
+      console.log(JSON.stringify(payload));
     });
 
     // this Socket event is used to send message to the Other user
     socket.on("SEND_MESSAGE", async (payload) => {
       try {
         const { from_user, to_user, message } = payload;
-        // emiting the message to the sender to solve multiple device synchronous
-        socket.to(from_user.toString()).emit("RECEIVED_MESSAGE", { message });
 
         const new_chat = await Chat.create({ from_user, to_user, message });
 
@@ -53,7 +59,23 @@ exports.socket_connection = (http_server) => {
           data_reference_id: new_chat?._id,
           message,
         });
-        socket.to(to_user.toString()).emit("RECEIVED_MESSAGE", { message });
+
+        // emiting the message to the sender to solve multiple device synchronous
+        io.to(from_user).emit("RECEIVED_MESSAGE", {
+          from_user,
+          to_user,
+          message,
+          createdAt: new_chat.createdAt,
+          _id: new_chat?._id,
+        });
+
+        socket.to(to_user).emit("RECEIVED_MESSAGE", {
+          from_user,
+          to_user,
+          message,
+          createdAt: new_chat.createdAt,
+          _id: new_chat?._id,
+        });
       } catch (error) {
         logger.error(`Error while sending the message: ${error}`);
         return throwError(error?.message, error?.statusCode);
@@ -63,7 +85,7 @@ exports.socket_connection = (http_server) => {
     // this socket event is used when sender and receiver are chating at the same time
     // the use of this event that delete the all of the notification of the unread messages
     // So it will not display at the same time of the chat
-    socket.on("TRIGGERED_CHAT", async (payload) => {
+    socket.on("ONGOING_CHAT", async (payload) => {
       try {
         await Notification.deleteMany({
           user_id: payload?.to_user,
@@ -119,8 +141,9 @@ exports.socket_connection = (http_server) => {
         }
 
         await Chat.findByIdAndUpdate(payload?.chat_id, { is_deleted: true });
-        socket.to(payload?.from_user.toString()).emit("MESSGAE_DELETED", {
+        io.to(payload?.from_user).emit("MESSGAE_DELETED", {
           message: returnMessage("chat", "messageDeleted"),
+          _id: payload?.chat_id,
         });
       } catch (error) {
         logger.error(`Error while deleting the message: ${error}`);
@@ -268,6 +291,8 @@ exports.socket_connection = (http_server) => {
           },
           { is_deleted: true, is_read: true }
         );
+
+        socket.to(to_user).emit("CHAT_CLEARED", { message: `Chat is cleared` });
       } catch (error) {
         logger.error(`Error while clearing the chat: ${error}`);
         return throwError(error?.message, error?.statusCode);

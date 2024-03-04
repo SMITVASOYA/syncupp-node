@@ -21,7 +21,7 @@ class ChatService {
           { message: { $regex: payload?.search.toLowerCase(), $options: "i" } },
         ];
       }
-      return await Chat.find({
+      const chats = await Chat.find({
         $or: [
           {
             $and: [
@@ -41,6 +41,7 @@ class ChatService {
       })
         .sort({ createdAt: 1 })
         .lean();
+      return chats;
     } catch (error) {
       logger.error(`Erroe while fetching the chat history: ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -134,9 +135,9 @@ class ChatService {
     try {
       let ids;
       const client = await Client.findById(user?.reference_id).lean();
-      const agency_ids = client?.agency_ids?.filter((agency) => {
-        agency?.status !== "pending" ? agency?.agency_id : false;
-      });
+      const agency_ids = client?.agency_ids?.map((agency) =>
+        agency?.status !== "pending" ? agency?.agency_id : false
+      );
       if (payload?.for === "agency") {
         ids = [...agency_ids];
       } else if (payload?.for === "team") {
@@ -209,7 +210,7 @@ class ChatService {
         ids = [...team_agency_ids];
         ids.push(team_client_detail.client_id);
       } else if (payload?.for === "agency") {
-        const agency_ids = team_client_detail?.agency_ids?.filter((agency) => {
+        const agency_ids = team_client_detail?.agency_ids?.map((agency) => {
           agency?.status !== "pending" ? agency?.agency_id : false;
         });
 

@@ -226,12 +226,6 @@ class AdminService {
       const search_obj = {};
       let match_obj = { subscription_id: { $exists: true } };
 
-      if (payload?.subscription_id && payload?.agency_id) {
-        match_obj = {
-          subscription_id: { $exists: false },
-          agency_id: new mongoose.Types.ObjectId(payload?.agency_id),
-        };
-      }
       if (payload?.search && payload?.search !== "") {
         search_obj["$or"] = [
           {
@@ -274,6 +268,14 @@ class AdminService {
         }
       }
       const pagination = paginationObject(payload);
+      if (payload?.subscription_id && payload?.agency_id) {
+        match_obj = {
+          subscription_id: { $exists: false },
+          agency_id: new mongoose.Types.ObjectId(payload?.agency_id),
+        };
+        pagination.skip = 0;
+        pagination.result_per_page = null;
+      }
       const aggragate = [
         {
           $match: search_obj,
@@ -314,6 +316,30 @@ class AdminService {
         PaymentHistory.aggregate(aggragate),
       ]);
 
+      // for (let i = 0; i < transactions.length; i++) {
+      //   if (transactions[i].first_time) {
+      //     const orders = await PaymentHistory.find({
+      //       agency_id: transactions[i].agency_id,
+      //       subscription_id: { $exists: false },
+      //       order_id: { $exists: true },
+      //     }).lean();
+
+      //     for (let j = 0; j < orders.length; j++) {
+      //       const orderDetails = await paymentService.orderPaymentDetails(
+      //         orders[j].order_id
+      //       );
+      //       orders[j].method = orderDetails?.items[0].method;
+      //     }
+      //     transactions[i].orders = orders;
+      //   } else {
+      //     const subscription_detail =
+      //       await paymentService.getSubscriptionDetail(
+      //         transactions[i].subscription_id
+      //       );
+      //     transactions[i].method = subscription_detail.payment_method;
+      //   }
+      // }
+
       for (let i = 0; i < transactions.length; i++) {
         if (
           payload?.subscription_id &&
@@ -325,11 +351,18 @@ class AdminService {
           );
           transactions[i].method = paymentDetails?.items[0].method;
         } else {
-          const subscription_detail =
-            await paymentService.getSubscriptionDetail(
+          const [subscription_detail, orders_available] = await Promise.all([
+            paymentService.getSubscriptionDetail(
               transactions[i].subscription_id
-            );
+            ),
+            PaymentHistory.findOne({
+              order_id: { $exists: true },
+              agency_id: transactions[i].agency_id,
+              subscription_id: { $exists: false },
+            }),
+          ]);
           transactions[i].method = subscription_detail.payment_method;
+          transactions[i].orders_available = orders_available ? true : false;
         }
       }
 

@@ -996,6 +996,7 @@ class ActivityService {
         status = await ActivityStatus.findOne({ name: "completed" }).lean();
       }
 
+      const current_activity = await Activity.findById(id).lean();
       const updateTasks = await Activity.findByIdAndUpdate(
         {
           _id: id,
@@ -1011,7 +1012,6 @@ class ActivityService {
         },
         { new: true, useFindAndModify: false }
       );
-      const current_activity = await Activity.findById(id).lean();
       const current_status = current_activity?.activity_status;
 
       if (current_status.toString() !== status._id.toString()) {
@@ -2731,7 +2731,7 @@ class ActivityService {
 
   // below function is used to fetch the top 3 performar weekly and monthly
   // This will be used in the gamification module
-  leaderboard = async (payload, agency) => {
+  leaderboard = async (payload, user) => {
     try {
       let start_date, end_date;
       if (payload?.filter === "weekly") {
@@ -2741,13 +2741,26 @@ class ActivityService {
         start_date = moment.utc().startOf("month");
         end_date = moment.utc().endOf("month");
       }
+      let agency_id;
+      if (user?.role?.name === "agency") {
+        agency_id = user?.reference_id;
+      }
+      if (user?.role?.name === "team_agency") {
+        const team_agency = await Team_Agency.findById(
+          user?.reference_id
+        ).lean();
+        agency_id = team_agency?.agency_id;
+      }
+
       const aggragate = [
         {
           $match: {
-            agency_id: agency?.reference_id,
-            type: "task",
-            createdAt: { $gte: new Date(start_date) },
-            createdAt: { $lte: new Date(end_date) },
+            agency_id,
+            $or: [{ type: "task" }, { type: "login" }],
+            $and: [
+              { createdAt: { $gte: new Date(start_date) } },
+              { createdAt: { $lte: new Date(end_date) } },
+            ],
           },
         },
         {
