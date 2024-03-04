@@ -4,37 +4,42 @@ const Activity = require("../models/activitySchema");
 const moment = require("moment");
 const Team_Agency = require("../models/teamAgencySchema");
 const Team_Client = require("../models/teamClientSchema");
+const Authentication = require("../models/authenticationSchema");
+const ReferralHistory = require("../models/referralHistorySchema");
+const PaymentHistory = require("../models/paymentHistorySchema");
+const Configuration = require("../models/configurationSchema");
 
 // Register Agency
 class dashboardService {
   // Todays task
 
   todayTask = async (user) => {
-    let search_id;
-    let admin_id;
-
-    if (user.role.name === "agency") search_id = "agency_id";
-    if (user.role.name === "client") search_id = "client_id";
-    if (user.role.name === "team_client") {
-      const memberRole = await Team_Client.findOne({
-        _id: user.reference_id,
-      });
-      search_id = "client_id";
-      admin_id = memberRole.client_id;
-    }
-    if (user.role.name === "team_agency") {
-      const memberRole = await Team_Agency.findOne({
-        _id: user.reference_id,
-      }).populate("role");
-      if (memberRole.role.name === "team_member") {
-        search_id = "assign_to";
-      }
-      if (memberRole.role.name === "admin") {
-        search_id = "agency_id";
-        admin_id = memberRole.agency_id;
-      }
-    }
     try {
+      let search_id;
+      let admin_id;
+
+      if (user.role.name === "agency") search_id = "agency_id";
+      if (user.role.name === "client") search_id = "client_id";
+      if (user.role.name === "team_client") {
+        const memberRole = await Team_Client.findOne({
+          _id: user.reference_id,
+        });
+        search_id = "client_id";
+        admin_id = memberRole.client_id;
+      }
+      if (user.role.name === "team_agency") {
+        const memberRole = await Team_Agency.findOne({
+          _id: user.reference_id,
+        }).populate("role");
+        if (memberRole.role.name === "team_member") {
+          search_id = "assign_to";
+        }
+        if (memberRole.role.name === "admin") {
+          search_id = "agency_id";
+          admin_id = memberRole.agency_id;
+        }
+      }
+
       const currentDate = moment();
       const startOfToday = moment(currentDate).startOf("day");
       const endOfToday = moment(currentDate).endOf("day");
@@ -162,30 +167,31 @@ class dashboardService {
 
   // Overdue task
   overdueTask = async (user) => {
-    let search_id;
-    let admin_id;
-    if (user.role.name === "agency") search_id = "agency_id";
-    if (user.role.name === "client") search_id = "client_id";
-    if (user.role.name === "team_client") {
-      const memberRole = await Team_Client.findOne({
-        _id: user.reference_id,
-      });
-      search_id = "client_id";
-      admin_id = memberRole.client_id;
-    }
-    if (user.role.name === "team_agency") {
-      const memberRole = await Team_Agency.findOne({
-        _id: user.reference_id,
-      }).populate("role");
-      if (memberRole.role.name === "team_member") {
-        search_id = "assign_to";
-      }
-      if (memberRole.role.name === "admin") {
-        search_id = "agency_id";
-        admin_id = memberRole.agency_id;
-      }
-    }
     try {
+      let search_id;
+      let admin_id;
+      if (user.role.name === "agency") search_id = "agency_id";
+      if (user.role.name === "client") search_id = "client_id";
+      if (user.role.name === "team_client") {
+        const memberRole = await Team_Client.findOne({
+          _id: user.reference_id,
+        });
+        search_id = "client_id";
+        admin_id = memberRole.client_id;
+      }
+      if (user.role.name === "team_agency") {
+        const memberRole = await Team_Agency.findOne({
+          _id: user.reference_id,
+        }).populate("role");
+        if (memberRole.role.name === "team_member") {
+          search_id = "assign_to";
+        }
+        if (memberRole.role.name === "admin") {
+          search_id = "agency_id";
+          admin_id = memberRole.agency_id;
+        }
+      }
+
       const [overdueTask] = await Promise.all([
         Activity.aggregate([
           {
@@ -299,6 +305,121 @@ class dashboardService {
       return overdueTask;
     } catch (error) {
       logger.error(`Error while fetch Overdue task: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // Agency Affiliate statics
+  agencyAffiliate = async (user) => {
+    try {
+      const currentDate = moment();
+      const startOfPreviousMonth = moment(currentDate)
+        .subtract(1, "months")
+        .startOf("month");
+      const endOfPreviousMonth = moment(currentDate)
+        .subtract(1, "months")
+        .endOf("month");
+
+      const commissionPercentage = await Configuration.findOne({});
+      const [
+        agencyAffiliate,
+        activeReferralCount,
+        agencyClickCount,
+        lastMonthEarning,
+      ] = await Promise.all([
+        ReferralHistory.countDocuments({ referred_by: user._id }),
+
+        ReferralHistory.aggregate([
+          {
+            $lookup: {
+              from: "authentications",
+              localField: "referred_to",
+              foreignField: "_id",
+              as: "agencyData",
+              pipeline: [
+                {
+                  $project: {
+                    status: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $unwind: {
+              path: "$agencyData",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              referred_by: user._id,
+              "agencyData.status": "confirmed",
+            },
+          },
+
+          {
+            $count: "agencyAffiliate",
+          },
+        ]),
+        Authentication.findById(user._id).lean(),
+        ReferralHistory.aggregate([
+          {
+            $match: {
+              referred_by: user.reference_id,
+            },
+          },
+
+          {
+            $lookup: {
+              from: "payment_histories",
+              localField: "referred_to",
+              foreignField: "agency_id",
+              as: "paymentData",
+            },
+          },
+          {
+            $unwind: {
+              path: "$paymentData",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              "paymentData.createdAt": {
+                $gte: startOfPreviousMonth.toDate(),
+                $lte: endOfPreviousMonth.toDate(),
+              },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalAmount: { $sum: "$paymentData.amount" },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              totalAmount: 1,
+              total: {
+                $multiply: [
+                  "$totalAmount",
+                  commissionPercentage.referral.commission_percentage / 100,
+                ],
+              },
+            },
+          },
+        ]),
+      ]);
+      return {
+        referral_count: agencyAffiliate ?? 0,
+        active_referral_count: activeReferralCount[0]?.agencyAffiliate ?? 0,
+        agency_click_count: agencyClickCount?.click_count ?? 0,
+        last_month_earning: lastMonthEarning[0]?.total ?? 0,
+      };
+    } catch (error) {
+      logger.error(`Error while fetch Agency affiliate data task: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
