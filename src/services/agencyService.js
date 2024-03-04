@@ -270,23 +270,91 @@ class AgencyService {
         invoiceOverdueCount,
         // planDetailForSubscription,
       ] = await Promise.all([
-        Client.find({
-          "agency_ids.agency_id": user.reference_id,
-          "agency_ids.status": "active",
-        }).countDocuments(),
-
-        Team_Agency.find({
-          agency_id: user.reference_id,
-        }).countDocuments(),
-
-        Client.find({
-          "agency_ids.agency_id": user.reference_id,
-          "agency_ids.status": "active",
-          createdAt: {
-            $gte: startOfMonth.toDate(),
-            $lte: endOfMonth.toDate(),
+        Client.aggregate([
+          {
+            $lookup: {
+              from: "authentications",
+              localField: "_id",
+              foreignField: "reference_id",
+              as: "statusName",
+              pipeline: [{ $project: { is_deleted: 1 } }],
+            },
           },
-        }).countDocuments(),
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              "agency_ids.agency_id": user.reference_id,
+              "agency_ids.status": "active",
+              "statusName.is_deleted": { $eq: false }, // Exclude documents where is_deleted is true
+            },
+          },
+          {
+            $count: "clientCount",
+          },
+        ]),
+        Team_Agency.aggregate([
+          {
+            $lookup: {
+              from: "authentications",
+              localField: "_id",
+              foreignField: "reference_id",
+              as: "statusName",
+              pipeline: [{ $project: { is_deleted: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              agency_id: user.reference_id,
+              "statusName.is_deleted": { $eq: false }, // Exclude documents where is_deleted is true
+            },
+          },
+          {
+            $count: "teamMemberCount",
+          },
+        ]),
+
+        Client.aggregate([
+          {
+            $lookup: {
+              from: "authentications",
+              localField: "_id",
+              foreignField: "reference_id",
+              as: "statusName",
+              pipeline: [{ $project: { is_deleted: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              "agency_ids.agency_id": user.reference_id,
+              "agency_ids.status": "active",
+              createdAt: {
+                $gte: startOfMonth.toDate(),
+                $lte: endOfMonth.toDate(),
+              },
+              "statusName.is_deleted": { $eq: false }, // Exclude documents where is_deleted is true
+            },
+          },
+          {
+            $count: "clientCountMonth",
+          },
+        ]),
         Activity.aggregate([
           {
             $lookup: {
@@ -307,6 +375,7 @@ class AgencyService {
             $match: {
               agency_id: user.reference_id,
               "statusName.name": { $ne: "cancel" }, // Fix: Change $nq to $ne
+              is_deleted: false,
             },
           },
           {
@@ -333,6 +402,7 @@ class AgencyService {
             $match: {
               agency_id: user.reference_id,
               "statusName.name": { $eq: "pending" }, // Fix: Change $nq to $ne
+              is_deleted: false,
             },
           },
           {
@@ -359,6 +429,7 @@ class AgencyService {
             $match: {
               agency_id: user.reference_id,
               "statusName.name": { $eq: "completed" }, // Fix: Change $nq to $ne
+              is_deleted: false,
             },
           },
           {
@@ -385,6 +456,7 @@ class AgencyService {
             $match: {
               agency_id: user.reference_id,
               "statusName.name": { $eq: "in_progress" }, // Fix: Change $nq to $ne
+              is_deleted: false,
             },
           },
           {
@@ -410,6 +482,7 @@ class AgencyService {
           {
             $match: {
               agency_id: user.reference_id,
+              is_deleted: false,
               "statusName.name": { $eq: "overdue" }, // Fix: Change $nq to $ne
             },
           },
@@ -436,6 +509,7 @@ class AgencyService {
           {
             $match: {
               agency_id: user.reference_id,
+              is_deleted: false,
               "activityType.name": { $eq: "call_meeting" },
               meeting_start_time: {
                 $gte: startOfToday.toDate(),
@@ -469,6 +543,7 @@ class AgencyService {
             $match: {
               agency_id: new mongoose.Types.ObjectId(user.reference_id),
               "invoiceStatus.name": { $eq: "paid" }, // Exclude documents with status "draft"
+              is_deleted: false,
             },
           },
           {
@@ -500,6 +575,7 @@ class AgencyService {
             $match: {
               agency_id: new mongoose.Types.ObjectId(user.reference_id),
               "invoiceStatus.name": { $eq: "overdue" }, // Exclude documents with status "draft"
+              is_deleted: false,
             },
           },
           {
@@ -509,19 +585,17 @@ class AgencyService {
         // paymentService.planDetails(subscription.plan_id),
       ]);
       return {
-        user_type: user?.role?.name ?? null,
-        client_count: clientCount ?? null,
-        team_member_count: teamMemberCount ?? null,
-        client_count_month: clientCountMonth ?? null,
-        task_count: taskCount[0]?.totalTaskCount ?? null,
-        pending_task_count: pendingTask[0]?.pendingTask ?? null,
-        completed_task_count: completedTask[0]?.completedTask ?? null,
-        in_progress_task_count: inprogressTask[0]?.inprogressTask ?? null,
-        overdue_task_count: overdueTask[0]?.overdueTask ?? null,
-        todays_call_meeting: todaysCallMeeting[0]?.todaysCallMeeting ?? null,
-        total_invoice_amount: totalAmountInvoices[0]?.totalPaidAmount ?? null,
-        invoice_overdue_count:
-          invoiceOverdueCount[0]?.invoiceOverdueCount ?? null,
+        client_count: clientCount[0]?.clientCount ?? 0,
+        team_member_count: teamMemberCount[0]?.teamMemberCount ?? 0,
+        client_count_month: clientCountMonth[0]?.clientCountMonth ?? 0,
+        task_count: taskCount[0]?.totalTaskCount ?? 0,
+        pending_task_count: pendingTask[0]?.pendingTask ?? 0,
+        completed_task_count: completedTask[0]?.completedTask ?? 0,
+        in_progress_task_count: inprogressTask[0]?.inprogressTask ?? 0,
+        overdue_task_count: overdueTask[0]?.overdueTask ?? 0,
+        todays_call_meeting: todaysCallMeeting[0]?.todaysCallMeeting ?? 0,
+        total_invoice_amount: totalAmountInvoices[0]?.totalPaidAmount ?? 0,
+        invoice_overdue_count: invoiceOverdueCount[0]?.invoiceOverdueCount ?? 0,
         // Next_billing_amount:
         //   subscription?.quantity *
         //     (planDetailForSubscription?.item.amount / 100) ?? null,

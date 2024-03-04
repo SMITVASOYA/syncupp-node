@@ -17,6 +17,7 @@ const sendEmail = require("../helpers/sendEmail");
 const PaymentHistory = require("../models/paymentHistorySchema");
 const PaymentService = require("./paymentService");
 const { default: mongoose } = require("mongoose");
+const Authentication = require("../models/authenticationSchema");
 const paymentService = new PaymentService();
 
 class AdminService {
@@ -342,6 +343,137 @@ class AdminService {
       logger.error(
         `Error while fetching the Transaction history for the Admin: ${error}`
       );
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // Dashboard Data
+  dashboardData = async () => {
+    try {
+      const [
+        activeAgencies,
+        activeClients,
+        activeTeamAgency,
+        activeTeamClient,
+      ] = await Promise.all([
+        Authentication.aggregate([
+          {
+            $lookup: {
+              from: "role_masters",
+              localField: "role",
+              foreignField: "_id",
+              as: "statusName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              is_deleted: false,
+              $or: [{ status: "confirmed" }, { status: "agency_inactive" }],
+              "statusName.name": "agency",
+            },
+          },
+          {
+            $count: "activeAgencies",
+          },
+        ]),
+        Authentication.aggregate([
+          {
+            $lookup: {
+              from: "role_masters",
+              localField: "role",
+              foreignField: "_id",
+              as: "statusName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              is_deleted: false,
+              $or: [{ status: "confirmed" }, { status: "agency_inactive" }],
+              "statusName.name": "client",
+            },
+          },
+          {
+            $count: "activeClients",
+          },
+        ]),
+        Authentication.aggregate([
+          {
+            $lookup: {
+              from: "role_masters",
+              localField: "role",
+              foreignField: "_id",
+              as: "statusName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              is_deleted: false,
+              $or: [{ status: "confirmed" }, { status: "agency_inactive" }],
+              "statusName.name": "team_agency",
+            },
+          },
+          {
+            $count: "activeTeamAgency",
+          },
+        ]),
+        Authentication.aggregate([
+          {
+            $lookup: {
+              from: "role_masters",
+              localField: "role",
+              foreignField: "_id",
+              as: "statusName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              is_deleted: false,
+              $or: [{ status: "confirmed" }, { status: "agency_inactive" }],
+              "statusName.name": "team_client",
+            },
+          },
+          {
+            $count: "activeTeamClient",
+          },
+        ]),
+      ]);
+      return {
+        active_agencies: activeAgencies[0]?.activeAgencies ?? null,
+        active_clients: activeClients[0]?.activeClients ?? null,
+        active_team_agency: activeTeamAgency[0]?.activeTeamAgency ?? null,
+        active_team_client: activeTeamClient[0]?.activeTeamClient ?? null,
+        // Next_billing_amount: 0,
+      };
+    } catch (error) {
+      logger.error(`Error while fetch dashboard data for agency: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };

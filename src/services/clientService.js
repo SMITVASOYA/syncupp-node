@@ -845,6 +845,7 @@ class ClientService {
             $match: {
               client_id: user.reference_id,
               "statusName.name": { $eq: "pending" }, // Fix: Change $nq to $ne
+              is_deleted: false,
             },
           },
           {
@@ -871,6 +872,7 @@ class ClientService {
             $match: {
               client_id: user.reference_id,
               "statusName.name": { $eq: "completed" }, // Fix: Change $nq to $ne
+              is_deleted: false,
             },
           },
           {
@@ -897,6 +899,7 @@ class ClientService {
             $match: {
               client_id: user.reference_id,
               "statusName.name": { $eq: "in_progress" }, // Fix: Change $nq to $ne
+              is_deleted: false,
             },
           },
           {
@@ -923,6 +926,7 @@ class ClientService {
             $match: {
               client_id: user.reference_id,
               "statusName.name": { $eq: "overdue" }, // Fix: Change $nq to $ne
+              is_deleted: false,
             },
           },
           {
@@ -949,6 +953,8 @@ class ClientService {
             $match: {
               client_id: user.reference_id,
               "activityType.name": { $eq: "call_meeting" },
+              is_deleted: false,
+
               meeting_start_time: {
                 $gte: startOfToday.toDate(),
                 $lte: endOfToday.toDate(),
@@ -980,6 +986,7 @@ class ClientService {
             $match: {
               client_id: new mongoose.Types.ObjectId(user.reference_id),
               "invoiceStatus.name": { $eq: "overdue" }, // Exclude documents with status "draft"
+              is_deleted: false,
             },
           },
           {
@@ -991,6 +998,7 @@ class ClientService {
             $match: {
               receiver: new mongoose.Types.ObjectId(user._id),
               status: "agreed", // Exclude documents with status "draft"
+              is_deleted: false,
             },
           },
           {
@@ -1000,16 +1008,14 @@ class ClientService {
       ]);
 
       return {
-        user_type: user?.role?.name ?? null,
-        pending_task_count: pendingTask[0]?.pendingTask ?? null,
-        completed_task_count: completedTask[0]?.completedTask ?? null,
-        in_progress_task_count: inprogressTask[0]?.inprogressTask ?? null,
-        overdue_task_count: overdueTask[0]?.overdueTask ?? null,
-        invoice_overdue_count:
-          invoiceOverdueCount[0]?.invoiceOverdueCount ?? null,
-        todays_call_meeting: todaysCallMeeting[0]?.todaysCallMeeting ?? null,
+        pending_task_count: pendingTask[0]?.pendingTask ?? 0,
+        completed_task_count: completedTask[0]?.completedTask ?? 0,
+        in_progress_task_count: inprogressTask[0]?.inprogressTask ?? 0,
+        overdue_task_count: overdueTask[0]?.overdueTask ?? 0,
+        invoice_overdue_count: invoiceOverdueCount[0]?.invoiceOverdueCount ?? 0,
+        todays_call_meeting: todaysCallMeeting[0]?.todaysCallMeeting ?? 0,
         agreement_not_agreed_count:
-          agreementNotAgreedCount[0]?.agreementNotAgreedCount ?? null,
+          agreementNotAgreedCount[0]?.agreementNotAgreedCount ?? 0,
       };
     } catch (error) {
       logger.error(`Error while fetch dashboard data for client: ${error}`);

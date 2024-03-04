@@ -116,7 +116,9 @@
     "agencyUpdate": "Agency profile updated successfully.",
     "clientUpdated": "Client details updated successfully.",
     "alreadyVerified": "You have already verified for this agency.",
-    "dashboardDataFetched": "Dashboard data fetched successfully."
+    "dashboardDataFetched": "Dashboard data fetched successfully.",
+    "todaysTask": "Todays fetched successfully.",
+    "overdueTask": "Overdue task fetched successfully."
   },
 
   "agreement": {

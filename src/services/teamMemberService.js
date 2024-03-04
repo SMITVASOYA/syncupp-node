@@ -24,6 +24,7 @@ const authService = new AuthService();
 const Activity_Status = require("../models/masters/activityStatusMasterSchema");
 const Activity = require("../models/activitySchema");
 const SheetManagement = require("../models/sheetManagementSchema");
+const moment = require("moment");
 
 class TeamMemberService {
   // Add Team Member by agency or client
@@ -1134,6 +1135,218 @@ class TeamMemberService {
     } catch (error) {
       logger.error("Error while generating the referral code", error);
       return false;
+    }
+  };
+
+  // Dashboard Data
+  dashboardData = async (user) => {
+    try {
+      let search_id;
+      let admin_id;
+      const memberRole = await Team_Agency.findOne({
+        _id: user.reference_id,
+      }).populate("role");
+      if (memberRole.role.name === "team_member") {
+        search_id = "assign_to";
+      }
+      if (memberRole.role.name === "admin") {
+        search_id = "agency_id";
+        admin_id = memberRole.agency_id;
+      }
+
+      const currentDate = moment();
+      const startOfToday = moment(currentDate).startOf("day");
+      const endOfToday = moment(currentDate).endOf("day");
+
+      const [
+        taskCount,
+        pendingTask,
+        completedTask,
+        inprogressTask,
+        overdueTask,
+        todaysCallMeeting,
+      ] = await Promise.all([
+        Activity.aggregate([
+          {
+            $lookup: {
+              from: "activity_status_masters",
+              localField: "activity_status",
+              foreignField: "_id",
+              as: "statusName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              [search_id]: admin_id ? admin_id : user.reference_id,
+              is_deleted: false,
+              "statusName.name": { $ne: "cancel" }, // Fix: Change $nq to $ne
+            },
+          },
+          {
+            $count: "totalTaskCount",
+          },
+        ]),
+        Activity.aggregate([
+          {
+            $lookup: {
+              from: "activity_status_masters",
+              localField: "activity_status",
+              foreignField: "_id",
+              as: "statusName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              [search_id]: admin_id ? admin_id : user.reference_id,
+              is_deleted: false,
+              "statusName.name": { $eq: "pending" }, // Fix: Change $nq to $ne
+            },
+          },
+          {
+            $count: "pendingTask",
+          },
+        ]),
+        Activity.aggregate([
+          {
+            $lookup: {
+              from: "activity_status_masters",
+              localField: "activity_status",
+              foreignField: "_id",
+              as: "statusName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              [search_id]: admin_id ? admin_id : user.reference_id,
+              is_deleted: false,
+
+              "statusName.name": { $eq: "completed" }, // Fix: Change $nq to $ne
+            },
+          },
+          {
+            $count: "completedTask",
+          },
+        ]),
+        Activity.aggregate([
+          {
+            $lookup: {
+              from: "activity_status_masters",
+              localField: "activity_status",
+              foreignField: "_id",
+              as: "statusName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              [search_id]: admin_id ? admin_id : user.reference_id,
+              is_deleted: false,
+
+              "statusName.name": { $eq: "in_progress" }, // Fix: Change $nq to $ne
+            },
+          },
+          {
+            $count: "inprogressTask",
+          },
+        ]),
+        Activity.aggregate([
+          {
+            $lookup: {
+              from: "activity_status_masters",
+              localField: "activity_status",
+              foreignField: "_id",
+              as: "statusName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$statusName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              [search_id]: admin_id ? admin_id : user.reference_id,
+              is_deleted: false,
+
+              "statusName.name": { $eq: "overdue" }, // Fix: Change $nq to $ne
+            },
+          },
+          {
+            $count: "overdueTask",
+          },
+        ]),
+        Activity.aggregate([
+          {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "activityType",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$activityType",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              [search_id]: admin_id ? admin_id : user.reference_id,
+              "activityType.name": { $eq: "call_meeting" },
+              is_deleted: false,
+              meeting_start_time: {
+                $gte: startOfToday.toDate(),
+                $lte: endOfToday.toDate(),
+              },
+            },
+          },
+          {
+            $count: "todaysCallMeeting",
+          },
+        ]),
+      ]);
+      return {
+        task_count: taskCount[0]?.totalTaskCount ?? 0,
+        pending_task_count: pendingTask[0]?.pendingTask ?? 0,
+        completed_task_count: completedTask[0]?.completedTask ?? 0,
+        in_progress_task_count: inprogressTask[0]?.inprogressTask ?? 0,
+        overdue_task_count: overdueTask[0]?.overdueTask ?? 0,
+        todays_call_meeting: todaysCallMeeting[0]?.todaysCallMeeting ?? 0,
+      };
+    } catch (error) {
+      logger.error(`Error while fetch dashboard data for agency: ${error}`);
+      return throwError(error?.message, error?.statusCode);
     }
   };
 }
