@@ -2,9 +2,11 @@ const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
 const { returnMessage, paginationObject } = require("../utils/utils");
 const sendEmail = require("../helpers/sendEmail");
+const ActivityStatus = require("../models/masters/activityStatusMasterSchema");
 const moment = require("moment");
 const Event = require("../models/eventSchema");
 const { default: mongoose } = require("mongoose");
+const ActivityType = require("../models/masters/activityTypeMasterSchema");
 
 class ScheduleEvent {
   createEvent = async (payload, user) => {
@@ -39,6 +41,13 @@ class ScheduleEvent {
         .endOf("day");
       if (!recurring_date.isSameOrAfter(start_date))
         return throwError(returnMessage("event", "invalidRecurringDate"));
+
+      const event_status_type = await ActivityStatus.findOne({
+        name: "pending",
+      })
+        .select("name")
+        .lean();
+
       // this condition is used for the check if client or team member is assined to any same time event or not
       const or_condition = [
         {
@@ -84,6 +93,7 @@ class ScheduleEvent {
             { email: { $in: payload.email } },
           ],
           $and: or_condition,
+          event_status: { $eq: event_status_type?._id },
         }).lean();
       }
 
@@ -102,6 +112,7 @@ class ScheduleEvent {
             due_date: start_date,
             recurring_end_date: recurring_date,
             email,
+            event_status: event_status_type._id,
           });
           return newEvent;
         } else {
@@ -119,6 +130,7 @@ class ScheduleEvent {
           due_date: start_date,
           recurring_end_date: recurring_date,
           email,
+          event_status: event_status_type._id,
         });
         return newEvent;
       }
@@ -234,6 +246,8 @@ class ScheduleEvent {
             event_start_time: 1,
             event_end_time: 1,
             recurring_end_date: 1,
+            email: 1,
+            event_status: 1,
           },
         },
       ];
