@@ -7,8 +7,8 @@ const chat_schema = new mongoose.Schema(
     to_user: { type: mongoose.Schema.Types.ObjectId, required: true },
     message: { type: String },
     is_deleted: { type: Boolean, default: false },
-    image_url: [{ type: String }],
-    document_url: [{ type: String }],
+    image_url: { type: String },
+    document_url: { type: String },
   },
   { timestamps: true }
 );

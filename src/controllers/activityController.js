@@ -134,3 +134,8 @@ exports.getActivities = catchAsyncError(async (req, res, next) => {
     200
   );
 });
+
+exports.leaderboard = catchAsyncError(async (req, res, next) => {
+  const leaderboard = await activityService.leaderboard(req.body, req.user);
+  sendResponse(res, true, undefined, leaderboard, 200);
+});
