@@ -155,22 +155,6 @@ class AuthService {
         agency_enroll = agency_enroll.toObject();
         agency_enroll.role = role;
 
-        if (
-          affiliate_referral_code &&
-          affiliate_email &&
-          affiliate_first_name &&
-          affiliate_last_name
-        ) {
-          const decodedEmail = decodeURIComponent(affiliate_email);
-          await this.affiliateReferralSignUp({
-            referral_code: affiliate_referral_code,
-            referred_to: agency_enroll._id,
-            email: decodedEmail,
-            first_name: affiliate_first_name,
-            last_name: affiliate_last_name,
-          });
-        }
-
         delete agency_enroll?.password;
         delete agency_enroll?.is_facebook_signup;
         delete agency_enroll?.is_google_signup;
@@ -202,15 +186,30 @@ class AuthService {
         agency_enroll = agency_enroll.toObject();
         agency_enroll.role = role;
 
-        if (payload?.referral_code) {
-          const referral_registered = await this.referralSignUp({
-            referral_code: referral_code,
-            referred_to: agency_enroll,
-          });
+        let agency_data = await Authentication.findOne({
+          referral_code: referral_code,
+        });
+        let affilate_data = await Affiliate.findOne({
+          referral_code: referral_code,
+        });
 
-          if (typeof referral_registered === "string") {
-            await Authentication.findByIdAndDelete(agency_enroll._id);
-            return referral_registered;
+        if (affilate_data) {
+          const decodedEmail = decodeURIComponent(affiliate_email);
+          await this.affiliateReferralSignUp({
+            referral_code: referral_code,
+            referred_to: agency_enroll.reference_id,
+          });
+        } else if (agency_data) {
+          if (payload?.referral_code) {
+            const referral_registered = await this.referralSignUp({
+              referral_code: referral_code,
+              referred_to: agency_enroll,
+            });
+
+            if (typeof referral_registered === "string") {
+              await Authentication.findByIdAndDelete(agency_enroll._id);
+              return referral_registered;
+            }
           }
         }
 
@@ -934,17 +933,10 @@ class AuthService {
     }
   };
 
-  affiliateReferralSignUp = async ({
-    referral_code,
-    referred_to,
-    email,
-    first_name,
-    last_name,
-  }) => {
+  affiliateReferralSignUp = async ({ referral_code, referred_to }) => {
     try {
       const referral_code_exist = await Affiliate.findOne({
         referral_code,
-        email,
       }).lean();
 
       if (!referral_code_exist)

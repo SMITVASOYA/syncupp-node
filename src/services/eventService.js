@@ -9,6 +9,7 @@ const { default: mongoose } = require("mongoose");
 const ActivityType = require("../models/masters/activityTypeMasterSchema");
 
 class ScheduleEvent {
+  //create event
   createEvent = async (payload, user) => {
     try {
       const {
@@ -18,6 +19,7 @@ class ScheduleEvent {
         event_start_time,
         event_end_time,
         email,
+        internal_info,
       } = payload;
 
       const current_date = moment.utc().startOf("day");
@@ -113,11 +115,15 @@ class ScheduleEvent {
             recurring_end_date: recurring_date,
             email,
             event_status: event_status_type._id,
+            internal_info,
           });
           return newEvent;
         } else {
           // If email exists and flag is not set to "yes", return error
-          return throwError(returnMessage("event", "eventScheduledForTeam"));
+          return {
+            status: 409, // Conflict status code
+            message: returnMessage("event", "eventScheduledForTeam"),
+          };
         }
       } else {
         // If email does not exist, create the event
@@ -131,6 +137,7 @@ class ScheduleEvent {
           recurring_end_date: recurring_date,
           email,
           event_status: event_status_type._id,
+          internal_info,
         });
         return newEvent;
       }
@@ -139,7 +146,7 @@ class ScheduleEvent {
       throwError(error?.message, error?.statusCode);
     }
   };
-
+  //fetch event with id
   fetchEvent = async (id) => {
     try {
       const eventPipeline = [
@@ -166,6 +173,21 @@ class ScheduleEvent {
         {
           $unwind: { path: "$agency_Data", preserveNullAndEmptyArrays: true },
         },
+        {
+          $lookup: {
+            from: "activity_status_masters",
+            localField: "status",
+            foreignField: "_id",
+            as: "activity_status",
+            pipeline: [{ $project: { name: 1 } }],
+          },
+        },
+        {
+          $unwind: {
+            path: "$activity_status",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
 
         {
           $match: {
@@ -181,10 +203,12 @@ class ScheduleEvent {
             due_date: 1,
             createdAt: 1,
             agenda: 1,
-            agency_name: "$agency_Data.agency_name",
             event_start_time: 1,
             event_end_time: 1,
             recurring_end_date: 1,
+            internal_info: 1,
+            email: 1,
+            status: "$activity_status.name",
           },
         },
       ];
@@ -196,8 +220,8 @@ class ScheduleEvent {
       throwError(error?.message, error?.statusCode);
     }
   };
-
-  eventList = async (searchObj, user) => {
+  //event list with filter
+  eventList = async (payload, user) => {
     try {
       let queryObj = {
         is_deleted: false,
@@ -206,8 +230,118 @@ class ScheduleEvent {
           { email: user.email }, // Optionally match based on user's email
         ],
       };
-      const pagination = paginationObject(searchObj);
+
+      const filter = {
+        $match: {},
+      };
+      if (payload?.filter) {
+        if (payload?.filter?.date === "today") {
+          filter["$match"] = {
+            ...filter["$match"],
+            due_date: { $eq: new Date(moment.utc().startOf("day")) },
+          };
+        } else if (payload?.filter?.date === "tomorrow") {
+          filter["$match"] = {
+            ...filter["$match"],
+            due_date: {
+              $eq: new Date(moment.utc().add(1, "day").startOf("day")),
+            },
+          };
+        } else if (payload?.filter?.date === "this_week") {
+          filter["$match"] = {
+            ...filter["$match"],
+            $and: [
+              {
+                due_date: { $gte: new Date(moment.utc().startOf("week")) },
+              },
+              {
+                due_date: { $lte: new Date(moment.utc().endOf("week")) },
+              },
+            ],
+          };
+        } else if (payload?.filter?.date === "period") {
+          // need the start and end date to fetch the data between 2 dates
+
+          if (
+            !(payload?.filter?.start_date && payload?.filter?.end_date) &&
+            payload?.filter?.start_date !== "" &&
+            payload?.filter?.end_date !== ""
+          )
+            return throwError(
+              returnMessage("activity", "startEnddateRequired")
+            );
+
+          const start_date = moment
+            .utc(payload?.filter?.start_date, "DD-MM-YYYY")
+            .startOf("day");
+          const end_date = moment
+            .utc(payload?.filter?.end_date, "DD-MM-YYYY")
+            .endOf("day");
+
+          if (end_date.isBefore(start_date))
+            return throwError(returnMessage("activity", "invalidDate"));
+
+          filter["$match"] = {
+            ...filter["$match"],
+            $or: [
+              {
+                $and: [
+                  { due_date: { $gte: new Date(start_date) } },
+                  { due_date: { $lte: new Date(end_date) } },
+                ],
+              },
+              {
+                $and: [
+                  { due_date: { $gte: new Date(start_date) } },
+                  { recurring_end_date: { $lte: new Date(end_date) } },
+                ],
+              },
+            ],
+          };
+        }
+      }
+      if (payload.search && payload.search !== "") {
+        queryObj["$or"] = [
+          {
+            title: {
+              $regex: payload.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+
+          {
+            status: {
+              $regex: payload.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            "activity_status.name": {
+              $regex: payload.search,
+              $options: "i",
+            },
+          },
+          {
+            email: { $in: payload.email }, // New condition for searching emails in the array
+          },
+        ];
+
+        const keywordType = getKeywordType(searchObj.search);
+        if (keywordType === "number") {
+          const numericKeyword = parseInt(searchObj.search);
+
+          queryObj["$or"].push({
+            revenue_made: numericKeyword,
+          });
+        } else if (keywordType === "date") {
+          const dateKeyword = new Date(searchObj.search);
+          queryObj["$or"].push({ due_date: dateKeyword });
+          queryObj["$or"].push({ due_time: dateKeyword });
+        }
+      }
+      const pagination = paginationObject(payload);
       const eventPipeline = [
+        filter,
         {
           $lookup: {
             from: "authentications",
@@ -232,8 +366,21 @@ class ScheduleEvent {
           $unwind: { path: "$agency_Data", preserveNullAndEmptyArrays: true },
         },
         {
-          $match: queryObj,
+          $lookup: {
+            from: "activity_status_masters",
+            localField: "status",
+            foreignField: "_id",
+            as: "activity_status",
+            pipeline: [{ $project: { name: 1 } }],
+          },
         },
+        {
+          $unwind: {
+            path: "$activity_status",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        { $match: queryObj },
         {
           $project: {
             contact_number: 1,
@@ -247,7 +394,7 @@ class ScheduleEvent {
             event_end_time: 1,
             recurring_end_date: 1,
             email: 1,
-            event_status: 1,
+            status: "$activity_status.name",
           },
         },
       ];
@@ -282,6 +429,7 @@ class ScheduleEvent {
         event_start_time,
         event_end_time,
         email,
+        internal_info,
       } = payload;
 
       const current_date = moment.utc().startOf("day");
@@ -368,6 +516,7 @@ class ScheduleEvent {
                 due_date: start_date,
                 recurring_end_date: recurring_date,
                 email,
+                internal_info,
               },
             },
             { new: true } // Return the updated document
@@ -375,7 +524,10 @@ class ScheduleEvent {
           return updatedEvent;
         } else {
           // If email exists and flag is not set to "yes", return error
-          return throwError(returnMessage("event", "eventScheduledForTeam"));
+          return {
+            status: 409, // Conflict status code
+            message: returnMessage("event", "eventScheduledForTeam"),
+          };
         }
       } else {
         // If email exists and flag is set to "yes", create the event
@@ -390,6 +542,7 @@ class ScheduleEvent {
               due_date: start_date,
               recurring_end_date: recurring_date,
               email,
+              internal_info,
             },
           },
           { new: true } // Return the updated document

@@ -16,11 +16,12 @@ const eventSchema = new mongoose.Schema(
         type: String,
       },
     ],
-    event_status: {
+    status: {
       type: mongoose.Types.ObjectId,
       ref: "activity_status_master",
       required: true,
     },
+    internal_info: { type: String },
     is_deleted: { type: Boolean, default: false },
   },
   { timestamps: true }
