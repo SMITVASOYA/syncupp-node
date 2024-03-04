@@ -312,6 +312,16 @@ class AuthService {
             return referral_registered;
           }
         }
+
+        if (payload?.affiliate_referral_code) {
+          const decodedEmail = decodeURIComponent(payload?.affiliate_email);
+          await this.affiliateReferralSignUp({
+            referral_code: payload?.affiliate_referral_code,
+            referred_to: agency_enroll.reference_id,
+            email: decodedEmail,
+          });
+        }
+
         const lastLoginDateUTC = moment.utc(agency_enroll?.last_login_date);
         const currentDateUTC = moment().startOf("day");
         if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
@@ -458,6 +468,16 @@ class AuthService {
             return referral_registered;
           }
         }
+
+        if (payload?.affiliate_referral_code) {
+          const decodedEmail = decodeURIComponent(payload?.affiliate_email);
+          await this.affiliateReferralSignUp({
+            referral_code: payload?.affiliate_referral_code,
+            referred_to: agency_enroll.reference_id,
+            email: decodedEmail,
+          });
+        }
+
         const lastLoginDateUTC = moment.utc(agency_enroll?.last_login_date);
         const currentDateUTC = moment().startOf("day");
 

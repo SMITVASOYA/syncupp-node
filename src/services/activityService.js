@@ -996,6 +996,7 @@ class ActivityService {
         status = await ActivityStatus.findOne({ name: "completed" }).lean();
       }
 
+      const current_activity = await Activity.findById(id).lean();
       const updateTasks = await Activity.findByIdAndUpdate(
         {
           _id: id,
@@ -1011,7 +1012,6 @@ class ActivityService {
         },
         { new: true, useFindAndModify: false }
       );
-      const current_activity = await Activity.findById(id).lean();
       const current_status = current_activity?.activity_status;
 
       if (current_status.toString() !== status._id.toString()) {
@@ -2727,6 +2727,87 @@ class ActivityService {
     }
 
     return meetingTimes;
+  };
+
+  // below function is used to fetch the top 3 performar weekly and monthly
+  // This will be used in the gamification module
+  leaderboard = async (payload, user) => {
+    try {
+      let start_date, end_date;
+      if (payload?.filter === "weekly") {
+        start_date = moment.utc().startOf("week");
+        end_date = moment.utc().endOf("week");
+      } else if (payload?.filter === "monthly") {
+        start_date = moment.utc().startOf("month");
+        end_date = moment.utc().endOf("month");
+      }
+      let agency_id;
+      if (user?.role?.name === "agency") {
+        agency_id = user?.reference_id;
+      }
+      if (user?.role?.name === "team_agency") {
+        const team_agency = await Team_Agency.findById(
+          user?.reference_id
+        ).lean();
+        agency_id = team_agency?.agency_id;
+      }
+
+      const aggragate = [
+        {
+          $match: {
+            agency_id,
+            $or: [{ type: "task" }, { type: "login" }],
+            $and: [
+              { createdAt: { $gte: new Date(start_date) } },
+              { createdAt: { $lte: new Date(end_date) } },
+            ],
+          },
+        },
+        {
+          $group: {
+            _id: "$user_id",
+            totalPoints: {
+              $sum: {
+                $toInt: "$point",
+              },
+            },
+          },
+        },
+        {
+          $sort: { totalPoints: -1 },
+        },
+        {
+          $limit: 3,
+        },
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "_id",
+            foreignField: "reference_id",
+            as: "user",
+            pipeline: [
+              {
+                $project: {
+                  first_name: 1,
+                  last_name: 1,
+                  email: 1,
+                  name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: "$user",
+        },
+      ];
+      return Competition_Point.aggregate(aggragate);
+    } catch (error) {
+      logger.error(`Error while fetching the leaderboard users: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
   };
 }
 

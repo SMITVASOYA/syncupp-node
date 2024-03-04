@@ -16,6 +16,7 @@ const paymentHistorySchema = new mongoose.Schema(
       default: "payment",
     },
     payment_id: { type: String },
+    first_time: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
