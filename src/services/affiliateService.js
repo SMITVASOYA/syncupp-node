@@ -14,6 +14,11 @@ const crypto = require("crypto");
 const sendEmail = require("../helpers/sendEmail");
 const Affiliate_Referral = require("../models/affiliateReferralSchema");
 const Authentication = require("../models/authenticationSchema");
+const PaymentHistory = require("../models/paymentHistorySchema");
+const moment = require("moment");
+const Configuration = require("../models/configurationSchema");
+
+const { ObjectId } = require("mongodb");
 
 class AffiliateService {
   // Generate Token
@@ -289,29 +294,72 @@ class AffiliateService {
 
   getDashboardData = async (user) => {
     try {
-      const totalReferralsCount = await Affiliate_Referral.find({
-        referred_by: user?._id,
-      }).count();
-
-      const loggedInUser = await Affiliate.findOne({
-        _id: user?._id,
-      });
+      const currentDate = moment();
+      const startOfPreviousMonth = moment(currentDate)
+        .subtract(1, "months")
+        .startOf("month");
+      const endOfPreviousMonth = moment(currentDate)
+        .subtract(1, "months")
+        .endOf("month");
+      const commissionPercentage = await Configuration.findOne({});
 
       const agencyIds = await Affiliate_Referral.distinct("referred_to", {
         referred_by: user?._id,
       });
 
-      const total_agencies = await Authentication.countDocuments({
-        _id: { $in: agencyIds },
-        status: "confirmed",
-      });
-      console.log(totalReferralsCount);
-      console.log(total_agencies);
-      console.log(loggedInUser.click_count);
+      const [
+        totalReferralsCount,
+        loggedInUser,
+        total_agencies,
+        lastMonthEarning,
+      ] = await Promise.all([
+        Affiliate_Referral.find({
+          referred_by: user?._id,
+        }).count(),
+
+        Affiliate.findOne({
+          _id: user?._id,
+        }),
+        Authentication.countDocuments({
+          reference_id: { $in: agencyIds },
+          status: "confirmed",
+        }),
+        PaymentHistory.aggregate([
+          {
+            $match: {
+              agency_id: { $in: agencyIds },
+              createdAt: {
+                $gte: startOfPreviousMonth.toDate(),
+                $lte: endOfPreviousMonth.toDate(),
+              },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalAmount: { $sum: "$amount" },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              totalAmount: 1,
+              total: {
+                $multiply: [
+                  "$totalAmount",
+                  commissionPercentage.referral.commission_percentage / 100,
+                ],
+              },
+            },
+          },
+        ]),
+      ]);
+
       return {
-        referral_count: totalReferralsCount,
-        customer_count: total_agencies,
-        click_count: loggedInUser.click_count,
+        referral_count: totalReferralsCount ?? 0,
+        customer_count: total_agencies ?? 0,
+        click_count: loggedInUser?.click_count ?? 0,
+        last_month_earning: lastMonthEarning[0]?.total ?? 0,
       };
     } catch (error) {
       logger.error("Error while getting dashboard data", error);
@@ -328,15 +376,24 @@ class AffiliateService {
         referral_code: referral_code,
       });
 
-      if (!affiliate) {
+      const user = await Authentication.findOne({
+        referral_code: referral_code,
+      });
+
+      if (!affiliate && !user) {
         return throwError(returnMessage("affiliate", "affiliateNotFound"));
       }
 
-      // Increment the click count
-      affiliate.click_count += 1;
-      // Save the updated affiliate
+      if (affiliate) {
+        affiliate.click_count += 1;
+        await affiliate.save();
+      }
 
-      await affiliate.save();
+      if (user) {
+        user.click_count += 1;
+        await user.save();
+      }
+      return;
     } catch (error) {
       logger.error("Error while Click count", error);
       return false;
