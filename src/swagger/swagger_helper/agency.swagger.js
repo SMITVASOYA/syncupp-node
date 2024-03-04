@@ -453,6 +453,25 @@ const overdueTaskDashboard = {
   },
 };
 
+const affiliateDashboards = {
+  tags: ["Dashboard"],
+  description: "",
+  summary: "Affiliate Agency - Dashboard",
+
+  responses: {
+    200: {
+      descripition: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
 const agenciesRoutes = {
   "/api/v1/agency/create-client": {
     post: addClient,
@@ -483,6 +502,9 @@ const agenciesRoutes = {
   },
   "/api/v1/dashboard/overdue-task": {
     get: overdueTaskDashboard,
+  },
+  "/api/v1/dashboard/affiliate": {
+    get: affiliateDashboards,
   },
 };
 
