@@ -155,22 +155,6 @@ class AuthService {
         agency_enroll = agency_enroll.toObject();
         agency_enroll.role = role;
 
-        if (
-          affiliate_referral_code &&
-          affiliate_email &&
-          affiliate_first_name &&
-          affiliate_last_name
-        ) {
-          const decodedEmail = decodeURIComponent(affiliate_email);
-          await this.affiliateReferralSignUp({
-            referral_code: affiliate_referral_code,
-            referred_to: agency_enroll.reference_id,
-            email: decodedEmail,
-            first_name: affiliate_first_name,
-            last_name: affiliate_last_name,
-          });
-        }
-
         delete agency_enroll?.password;
         delete agency_enroll?.is_facebook_signup;
         delete agency_enroll?.is_google_signup;
@@ -202,15 +186,30 @@ class AuthService {
         agency_enroll = agency_enroll.toObject();
         agency_enroll.role = role;
 
-        if (payload?.referral_code) {
-          const referral_registered = await this.referralSignUp({
-            referral_code: referral_code,
-            referred_to: agency_enroll,
-          });
+        let agency_data = await Authentication.findOne({
+          referral_code: referral_code,
+        });
+        let affilate_data = await Affiliate.findOne({
+          referral_code: referral_code,
+        });
 
-          if (typeof referral_registered === "string") {
-            await Authentication.findByIdAndDelete(agency_enroll._id);
-            return referral_registered;
+        if (affilate_data) {
+          const decodedEmail = decodeURIComponent(affiliate_email);
+          await this.affiliateReferralSignUp({
+            referral_code: referral_code,
+            referred_to: agency_enroll.reference_id,
+          });
+        } else if (agency_data) {
+          if (payload?.referral_code) {
+            const referral_registered = await this.referralSignUp({
+              referral_code: referral_code,
+              referred_to: agency_enroll,
+            });
+
+            if (typeof referral_registered === "string") {
+              await Authentication.findByIdAndDelete(agency_enroll._id);
+              return referral_registered;
+            }
           }
         }
 
@@ -313,15 +312,15 @@ class AuthService {
         if (payload?.referral_code) {
           const referral_registered = await this.referralSignUp({
             referral_code: payload?.referral_code,
-            referred_to: createUser,
+            referred_to: agency_enroll,
           });
 
           if (typeof referral_registered === "string") {
-            await User.findByIdAndDelete(createUser._id);
+            await Authentication.findByIdAndDelete(agency_enroll._id);
             return referral_registered;
           }
         }
-        const lastLoginDateUTC = moment.utc(existing_Data?.last_login_date);
+        const lastLoginDateUTC = moment.utc(agency_enroll?.last_login_date);
         const currentDateUTC = moment().startOf("day");
         if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
           if (
@@ -361,7 +360,7 @@ class AuthService {
           ...agency_enroll,
         });
       } else {
-        const lastLoginDateUTC = moment.utc(existing_Data?.last_login_date);
+        const lastLoginDateUTC = moment.utc(existing_agency?.last_login_date);
         const currentDateUTC = moment().startOf("day");
 
         if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
@@ -459,15 +458,15 @@ class AuthService {
         if (payload?.referral_code) {
           const referral_registered = await this.referralSignUp({
             referral_code: payload?.referral_code,
-            referred_to: createUser,
+            referred_to: agency_enroll,
           });
 
           if (typeof referral_registered === "string") {
-            await User.findByIdAndDelete(createUser._id);
+            await Authentication.findByIdAndDelete(agency_enroll._id);
             return referral_registered;
           }
         }
-        const lastLoginDateUTC = moment.utc(existing_Data?.last_login_date);
+        const lastLoginDateUTC = moment.utc(agency_enroll?.last_login_date);
         const currentDateUTC = moment().startOf("day");
 
         if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
@@ -508,7 +507,7 @@ class AuthService {
           ...agency_enroll,
         });
       } else {
-        const lastLoginDateUTC = moment.utc(existing_Data?.last_login_date);
+        const lastLoginDateUTC = moment.utc(existing_agency?.last_login_date);
         const currentDateUTC = moment().startOf("day");
 
         if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
@@ -887,7 +886,7 @@ class AuthService {
       const referral_code_exist = await Authentication.findOne({
         referral_code,
       })
-        .select("referral_code")
+        .select("referral_code reference_id")
         .lean();
 
       if (!referral_code_exist)
@@ -896,33 +895,29 @@ class AuthService {
       await ReferralHistory.deleteMany({
         referral_code,
         registered: false,
-        referred_by: referral_code_exist._id,
+        referred_by: referral_code_exist.reference_id,
         email: referred_to?.email,
       });
 
       await ReferralHistory.create({
         referral_code,
-        referred_by: referral_code_exist?._id,
-        referred_to: referred_to?._id,
+        referred_by: referral_code_exist?.reference_id,
+        referred_to: referred_to?.reference_id,
         email: referred_to?.email,
         registered: true,
       });
 
       const referral_data = await Configuration.findOne().lean();
 
-      let user_data = await Authentication.findOne({
-        referral_code: referral_code,
-      });
-
       await CompetitionPoint.create({
-        user_id: referred_to?._id,
-        agency_id: referral_code_exist?._id,
+        user_id: referred_to?.reference_id,
+        agency_id: referral_code_exist?.reference_id,
         point: referral_data?.referral?.successful_referral_point,
         type: "referral",
       });
 
       await Agency.findOneAndUpdate(
-        { _id: user_data?.reference_id },
+        { _id: referral_code_exist?.reference_id },
         {
           $inc: {
             total_referral_point:
@@ -938,17 +933,10 @@ class AuthService {
     }
   };
 
-  affiliateReferralSignUp = async ({
-    referral_code,
-    referred_to,
-    email,
-    first_name,
-    last_name,
-  }) => {
+  affiliateReferralSignUp = async ({ referral_code, referred_to }) => {
     try {
       const referral_code_exist = await Affiliate.findOne({
         referral_code,
-        email,
       }).lean();
 
       if (!referral_code_exist)

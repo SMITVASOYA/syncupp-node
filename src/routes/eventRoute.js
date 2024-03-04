@@ -6,5 +6,6 @@ eventRoute.use(protect);
 eventRoute.post("/create-event", eventController.createEvent);
 eventRoute.get("/fetch-event/:id", eventController.fetchEvent);
 eventRoute.post("/event-list", eventController.eventList);
+eventRoute.put("/update-event/:id", eventController.updateEvent);
 
 module.exports = eventRoute;
