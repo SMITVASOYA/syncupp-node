@@ -15,6 +15,9 @@ const configurationSchema = new mongoose.Schema(
     cron_job: {
       invoice_overdue: { type: String, default: "0 0 * * *" },
     },
+    payment: {
+      free_till_days: { type: Number, default: 15 },
+    },
   },
   { timestamps: true }
 );

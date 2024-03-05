@@ -18,6 +18,7 @@ const PaymentHistory = require("../models/paymentHistorySchema");
 const PaymentService = require("./paymentService");
 const { default: mongoose } = require("mongoose");
 const Authentication = require("../models/authenticationSchema");
+const SubscriptionPlan = require("../models/subscriptionplanSchema");
 const paymentService = new PaymentService();
 
 class AdminService {
@@ -274,7 +275,6 @@ class AdminService {
           agency_id: new mongoose.Types.ObjectId(payload?.agency_id),
         };
         pagination.skip = 0;
-        pagination.result_per_page = null;
       }
       const aggragate = [
         {
@@ -308,11 +308,13 @@ class AdminService {
         },
       ];
 
+      if (payload?.subscription_id && payload?.agency_id)
+        aggragate.push({ $limit: pagination.result_per_page });
+
       const [transactions, total_transactions] = await Promise.all([
         PaymentHistory.aggregate(aggragate)
           .sort(pagination.sort)
-          .skip(pagination.skip)
-          .limit(pagination.result_per_page),
+          .skip(pagination.skip),
         PaymentHistory.aggregate(aggragate),
       ]);
 
@@ -339,7 +341,7 @@ class AdminService {
       //     transactions[i].method = subscription_detail.payment_method;
       //   }
       // }
-
+      let plan;
       for (let i = 0; i < transactions.length; i++) {
         if (
           payload?.subscription_id &&
@@ -361,6 +363,15 @@ class AdminService {
               subscription_id: { $exists: false },
             }),
           ]);
+
+          if (plan && plan?.plan_id == subscription_detail?.plan_id) {
+            transactions[i].plan = plan?.name;
+          } else {
+            plan = await SubscriptionPlan.findOne({
+              plan_id: subscription_detail?.plan_id,
+            }).lean();
+            transactions[i].plan = plan?.name;
+          }
           transactions[i].method = subscription_detail.payment_method;
           transactions[i].orders_available = orders_available ? true : false;
         }
