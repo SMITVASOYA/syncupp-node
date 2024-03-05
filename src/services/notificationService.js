@@ -44,6 +44,10 @@ class NotificationService {
           message_type = "activityCompleted";
         if (activity_type_action === "pending")
           message_type = "activityPending";
+        if (activity_type_action === "overdue")
+          message_type = "activityOverdue";
+        if (activity_type_action === "dueDateAlert")
+          message_type = "activityDueDate";
 
         const createAndEmitNotification = async (
           userId,
@@ -100,7 +104,10 @@ class NotificationService {
         if (activity_type_action === "cancel") message_type = "taskCancelled";
         if (activity_type_action === "inProgress")
           message_type = "taskInProgress";
-        console.log(message_type);
+        if (activity_type_action === "overdue") message_type = "taskOverdue";
+
+        if (activity_type_action === "dueDateAlert")
+          message_type = "taskDueDate";
         const createAndEmitNotification = async (
           userId,
           messageType,

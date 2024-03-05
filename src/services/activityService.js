@@ -21,6 +21,7 @@ const Configuration = require("../models/configurationSchema");
 const Competition_Point = require("../models/competitionPointSchema");
 const NotificationService = require("./notificationService");
 const Agency = require("../models/agencySchema");
+const Activity_Status_Master = require("../models/masters/activityStatusMasterSchema");
 const notificationService = new NotificationService();
 
 class ActivityService {
@@ -1547,7 +1548,6 @@ class ActivityService {
           client_name: client_data.first_name + " " + client_data.last_name,
         });
         console.log(activity_email_template);
-        console.log("first");
         await sendEmail({
           email: client_data?.email,
           subject: returnMessage("emailTemplate", emailTempKey),
@@ -2727,6 +2727,144 @@ class ActivityService {
     }
 
     return meetingTimes;
+  };
+
+  // Overdue crone Job
+
+  overdueCronJob = async () => {
+    try {
+      const currentDate = moment();
+      const overdue = await Activity_Status_Master.findOne({
+        name: "overdue",
+      });
+      const completed = await Activity_Status_Master.findOne({
+        name: "completed",
+      });
+      const cancel = await Activity_Status_Master.findOne({ name: "cancel" });
+      const overdueActivities = await Activity.find({
+        due_date: { $lt: currentDate.toDate() },
+        activity_status: {
+          $nin: [overdue._id, completed._id, cancel._id],
+        },
+        is_deleted: false,
+      }).populate("activity_type");
+
+      for (const activity of overdueActivities) {
+        activity.activity_status = overdue._id;
+        await activity.save();
+      }
+
+      overdueActivities.forEach(async (item) => {
+        const [assign_to_data, client_data, assign_by_data] = await Promise.all(
+          [
+            Authentication.findOne({ reference_id: item?.assign_to }),
+            Authentication.findOne({ reference_id: item?.client_id }),
+            Authentication.findOne({ reference_id: item?.assign_by }),
+          ]
+        );
+
+        if (item.activity_type.name !== "task") {
+          await notificationService.addNotification({
+            module_name: "activity",
+            activity_type_action: "overdue",
+            title: item.title,
+            activity_type:
+              item?.activity_type.name === "others"
+                ? "activity"
+                : "call meeting",
+          });
+
+          const activity_email_template = activityTemplate({
+            title: item.title,
+            agenda: item.agenda,
+            activity_type: item.activity_type.name,
+            meeting_end_time: moment(item.meeting_end_time).format("HH:mm"),
+            meeting_start_time: moment(item.meeting_start_time).format("HH:mm"),
+            recurring_end_date: item?.recurring_end_date
+              ? moment(item.recurring_end_date).format("DD-MM-YYYY")
+              : null,
+            due_date: moment(item.due_date).format("DD-MM-YYYY"),
+            status: "overdue",
+            assigned_by_name:
+              assign_by_data.first_name + " " + assign_by_data.last_name,
+            client_name: client_data.first_name + " " + client_data.last_name,
+            assigned_to_name:
+              assign_to_data.first_name + " " + assign_to_data.last_name,
+          });
+          sendEmail({
+            email: client_data?.email,
+            subject: returnMessage("emailTemplate", "activityInOverdue"),
+            message: activity_email_template,
+          });
+          sendEmail({
+            email: assign_to_data?.email,
+            subject: returnMessage("emailTemplate", "activityInOverdue"),
+            message: activity_email_template,
+          });
+        } else {
+          await notificationService.addNotification({
+            module_name: "task",
+            activity_type_action: "overdue",
+            title: item.title,
+          });
+        }
+      });
+
+      console.log("Updated overdue statuses successfully");
+    } catch (error) {
+      logger.error(`Error while Overdue crone Job PDF, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // DueDate crone Job
+
+  dueDateCronJob = async () => {
+    try {
+      const currentDate = moment().startOf("day"); // Set the time part to midnight for the current date
+      const completed = await Activity_Status_Master.findOne({
+        name: "completed",
+      });
+      const overdue = await Activity_Status_Master.findOne({
+        name: "overdue",
+      });
+      const cancel = await Activity_Status_Master.findOne({ name: "cancel" });
+      const overdueActivities = await Activity.find({
+        due_date: {
+          $gte: currentDate.toDate(), // Activities with due date greater than or equal to the current date
+          $lt: currentDate.add(1, "days").toDate(), // Activities with due date less than the next day
+        },
+        activity_status: {
+          $nin: [completed._id, cancel._id, overdue._id],
+        },
+        is_deleted: false,
+      }).populate("activity_type");
+
+      overdueActivities?.forEach(async (item) => {
+        if (item.activity_type.name !== "task") {
+          await notificationService.addNotification({
+            module_name: "activity",
+            activity_type_action: "dueDateAlert",
+            title: item.title,
+            activity_type:
+              item?.activity_type.name === "others"
+                ? "activity"
+                : "call meeting",
+          });
+        } else {
+          await notificationService.addNotification({
+            module_name: "task",
+            activity_type_action: "dueDateAlert",
+            title: item.title,
+          });
+        }
+      });
+
+      console.log("Updated overdue statuses successfully");
+    } catch (error) {
+      logger.error(`Error while Overdue crone Job PDF, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
   };
 }
 

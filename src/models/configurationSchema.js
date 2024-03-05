@@ -14,6 +14,8 @@ const configurationSchema = new mongoose.Schema(
     },
     cron_job: {
       invoice_overdue: { type: String, default: "0 0 * * *" },
+      activity_overdue: { type: String, default: "0 0 * * *" },
+      activity_dueDate: { type: String, default: "0 0 * * *" },
     },
   },
   { timestamps: true }

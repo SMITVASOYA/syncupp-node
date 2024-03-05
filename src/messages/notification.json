@@ -25,6 +25,14 @@
       "clientMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is in pending.",
       "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is pending."
     },
+    "activityOverdue": {
+      "clientMessage": "Your ${activity_type} '${title}' has been overdue.",
+      "assignToMessage": "The ${activity_type} '${title}' assigned to you has been overdue."
+    },
+    "activityDueDate": {
+      "clientMessage": "Today is the due date for ${activity_type} '${title}'.",
+      "assignToMessage": "Today is the due date for ${activity_type} '${title}'."
+    },
     "createTask": {
       "clientMessage": "Hi ${client_name}! You have a task titled ${title} due on ${due_date} before ${due_time}. Check the agenda: ${agenda}. See you there!",
       "assignToMessage": "Hey ${assigned_to_name}! You're assigned to a task titled ${title} due on ${due_date} before ${due_time}. Agenda: ${agenda}. Be ready!"
@@ -52,6 +60,14 @@
     "taskDeleted": {
       "clientMessage": "Task '${title}' has been deleted.",
       "assignToMessage": "Task '${title}' has been deleted."
+    },
+    "taskOverdue": {
+      "clientMessage": "Task '${title}' has been overdue.",
+      "assignToMessage": "Task '${title}' has been overdue."
+    },
+    "taskDueDate": {
+      "clientMessage": "Today is the due date for Task '${title}'.",
+      "assignToMessage": "Today is the due date for Task '${title}'."
     }
   },
   "agreement": {

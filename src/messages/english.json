@@ -171,7 +171,8 @@
     "meetingCancelled": "Activity cancelled",
     "activityCompleted": "Activity completed",
     "activityInProgress": "Activity in progress",
-    "activityInPending": "Activity in pending"
+    "activityInPending": "Activity in pending",
+    "activityInOverdue": "Activity has been overdue"
   },
 
   "client": {
