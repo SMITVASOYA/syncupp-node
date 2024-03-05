@@ -33,7 +33,8 @@
     "oldPassRequired": "Old password is required.",
     "teamAgencyIsInactive": "Your account has been deactivate by agency.",
     "sendRefferalEmail": "Referral email send successfully.",
-    "invitationEmailSubject": "Inviation to the SyncUpp."
+    "invitationEmailSubject": "Inviation to the SyncUpp.",
+    "completeProfile": "Complete your profile first to access Syncupp."
   },
 
   "admin": {
@@ -287,13 +288,20 @@
     "fetchEvent": "Event fetch successfully.",
     "eventList": "Event list fetch successfully.",
     "emailAlreadyExists": "Event for email already exist.",
-    "eventUpdate": "Event updated successfully."
+    "eventUpdate": "Event updated successfully.",
+    "deleteEvent": "Event cancelled successfully."
   },
 
   "chat": {
     "userIdRequired": "Other users' id is required to get messages.",
     "usersListFetched": "List of users fetched successfully.",
-    "historyFetched": "Chat history fetched successfully."
+    "historyFetched": "Chat history fetched successfully.",
+    "canNotDelete": "You can only delete unseen messages.",
+    "messageDeleted": "Message deleted successfully.",
+    "largeImage": "Image file should be less than 2 MB.",
+    "largeDocument": "Document file should be less than 5 MB.",
+    "invalidImageFormat": "Image file format should be jpeg, jpg, or png.",
+    "invalidDocumentFormat": "Document file format should be xlsx, pdf, or csv."
   },
 
   "default": { "default": "Something went wrong." }

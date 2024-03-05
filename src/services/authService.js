@@ -31,6 +31,7 @@ const Affiliate = require("../models/affiliateSchema");
 const Affiliate_Referral = require("../models/affiliateReferralSchema");
 const CompetitionPoint = require("../models/competitionPointSchema");
 const Agency = require("../models/agencySchema");
+const Client = require("../models/clientSchema");
 class AuthService {
   tokenGenerator = (payload) => {
     try {
@@ -155,12 +156,14 @@ class AuthService {
         agency_enroll = agency_enroll.toObject();
         agency_enroll.role = role;
 
-        const decodedEmail = decodeURIComponent(affiliate_email);
-        await this.affiliateReferralSignUp({
-          referral_code: affiliate_referral_code,
-          referred_to: agency_enroll.reference_id,
-          email: decodedEmail,
-        });
+        if (payload?.affiliate_referral_code) {
+          const decodedEmail = decodeURIComponent(payload?.affiliate_email);
+          await this.affiliateReferralSignUp({
+            referral_code: payload?.affiliate_referral_code,
+            referred_to: agency_enroll.reference_id,
+            email: decodedEmail,
+          });
+        }
 
         delete agency_enroll?.password;
         delete agency_enroll?.is_facebook_signup;
@@ -628,31 +631,80 @@ class AuthService {
         ) {
           const referral_data = await Configuration.findOne().lean();
 
+          let agency_key;
+
+          if (existing_Data?.role?.name === "team_agency") {
+            agency_key = existing_Data.team_agency_detail.agency_id;
+            await Agency.findOneAndUpdate(
+              { _id: existing_Data.team_agency_detail.agency_id },
+              {
+                $inc: {
+                  total_referral_point:
+                    referral_data?.competition?.successful_login,
+                },
+                last_login_date: moment.utc().startOf("day"),
+              },
+              { new: true }
+            );
+          }
+
           await CompetitionPoint.create({
             user_id: existing_Data?.reference_id,
-            agency_id: existing_Data?.reference_id,
+            agency_id: agency_key ? agency_key : existing_Data?.reference_id,
             point: +referral_data?.competition?.successful_login?.toString(),
             type: "login",
             role: existing_Data?.role?.name,
           });
 
-          await Agency.findOneAndUpdate(
-            { _id: existing_Data.reference_id },
-            {
-              $inc: {
-                total_referral_point:
-                  referral_data?.competition?.successful_login,
+          if (existing_Data?.role?.name === "agency") {
+            await Agency.findOneAndUpdate(
+              { _id: existing_Data.reference_id },
+              {
+                $inc: {
+                  total_referral_point:
+                    referral_data?.competition?.successful_login,
+                },
+                last_login_date: moment.utc().startOf("day"),
               },
-              last_login_date: moment.utc().startOf("day"),
-            },
-            { new: true }
-          );
+              { new: true }
+            );
+          }
           await Authentication.findOneAndUpdate(
             { reference_id: existing_Data.reference_id },
             { last_login_date: moment.utc().startOf("day") },
             { new: true }
           );
         }
+      }
+
+      if (existing_Data?.role?.name === "agency") {
+        const agency_profile = await Agency.findById(
+          existing_Data?.reference_id
+        ).lean();
+        if (
+          !agency_profile?.address ||
+          agency_profile?.address === "" ||
+          !agency_profile?.state ||
+          !agency_profile?.country ||
+          !agency_profile?.city ||
+          !agency_profile?.pincode ||
+          agency_profile?.pincode === ""
+        )
+          existing_Data.profile_pending = true;
+      } else if (existing_Data?.role?.name === "client") {
+        const client_profile = await Client.findById(
+          existing_Data?.reference_id
+        ).lean();
+        if (
+          !client_profile?.address ||
+          client_profile?.address === "" ||
+          !client_profile?.state ||
+          !client_profile?.country ||
+          !client_profile?.city ||
+          !client_profile?.pincode ||
+          client_profile?.pincode === ""
+        )
+          existing_Data.profile_pending = true;
       }
 
       return this.tokenGenerator({

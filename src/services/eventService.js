@@ -1,6 +1,10 @@
 const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
-const { returnMessage, paginationObject } = require("../utils/utils");
+const {
+  returnMessage,
+  paginationObject,
+  getKeywordType,
+} = require("../utils/utils");
 const sendEmail = require("../helpers/sendEmail");
 const ActivityStatus = require("../models/masters/activityStatusMasterSchema");
 const moment = require("moment");
@@ -37,19 +41,14 @@ class ScheduleEvent {
 
       if (!end_time.isAfter(start_time))
         return throwError(returnMessage("event", "invalidTime"));
-
-      let recurring_date = moment
-        .utc(payload?.recurring_end_date, "DD-MM-YYYY")
-        .endOf("day");
-      if (!recurring_date.isSameOrAfter(start_date))
-        return throwError(returnMessage("event", "invalidRecurringDate"));
-
-      const event_status_type = await ActivityStatus.findOne({
-        name: "pending",
-      })
-        .select("name")
-        .lean();
-
+      let recurring_date;
+      if (payload?.recurring_end_date) {
+        recurring_date = moment
+          .utc(payload?.recurring_end_date, "DD-MM-YYYY")
+          .endOf("day");
+        if (!recurring_date.isSameOrAfter(start_date))
+          return throwError(returnMessage("event", "invalidRecurringDate"));
+      }
       // this condition is used for the check if client or team member is assined to any same time event or not
       const or_condition = [
         {
@@ -95,15 +94,12 @@ class ScheduleEvent {
             { email: { $in: payload.email } },
           ],
           $and: or_condition,
-          event_status: { $eq: event_status_type?._id },
+          is_deleted: false,
         }).lean();
       }
 
       if (event_exist) {
-        if (
-          // email === event_exist.email &&
-          payload.createEventIfEmailExists === "yes"
-        ) {
+        if (payload.createEventIfEmailExists === "yes") {
           // If email exists and flag is set to "yes", create the event
           const newEvent = await Event.create({
             created_by: user?.reference_id,
@@ -114,14 +110,13 @@ class ScheduleEvent {
             due_date: start_date,
             recurring_end_date: recurring_date,
             email,
-            event_status: event_status_type._id,
             internal_info,
           });
           return newEvent;
         } else {
           // If email exists and flag is not set to "yes", return error
           return {
-            status: 409, // Conflict status code
+            event_exist: true, // Conflict status code
             message: returnMessage("event", "eventScheduledForTeam"),
           };
         }
@@ -136,7 +131,6 @@ class ScheduleEvent {
           due_date: start_date,
           recurring_end_date: recurring_date,
           email,
-          event_status: event_status_type._id,
           internal_info,
         });
         return newEvent;
@@ -310,33 +304,35 @@ class ScheduleEvent {
           },
 
           {
-            status: {
+            agenda: {
               $regex: payload.search.toLowerCase(),
               $options: "i",
             },
           },
           {
-            "activity_status.name": {
-              $regex: payload.search,
-              $options: "i",
+            email: {
+              $elemMatch: {
+                $regex: payload.search.toLowerCase(),
+                $options: "i",
+              },
             },
-          },
-          {
-            email: { $in: payload.email }, // New condition for searching emails in the array
           },
         ];
 
-        const keywordType = getKeywordType(searchObj.search);
+        const keywordType = getKeywordType(payload.search);
         if (keywordType === "number") {
-          const numericKeyword = parseInt(searchObj.search);
+          const numericKeyword = parseInt(payload.search);
 
           queryObj["$or"].push({
             revenue_made: numericKeyword,
           });
         } else if (keywordType === "date") {
-          const dateKeyword = new Date(searchObj.search);
+          const dateKeyword = new Date(payload.search);
           queryObj["$or"].push({ due_date: dateKeyword });
           queryObj["$or"].push({ due_time: dateKeyword });
+          queryObj["$or"].push({ event_start_time: dateKeyword });
+          queryObj["$or"].push({ event_end_time: dateKeyword });
+          queryObj["$or"].push({ recurring_end_date: dateKeyword });
         }
       }
       const pagination = paginationObject(payload);
@@ -365,21 +361,7 @@ class ScheduleEvent {
         {
           $unwind: { path: "$agency_Data", preserveNullAndEmptyArrays: true },
         },
-        {
-          $lookup: {
-            from: "activity_status_masters",
-            localField: "status",
-            foreignField: "_id",
-            as: "activity_status",
-            pipeline: [{ $project: { name: 1 } }],
-          },
-        },
-        {
-          $unwind: {
-            path: "$activity_status",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
+
         { $match: queryObj },
         {
           $project: {
@@ -394,7 +376,6 @@ class ScheduleEvent {
             event_end_time: 1,
             recurring_end_date: 1,
             email: 1,
-            status: "$activity_status.name",
           },
         },
       ];
@@ -449,13 +430,14 @@ class ScheduleEvent {
       if (!end_time.isAfter(start_time))
         return throwError(returnMessage("event", "invalidTime"));
 
-      let recurring_date = moment
-        .utc(payload?.recurring_end_date, "DD-MM-YYYY")
-        .endOf("day");
-
-      if (!recurring_date.isSameOrAfter(start_date))
-        return throwError(returnMessage("event", "invalidRecurringDate"));
-
+      let recurring_date;
+      if (payload?.recurring_end_date) {
+        recurring_date = moment
+          .utc(payload?.recurring_end_date, "DD-MM-YYYY")
+          .endOf("day");
+        if (!recurring_date.isSameOrAfter(start_date))
+          return throwError(returnMessage("event", "invalidRecurringDate"));
+      }
       const or_condition = [
         {
           $and: [
@@ -497,6 +479,7 @@ class ScheduleEvent {
         event_exist = await Event.findOne({
           $or: [{ created_by: eventId }, { email: { $in: payload.email } }],
           $and: or_condition,
+          is_deleted: false,
         }).lean();
       }
       if (event_exist) {
@@ -505,52 +488,58 @@ class ScheduleEvent {
           payload.createEventIfEmailExists === "yes"
         ) {
           // If email exists and flag is set to "yes", create the event
-          const updatedEvent = await Event.findOneAndUpdate(
-            { _id: eventId }, // Find the event by ID
-            {
-              $set: {
-                agenda,
-                title,
-                event_start_time: start_time,
-                event_end_time: end_time,
-                due_date: start_date,
-                recurring_end_date: recurring_date,
-                email,
-                internal_info,
-              },
-            },
-            { new: true } // Return the updated document
-          );
+          const updatedEvent = await Event.findByIdAndUpdate(eventId, {
+            agenda,
+            title,
+            event_start_time: start_time,
+            event_end_time: end_time,
+            due_date: start_date,
+            recurring_end_date: recurring_date,
+            email,
+            internal_info,
+          });
           return updatedEvent;
         } else {
           // If email exists and flag is not set to "yes", return error
           return {
-            status: 409, // Conflict status code
+            event_exist: true, // Conflict status code
             message: returnMessage("event", "eventScheduledForTeam"),
           };
         }
       } else {
         // If email exists and flag is set to "yes", create the event
-        const updatedEvent = await Event.findOneAndUpdate(
-          { _id: eventId }, // Find the event by ID
-          {
-            $set: {
-              agenda,
-              title,
-              event_start_time: start_time,
-              event_end_time: end_time,
-              due_date: start_date,
-              recurring_end_date: recurring_date,
-              email,
-              internal_info,
-            },
-          },
-          { new: true } // Return the updated document
-        );
+        const updatedEvent = await Event.findByIdAndUpdate(eventId, {
+          agenda,
+          title,
+          event_start_time: start_time,
+          event_end_time: end_time,
+          due_date: start_date,
+          recurring_end_date: recurring_date,
+          email,
+          internal_info,
+        });
         return updatedEvent;
       }
     } catch (error) {
       logger.error(`Error while updating event, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  deleteEvent = async (id) => {
+    try {
+      const updateevent = await Event.findByIdAndUpdate(
+        {
+          _id: id,
+        },
+        {
+          is_deleted: true,
+        },
+        { new: true, useFindAndModify: false }
+      );
+      return updateevent;
+    } catch (error) {
+      logger.error(`Error while deleting, ${error}`);
       throwError(error?.message, error?.statusCode);
     }
   };
