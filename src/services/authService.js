@@ -676,6 +676,36 @@ class AuthService {
         }
       }
 
+      if (existing_Data?.role?.name === "agency") {
+        const agency_profile = await Agency.findById(
+          existing_Data?.reference_id
+        ).lean();
+        if (
+          !agency_profile?.address ||
+          agency_profile?.address === "" ||
+          !agency_profile?.state ||
+          !agency_profile?.country ||
+          !agency_profile?.city ||
+          !agency_profile?.pincode ||
+          agency_profile?.pincode === ""
+        )
+          existing_Data.profile_pending = true;
+      } else if (existing_Data?.role?.name === "client") {
+        const client_profile = await Client.findById(
+          existing_Data?.reference_id
+        ).lean();
+        if (
+          !client_profile?.address ||
+          client_profile?.address === "" ||
+          !client_profile?.state ||
+          !client_profile?.country ||
+          !client_profile?.city ||
+          !client_profile?.pincode ||
+          client_profile?.pincode === ""
+        )
+          existing_Data.profile_pending = true;
+      }
+
       return this.tokenGenerator({
         ...existing_Data,
         rememberMe: payload?.rememberMe,

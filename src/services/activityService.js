@@ -822,6 +822,7 @@ class ActivityService {
             meeting_end_time: 1,
             recurring_end_date: 1,
             activity_type: 1,
+            attendees: 1,
           },
         },
       ];
@@ -1619,6 +1620,7 @@ class ActivityService {
         activity_type,
         internal_info,
         mark_as_done,
+        attendees,
       } = payload;
 
       let recurring_date;
@@ -1782,12 +1784,14 @@ class ActivityService {
         meeting_end_time: end_time,
         due_date: start_date,
         recurring_end_date: recurring_date,
+        attendees: attendees,
       });
 
       // --------------- Start--------------------
-      const [assign_to_data, client_data] = await Promise.all([
-        Authentication.findOne({ reference_id: assign_to }),
-        Authentication.findOne({ reference_id: client_id }),
+      const [assign_to_data, client_data, attendees_data] = await Promise.all([
+        Authentication.findOne({ reference_id: assign_to }).lean(),
+        Authentication.findOne({ reference_id: client_id }).lean(),
+        Authentication.find({ reference_id: { $in: attendees } }).lean(),
       ]);
 
       const activity_email_template = activityTemplate({
@@ -1959,6 +1963,7 @@ class ActivityService {
             meeting_end_time: 1,
             recurring_end_date: 1,
             activity_type: 1,
+            attendees: 1,
           },
         },
       ];
@@ -2019,6 +2024,7 @@ class ActivityService {
         meeting_end_time,
         activity_type,
         internal_info,
+        attendees,
       } = payload;
 
       let recurring_date;
@@ -2193,6 +2199,7 @@ class ActivityService {
         meeting_end_time: end_time,
         due_date: start_date,
         recurring_end_date: recurring_date,
+        attendees: attendees,
       });
 
       // --------------- Start--------------------
@@ -2807,6 +2814,156 @@ class ActivityService {
       return Competition_Point.aggregate(aggragate);
     } catch (error) {
       logger.error(`Error while fetching the leaderboard users: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // this function is used to check the activities are assigned to the attandees or not
+  checkAnyActivitiesAssingend = async (payload, user) => {
+    try {
+      if (payload?.attendees?.length === 0) {
+        return { activity_assinged_to_attendees: false };
+      }
+
+      if (user?.role?.name === "client" || user?.role?.name === "team_client")
+        return throwError(
+          returnMessage("auth", "unAuthorized"),
+          statusCode.forbidden
+        );
+
+      validateRequestFields(payload, [
+        "due_date",
+        "activity_type",
+        "meeting_start_time",
+        "meeting_end_time",
+      ]);
+
+      const {
+        client_id,
+        due_date,
+        meeting_start_time,
+        meeting_end_time,
+        activity_type,
+        attendees,
+      } = payload;
+
+      let recurring_date;
+      const current_date = moment.utc().startOf("day");
+      const start_date = moment.utc(due_date, "DD-MM-YYYY").startOf("day");
+      const start_time = moment.utc(
+        `${due_date}-${meeting_start_time}`,
+        "DD-MM-YYYY-HH:mm"
+      );
+      const end_time = moment.utc(
+        `${due_date}-${meeting_end_time}`,
+        "DD-MM-YYYY-HH:mm"
+      );
+      if (!start_date.isSameOrAfter(current_date))
+        return throwError(returnMessage("activity", "dateinvalid"));
+
+      if (!end_time.isAfter(start_time))
+        return throwError(returnMessage("activity", "invalidTime"));
+
+      // if (activity_type === "others" && !payload?.recurring_end_date)
+      //   return throwError(returnMessage("activity", "recurringDateRequired"));
+
+      if (activity_type === "others" && payload?.recurring_end_date) {
+        recurring_date = moment
+          .utc(payload?.recurring_end_date, "DD-MM-YYYY")
+          .endOf("day");
+        if (!recurring_date.isSameOrAfter(start_date))
+          return throwError(returnMessage("activity", "invalidRecurringDate"));
+      }
+
+      const [activity_type_id, activity_status_type] = await Promise.all([
+        ActivityType.findOne({ name: activity_type }).select("_id").lean(),
+        ActivityStatus.findOne({ name: "pending" }).select("name").lean(),
+      ]);
+
+      if (!activity_type_id)
+        return throwError(
+          returnMessage("activity", "activityTypeNotFound"),
+          statusCode.notFound
+        );
+
+      // this condition is used for the check if client or team member is assined to any same time activity or not
+      const or_condition = [
+        {
+          $and: [
+            { meeting_start_time: { $gte: start_time } },
+            { meeting_end_time: { $lte: end_time } },
+          ],
+        },
+        {
+          $and: [
+            { meeting_start_time: { $lte: start_time } },
+            { meeting_end_time: { $gte: end_time } },
+          ],
+        },
+        {
+          $and: [
+            { meeting_start_time: { $gte: start_time } },
+            { meeting_end_time: { $lte: end_time } },
+            { due_date: { $gte: start_date } },
+            { recurring_end_date: { $lte: recurring_date } },
+          ],
+        },
+        {
+          $and: [
+            { meeting_start_time: { $lte: start_time } },
+            { meeting_end_time: { $gte: end_time } },
+            { due_date: { $gte: start_date } },
+            { recurring_end_date: { $lte: recurring_date } },
+          ],
+        },
+      ];
+
+      // check for the user role. if the role is team_agency then we need to
+      // find the agency id for that user which he is assigned
+
+      // let team_agency_detail;
+      if (user?.role?.name === "team_agency") {
+        const team_agency_detail = await Team_Agency.findById(
+          user?.reference_id
+        ).lean();
+        user.agency_id = team_agency_detail?.agency_id;
+      }
+
+      // if we need to check when we are updating then at that time we need the activity id
+      let activity_id = {};
+      if (payload?.activity_id) {
+        activity_id = { _id: { $ne: payload?.activity_id } };
+      }
+
+      // this below function is used to check weather client is assign to any type of the call or other
+      // activity or not if yes then throw an error but it should be in the same agency id not in the other
+      let meeting_exist;
+      if (user?.role?.name === "agency") {
+        meeting_exist = await Activity.findOne({
+          client_id,
+          agency_id: user?.reference_id,
+          activity_status: { $eq: activity_status_type?._id },
+          activity_type: activity_type_id?._id,
+          $or: or_condition,
+          attendees: { $in: attendees },
+          ...activity_id,
+        }).lean();
+      } else if (user?.role?.name === "team_agency") {
+        meeting_exist = await Activity.findOne({
+          client_id,
+          agency_id: user?.agency_id,
+          activity_status: { $eq: activity_status_type?._id },
+          $or: or_condition,
+          activity_type: activity_type_id?._id,
+          attendees: { $in: attendees },
+          ...activity_id,
+        }).lean();
+      }
+      if (meeting_exist) return { activity_assinged_to_attendees: true };
+
+      return { activity_assinged_to_attendees: false };
+    } catch (error) {
+      logger.error(`Error while check activity assigned or not: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };

@@ -8,6 +8,7 @@ const { returnMessage } = require("./utils/utils");
 const detect_file_type = require("detect-file-type");
 const fs = require("fs");
 const moment = require("moment");
+const Authentication = require("./models/authenticationSchema");
 
 exports.socket_connection = (http_server) => {
   io = new Server(http_server, {
@@ -29,14 +30,26 @@ exports.socket_connection = (http_server) => {
     });
 
     // For user joined
-    socket.on("ROOM", (obj) => {
+    socket.on("ROOM", async (obj) => {
       console.log(31, obj);
       logger.info(obj.id, 15);
       socket.join(obj.id);
+      // for the Online status
+      socket.emit("USER_ONLINE", { user_id: obj.id });
+      await Authentication.findOneAndUpdate(
+        { reference_id: obj?.id },
+        { is_online: true }
+      );
     });
 
-    socket.on("disconnect", (obj) => {
-      console.log("39", obj);
+    socket.on("USER_DISCONNECTED", async (payload) => {
+      // for the Offline status
+      const user = await Authentication.findByIdAndUpdate(
+        payload?.user_id,
+        { is_online: true },
+        { new: true }
+      ).lean();
+      socket.emit("USER_OFFLINE", { user_id: user?.reference_id });
     });
 
     // When Data delivered
@@ -88,8 +101,8 @@ exports.socket_connection = (http_server) => {
     socket.on("ONGOING_CHAT", async (payload) => {
       try {
         await Notification.deleteMany({
-          user_id: payload?.to_user,
-          from_user: payload?.from_user,
+          user_id: payload?.from_user,
+          from_user: payload?.to_user,
           type: "chat",
         });
       } catch (error) {

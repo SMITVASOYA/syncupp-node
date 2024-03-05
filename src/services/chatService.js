@@ -252,15 +252,17 @@ class ChatService {
         .lean();
 
       let chat_users_ids = [];
-
+      const last_message = [];
       chats?.forEach((chat) => {
         if (chat?.from_user?.toString() === user?.reference_id?.toString()) {
           chat_users_ids.push(chat?.to_user?.toString());
+          last_message.push(chat);
           return;
         } else if (
           chat?.to_user?.toString() === user?.reference_id?.toString()
         ) {
           chat_users_ids.push(chat?.from_user?.toString());
+          last_message.push(chat);
           return;
         }
         return;
@@ -289,7 +291,9 @@ class ChatService {
             { status: { $ne: "confirm_pending" } },
           ],
         })
-          .select("name first_name last_name email reference_id image_url")
+          .select(
+            "name first_name last_name email reference_id image_url is_online"
+          )
           .lean(),
       ]);
 
@@ -300,10 +304,18 @@ class ChatService {
             noti?.from_user?.toString() === usr?.reference_id?.toString() &&
             noti?.user_id?.toString() === user?.reference_id?.toString()
         );
-        console.log(unread, 294);
         if (unread) usr["unread"] = true;
         else usr["unread"] = false;
 
+        const last_chat = last_message.find(
+          (message) =>
+            (message?.from_user?.toString() == user?.reference_id?.toString() &&
+              message?.to_user?.toString() == usr?.reference_id?.toString()) ||
+            (message?.to_user?.toString() == user?.reference_id?.toString() &&
+              message?.from_user?.toString() == usr?.reference_id?.toString())
+        );
+
+        if (last_chat) usr["last_message_date"] = last_chat?.createdAt;
         return;
       });
 
