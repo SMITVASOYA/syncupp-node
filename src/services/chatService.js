@@ -319,6 +319,8 @@ class ChatService {
         return;
       });
 
+      users.sort((a, b) => a?.createdAt - b?.createdAt);
+
       return users;
     } catch (error) {
       logger.error(`Error while fetching chat users: ${error}`);
