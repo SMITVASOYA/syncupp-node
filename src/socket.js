@@ -35,7 +35,7 @@ exports.socket_connection = (http_server) => {
       logger.info(obj.id, 15);
       socket.join(obj.id);
       // for the Online status
-      socket.broadcast("USER_ONLINE", { user_id: obj.id });
+      socket.broadcast.emit("USER_ONLINE", { user_id: obj.id });
       await Authentication.findOneAndUpdate(
         { reference_id: obj?.id },
         { is_online: true }
@@ -49,7 +49,7 @@ exports.socket_connection = (http_server) => {
         { is_online: true },
         { new: true }
       ).lean();
-      socket.broadcast("USER_OFFLINE", { user_id: user?.reference_id });
+      socket.broadcast.emit("USER_OFFLINE", { user_id: user?.reference_id });
     });
 
     // When Data delivered
