@@ -155,12 +155,14 @@ class AuthService {
         agency_enroll = agency_enroll.toObject();
         agency_enroll.role = role;
 
-        const decodedEmail = decodeURIComponent(affiliate_email);
-        await this.affiliateReferralSignUp({
-          referral_code: affiliate_referral_code,
-          referred_to: agency_enroll.reference_id,
-          email: decodedEmail,
-        });
+        if (payload?.affiliate_referral_code) {
+          const decodedEmail = decodeURIComponent(payload?.affiliate_email);
+          await this.affiliateReferralSignUp({
+            referral_code: payload?.affiliate_referral_code,
+            referred_to: agency_enroll.reference_id,
+            email: decodedEmail,
+          });
+        }
 
         delete agency_enroll?.password;
         delete agency_enroll?.is_facebook_signup;
