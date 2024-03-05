@@ -999,9 +999,7 @@ class ActivityService {
 
       const current_activity = await Activity.findById(id).lean();
       const updateTasks = await Activity.findByIdAndUpdate(
-        {
-          _id: id,
-        },
+        id,
         {
           title,
           agenda,
@@ -1009,23 +1007,23 @@ class ActivityService {
           due_time: timeOnly,
           assign_to,
           client_id,
-          activity_status: status._id,
+          activity_status: status?._id,
         },
         { new: true, useFindAndModify: false }
       );
       const current_status = current_activity?.activity_status;
 
-      if (current_status.toString() !== status._id.toString()) {
+      if (current_status.toString() !== status?._id.toString()) {
         const referral_data = await Configuration.findOne().lean();
 
         if (
           current_status.toString() ===
             (
               await ActivityStatus.findOne({ name: "completed" }).lean()
-            )._id.toString() &&
-          (status.name === "pending" ||
-            status.name === "in_progress" ||
-            status.name === "overdue")
+            )?._id.toString() &&
+          (status?.name === "pending" ||
+            status?.name === "in_progress" ||
+            status?.name === "overdue")
         ) {
           await Activity.findOneAndUpdate(
             { _id: id },
@@ -1066,17 +1064,17 @@ class ActivityService {
             (
               await ActivityStatus.findOne({ name: "pending" }).lean()
             )._id.toString() &&
-            status.name === "completed") ||
+            status?.name === "completed") ||
           (current_status.toString() ===
             (
               await ActivityStatus.findOne({ name: "overdue" }).lean()
             )._id.toString() &&
-            status.name === "completed") ||
+            status?.name === "completed") ||
           (current_status.toString() ===
             (
               await ActivityStatus.findOne({ name: "in_progress" }).lean()
             )._id.toString() &&
-            status.name === "completed")
+            status?.name === "completed")
         ) {
           await Activity.findOneAndUpdate(
             { _id: id },
@@ -1281,9 +1279,9 @@ class ActivityService {
             (
               await ActivityStatus.findOne({ name: "completed" }).lean()
             )._id.toString() &&
-          (update_status.name === "pending" ||
-            update_status.name === "in_progress" ||
-            update_status.name === "overdue")
+          (update_status?.name === "pending" ||
+            update_status?.name === "in_progress" ||
+            update_status?.name === "overdue")
         ) {
           await Activity.findOneAndUpdate(
             { _id: id },
@@ -1325,17 +1323,17 @@ class ActivityService {
             (
               await ActivityStatus.findOne({ name: "pending" }).lean()
             )._id.toString() &&
-            update_status.name === "completed") ||
+            update_status?.name === "completed") ||
           (current_status.toString() ===
             (
               await ActivityStatus.findOne({ name: "overdue" }).lean()
             )._id.toString() &&
-            update_status.name === "completed") ||
-          (current_status.toString() ===
+            update_status?.name === "completed") ||
+          (current_status?.toString() ===
             (
               await ActivityStatus.findOne({ name: "in_progress" }).lean()
             )._id.toString() &&
-            update_status.name === "completed")
+            update_status?.name === "completed")
         ) {
           await Activity.findOneAndUpdate(
             { _id: id },
@@ -2048,7 +2046,9 @@ class ActivityService {
       //   return throwError(returnMessage("activity", "recurringDateRequired"));
 
       if (activity_type === "others" && payload?.recurring_end_date) {
-        recurring_date = moment.utc(payload?.recurring_end_date).endOf("day");
+        recurring_date = moment
+          .utc(payload?.recurring_end_date, "DD-MM-YYYY")
+          .endOf("day");
         if (!recurring_date.isSameOrAfter(start_date))
           return throwError(returnMessage("activity", "invalidRecurringDate"));
       }
@@ -2185,22 +2185,26 @@ class ActivityService {
       } else {
         status = await ActivityStatus.findOne({ name: "pending" }).lean();
       }
-
-      await Activity.findByIdAndUpdate(activity_id, {
-        activity_status: status?._id,
-        agency_id: user?.agency_id || user?.reference_id,
-        assign_by: user?.reference_id,
-        agenda,
-        assign_to,
-        title,
-        client_id,
-        internal_info,
-        meeting_start_time: start_time,
-        meeting_end_time: end_time,
-        due_date: start_date,
-        recurring_end_date: recurring_date,
-        attendees: attendees,
-      });
+      console.log(recurring_date);
+      await Activity.findByIdAndUpdate(
+        activity_id,
+        {
+          activity_status: status?._id,
+          agency_id: user?.agency_id || user?.reference_id,
+          assign_by: user?.reference_id,
+          agenda,
+          assign_to,
+          title,
+          client_id,
+          internal_info,
+          meeting_start_time: start_time,
+          meeting_end_time: end_time,
+          due_date: start_date,
+          recurring_end_date: recurring_date,
+          attendees: attendees,
+        },
+        { new: true }
+      );
 
       // --------------- Start--------------------
       let task_status = "update";

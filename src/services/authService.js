@@ -31,6 +31,7 @@ const Affiliate = require("../models/affiliateSchema");
 const Affiliate_Referral = require("../models/affiliateReferralSchema");
 const CompetitionPoint = require("../models/competitionPointSchema");
 const Agency = require("../models/agencySchema");
+const Client = require("../models/clientSchema");
 class AuthService {
   tokenGenerator = (payload) => {
     try {
