@@ -139,3 +139,12 @@ exports.leaderboard = catchAsyncError(async (req, res, next) => {
   const leaderboard = await activityService.leaderboard(req.body, req.user);
   sendResponse(res, true, undefined, leaderboard, 200);
 });
+
+// this function is used for the get the status of the attendees
+exports.assignedActivity = catchAsyncError(async (req, res, next) => {
+  const assigned_activity = await activityService.checkAnyActivitiesAssingend(
+    req.body,
+    req.user
+  );
+  sendResponse(res, true, undefined, assigned_activity, 200);
+});

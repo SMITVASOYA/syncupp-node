@@ -28,7 +28,7 @@ const activitySchema = new mongoose.Schema(
     is_deleted: { type: Boolean, default: false },
     mark_as_done: { type: Boolean, default: false },
     competition_point: { type: Number, default: 0 },
-    attandees: [{ type: mongoose.Types.ObjectId }],
+    attendees: [{ type: mongoose.Types.ObjectId }],
   },
   { timestamps: true }
 );

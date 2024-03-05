@@ -43,6 +43,7 @@ const authenticationSchema = new mongoose.Schema(
 
     last_login_date: { type: Date },
     click_count: { type: Number, default: 0 },
+    is_online: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

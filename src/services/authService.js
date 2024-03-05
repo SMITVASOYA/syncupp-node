@@ -155,12 +155,14 @@ class AuthService {
         agency_enroll = agency_enroll.toObject();
         agency_enroll.role = role;
 
-        const decodedEmail = decodeURIComponent(affiliate_email);
-        await this.affiliateReferralSignUp({
-          referral_code: affiliate_referral_code,
-          referred_to: agency_enroll.reference_id,
-          email: decodedEmail,
-        });
+        if (payload?.affiliate_referral_code) {
+          const decodedEmail = decodeURIComponent(payload?.affiliate_email);
+          await this.affiliateReferralSignUp({
+            referral_code: payload?.affiliate_referral_code,
+            referred_to: agency_enroll.reference_id,
+            email: decodedEmail,
+          });
+        }
 
         delete agency_enroll?.password;
         delete agency_enroll?.is_facebook_signup;
@@ -672,6 +674,36 @@ class AuthService {
             { new: true }
           );
         }
+      }
+
+      if (existing_Data?.role?.name === "agency") {
+        const agency_profile = await Agency.findById(
+          existing_Data?.reference_id
+        ).lean();
+        if (
+          !agency_profile?.address ||
+          agency_profile?.address === "" ||
+          !agency_profile?.state ||
+          !agency_profile?.country ||
+          !agency_profile?.city ||
+          !agency_profile?.pincode ||
+          agency_profile?.pincode === ""
+        )
+          existing_Data.profile_pending = true;
+      } else if (existing_Data?.role?.name === "client") {
+        const client_profile = await Client.findById(
+          existing_Data?.reference_id
+        ).lean();
+        if (
+          !client_profile?.address ||
+          client_profile?.address === "" ||
+          !client_profile?.state ||
+          !client_profile?.country ||
+          !client_profile?.city ||
+          !client_profile?.pincode ||
+          client_profile?.pincode === ""
+        )
+          existing_Data.profile_pending = true;
       }
 
       return this.tokenGenerator({

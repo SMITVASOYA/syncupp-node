@@ -33,7 +33,8 @@
     "oldPassRequired": "Old password is required.",
     "teamAgencyIsInactive": "Your account has been deactivate by agency.",
     "sendRefferalEmail": "Referral email send successfully.",
-    "invitationEmailSubject": "Inviation to the SyncUpp."
+    "invitationEmailSubject": "Inviation to the SyncUpp.",
+    "completeProfile": "Complete your profile first to access Syncupp."
   },
 
   "admin": {
