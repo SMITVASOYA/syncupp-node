@@ -2756,6 +2756,7 @@ class ActivityService {
         {
           $match: {
             agency_id,
+            role: { $ne: "agency" },
             $or: [{ type: "task" }, { type: "login" }],
             $and: [
               { createdAt: { $gte: new Date(start_date) } },
