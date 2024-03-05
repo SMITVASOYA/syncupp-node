@@ -286,7 +286,8 @@
     "fetchEvent": "Event fetch successfully.",
     "eventList": "Event list fetch successfully.",
     "emailAlreadyExists": "Event for email already exist.",
-    "eventUpdate": "Event updated successfully."
+    "eventUpdate": "Event updated successfully.",
+    "deleteEvent": "Event cancelled successfully."
   },
 
   "chat": {

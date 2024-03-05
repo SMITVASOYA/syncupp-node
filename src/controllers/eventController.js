@@ -7,6 +7,10 @@ const eventService = new EventService();
 
 exports.createEvent = catchAsyncError(async (req, res, next) => {
   const createEvent = await eventService.createEvent(req?.body, req?.user);
+  if (createEvent.status) {
+    // Send 409 status and error message
+    return res.status(409).json({ message: createEvent.message });
+  }
   sendResponse(
     res,
     true,
@@ -44,6 +48,12 @@ exports.updateEvent = catchAsyncError(async (req, res, next) => {
     req?.body,
     req?.user
   );
+  if (eventUpdate.status) {
+    // Send 409 status and error message
+    return res
+      .status(409)
+      .json({ message: eventUpdate.message, status: eventUpdate.status });
+  }
   sendResponse(
     res,
     true,
@@ -53,15 +63,12 @@ exports.updateEvent = catchAsyncError(async (req, res, next) => {
   );
 });
 
-exports.updateStatus = catchAsyncError(async (req, res, next) => {
-  const updateStatus = await eventService.updateStatus(
-    req?.body,
-    req.params.id
-  );
+exports.deleteEvent = catchAsyncError(async (req, res, next) => {
+  const updateStatus = await eventService.deleteEvent(req.params.id);
   sendResponse(
     res,
     true,
-    returnMessage("activity", "updateStatus"),
+    returnMessage("event", "deleteEvent"),
     updateStatus,
     statusCode.success
   );
