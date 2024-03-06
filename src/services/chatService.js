@@ -147,7 +147,6 @@ class ChatService {
           }).lean(),
           Team_Client.distinct("_id", { client_id: user?.reference_id }).lean(),
         ]);
-
         ids = [...team_agency_ids, ...team_client_ids];
       }
       return await this.fetchChatusers(user, ids);
@@ -165,7 +164,7 @@ class ChatService {
       const team_agency_detail = await Team_Agency.findById(
         user?.reference_id
       ).lean();
-      if (payload?.for === "agency") {
+      if (payload?.for === "team") {
         const team_agency_ids = await Team_Agency.distinct("_id", {
           agency_id: team_agency_detail?.agency_id,
           _id: { $ne: team_agency_detail._id },
@@ -202,7 +201,7 @@ class ChatService {
         user?.reference_id
       ).lean();
 
-      if (payload?.for === "client") {
+      if (payload?.for === "team") {
         const team_agency_ids = await Team_Agency.distinct("_id", {
           agency_id: team_client_detail?.client_id,
           _id: { $ne: team_client_detail._id },

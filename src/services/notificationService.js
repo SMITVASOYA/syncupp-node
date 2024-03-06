@@ -207,6 +207,49 @@ class NotificationService {
         await createAndEmitNotification(receiver_id, message_type);
       }
 
+      const createAndEmitNotification = async (
+        userId,
+        messageType,
+        messageKey,
+        dataType
+      ) => {
+        const message = replaceFields(
+          returnNotification(messageKey, messageType),
+          { ...payload }
+        );
+        const notification = await Notification.create({
+          user_id: userId,
+          type: dataType,
+          data_reference_id: id,
+          message: message,
+        });
+
+        eventEmitter(
+          "NOTIFICATION",
+          await with_unread_count(notification, userId),
+          userId
+        );
+      };
+
+      //  Add team member by client
+      if (module_name === "agencyAdded") {
+        await createAndEmitNotification(
+          payload.receiver_id,
+          "clientTeamMemberAdded",
+          "general",
+          "general"
+        );
+      }
+
+      if (module_name === "teamClientPaymentDone") {
+        await createAndEmitNotification(
+          payload.receiver_id,
+          "clientTeamPaymentDone",
+          "general",
+          "general"
+        );
+      }
+
       return;
     } catch (error) {
       logger.error(`Error while fetching agencies: ${error}`);

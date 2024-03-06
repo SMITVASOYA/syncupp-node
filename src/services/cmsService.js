@@ -15,6 +15,7 @@ const About_Us = require("../models/cms/aboutUsSchema");
 const cancellation_and_Refund = require("../models/cms/refundSchema");
 const Shipping_and_Delivery = require("../models/cms/ShippingandDeliverySchems");
 const Feature = require("../models/cms/featureSchema");
+const Home = require("../models/cms/homeSchema");
 
 class cmsService {
   updateContactUs = async (payload) => {
@@ -283,6 +284,38 @@ class cmsService {
     } catch (error) {
       console.log(error);
       logger.error(`Error while update feature CRM : ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  updateHome = async (payload) => {
+    try {
+      const { description } = payload;
+      const feature = await Home.findOne({});
+
+      await Home.findOneAndUpdate(
+        {
+          _id: feature._id,
+        },
+        { description },
+        { new: true, useFindAndModify: false }
+      );
+
+      return true;
+    } catch (error) {
+      console.log(error);
+      logger.error(`Error while update home CRM : ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  getHome = async (payload) => {
+    try {
+      const home = await Home.findOne({});
+      return home;
+    } catch (error) {
+      console.log(error);
+      logger.error(`Error while Get home CRM : ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };

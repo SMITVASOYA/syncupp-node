@@ -220,3 +220,30 @@ exports.updateFeature = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+// -------------------------------- Home --------------------------------
+// Update   Home CMS
+
+exports.updateHome = catchAsyncError(async (req, res, next) => {
+  const data = await cmsService.updateHome(req.body);
+  sendResponse(
+    res,
+    true,
+    returnMessage("cms", "homeUpdated"),
+    data,
+    statusCode.success
+  );
+});
+
+// Get   Home CMS
+
+exports.getHome = catchAsyncError(async (req, res, next) => {
+  const data = await cmsService.getHome();
+  sendResponse(
+    res,
+    true,
+    returnMessage("cms", "homeFetched"),
+    data,
+    statusCode.success
+  );
+});

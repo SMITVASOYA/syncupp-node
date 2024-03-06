@@ -244,6 +244,8 @@
   },
   "cms": {
     "contactUpdated": "Contact CRM updated successfully.",
+    "homeUpdated": "Home CRM updated successfully.",
+    "homeFetched": "Home CRM fetched successfully.",
     "contactFetched": "Contact CRM fetched successfully.",
     "privacyUpdated": "Privacy policy updated successfully.",
     "policyFetched": "Privacy Policy fetched successfully.",

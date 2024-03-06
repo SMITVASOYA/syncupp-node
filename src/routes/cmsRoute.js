@@ -19,6 +19,10 @@ const {
 // const { upload } = require("../helpers/multer");
 // adminRoute.use(protect);
 
+// Home
+adminRoute.put("/home", cmsController.updateHome);
+adminRoute.get("/home", cmsController.getHome);
+
 // Contact Us
 adminRoute.put("/contact-us", cmsController.updateContactUs);
 adminRoute.get("/contact-us", cmsController.getContactUs);
