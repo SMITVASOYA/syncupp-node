@@ -23,12 +23,21 @@ const NotificationService = require("./notificationService");
 const Agency = require("../models/agencySchema");
 const Activity_Status_Master = require("../models/masters/activityStatusMasterSchema");
 const notificationService = new NotificationService();
+const EventService = require("../services/eventService");
+const eventService = new EventService();
 
 class ActivityService {
   createTask = async (payload, user) => {
     try {
-      const { title, agenda, due_date, assign_to, client_id, mark_as_done } =
-        payload;
+      const {
+        title,
+        agenda,
+        due_date,
+        assign_to,
+        client_id,
+        mark_as_done,
+        tags,
+      } = payload;
       let agency_id;
       if (user.role.name === "agency") {
         agency_id = user?.reference_id;
@@ -66,6 +75,7 @@ class ActivityService {
         activity_status: status._id,
         activity_type: type._id,
         agency_id,
+        tags,
       });
       const added_task = await newTask.save();
 
@@ -285,6 +295,15 @@ class ActivityService {
               $options: "i",
             },
           },
+          {
+            tags: {
+              $elemMatch: {
+                $regex: payload.search.toLowerCase(),
+                $options: "i",
+              },
+            },
+          },
+
           // {
           //   assigned_by_name: {
           //     $regex: searchObj.search,
@@ -2658,7 +2677,7 @@ class ActivityService {
         // }
 
         let activity_array = [];
-
+        const event = await eventService.eventList(payload, user);
         activity.forEach((act) => {
           if (act?.activity_type?.name === "task") return;
           if (
@@ -2668,6 +2687,7 @@ class ActivityService {
             !payload?.filter
           ) {
             // this will give the activity based on the filter selected and recurring date activity
+
             if (payload?.filter?.date === "period") {
               act.recurring_end_date = moment
                 .utc(payload?.filter?.end_date, "DD-MM-YYYY")
@@ -2685,9 +2705,35 @@ class ActivityService {
             start: act?.meeting_start_time,
             end: act?.meeting_end_time,
             status: act?.activity_status?.name,
+            type: "activity",
           };
+
           activity_array.push(obj);
         });
+
+        // for event in calender view
+        if (!payload?.given_date) {
+          event.forEach((event) => {
+            if (payload?.filter?.date === "period") {
+              event.recurring_end_date = moment
+                .utc(payload?.filter?.end_date, "DD-MM-YYYY")
+                .endOf("day");
+            }
+            const event_meetings = this.generateEventTimes(event);
+            // let obj = {
+            //   id: event_meetings._id,
+            //   title: event_meetings.title,
+            //   description: event_meetings.agenda,
+            //   allDay: false,
+            //   type: "event",
+            //   start: event_meetings.event_start_time,
+            //   end: event_meetings.event_end_time,
+            // };
+            activity_array = [...activity_array, ...event_meetings];
+
+            // activity_array.push(obj);
+          });
+        }
         return activity_array;
       } else {
         [activity, total_activity] = await Promise.all([
@@ -2740,6 +2786,33 @@ class ActivityService {
     return meetingTimes;
   };
 
+  // this function is used for the only generate the calandar view objects only for event
+  // because we need to generate the between dates from the start and recurring date
+  generateEventTimes = (activity_obj) => {
+    const meetingTimes = [];
+    let current_meeting_start = moment.utc(activity_obj?.event_start_time);
+    const meeting_end = moment.utc(activity_obj?.event_end_time);
+    const recurring_end = moment.utc(activity_obj?.recurring_end_date);
+
+    // Generate event times till recurring end time
+    while (current_meeting_start.isBefore(recurring_end)) {
+      const currentMeetingEnd = moment
+        .utc(current_meeting_start)
+        .add(meeting_end.diff(activity_obj?.event_start_time), "milliseconds");
+      meetingTimes.push({
+        id: activity_obj?._id,
+        title: activity_obj?.title,
+        description: activity_obj?.agenda,
+        allDay: false,
+        start: current_meeting_start.format(),
+        end: currentMeetingEnd.format(),
+        type: "event",
+      });
+      current_meeting_start.add(1, "day"); // Increment event start time by one day
+    }
+
+    return meetingTimes;
+  };
   // Overdue crone Job
 
   overdueCronJob = async () => {

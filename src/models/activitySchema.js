@@ -20,6 +20,11 @@ const activitySchema = new mongoose.Schema(
     meeting_start_time: { type: Date },
     meeting_end_time: { type: Date },
     recurring_end_date: { type: Date },
+    tags: [
+      {
+        type: String,
+      },
+    ],
     activity_status: {
       type: mongoose.Types.ObjectId,
       ref: "activity_status_master",

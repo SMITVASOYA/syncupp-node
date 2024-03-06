@@ -217,6 +217,217 @@ class ScheduleEvent {
   //event list with filter
   eventList = async (payload, user) => {
     try {
+      if (!payload.pagination) {
+        return await this.eventListWithOutPaination(payload, user);
+      }
+      let queryObj = {
+        is_deleted: false,
+        $or: [
+          { created_by: user.reference_id }, // Match based on created_by id
+          { email: user.email }, // Optionally match based on user's email
+        ],
+      };
+
+      const filter = {
+        $match: {},
+      };
+      if (payload?.filter) {
+        if (payload?.filter?.date === "today") {
+          filter["$match"] = {
+            ...filter["$match"],
+            due_date: { $eq: new Date(moment.utc().startOf("day")) },
+          };
+        } else if (payload?.filter?.date === "tomorrow") {
+          filter["$match"] = {
+            ...filter["$match"],
+            due_date: {
+              $eq: new Date(moment.utc().add(1, "day").startOf("day")),
+            },
+          };
+        } else if (payload?.filter?.date === "this_week") {
+          filter["$match"] = {
+            ...filter["$match"],
+            $and: [
+              {
+                due_date: { $gte: new Date(moment.utc().startOf("week")) },
+              },
+              {
+                due_date: { $lte: new Date(moment.utc().endOf("week")) },
+              },
+            ],
+          };
+        } else if (payload?.filter?.date === "period") {
+          // need the start and end date to fetch the data between 2 dates
+
+          if (
+            !(payload?.filter?.start_date && payload?.filter?.end_date) &&
+            payload?.filter?.start_date !== "" &&
+            payload?.filter?.end_date !== ""
+          )
+            return throwError(
+              returnMessage("activity", "startEnddateRequired")
+            );
+
+          const start_date = moment
+            .utc(payload?.filter?.start_date, "DD-MM-YYYY")
+            .startOf("day");
+          const end_date = moment
+            .utc(payload?.filter?.end_date, "DD-MM-YYYY")
+            .endOf("day");
+
+          if (end_date.isBefore(start_date))
+            return throwError(returnMessage("activity", "invalidDate"));
+
+          filter["$match"] = {
+            ...filter["$match"],
+            $or: [
+              {
+                $and: [
+                  { due_date: { $gte: new Date(start_date) } },
+                  { due_date: { $lte: new Date(end_date) } },
+                ],
+              },
+              {
+                $and: [
+                  { due_date: { $gte: new Date(start_date) } },
+                  { recurring_end_date: { $lte: new Date(end_date) } },
+                ],
+              },
+            ],
+          };
+        }
+        if (
+          payload?.filter?.activity_type &&
+          payload?.filter?.activity_type !== ""
+        ) {
+          const activity_type = await ActivityType.findOne({
+            name: payload?.filter?.activity_type,
+          })
+            .select("_id")
+            .lean();
+
+          if (!activity_type)
+            return throwError(
+              returnMessage("activity", "activityTypeNotFound"),
+              statusCode.notFound
+            );
+
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_type: activity_type?._id,
+          };
+        }
+      }
+      if (payload.search && payload.search !== "") {
+        queryObj["$or"] = [
+          {
+            title: {
+              $regex: payload.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+
+          {
+            agenda: {
+              $regex: payload.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            email: {
+              $elemMatch: {
+                $regex: payload.search.toLowerCase(),
+                $options: "i",
+              },
+            },
+          },
+        ];
+
+        const keywordType = getKeywordType(payload.search);
+        if (keywordType === "number") {
+          const numericKeyword = parseInt(payload.search);
+
+          queryObj["$or"].push({
+            revenue_made: numericKeyword,
+          });
+        } else if (keywordType === "date") {
+          const dateKeyword = new Date(payload.search);
+          queryObj["$or"].push({ due_date: dateKeyword });
+          queryObj["$or"].push({ due_time: dateKeyword });
+          queryObj["$or"].push({ event_start_time: dateKeyword });
+          queryObj["$or"].push({ event_end_time: dateKeyword });
+          queryObj["$or"].push({ recurring_end_date: dateKeyword });
+        }
+      }
+      const pagination = paginationObject(payload);
+      const eventPipeline = [
+        filter,
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "created_by",
+            foreignField: "reference_id",
+            as: "agency_Data",
+            pipeline: [
+              {
+                $project: {
+                  name: 1,
+                  first_name: 1,
+                  last_name: 1,
+                  agency_name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: { path: "$agency_Data", preserveNullAndEmptyArrays: true },
+        },
+
+        { $match: queryObj },
+
+        {
+          $project: {
+            contact_number: 1,
+            title: 1,
+            due_time: 1,
+            due_date: 1,
+            createdAt: 1,
+            agenda: 1,
+            agency_name: "$agency_Data.agency_name",
+            event_start_time: 1,
+            event_end_time: 1,
+            recurring_end_date: 1,
+            email: 1,
+          },
+        },
+      ];
+      const event = await Event.aggregate(eventPipeline)
+        .sort(pagination.sort)
+        .skip(pagination.skip)
+        .limit(pagination.result_per_page);
+
+      const totalEventCount = await Event.aggregate(eventPipeline);
+
+      // Calculating total pages
+      const pages = Math.ceil(
+        totalEventCount.length / pagination.result_per_page
+      );
+
+      return {
+        event,
+        page_count: pages,
+      };
+    } catch (error) {
+      logger.error(`Error while fetching  event, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  eventListWithOutPaination = async (payload, user) => {
+    try {
       let queryObj = {
         is_deleted: false,
         $or: [
@@ -335,7 +546,6 @@ class ScheduleEvent {
           queryObj["$or"].push({ recurring_end_date: dateKeyword });
         }
       }
-      const pagination = paginationObject(payload);
       const eventPipeline = [
         filter,
         {
@@ -375,26 +585,10 @@ class ScheduleEvent {
             event_start_time: 1,
             event_end_time: 1,
             recurring_end_date: 1,
-            email: 1,
           },
         },
       ];
-      const event = await Event.aggregate(eventPipeline)
-        .sort(pagination.sort)
-        .skip(pagination.skip)
-        .limit(pagination.result_per_page);
-
-      const totalEventCount = await Event.aggregate(eventPipeline);
-
-      // Calculating total pages
-      const pages = Math.ceil(
-        totalEventCount.length / pagination.result_per_page
-      );
-
-      return {
-        event,
-        page_count: pages,
-      };
+      return await Event.aggregate(eventPipeline);
     } catch (error) {
       logger.error(`Error while fetching  event, ${error}`);
       throwError(error?.message, error?.statusCode);
