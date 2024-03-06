@@ -46,7 +46,7 @@ exports.socket_connection = (http_server) => {
       // for the Offline status
       const user = await Authentication.findByIdAndUpdate(
         payload?.user_id,
-        { is_online: true },
+        { is_online: false },
         { new: true }
       ).lean();
       socket.broadcast.emit("USER_OFFLINE", { user_id: user?.reference_id });
