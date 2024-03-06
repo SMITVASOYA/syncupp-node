@@ -14,6 +14,7 @@ const notificationSchema = new mongoose.Schema(
         "task",
         "activity",
         "deleted",
+        "general",
       ],
     },
     data_reference_id: { type: mongoose.Types.ObjectId },
@@ -21,6 +22,7 @@ const notificationSchema = new mongoose.Schema(
     is_read: { type: Boolean, default: false },
     is_deleted: { type: Boolean, default: false },
     from_user: { type: mongoose.Types.ObjectId },
+    user_type: { type: String },
   },
   { timestamps: true }
 );

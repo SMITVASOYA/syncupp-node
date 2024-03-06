@@ -61,7 +61,7 @@ exports.socket_connection = (http_server) => {
     // this Socket event is used to send message to the Other user
     socket.on("SEND_MESSAGE", async (payload) => {
       try {
-        const { from_user, to_user, message } = payload;
+        const { from_user, to_user, message, user_type } = payload;
 
         const new_chat = await Chat.create({ from_user, to_user, message });
 
@@ -71,6 +71,7 @@ exports.socket_connection = (http_server) => {
           from_user,
           data_reference_id: new_chat?._id,
           message,
+          user_type,
         });
 
         // emiting the message to the sender to solve multiple device synchronous
@@ -80,6 +81,7 @@ exports.socket_connection = (http_server) => {
           message,
           createdAt: new_chat.createdAt,
           _id: new_chat?._id,
+          user_type,
         });
 
         socket.to(to_user).emit("RECEIVED_MESSAGE", {
@@ -88,6 +90,7 @@ exports.socket_connection = (http_server) => {
           message,
           createdAt: new_chat.createdAt,
           _id: new_chat?._id,
+          user_type,
         });
       } catch (error) {
         logger.error(`Error while sending the message: ${error}`);

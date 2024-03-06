@@ -24,7 +24,10 @@ const authService = new AuthService();
 const Activity_Status = require("../models/masters/activityStatusMasterSchema");
 const Activity = require("../models/activitySchema");
 const SheetManagement = require("../models/sheetManagementSchema");
+const NotificationService = require("./notificationService");
+const notificationService = new NotificationService();
 const moment = require("moment");
+const Client = require("../models/clientSchema");
 
 class TeamMemberService {
   // Add Team Member by agency or client
@@ -178,6 +181,18 @@ class TeamMemberService {
           reference_id: new_team_client?._id,
           status: "confirm_pending",
         });
+
+        // ------------------  Notifications ----------------
+
+        await notificationService.addNotification({
+          module_name: "agencyAdded",
+          member_name: first_name + " " + last_name,
+          client_name: user?.first_name + " " + user?.last_name,
+          receiver_id: agency_id,
+        });
+
+        // ------------------  Notifications ----------------
+
         return;
       } else {
         if (team_client_exist?.role?.name !== "team_client")
@@ -339,6 +354,21 @@ class TeamMemberService {
             { new: true }
           );
           const welcome_mail = welcomeMail(client_team_member?.name);
+
+          // ------------------  Notifications ----------------
+          console.log(client_id);
+          const clientData = await Authentication.findOne({
+            reference_id: client_id,
+          });
+
+          console.log(clientData);
+          await notificationService.addNotification({
+            module_name: "teamClientPaymentDone",
+            member_name: client_team_member?.name,
+            client_name: clientData?.first_name + " " + clientData?.last_name,
+            receiver_id: agency_id,
+          });
+          // ------------------  Notifications ----------------
 
           await sendEmail({
             email: client_team_member?.email,

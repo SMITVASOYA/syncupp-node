@@ -78,5 +78,10 @@
     "create": "Hi ${receiver_name}! An invoice with number ${invoice_number} has been created by ${sender_name}.",
     "invoiceDue": "Hi ${receiver_name}! This is a reminder that invoice number ${invoice_number} from ${sender_name} is due for payment. The due date is approaching, and we request you to process the payment at your earliest convenience.",
     "invoicePaid": "Hi ${receiver_name}! Invoice number ${invoice_number} from ${sender_name} has been paid. Thank you for your prompt payment."
+  },
+
+  "general": {
+    "clientTeamMemberAdded": "New team member request received from client ${client_name}",
+    "clientTeamPaymentDone": "New team member ${member_name} payment done."
   }
 }
