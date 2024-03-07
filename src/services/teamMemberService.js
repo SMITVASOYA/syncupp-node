@@ -185,7 +185,8 @@ class TeamMemberService {
         // ------------------  Notifications ----------------
 
         await notificationService.addNotification({
-          module_name: "agencyAdded",
+          module_name: "general",
+          action_name: "agencyAdded",
           member_name: first_name + " " + last_name,
           client_name: user?.first_name + " " + user?.last_name,
           receiver_id: agency_id,
@@ -361,7 +362,8 @@ class TeamMemberService {
           });
 
           await notificationService.addNotification({
-            module_name: "teamClientPaymentDone",
+            module_name: "general",
+            action_name: "teamClientPaymentDone",
             member_name: client_team_member?.name,
             client_name: clientData?.first_name + " " + clientData?.last_name,
             receiver_id: agency_id,

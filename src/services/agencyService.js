@@ -277,7 +277,7 @@ class AgencyService {
               localField: "_id",
               foreignField: "reference_id",
               as: "statusName",
-              pipeline: [{ $project: { is_deleted: 1 } }],
+              pipeline: [{ $project: { is_deleted: 1, status: 1 } }],
             },
           },
           {
@@ -290,7 +290,8 @@ class AgencyService {
             $match: {
               "agency_ids.agency_id": user.reference_id,
               "agency_ids.status": "active",
-              "statusName.is_deleted": { $eq: false }, // Exclude documents where is_deleted is true
+              "statusName.is_deleted": { $eq: false },
+              "statusName.status": "confirmed",
             },
           },
           {
@@ -304,7 +305,7 @@ class AgencyService {
               localField: "_id",
               foreignField: "reference_id",
               as: "statusName",
-              pipeline: [{ $project: { is_deleted: 1 } }],
+              pipeline: [{ $project: { is_deleted: 1, status: 1 } }],
             },
           },
           {
@@ -316,7 +317,8 @@ class AgencyService {
           {
             $match: {
               agency_id: user.reference_id,
-              "statusName.is_deleted": { $eq: false }, // Exclude documents where is_deleted is true
+              "statusName.is_deleted": { $eq: false },
+              "statusName.status": "confirmed",
             },
           },
           {
@@ -331,7 +333,7 @@ class AgencyService {
               localField: "_id",
               foreignField: "reference_id",
               as: "statusName",
-              pipeline: [{ $project: { is_deleted: 1 } }],
+              pipeline: [{ $project: { is_deleted: 1, status: 1 } }],
             },
           },
           {
@@ -348,7 +350,8 @@ class AgencyService {
                 $gte: startOfMonth.toDate(),
                 $lte: endOfMonth.toDate(),
               },
-              "statusName.is_deleted": { $eq: false }, // Exclude documents where is_deleted is true
+              "statusName.is_deleted": { $eq: false },
+              "statusName.status": "confirmed",
             },
           },
           {
@@ -401,7 +404,7 @@ class AgencyService {
           {
             $match: {
               agency_id: user.reference_id,
-              "statusName.name": { $eq: "pending" }, // Fix: Change $nq to $ne
+              "statusName.name": { $eq: "pending" },
               is_deleted: false,
             },
           },
@@ -428,7 +431,7 @@ class AgencyService {
           {
             $match: {
               agency_id: user.reference_id,
-              "statusName.name": { $eq: "completed" }, // Fix: Change $nq to $ne
+              "statusName.name": { $eq: "completed" },
               is_deleted: false,
             },
           },
@@ -455,7 +458,7 @@ class AgencyService {
           {
             $match: {
               agency_id: user.reference_id,
-              "statusName.name": { $eq: "in_progress" }, // Fix: Change $nq to $ne
+              "statusName.name": { $eq: "in_progress" },
               is_deleted: false,
             },
           },
@@ -483,7 +486,7 @@ class AgencyService {
             $match: {
               agency_id: user.reference_id,
               is_deleted: false,
-              "statusName.name": { $eq: "overdue" }, // Fix: Change $nq to $ne
+              "statusName.name": { $eq: "overdue" },
             },
           },
           {
@@ -542,7 +545,7 @@ class AgencyService {
           {
             $match: {
               agency_id: new mongoose.Types.ObjectId(user.reference_id),
-              "invoiceStatus.name": { $eq: "paid" }, // Exclude documents with status "draft"
+              "invoiceStatus.name": { $eq: "paid" },
               is_deleted: false,
             },
           },
@@ -574,7 +577,7 @@ class AgencyService {
           {
             $match: {
               agency_id: new mongoose.Types.ObjectId(user.reference_id),
-              "invoiceStatus.name": { $eq: "overdue" }, // Exclude documents with status "draft"
+              "invoiceStatus.name": { $eq: "overdue" },
               is_deleted: false,
             },
           },

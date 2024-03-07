@@ -24,6 +24,8 @@ const sendEmail = require("../helpers/sendEmail");
 const Configuration = require("../models/configurationSchema");
 const CompetitionPoint = require("../models/competitionPointSchema");
 const ReferralHistory = require("../models/referralHistorySchema");
+const NotificationService = require("./notificationService");
+const notificationService = new NotificationService();
 const Agency = require("../models/agencySchema");
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -285,14 +287,41 @@ class PaymentService {
         .update(razorpay_order_id + "|" + razorpay_payment_id, "utf-8")
         .digest("hex");
 
+      var memberData = await Authentication.findOne({
+        reference_id: payload?.user_id,
+      });
+
       if (
         expected_signature_1 === razorpay_signature ||
         expected_signature_2 === razorpay_signature
       ) {
         const status_change = await this.statusChange(payload);
         // if (!status_change.success) return { success: false };
+
+        // ---------------------- Notification ----------------------
+
+        await notificationService.addNotification({
+          receiver_id: payload?.agency_id,
+          team_member_name: memberData.first_name + " " + memberData.last_name,
+          module_name: "general",
+          action_name: "memberPaymentDone",
+        });
+
+        // ---------------------- Notification ----------------------
+
         return { success: true, message: status_change?.message };
       }
+
+      // ---------------------- Notification ----------------------
+
+      await notificationService.addNotification({
+        receiver_id: payload?.agency_id,
+        team_member_name: memberData.first_name + " " + memberData.last_name,
+        module_name: "general",
+        action_name: "memberPaymentFail",
+      });
+
+      // ---------------------- Notification ----------------------
 
       // await this.deleteUsers(payload);
       return { success: false };

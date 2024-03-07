@@ -3,7 +3,8 @@
     "createCallMeeting": {
       "clientMessage": "Hi ${client_name}! You have a ${activity_type} titled ${title} on ${due_date} at ${meeting_start_time}. Check the agenda: ${agenda}. See you there!",
       "assignToMessage": "Hey ${assigned_to_name}! You're assigned to a ${activity_type} ${title} on ${due_date} from ${meeting_start_time} to ${meeting_end_time}. Agenda: ${agenda}. Be ready!",
-      "assignByMessage": "Hey ${activityData.assign_by}! You just assigned ${activityData.assign_to} to a ${activityData.activity_type} ${activityData.title} on ${formatDate(activityData.due_date)} from ${formatDate(activityData.meeting_start_time)} to ${formatDate(activityData.meeting_end_time)}"
+      "assignByMessage": "Hey ${activityData.assign_by}! You just assigned ${activityData.assign_to} to a ${activityData.activity_type} ${activityData.title} on ${formatDate(activityData.due_date)} from ${formatDate(activityData.meeting_start_time)} to ${formatDate(activityData.meeting_end_time)}",
+      "attendeesMessage": "You have a ${activity_type} titled ${title} on ${due_date} at ${meeting_start_time}. Check the agenda: ${agenda}. See you there!"
     },
     "activityUpdated": {
       "clientMessage": "Updated: Hi ${client_name}! Your ${activity_type} titled ${title} on ${due_date} at ${meeting_start_time}. Check the agenda: ${agenda}. See you there!",
@@ -81,7 +82,9 @@
   },
 
   "general": {
-    "clientTeamMemberAdded": "New team member request received from client ${client_name}",
-    "clientTeamPaymentDone": "New team member ${member_name} payment done."
+    "clientTeamMemberAdded": "Client member request received from client ${client_name}",
+    "clientTeamJoined": "Team member ${member_name} joined.",
+    "clientTeamPaymentDone": "Team member ${member_name} payment done.",
+    "clientTeamPaymentFail": "Team member ${member_name} payment fail."
   }
 }

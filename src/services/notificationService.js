@@ -30,6 +30,7 @@ class NotificationService {
 
       // Activity
       if (module_name === "activity") {
+        const { attendees } = payload;
         let message_type;
         if (activity_type_action === "create_call_meeting")
           message_type = "createCallMeeting";
@@ -81,6 +82,14 @@ class NotificationService {
           message_type,
           "assignToMessage"
         );
+
+        attendees.map(async (item) => {
+          await createAndEmitNotification(
+            item,
+            message_type,
+            "attendeesMessage"
+          );
+        });
       }
 
       // Task
@@ -227,23 +236,49 @@ class NotificationService {
         );
       };
 
-      //  Add team member by client
-      if (module_name === "agencyAdded") {
-        await createAndEmitNotification(
-          payload.receiver_id,
-          "clientTeamMemberAdded",
-          "general",
-          "general"
-        );
-      }
+      if (module_name === "general") {
+        const { action_name } = payload;
+        //  Add team member by client
+        if (action_name === "agencyAdded") {
+          await createAndEmitNotification(
+            payload.receiver_id,
+            "clientTeamMemberAdded",
+            "general",
+            "general"
+          );
+        }
+        // client Team member password set by agency
 
-      if (module_name === "teamClientPaymentDone") {
-        await createAndEmitNotification(
-          payload.receiver_id,
-          "clientTeamPaymentDone",
-          "general",
-          "general"
-        );
+        if (action_name === "teamClientPaymentDone") {
+          await createAndEmitNotification(
+            payload.receiver_id,
+            "clientTeamJoined",
+            "general",
+            "general"
+          );
+        }
+
+        //  client Member payment done
+
+        if (action_name === "memberPaymentDone") {
+          await createAndEmitNotification(
+            payload.receiver_id,
+            "clientTeamPaymentDone",
+            "general",
+            "general"
+          );
+        }
+
+        // client  Member payment Fail
+
+        if (action_name === "memberPaymentFail") {
+          await createAndEmitNotification(
+            payload.receiver_id,
+            "clientTeamPaymentFail",
+            "general",
+            "general"
+          );
+        }
       }
 
       return;
