@@ -1482,6 +1482,8 @@ class ActivityService {
             recurring_end_date: 1,
             assign_to: 1,
             client_id: 1,
+            tags: 1,
+            attendees: 1,
           },
         },
       ];
@@ -1511,7 +1513,10 @@ class ActivityService {
         task_status = "pending";
         emailTempKey = "activityInPending";
       }
-
+      if (payload.status == "overdue") {
+        task_status = "overdue";
+        emailTempKey = "activityInOverdue";
+      }
       if (getTask[0].activity_type === "task") {
         let data = {
           TaskTitle: "Updated Task status",
@@ -1594,6 +1599,7 @@ class ActivityService {
               "HH:mm"
             ),
             due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
+            tags: getTask[0].tags,
           },
           id
         );
@@ -2834,8 +2840,10 @@ class ActivityService {
       }).populate("activity_type");
 
       for (const activity of overdueActivities) {
-        activity.activity_status = overdue._id;
-        await activity.save();
+        if (activity.activity_type.name === "task") {
+          activity.activity_status = overdue._id;
+          await activity.save();
+        }
       }
 
       overdueActivities.forEach(async (item) => {
@@ -2848,43 +2856,42 @@ class ActivityService {
         );
 
         if (item.activity_type.name !== "task") {
-          await notificationService.addNotification({
-            module_name: "activity",
-            activity_type_action: "overdue",
-            title: item.title,
-            activity_type:
-              item?.activity_type.name === "others"
-                ? "activity"
-                : "call meeting",
-          });
-
-          const activity_email_template = activityTemplate({
-            title: item.title,
-            agenda: item.agenda,
-            activity_type: item.activity_type.name,
-            meeting_end_time: moment(item.meeting_end_time).format("HH:mm"),
-            meeting_start_time: moment(item.meeting_start_time).format("HH:mm"),
-            recurring_end_date: item?.recurring_end_date
-              ? moment(item.recurring_end_date).format("DD-MM-YYYY")
-              : null,
-            due_date: moment(item.due_date).format("DD-MM-YYYY"),
-            status: "overdue",
-            assigned_by_name:
-              assign_by_data.first_name + " " + assign_by_data.last_name,
-            client_name: client_data.first_name + " " + client_data.last_name,
-            assigned_to_name:
-              assign_to_data.first_name + " " + assign_to_data.last_name,
-          });
-          sendEmail({
-            email: client_data?.email,
-            subject: returnMessage("emailTemplate", "activityInOverdue"),
-            message: activity_email_template,
-          });
-          sendEmail({
-            email: assign_to_data?.email,
-            subject: returnMessage("emailTemplate", "activityInOverdue"),
-            message: activity_email_template,
-          });
+          // await notificationService.addNotification({
+          //   module_name: "activity",
+          //   activity_type_action: "overdue",
+          //   title: item.title,
+          //   activity_type:
+          //     item?.activity_type.name === "others"
+          //       ? "activity"
+          //       : "call meeting",
+          // });
+          // const activity_email_template = activityTemplate({
+          //   title: item.title,
+          //   agenda: item.agenda,
+          //   activity_type: item.activity_type.name,
+          //   meeting_end_time: moment(item.meeting_end_time).format("HH:mm"),
+          //   meeting_start_time: moment(item.meeting_start_time).format("HH:mm"),
+          //   recurring_end_date: item?.recurring_end_date
+          //     ? moment(item.recurring_end_date).format("DD-MM-YYYY")
+          //     : null,
+          //   due_date: moment(item.due_date).format("DD-MM-YYYY"),
+          //   status: "overdue",
+          //   assigned_by_name:
+          //     assign_by_data.first_name + " " + assign_by_data.last_name,
+          //   client_name: client_data.first_name + " " + client_data.last_name,
+          //   assigned_to_name:
+          //     assign_to_data.first_name + " " + assign_to_data.last_name,
+          // });
+          // sendEmail({
+          //   email: client_data?.email,
+          //   subject: returnMessage("emailTemplate", "activityInOverdue"),
+          //   message: activity_email_template,
+          // });
+          // sendEmail({
+          //   email: assign_to_data?.email,
+          //   subject: returnMessage("emailTemplate", "activityInOverdue"),
+          //   message: activity_email_template,
+          // });
         } else {
           await notificationService.addNotification({
             module_name: "task",

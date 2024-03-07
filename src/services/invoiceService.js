@@ -294,6 +294,13 @@ class InvoiceService {
         agency_id: user_id,
         ...(client_id && { client_id: new ObjectId(client_id) }),
       };
+      // Add date range conditions
+      if (searchObj.start_date && searchObj.end_date) {
+        queryObj.invoice_date = {
+          $gte: new Date(searchObj.start_date),
+          $lte: new Date(searchObj.end_date),
+        };
+      }
 
       if (searchObj.search && searchObj.search !== "") {
         queryObj["$or"] = [
@@ -332,12 +339,23 @@ class InvoiceService {
 
         const keywordType = getKeywordType(searchObj.search);
         if (keywordType === "number") {
-          const numericKeyword = parseInt(searchObj.search);
+          const numericKeyword = parseFloat(searchObj.search);
 
           queryObj["$or"].push({
             total: numericKeyword,
           });
         }
+      }
+
+      if (searchObj.client_name && searchObj.client_name !== "") {
+        const clientId = new ObjectId(searchObj.client_name); // Convert string to ObjectId
+        queryObj["customerInfo.reference_id"] = clientId;
+      }
+      if (searchObj.status_name && searchObj.status_name !== "") {
+        queryObj["status.name"] = {
+          $regex: searchObj.status_name.toLowerCase(),
+          $options: "i",
+        };
       }
 
       const pagination = paginationObject(searchObj);
@@ -367,6 +385,7 @@ class InvoiceService {
                   name: 1,
                   first_name: 1,
                   last_name: 1,
+                  reference_id: 1,
                   client_fullName: {
                     $concat: ["$first_name", " ", "$last_name"],
                   },
@@ -413,6 +432,7 @@ class InvoiceService {
             total: 1,
             createdAt: 1,
             updatedAt: 1,
+            client_id: "$customerInfo.reference_id",
           },
         },
       ];
@@ -854,6 +874,15 @@ class InvoiceService {
         client_id: user_id,
         agency_id: new ObjectId(agency_id),
       };
+
+      // Add date range conditions
+      if (searchObj.start_date && searchObj.end_date) {
+        queryObj.invoice_date = {
+          $gte: new Date(searchObj.start_date),
+          $lte: new Date(searchObj.end_date),
+        };
+      }
+
       if (searchObj.search && searchObj.search !== "") {
         queryObj["$or"] = [
           {
@@ -872,11 +901,18 @@ class InvoiceService {
 
         const keywordType = getKeywordType(searchObj.search);
         if (keywordType === "number") {
-          const numericKeyword = parseInt(searchObj.search);
+          const numericKeyword = parseFloat(searchObj.search);
           queryObj["$or"].push({
             total: numericKeyword,
           });
         }
+      }
+
+      if (searchObj.status_name && searchObj.status_name !== "") {
+        queryObj["status.name"] = {
+          $regex: searchObj.status_name.toLowerCase(),
+          $options: "i",
+        };
       }
 
       const pagination = paginationObject(searchObj);
