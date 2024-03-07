@@ -148,3 +148,14 @@ exports.assignedActivity = catchAsyncError(async (req, res, next) => {
   );
   sendResponse(res, true, undefined, assigned_activity, 200);
 });
+
+exports.tagList = catchAsyncError(async (req, res, next) => {
+  let tagList = await activityService.tagList(req.body, req.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("activity", "tagsList"),
+    tagList,
+    statusCode.success
+  );
+});

@@ -16,14 +16,12 @@ class NotificationService {
       payload;
 
     if (payload.agenda) payload.agenda = extractTextFromHtml(agenda);
-    console.log(payload, "fsggeeg");
     try {
       const with_unread_count = async (notification_data, user_id) => {
         const un_read_count = await Notification.countDocuments({
           user_id: user_id,
           is_read: false,
         });
-        console.log(un_read_count);
         return {
           notification: notification_data,
           un_read_count: un_read_count,
@@ -88,7 +86,6 @@ class NotificationService {
       // Task
 
       if (module_name === "task") {
-        console.log("first");
         let type = "task";
         let message_type;
         if (activity_type_action === "createTask") message_type = "createTask";
@@ -147,7 +144,6 @@ class NotificationService {
 
       if (module_name === "agreement") {
         const { action_type, receiver_id, sender_id } = payload;
-        console.log(sender_id);
         let message_type;
         if (action_type === "create") message_type = "create";
         if (action_type === "statusUpdate") message_type = "statusUpdate";

@@ -356,12 +356,10 @@ class TeamMemberService {
           const welcome_mail = welcomeMail(client_team_member?.name);
 
           // ------------------  Notifications ----------------
-          console.log(client_id);
           const clientData = await Authentication.findOne({
             reference_id: client_id,
           });
 
-          console.log(clientData);
           await notificationService.addNotification({
             module_name: "teamClientPaymentDone",
             member_name: client_team_member?.name,

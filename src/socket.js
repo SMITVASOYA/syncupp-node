@@ -31,14 +31,14 @@ exports.socket_connection = (http_server) => {
 
     // For user joined
     socket.on("ROOM", async (obj) => {
-      console.log(31, obj);
       logger.info(obj.id, 15);
       socket.join(obj.id);
       // for the Online status
       socket.broadcast.emit("USER_ONLINE", { user_id: obj.id });
       await Authentication.findOneAndUpdate(
         { reference_id: obj?.id },
-        { is_online: true }
+        { is_online: true },
+        { new: true }
       );
     });
 
@@ -55,7 +55,6 @@ exports.socket_connection = (http_server) => {
     // When Data delivered
     socket.on("CONFIRMATION", (payload) => {
       logger.info(`Event Confirmation : ${payload.name} ${payload.id}`);
-      console.log(JSON.stringify(payload));
     });
 
     // this Socket event is used to send message to the Other user
@@ -125,7 +124,7 @@ exports.socket_connection = (http_server) => {
         }).lean();
 
         if (is_message_seen)
-          socket.to(payload?.from_user.toString()).emit("CANNOT_DELETE", {
+          socket.to(payload?.from_user?.toString()).emit("CANNOT_DELETE", {
             error: returnMessage("chat", "canNotDelete"),
           });
 
@@ -172,14 +171,14 @@ exports.socket_connection = (http_server) => {
       try {
         const { from_user, to_user, buffer } = payload;
         if (Buffer.byteLength(buffer) / (1024 * 1024) > 2)
-          socket.to(from_user.toString()).emit("FILE_TO_LARGE", {
+          socket.to(from_user?.toString()).emit("FILE_TO_LARGE", {
             error: returnMessage("chat", "largeImage"),
           });
         const required_image_type = ["jpeg", "jpg", "png"];
         let image_obj;
         detect_file_type.fromBuffer(buffer, (error, result) => {
           if (error || !required_image_type.includes(result.ext))
-            socket.to(from_user.toString()).emit("INVALID_FORMAT", {
+            socket.to(from_user?.toString()).emit("INVALID_FORMAT", {
               error: returnMessage("chat", "invalidImageFormat"),
             });
 
@@ -206,8 +205,8 @@ exports.socket_connection = (http_server) => {
           });
 
           socket
-            .to(from_user.toString())
-            .to(to_user.toString())
+            .to(from_user?.toString())
+            .to(to_user?.toString())
             .emit("RECEIVED_IMAGE", { image_url: image_name });
         }
       } catch (error) {
@@ -221,14 +220,14 @@ exports.socket_connection = (http_server) => {
       try {
         const { from_user, to_user, buffer } = payload;
         if (Buffer.byteLength(buffer) / (1024 * 1024) > 5)
-          socket.to(from_user.toString()).emit("FILE_TO_LARGE", {
+          socket.to(from_user?.toString()).emit("FILE_TO_LARGE", {
             error: returnMessage("chat", "largeDocument"),
           });
         const required_image_type = ["pdf", "xlsx", "csv"];
         let document_obj;
         detect_file_type.fromBuffer(buffer, (error, result) => {
           if (error || !required_image_type.includes(result.ext))
-            socket.to(from_user.toString()).emit("INVALID_FORMAT", {
+            socket.to(from_user?.toString()).emit("INVALID_FORMAT", {
               error: returnMessage("chat", "invalidDocumentFormat"),
             });
 
@@ -255,8 +254,8 @@ exports.socket_connection = (http_server) => {
           });
 
           socket
-            .to(from_user.toString())
-            .to(to_user.toString())
+            .to(from_user?.toString())
+            .to(to_user?.toString())
             .emit("RECEIVED_DOCUMENT", { document_url: document_name });
         }
       } catch (error) {
@@ -321,10 +320,10 @@ exports.eventEmitter = (event_name, payload, user_id) => {
   try {
     if (Array.isArray(user_id)) {
       user_id.forEach((user_id) => {
-        io.to(user_id.toString()).emit(event_name, payload);
+        io.to(user_id?.toString()).emit(event_name, payload);
       });
     } else {
-      io.to(user_id.toString()).emit(event_name, payload);
+      io.to(user_id?.toString()).emit(event_name, payload);
     }
   } catch (error) {
     logger.info("Error while emitting socket error", error);

@@ -7,7 +7,6 @@ const clientReviewService = new ClientReviewService();
 
 // Add Client Review
 exports.addClientReview = catchAsyncError(async (req, res, next) => {
-  console.log(req.body);
   const addedClientReview = await clientReviewService.addClientReview(
     req.body,
     req.file

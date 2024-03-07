@@ -5,6 +5,7 @@ activityRoute.use(protect);
 activityRoute.post("/create-task", activityController.addTask);
 activityRoute.get("/get-status-list", activityController.statusList);
 activityRoute.post("/task-list", activityController.taskList);
+activityRoute.post("/tag-list", activityController.tagList);
 activityRoute.get("/get-task/:id", activityController.fetchTask);
 activityRoute.delete("/delete-task", activityController.deleteTask);
 activityRoute.put("/update-task/:id", activityController.updateTask);

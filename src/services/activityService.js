@@ -25,6 +25,7 @@ const Activity_Status_Master = require("../models/masters/activityStatusMasterSc
 const notificationService = new NotificationService();
 const EventService = require("../services/eventService");
 const eventService = new EventService();
+const Client = require("../models/clientSchema");
 
 class ActivityService {
   createTask = async (payload, user) => {
@@ -237,6 +238,88 @@ class ActivityService {
         };
       }
       const pagination = paginationObject(searchObj);
+      const filter = {
+        $match: {},
+      };
+      if (searchObj?.filter) {
+        if (searchObj?.filter?.status === "in_progress") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "in_progress",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        } else if (searchObj?.filter?.status === "pending") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "pending",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        } else if (searchObj?.filter?.status === "overdue") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "overdue",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        } else if (searchObj?.filter?.status === "done") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "completed",
+          })
+            .select("_id name")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        } else if (searchObj?.filter?.status === "cancel") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "cancel",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        }
+
+        if (searchObj?.filter?.client_id) {
+          // const client_detail = await Client.findById(client_id);
+          filter["$match"] = {
+            ...filter["$match"],
+            client_id: new mongoose.Types.ObjectId(
+              searchObj?.filter?.client_id
+            ),
+          };
+        }
+        if (searchObj?.filter?.assign_to) {
+          filter["$match"] = {
+            ...filter["$match"],
+            assign_to: new mongoose.Types.ObjectId(
+              searchObj?.filter?.assign_to
+            ),
+          };
+        }
+        if (searchObj?.filter?.tags) {
+          filter["$match"] = {
+            ...filter["$match"],
+            tags: {
+              $elemMatch: { $regex: searchObj?.filter?.tags.toLowerCase() },
+            },
+          };
+        }
+      }
 
       if (searchObj.search && searchObj.search !== "") {
         queryObj["$or"] = [
@@ -298,7 +381,7 @@ class ActivityService {
           {
             tags: {
               $elemMatch: {
-                $regex: payload.search.toLowerCase(),
+                $regex: searchObj.search.toLowerCase(),
                 $options: "i",
               },
             },
@@ -362,6 +445,7 @@ class ActivityService {
                   name: 1,
                   first_name: 1,
                   last_name: 1,
+                  _id: 1,
                   assigned_to_name: {
                     $concat: ["$first_name", " ", "$last_name"],
                   },
@@ -402,7 +486,7 @@ class ActivityService {
             localField: "activity_status",
             foreignField: "_id",
             as: "status",
-            pipeline: [{ $project: { name: 1 } }],
+            pipeline: [{ $project: { name: 1, _id: 1 } }],
           },
         },
         {
@@ -411,16 +495,19 @@ class ActivityService {
         {
           $match: queryObj,
         },
+        filter,
         {
           $project: {
             contact_number: 1,
             title: 1,
             status: "$status.name",
             due_time: 1,
+            assign_to: 1,
             due_date: 1,
             createdAt: 1,
             agenda: 1,
             assign_by: 1,
+            client_id: 1,
             assigned_by_first_name: "$team_by.first_name",
             assigned_by_last_name: "$team_by.last_name",
             assigned_to_first_name: "$team_Data.first_name",
@@ -429,6 +516,7 @@ class ActivityService {
             assigned_by_name: "$team_by.assigned_by_name",
             client_name: "$client_Data.client_name",
             column_id: "$status.name",
+            tags: 1,
           },
         },
       ];
@@ -503,7 +591,79 @@ class ActivityService {
           agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
         };
       }
+      const filter = {
+        $match: {},
+      };
+      if (searchObj?.filter) {
+        if (searchObj?.filter?.status === "in_progress") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "in_progress",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        } else if (searchObj?.filter?.status === "pending") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "pending",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        } else if (searchObj?.filter?.status === "overdue") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "overdue",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        } else if (searchObj?.filter?.status === "done") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "completed",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        } else if (searchObj?.filter?.status === "cancel") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "cancel",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        }
 
+        if (searchObj?.filter?.client_id) {
+          // const client_detail = await Client.findById(client_id);
+          filter["$match"] = {
+            ...filter["$match"],
+            client_id: new mongoose.Types.ObjectId(
+              searchObj?.filter?.client_id
+            ),
+          };
+        } else if (searchObj?.filter?.assign_to) {
+          filter["$match"] = {
+            ...filter["$match"],
+            assign_to: new mongoose.Types.ObjectId(
+              searchObj?.filter?.assign_to
+            ),
+          };
+        }
+      }
       const pagination = paginationObject(searchObj);
 
       if (searchObj.search && searchObj.search !== "") {
@@ -579,6 +739,7 @@ class ActivityService {
         }
       }
       const taskPipeline = [
+        filter,
         {
           $lookup: {
             from: "authentications",
@@ -672,6 +833,8 @@ class ActivityService {
             due_date: 1,
             createdAt: 1,
             agenda: 1,
+            client_id: 1,
+            assign_to: 1,
             assigned_by_first_name: "$assign_by.first_name",
             assigned_by_last_name: "$assign_by.last_name",
             assigned_to_first_name: "$team_Data.first_name",
@@ -952,7 +1115,6 @@ class ActivityService {
         },
       ];
       const getTask = await Activity.aggregate(pipeline);
-      console.log(getTask);
       getTask.forEach(async (task) => {
         let data = {
           TaskTitle: "Deleted Task",
@@ -1033,14 +1195,14 @@ class ActivityService {
       );
       const current_status = current_activity?.activity_status;
 
-      if (current_status.toString() !== status?._id.toString()) {
+      if (current_status?.toString() !== status?._id.toString()) {
         const referral_data = await Configuration.findOne().lean();
 
         if (
-          current_status.toString() ===
+          current_status?.toString() ===
             (
               await ActivityStatus.findOne({ name: "completed" }).lean()
-            )?._id.toString() &&
+            )?._id?.toString() &&
           (status?.name === "pending" ||
             status?.name === "in_progress" ||
             status?.name === "overdue")
@@ -1073,27 +1235,27 @@ class ActivityService {
             user_id: current_activity.assign_to,
             agency_id: current_activity.agency_id,
             point:
-              -referral_data.competition.successful_task_competition.toString(),
+              -referral_data.competition.successful_task_competition?.toString(),
             type: "task",
             role: assign_role?.role?.name,
           });
         }
 
         if (
-          (current_status.toString() ===
+          (current_status?.toString() ===
             (
               await ActivityStatus.findOne({ name: "pending" }).lean()
-            )._id.toString() &&
+            )?._id?.toString() &&
             status?.name === "completed") ||
-          (current_status.toString() ===
+          (current_status?.toString() ===
             (
               await ActivityStatus.findOne({ name: "overdue" }).lean()
-            )._id.toString() &&
+            )?._id?.toString() &&
             status?.name === "completed") ||
           (current_status.toString() ===
             (
               await ActivityStatus.findOne({ name: "in_progress" }).lean()
-            )._id.toString() &&
+            )?._id.toString() &&
             status?.name === "completed")
         ) {
           await Activity.findOneAndUpdate(
@@ -1124,7 +1286,7 @@ class ActivityService {
             user_id: current_activity.assign_to,
             agency_id: current_activity.agency_id,
             point:
-              +referral_data.competition.successful_task_competition.toString(),
+              +referral_data.competition.successful_task_competition?.toString(),
             type: "task",
             role: assign_role?.role?.name,
           });
@@ -1290,15 +1452,15 @@ class ActivityService {
         { new: true, useFindAndModify: false }
       );
 
-      if (current_status.toString() !== update_status._id.toString()) {
+      if (current_status?.toString() !== update_status?._id?.toString()) {
         const referral_data = await Configuration.findOne().lean();
 
         // Decrement completion points if transitioning from completed to pending, in_progress, or overdue
         if (
-          current_status.toString() ===
+          current_status?.toString() ===
             (
               await ActivityStatus.findOne({ name: "completed" }).lean()
-            )._id.toString() &&
+            )?._id?.toString() &&
           (update_status?.name === "pending" ||
             update_status?.name === "in_progress" ||
             update_status?.name === "overdue")
@@ -1331,7 +1493,7 @@ class ActivityService {
             user_id: current_activity.assign_to,
             agency_id: current_activity.agency_id,
             point:
-              -referral_data.competition.successful_task_competition.toString(),
+              -referral_data.competition.successful_task_competition?.toString(),
             type: "task",
             role: assign_role?.role?.name,
           });
@@ -1339,20 +1501,20 @@ class ActivityService {
 
         // Increment completion points if transitioning from pending or overdue to completed
         if (
-          (current_status.toString() ===
+          (current_status?.toString() ===
             (
               await ActivityStatus.findOne({ name: "pending" }).lean()
-            )._id.toString() &&
+            )?._id?.toString() &&
             update_status?.name === "completed") ||
-          (current_status.toString() ===
+          (current_status?.toString() ===
             (
               await ActivityStatus.findOne({ name: "overdue" }).lean()
-            )._id.toString() &&
+            )?._id?.toString() &&
             update_status?.name === "completed") ||
           (current_status?.toString() ===
             (
               await ActivityStatus.findOne({ name: "in_progress" }).lean()
-            )._id.toString() &&
+            )?._id?.toString() &&
             update_status?.name === "completed")
         ) {
           await Activity.findOneAndUpdate(
@@ -1383,7 +1545,7 @@ class ActivityService {
             user_id: current_activity.assign_to,
             agency_id: current_activity.agency_id,
             point:
-              +referral_data.competition.successful_task_competition.toString(),
+              +referral_data.competition.successful_task_competition?.toString(),
             type: "task",
             role: assign_role?.role?.name,
           });
@@ -1565,7 +1727,6 @@ class ActivityService {
           status: payload.status,
           client_name: client_data.first_name + " " + client_data.last_name,
         });
-        console.log(activity_email_template);
         await sendEmail({
           email: client_data?.email,
           subject: returnMessage("emailTemplate", emailTempKey),
@@ -2204,7 +2365,6 @@ class ActivityService {
       } else {
         status = await ActivityStatus.findOne({ name: "pending" }).lean();
       }
-      console.log(recurring_date);
       await Activity.findByIdAndUpdate(
         activity_id,
         {
@@ -2298,25 +2458,25 @@ class ActivityService {
         $match: {},
       };
       if (payload?.filter) {
-        if (payload?.filter?.status === "todo") {
-          const [in_progress, pending] = await Promise.all([
-            ActivityStatus.findOne({
-              name: "in_progress",
-            })
-              .select("_id")
-              .lean(),
-            ActivityStatus.findOne({
-              name: "pending",
-            })
-              .select("_id")
-              .lean(),
-          ]);
+        if (payload?.filter?.status === "in_progress") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "in_progress",
+          })
+            .select("_id")
+            .lean();
           filter["$match"] = {
             ...filter["$match"],
-            $or: [
-              { activity_status: in_progress?._id },
-              { activity_status: pending?._id },
-            ],
+            activity_status: activity_status?._id,
+          };
+        } else if (payload?.filter?.status === "pending") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "pending",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
           };
         } else if (payload?.filter?.status === "overdue") {
           const activity_status = await ActivityStatus.findOne({
@@ -3178,6 +3338,74 @@ class ActivityService {
       return { activity_assinged_to_attendees: false };
     } catch (error) {
       logger.error(`Error while check activity assigned or not: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  tagList = async (searchObj, user) => {
+    try {
+      let queryObj;
+      if (user?.role?.name === "agency") {
+        const type = await ActivityType.findOne({ name: "task" }).lean();
+
+        queryObj = {
+          is_deleted: false,
+          agency_id: user.reference_id,
+          activity_type: new mongoose.Types.ObjectId(type._id),
+        };
+      } else if (user?.role?.name === "client") {
+        const type = await ActivityType.findOne({ name: "task" }).lean();
+        queryObj = {
+          is_deleted: false,
+          client_id: user.reference_id,
+          agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
+          activity_type: new mongoose.Types.ObjectId(type._id),
+        };
+      } else if (user?.role?.name === "team_agency") {
+        const type = await ActivityType.findOne({ name: "task" }).lean();
+        const teamRole = await Team_Agency.findOne({
+          _id: user.reference_id,
+        }).populate("role");
+        if (teamRole?.role?.name === "admin") {
+          queryObj = {
+            $or: [
+              { assign_by: user.reference_id },
+              { assign_to: user.reference_id },
+            ],
+            is_deleted: false,
+            activity_type: new mongoose.Types.ObjectId(type._id),
+          };
+        } else if (teamRole?.role?.name === "team_member") {
+          queryObj = {
+            is_deleted: false,
+            assign_to: user.reference_id,
+            activity_type: new mongoose.Types.ObjectId(type._id),
+          };
+        }
+      } else if (user?.role?.name === "team_client") {
+        const type = await ActivityType.findOne({ name: "task" }).lean();
+        queryObj = {
+          is_deleted: false,
+          client_id: user.reference_id,
+          agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
+          activity_type: new mongoose.Types.ObjectId(type._id),
+        };
+      }
+
+      let tags_data = await Activity.find(queryObj).select("tags").lean();
+      let tagsList = [];
+      tags_data.forEach((item) => {
+        tagsList = tagsList.concat(item.tags);
+      });
+      let uniqueTags = [
+        ...new Set(tagsList.filter((tag) => tag !== undefined)),
+      ];
+
+      console.log(uniqueTags);
+      // console.log(tagsList);
+      return uniqueTags;
+    } catch (error) {
+      logger.error(`Error while fetch tags list : ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };

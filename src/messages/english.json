@@ -209,7 +209,8 @@
     "invalidDate": "End date should be greater than start date.",
     "createSubject": "New task created.",
     "UpdateSubject": "Updated Task.",
-    "ActivityCannotUpdate": "Activity cannot be updated."
+    "ActivityCannotUpdate": "Activity cannot be updated.",
+    "tagsList": "Tags list fetch successfully."
   },
 
   "payment": {

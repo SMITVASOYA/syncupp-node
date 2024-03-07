@@ -90,8 +90,8 @@ class ScheduleEvent {
       ) {
         event_exist = await Event.findOne({
           $or: [
-            { created_by: user.reference_id },
-            { email: { $in: payload.email } },
+            { created_by: user?.reference_id },
+            { email: { $in: payload?.email } },
           ],
           $and: or_condition,
           is_deleted: false,
@@ -99,7 +99,7 @@ class ScheduleEvent {
       }
 
       if (event_exist) {
-        if (payload.createEventIfEmailExists === "yes") {
+        if (payload?.createEventIfEmailExists === "yes") {
           // If email exists and flag is set to "yes", create the event
           const newEvent = await Event.create({
             created_by: user?.reference_id,
@@ -217,16 +217,19 @@ class ScheduleEvent {
   //event list with filter
   eventList = async (payload, user) => {
     try {
-      if (!payload.pagination) {
+      if (!payload?.pagination) {
         return await this.eventListWithOutPaination(payload, user);
       }
-      let queryObj = {
+      let filterObj = {
         is_deleted: false,
         $or: [
-          { created_by: user.reference_id }, // Match based on created_by id
-          { email: user.email }, // Optionally match based on user's email
+          { created_by: user?.reference_id }, // Match based on created_by id
+
+          { email: { $regex: new RegExp(user?.email, "i") } },
+          // Optionally match based on user's email
         ],
       };
+      let queryObj = {};
 
       const filter = {
         $match: {},
@@ -318,7 +321,8 @@ class ScheduleEvent {
           };
         }
       }
-      if (payload.search && payload.search !== "") {
+
+      if (payload?.search && payload?.search !== "") {
         queryObj["$or"] = [
           {
             title: {
@@ -360,8 +364,13 @@ class ScheduleEvent {
         }
       }
       const pagination = paginationObject(payload);
+
       const eventPipeline = [
         filter,
+        { $match: filterObj },
+        {
+          $match: queryObj,
+        },
         {
           $lookup: {
             from: "authentications",
@@ -385,9 +394,6 @@ class ScheduleEvent {
         {
           $unwind: { path: "$agency_Data", preserveNullAndEmptyArrays: true },
         },
-
-        { $match: queryObj },
-
         {
           $project: {
             contact_number: 1,
@@ -396,11 +402,12 @@ class ScheduleEvent {
             due_date: 1,
             createdAt: 1,
             agenda: 1,
-            agency_name: "$agency_Data.agency_name",
+            // agency_name: "$agency_Data.agency_name",
             event_start_time: 1,
             event_end_time: 1,
             recurring_end_date: 1,
             email: 1,
+            created_by: 1,
           },
         },
       ];
@@ -431,8 +438,8 @@ class ScheduleEvent {
       let queryObj = {
         is_deleted: false,
         $or: [
-          { created_by: user.reference_id }, // Match based on created_by id
-          { email: user.email }, // Optionally match based on user's email
+          { created_by: user?.reference_id }, // Match based on created_by id
+          { email: user?.email }, // Optionally match based on user's email
         ],
       };
 
@@ -505,47 +512,7 @@ class ScheduleEvent {
           };
         }
       }
-      if (payload.search && payload.search !== "") {
-        queryObj["$or"] = [
-          {
-            title: {
-              $regex: payload.search.toLowerCase(),
-              $options: "i",
-            },
-          },
 
-          {
-            agenda: {
-              $regex: payload.search.toLowerCase(),
-              $options: "i",
-            },
-          },
-          {
-            email: {
-              $elemMatch: {
-                $regex: payload.search.toLowerCase(),
-                $options: "i",
-              },
-            },
-          },
-        ];
-
-        const keywordType = getKeywordType(payload.search);
-        if (keywordType === "number") {
-          const numericKeyword = parseInt(payload.search);
-
-          queryObj["$or"].push({
-            revenue_made: numericKeyword,
-          });
-        } else if (keywordType === "date") {
-          const dateKeyword = new Date(payload.search);
-          queryObj["$or"].push({ due_date: dateKeyword });
-          queryObj["$or"].push({ due_time: dateKeyword });
-          queryObj["$or"].push({ event_start_time: dateKeyword });
-          queryObj["$or"].push({ event_end_time: dateKeyword });
-          queryObj["$or"].push({ recurring_end_date: dateKeyword });
-        }
-      }
       const eventPipeline = [
         filter,
         {

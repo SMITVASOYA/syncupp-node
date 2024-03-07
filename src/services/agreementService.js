@@ -193,6 +193,18 @@ class AgreementService {
         ...(client_id && { receiver: new ObjectId(client._id) }),
       };
 
+      // if (searchObj?.client_name) {
+      //   filter["$match"] = {
+      //     ...filter["$match"],
+      //     receiver: new mongoose.Types.ObjectId(searchObj?.client_name),
+      //   };
+      // } else if (searchObj?.status_name) {
+      //   filter["$match"] = {
+      //     ...filter["$match"],
+      //     receiver: searchObj?.status_name,
+      //   };
+      // }
+
       if (searchObj.search && searchObj.search !== "") {
         queryObj["$or"] = [
           {
@@ -741,7 +753,6 @@ class AgreementService {
           },
         ];
         agreement = await Agreement.aggregate(aggregationPipeline);
-        console.log(agreement);
         if (status === "sent") {
           var data = {
             title: agreement[0].title,

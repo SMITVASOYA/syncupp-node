@@ -31,8 +31,6 @@ class TermAdnConditionService {
 
       const TermAndCondition = await AdminTermAndCondition.findOne({});
 
-      console.log(TermAndCondition);
-
       await AdminTermAndCondition.findOneAndUpdate(
         {
           _id: TermAndCondition._id,

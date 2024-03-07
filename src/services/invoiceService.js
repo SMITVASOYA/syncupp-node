@@ -1035,7 +1035,6 @@ class InvoiceService {
           const clientDetails = await Authentication.findOne({
             reference_id: invoice[0]?.to?._id,
           });
-          console.log(clientDetails);
 
           // Use a template or format the invoice message accordingly
           const formattedInquiryEmail = invoiceTemplate({
