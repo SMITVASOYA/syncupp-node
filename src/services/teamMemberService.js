@@ -1212,11 +1212,29 @@ class TeamMemberService {
               preserveNullAndEmptyArrays: true,
             },
           },
+
+          {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "typeName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$typeName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
           {
             $match: {
               [search_id]: admin_id ? admin_id : user.reference_id,
               is_deleted: false,
               "statusName.name": { $ne: "cancel" }, // Fix: Change $nq to $ne
+              "typeName.name": "task",
             },
           },
           {
@@ -1239,11 +1257,29 @@ class TeamMemberService {
               preserveNullAndEmptyArrays: true,
             },
           },
+
+          {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "typeName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$typeName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
           {
             $match: {
               [search_id]: admin_id ? admin_id : user.reference_id,
               is_deleted: false,
               "statusName.name": { $eq: "pending" }, // Fix: Change $nq to $ne
+              "typeName.name": "task",
             },
           },
           {
@@ -1294,11 +1330,28 @@ class TeamMemberService {
               preserveNullAndEmptyArrays: true,
             },
           },
+
+          {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "typeName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$typeName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
           {
             $match: {
               [search_id]: admin_id ? admin_id : user.reference_id,
               is_deleted: false,
-
+              "typeName.name": "task",
               "statusName.name": { $eq: "in_progress" }, // Fix: Change $nq to $ne
             },
           },
@@ -1322,11 +1375,28 @@ class TeamMemberService {
               preserveNullAndEmptyArrays: true,
             },
           },
+
+          {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "typeName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$typeName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
           {
             $match: {
               [search_id]: admin_id ? admin_id : user.reference_id,
               is_deleted: false,
-
+              "typeName.name": "task",
               "statusName.name": { $eq: "overdue" }, // Fix: Change $nq to $ne
             },
           },

@@ -375,10 +375,26 @@ class AgencyService {
             },
           },
           {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "typeName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$typeName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
             $match: {
               agency_id: user.reference_id,
               "statusName.name": { $ne: "cancel" }, // Fix: Change $nq to $ne
               is_deleted: false,
+              "typeName.name": "task",
             },
           },
           {
@@ -402,10 +418,26 @@ class AgencyService {
             },
           },
           {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "typeName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$typeName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
             $match: {
               agency_id: user.reference_id,
               "statusName.name": { $eq: "pending" },
               is_deleted: false,
+              "typeName.name": "task",
             },
           },
           {
@@ -429,10 +461,26 @@ class AgencyService {
             },
           },
           {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "typeName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$typeName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
             $match: {
               agency_id: user.reference_id,
               "statusName.name": { $eq: "completed" },
               is_deleted: false,
+              "typeName.name": "task",
             },
           },
           {
@@ -455,11 +503,29 @@ class AgencyService {
               preserveNullAndEmptyArrays: true,
             },
           },
+
+          {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "typeName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$typeName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
           {
             $match: {
               agency_id: user.reference_id,
               "statusName.name": { $eq: "in_progress" },
               is_deleted: false,
+              "typeName.name": "task",
             },
           },
           {
@@ -482,11 +548,29 @@ class AgencyService {
               preserveNullAndEmptyArrays: true,
             },
           },
+
+          {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "typeName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$typeName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
           {
             $match: {
               agency_id: user.reference_id,
               is_deleted: false,
               "statusName.name": { $eq: "overdue" },
+              "typeName.name": "task",
             },
           },
           {

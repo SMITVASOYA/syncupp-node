@@ -842,10 +842,26 @@ class ClientService {
             },
           },
           {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "typeName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$typeName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
             $match: {
               client_id: user.reference_id,
               "statusName.name": { $eq: "pending" }, // Fix: Change $nq to $ne
               is_deleted: false,
+              "typeName.name": "task",
             },
           },
           {
@@ -868,11 +884,28 @@ class ClientService {
               preserveNullAndEmptyArrays: true,
             },
           },
+
+          {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "typeName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$typeName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
           {
             $match: {
               client_id: user.reference_id,
               "statusName.name": { $eq: "completed" }, // Fix: Change $nq to $ne
               is_deleted: false,
+              "typeName.name": "task",
             },
           },
           {
@@ -896,10 +929,26 @@ class ClientService {
             },
           },
           {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "typeName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$typeName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
             $match: {
               client_id: user.reference_id,
               "statusName.name": { $eq: "in_progress" }, // Fix: Change $nq to $ne
               is_deleted: false,
+              "typeName.name": "task",
             },
           },
           {
@@ -923,10 +972,27 @@ class ClientService {
             },
           },
           {
+            $lookup: {
+              from: "activity_type_masters",
+              localField: "activity_type",
+              foreignField: "_id",
+              as: "typeName",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$typeName",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
+          {
             $match: {
               client_id: user.reference_id,
               "statusName.name": { $eq: "overdue" }, // Fix: Change $nq to $ne
               is_deleted: false,
+              "typeName.name": "task",
             },
           },
           {

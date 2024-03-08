@@ -296,7 +296,7 @@ class InvoiceService {
       };
       // Add date range conditions
       if (searchObj.start_date && searchObj.end_date) {
-        queryObj.invoice_date = {
+        queryObj.due_date = {
           $gte: new Date(searchObj.start_date),
           $lte: new Date(searchObj.end_date),
         };
@@ -877,7 +877,7 @@ class InvoiceService {
 
       // Add date range conditions
       if (searchObj.start_date && searchObj.end_date) {
-        queryObj.invoice_date = {
+        queryObj.due_date = {
           $gte: new Date(searchObj.start_date),
           $lte: new Date(searchObj.end_date),
         };
