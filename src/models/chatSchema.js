@@ -9,6 +9,7 @@ const chat_schema = new mongoose.Schema(
     is_deleted: { type: Boolean, default: false },
     image_url: { type: String },
     document_url: { type: String },
+    message_type: { type: String, enum: ["message", "image", "document"] },
   },
   { timestamps: true }
 );

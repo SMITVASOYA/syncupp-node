@@ -62,7 +62,12 @@ exports.socket_connection = (http_server) => {
       try {
         const { from_user, to_user, message, user_type } = payload;
 
-        const new_chat = await Chat.create({ from_user, to_user, message });
+        const new_chat = await Chat.create({
+          from_user,
+          to_user,
+          message,
+          message_type: "message",
+        });
 
         await Notification.create({
           type: "chat",
@@ -81,6 +86,7 @@ exports.socket_connection = (http_server) => {
           createdAt: new_chat.createdAt,
           _id: new_chat?._id,
           user_type,
+          message_type: new_chat?.message_type,
         });
 
         socket.to(to_user).emit("RECEIVED_MESSAGE", {
@@ -90,6 +96,7 @@ exports.socket_connection = (http_server) => {
           createdAt: new_chat.createdAt,
           _id: new_chat?._id,
           user_type,
+          message_type: new_chat?.message_type,
         });
       } catch (error) {
         logger.error(`Error while sending the message: ${error}`);
@@ -169,8 +176,9 @@ exports.socket_connection = (http_server) => {
     // this socket event is used to send the images between the users
     socket.on("IMAGES", async (payload) => {
       try {
-        const { from_user, to_user, buffer } = payload;
-        if (Buffer.byteLength(buffer) / (1024 * 1024) > 2)
+        const { from_user, to_user, buffer, user_type } = payload;
+        console.log(buffer);
+        if (Buffer.byteLength(buffer))
           socket.to(from_user?.toString()).emit("FILE_TO_LARGE", {
             error: returnMessage("chat", "largeImage"),
           });
@@ -187,7 +195,7 @@ exports.socket_connection = (http_server) => {
 
         if (image_obj) {
           const image_name = Date.now() + "." + image_obj.ext;
-          fs.writeFileSync("./public/uploads/" + image_name, buffer, {
+          fs.writeFileSync("./src/public/uploads/" + image_name, buffer, {
             encoding: "base64",
           });
 
@@ -195,6 +203,7 @@ exports.socket_connection = (http_server) => {
             from_user: payload?.from_user,
             to_user: payload?.to_user,
             image_url: image_name,
+            message_type: "image",
           });
 
           await Notification.create({
@@ -207,7 +216,15 @@ exports.socket_connection = (http_server) => {
           socket
             .to(from_user?.toString())
             .to(to_user?.toString())
-            .emit("RECEIVED_IMAGE", { image_url: image_name });
+            .emit("RECEIVED_IMAGE", {
+              image_url: image_name,
+              from_user,
+              to_user,
+              message_type: new_message?.message_type,
+              _id: new_message?._id,
+              createdAt: new_message?.createdAt,
+              user_type,
+            });
         }
       } catch (error) {
         logger.error(`Error while uploading the images: ${error}`);
@@ -218,7 +235,7 @@ exports.socket_connection = (http_server) => {
     // this socket event is used to send the documents between the users
     socket.on("DOCUMENTS", async (payload) => {
       try {
-        const { from_user, to_user, buffer } = payload;
+        const { from_user, to_user, buffer, user_type } = payload;
         if (Buffer.byteLength(buffer) / (1024 * 1024) > 5)
           socket.to(from_user?.toString()).emit("FILE_TO_LARGE", {
             error: returnMessage("chat", "largeDocument"),
@@ -236,7 +253,7 @@ exports.socket_connection = (http_server) => {
 
         if (document_obj) {
           const document_name = Date.now() + "." + document_obj.ext;
-          fs.writeFileSync("./public/uploads/" + document_name, buffer, {
+          fs.writeFileSync("./src/public/uploads/" + document_name, buffer, {
             encoding: "base64",
           });
 
@@ -244,6 +261,7 @@ exports.socket_connection = (http_server) => {
             from_user: payload?.from_user,
             to_user: payload?.to_user,
             document_url: document_name,
+            message_type: "document",
           });
 
           await Notification.create({
@@ -256,7 +274,15 @@ exports.socket_connection = (http_server) => {
           socket
             .to(from_user?.toString())
             .to(to_user?.toString())
-            .emit("RECEIVED_DOCUMENT", { document_url: document_name });
+            .emit("RECEIVED_DOCUMENT", {
+              document_url: document_name,
+              user_type,
+              from_user,
+              to_user,
+              createdAt: new_message?.createdAt,
+              _id: new_message?._id,
+              message_type: new_message?.message_type,
+            });
         }
       } catch (error) {
         logger.error(`Error while uploading the Documents: ${error}`);
