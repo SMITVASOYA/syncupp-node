@@ -1051,7 +1051,7 @@ class ClientService {
           {
             $match: {
               client_id: new mongoose.Types.ObjectId(user.reference_id),
-              "invoiceStatus.name": { $eq: "overdue" }, // Exclude documents with status "draft"
+              "invoiceStatus.name": { $eq: "unpaid" }, // Exclude documents with status "draft"
               is_deleted: false,
             },
           },
@@ -1063,7 +1063,7 @@ class ClientService {
           {
             $match: {
               receiver: new mongoose.Types.ObjectId(user._id),
-              status: "agreed", // Exclude documents with status "draft"
+              status: "sent", // Exclude documents with status "draft"
               is_deleted: false,
             },
           },
