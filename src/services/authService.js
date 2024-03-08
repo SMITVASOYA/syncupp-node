@@ -676,7 +676,11 @@ class AuthService {
           );
         }
       }
-
+      await Authentication.findOneAndUpdate(
+        { reference_id: existing_Data.reference_id },
+        { last_login_date: moment.utc().startOf("day") },
+        { new: true }
+      );
       if (existing_Data?.role?.name === "agency") {
         const agency_profile = await Agency.findById(
           existing_Data?.reference_id

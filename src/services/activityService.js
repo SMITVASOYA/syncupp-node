@@ -431,7 +431,7 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$client_Data",
+          $unwind: { path: "$client_Data", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
@@ -455,7 +455,7 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$team_Data",
+          $unwind: { path: "$team_Data", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
@@ -478,7 +478,7 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$team_by",
+          $unwind: { path: "$team_by", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
@@ -490,7 +490,7 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$status",
+          $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
         },
         {
           $match: queryObj,
@@ -517,6 +517,7 @@ class ActivityService {
             client_name: "$client_Data.client_name",
             column_id: "$status.name",
             tags: 1,
+            agency_id: 1,
           },
         },
       ];
@@ -778,7 +779,7 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$client_Data",
+          $unwind: { path: "$client_Data", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
@@ -801,7 +802,7 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$team_Data",
+          $unwind: { path: "$team_Data", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
@@ -824,7 +825,7 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$assign_by",
+          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
@@ -836,7 +837,7 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$status",
+          $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
         },
         {
           $match: queryObj,
@@ -1175,8 +1176,15 @@ class ActivityService {
 
   updateTask = async (payload, id) => {
     try {
-      const { title, agenda, due_date, assign_to, client_id, mark_as_done } =
-        payload;
+      const {
+        title,
+        agenda,
+        due_date,
+        assign_to,
+        client_id,
+        mark_as_done,
+        tags,
+      } = payload;
       const status_check = await Activity.findById(id).populate(
         "activity_status"
       );
