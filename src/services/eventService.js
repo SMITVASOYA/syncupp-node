@@ -4,6 +4,7 @@ const {
   returnMessage,
   paginationObject,
   getKeywordType,
+  eventTemplate,
 } = require("../utils/utils");
 const sendEmail = require("../helpers/sendEmail");
 const ActivityStatus = require("../models/masters/activityStatusMasterSchema");
@@ -112,6 +113,26 @@ class ScheduleEvent {
             email,
             internal_info,
           });
+          let data = {
+            EventTitle: "New Event Created",
+            EventName: title,
+            created_by: user.first_name + " " + user.last_name,
+            start_date: due_date,
+            startTime: event_start_time,
+            endTime: event_end_time,
+            agenda: agenda,
+            recurring_end_date: payload?.recurring_end_date,
+          };
+          email &&
+            email.map((item) => {
+              const eventMessage = eventTemplate(data);
+              sendEmail({
+                email: item,
+                subject: returnMessage("event", "createSubject"),
+                message: eventMessage,
+              });
+            });
+
           return newEvent;
         } else {
           // If email exists and flag is not set to "yes", return error
@@ -133,6 +154,26 @@ class ScheduleEvent {
           email,
           internal_info,
         });
+        let data = {
+          EventTitle: "New Event Created",
+          EventName: title,
+          created_by: user.first_name + " " + user.last_name,
+          start_date: due_date,
+          startTime: event_start_time,
+          endTime: event_end_time,
+          agenda: agenda,
+          recurring_end_date: payload?.recurring_end_date,
+        };
+        email &&
+          email.map((item) => {
+            const eventMessage = eventTemplate(data);
+            sendEmail({
+              email: item,
+              subject: returnMessage("event", "createSubject"),
+              message: eventMessage,
+            });
+          });
+
         return newEvent;
       }
     } catch (error) {
@@ -659,6 +700,29 @@ class ScheduleEvent {
             email,
             internal_info,
           });
+          let getEvent = await Event.findById(eventId);
+          let data = {
+            EventTitle: "Updated Event ",
+            EventName: getEvent?.title,
+            created_by: user.first_name + " " + user.last_name,
+            start_date: moment(getEvent?.due_date)?.format("DD/MM/YYYY"),
+            startTime: moment(getEvent?.event_start_time).format("HH:mm:ss"),
+            endTime: moment(getEvent?.event_end_time).format("HH:mm:ss"),
+            agenda: getEvent?.agenda,
+            recurring_end_date: moment(getEvent?.recurring_end_date)?.format(
+              "DD/MM/YYYY"
+            ),
+          };
+          email &&
+            email.map((item) => {
+              const eventMessage = eventTemplate(data);
+              sendEmail({
+                email: item,
+                subject: returnMessage("event", "updateSubject"),
+                message: eventMessage,
+              });
+            });
+
           return updatedEvent;
         } else {
           // If email exists and flag is not set to "yes", return error
@@ -679,6 +743,28 @@ class ScheduleEvent {
           email,
           internal_info,
         });
+        let getEvent = await Event.findById(eventId);
+        let data = {
+          EventTitle: "New Event Updated",
+          EventName: getEvent?.title,
+          created_by: user.first_name + " " + user.last_name,
+          start_date: moment(getEvent?.due_date)?.format("DD/MM/YYYY"),
+          startTime: moment(getEvent?.event_start_time).format("HH:mm:ss"),
+          endTime: moment(getEvent?.event_end_time).format("HH:mm:ss"),
+          agenda: getEvent?.agenda,
+          recurring_end_date: moment(getEvent?.recurring_end_date)?.format(
+            "DD/MM/YYYY"
+          ),
+        };
+        email &&
+          email.map((item) => {
+            const eventMessage = eventTemplate(data);
+            sendEmail({
+              email: item,
+              subject: returnMessage("event", "updateSubject"),
+              message: eventMessage,
+            });
+          });
         return updatedEvent;
       }
     } catch (error) {
@@ -698,6 +784,28 @@ class ScheduleEvent {
         },
         { new: true, useFindAndModify: false }
       );
+      let getEvent = await Event.findById(id);
+      let data = {
+        EventTitle: "Event Cancled",
+        EventName: getEvent?.title,
+        created_by: user.first_name + " " + user.last_name,
+        start_date: moment(getEvent?.due_date)?.format("DD/MM/YYYY"),
+        startTime: moment(getEvent?.event_start_time).format("HH:mm:ss"),
+        endTime: moment(getEvent?.event_end_time).format("HH:mm:ss"),
+        agenda: getEvent?.agenda,
+        recurring_end_date: moment(getEvent?.recurring_end_date)?.format(
+          "DD/MM/YYYY"
+        ),
+      };
+      email &&
+        email.map((item) => {
+          const eventMessage = eventTemplate(data);
+          sendEmail({
+            email: item,
+            subject: returnMessage("event", "cancleSubject"),
+            message: eventMessage,
+          });
+        });
       return updateevent;
     } catch (error) {
       logger.error(`Error while deleting, ${error}`);

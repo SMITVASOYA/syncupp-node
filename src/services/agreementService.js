@@ -13,7 +13,7 @@ const fs = require("fs");
 const sendEmail = require("../helpers/sendEmail");
 const Authentication = require("../models/authenticationSchema");
 const Client = require("../models/clientSchema");
-const { default: mongoose } = require("mongoose");
+const { default: mongoose, Mongoose } = require("mongoose");
 const Handlebars = require("handlebars");
 const pdf = require("html-pdf");
 const moment = require("moment");
@@ -192,18 +192,32 @@ class AgreementService {
         agency_id: user_id,
         ...(client_id && { receiver: new ObjectId(client._id) }),
       };
-
+      const filter = {
+        $match: {},
+      };
       // if (searchObj?.client_name) {
       //   filter["$match"] = {
       //     ...filter["$match"],
       //     receiver: new mongoose.Types.ObjectId(searchObj?.client_name),
       //   };
-      // } else if (searchObj?.status_name) {
-      //   filter["$match"] = {
-      //     ...filter["$match"],
-      //     receiver: searchObj?.status_name,
-      //   };
       // }
+      if (searchObj.client_name) {
+        queryObj["agreement_Data.reference_id"] = new mongoose.Types.ObjectId(
+          searchObj?.client_name
+        );
+      }
+      if (searchObj?.status_name) {
+        filter["$match"] = {
+          ...filter["$match"],
+          status: searchObj?.status_name,
+        };
+      }
+      if (searchObj.start_date && searchObj.end_date) {
+        queryObj.due_date = {
+          $gte: new Date(searchObj.start_date),
+          $lte: new Date(searchObj.end_date),
+        };
+      }
 
       if (searchObj.search && searchObj.search !== "") {
         queryObj["$or"] = [
@@ -236,6 +250,7 @@ class AgreementService {
       }
       const pagination = paginationObject(searchObj);
       const aggregationPipeline = [
+        filter,
         {
           $lookup: {
             from: "authentications",
@@ -244,8 +259,12 @@ class AgreementService {
             as: "agreement_Data",
           },
         },
+
         {
-          $unwind: "$agreement_Data",
+          $unwind: {
+            path: "$agreement_Data",
+            preserveNullAndEmptyArrays: true,
+          },
         },
         {
           $match: queryObj,

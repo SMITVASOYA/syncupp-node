@@ -292,7 +292,10 @@
     "eventList": "Event list fetch successfully.",
     "emailAlreadyExists": "Event for email already exist.",
     "eventUpdate": "Event updated successfully.",
-    "deleteEvent": "Event cancelled successfully."
+    "deleteEvent": "Event cancelled successfully.",
+    "createSubject": "New task created.",
+    "UpdateSubject": "Updated Task.",
+    "cancleSubject": "Event Cancled."
   },
 
   "chat": {
