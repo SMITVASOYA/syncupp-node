@@ -15,7 +15,7 @@ class NotificationService {
     let { module_name, activity_type_action, client_id, assign_to, agenda } =
       payload;
 
-    if (payload.agenda) payload.agenda = extractTextFromHtml(agenda);
+    if (payload?.agenda) payload.agenda = extractTextFromHtml(agenda);
     try {
       const with_unread_count = async (notification_data, user_id) => {
         const un_read_count = await Notification.countDocuments({
