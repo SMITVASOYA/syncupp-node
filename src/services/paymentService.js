@@ -31,6 +31,7 @@ const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_SECRET,
 });
+const axios = require("axios");
 
 class PaymentService {
   createPlan = async (payload) => {
@@ -1053,10 +1054,12 @@ class PaymentService {
       );
 
       const [plan_details, sheets_detail, earned_total] = await Promise.all([
-        this.planDetails(subscription.plan_id),
+        // this.planDetails(subscription.plan_id),
+        this.planDetailsAxios(subscription.plan_id),
         SheetManagement.findOne({ agency_id: agency?.reference_id }).lean(),
         this.calculateTotalReferralPoints(agency),
       ]);
+      console.log(plan_details);
 
       return {
         next_billing_date: subscription?.current_end,
@@ -1101,6 +1104,26 @@ class PaymentService {
   planDetails = async (plan_id) => {
     try {
       return Promise.resolve(razorpay.plans.fetch(plan_id));
+    } catch (error) {
+      logger.error(
+        `Error while getting the plan details from the razorpay: ${error}`
+      );
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  planDetailsAxios = async (plan_id) => {
+    try {
+      const response = await axios.get(
+        `https://api.razorpay.com/v1/plans/${plan_id}`,
+        {
+          auth: {
+            username: "rzp_test_lGt50R6T1BIUBR",
+            password: "TI8QOrNF6L6Qft2U9CZ5JyLq",
+          },
+        }
+      );
+      return response?.data;
     } catch (error) {
       logger.error(
         `Error while getting the plan details from the razorpay: ${error}`
