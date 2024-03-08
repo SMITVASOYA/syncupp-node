@@ -82,14 +82,15 @@ class NotificationService {
           message_type,
           "assignToMessage"
         );
-
-        attendees.map(async (item) => {
-          await createAndEmitNotification(
-            item,
-            message_type,
-            "attendeesMessage"
-          );
-        });
+        attendees &&
+          attendees[0] &&
+          attendees.map(async (item) => {
+            await createAndEmitNotification(
+              item,
+              message_type,
+              "attendeesMessage"
+            );
+          });
       }
 
       // Task
