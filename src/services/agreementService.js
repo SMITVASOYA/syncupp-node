@@ -902,7 +902,7 @@ class AgreementService {
 
       return {
         agreements,
-        total_pages: pages,
+        page_count: pages,
       };
     } catch (error) {
       logger.error(`Error while Admin Agreement Listing, ${error}`);

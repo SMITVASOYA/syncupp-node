@@ -910,7 +910,7 @@ class TeamMemberService {
             .limit(pagination.result_per_page)
             .lean(),
           Authentication.countDocuments({
-            _id: { $in: team_client_ids },
+            reference_id: { $in: team_client_ids },
             is_deleted: false,
             ...search_obj,
           }),
