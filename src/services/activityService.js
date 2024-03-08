@@ -311,11 +311,11 @@ class ActivityService {
             ),
           };
         }
-        if (searchObj?.filter?.tags) {
+        if (searchObj?.filter?.tag) {
           filter["$match"] = {
             ...filter["$match"],
             tags: {
-              $elemMatch: { $regex: searchObj?.filter?.tags.toLowerCase() },
+              $elemMatch: { $regex: searchObj?.filter?.tag.toLowerCase() },
             },
           };
         }
@@ -655,12 +655,21 @@ class ActivityService {
               searchObj?.filter?.client_id
             ),
           };
-        } else if (searchObj?.filter?.assign_to) {
+        }
+        if (searchObj?.filter?.assign_to) {
           filter["$match"] = {
             ...filter["$match"],
             assign_to: new mongoose.Types.ObjectId(
               searchObj?.filter?.assign_to
             ),
+          };
+        }
+        if (searchObj?.filter?.tag) {
+          filter["$match"] = {
+            ...filter["$match"],
+            tags: {
+              $elemMatch: { $regex: searchObj?.filter?.tag.toLowerCase() },
+            },
           };
         }
       }
@@ -721,6 +730,14 @@ class ActivityService {
             "client_Data.client_name": {
               $regex: searchObj.search,
               $options: "i",
+            },
+          },
+          {
+            tags: {
+              $elemMatch: {
+                $regex: searchObj.search.toLowerCase(),
+                $options: "i",
+              },
             },
           },
         ];
@@ -843,6 +860,7 @@ class ActivityService {
             assigned_by_name: "$assign_by.assigned_by_name",
             client_name: "$client_Data.client_name",
             column_id: "$status.name",
+            tags: 1,
           },
         },
       ];
@@ -1006,6 +1024,7 @@ class ActivityService {
             recurring_end_date: 1,
             activity_type: 1,
             attendees: 1,
+            tags: 1,
           },
         },
       ];
@@ -1190,6 +1209,7 @@ class ActivityService {
           assign_to,
           client_id,
           activity_status: status?._id,
+          tags,
         },
         { new: true, useFindAndModify: false }
       );
@@ -3408,8 +3428,6 @@ class ActivityService {
         ...new Set(tagsList.filter((tag) => tag !== undefined)),
       ];
 
-      console.log(uniqueTags);
-      // console.log(tagsList);
       return uniqueTags;
     } catch (error) {
       logger.error(`Error while fetch tags list : ${error}`);
