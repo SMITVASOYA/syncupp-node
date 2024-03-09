@@ -43,7 +43,6 @@ class PaymentService {
           `${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_SECRET}`
         ).toString("base64")}`,
       },
-      timeout: 10000,
     });
   }
 
