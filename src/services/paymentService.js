@@ -1165,31 +1165,26 @@ class PaymentService {
       const subscription = await this.subscripionDetail(
         agency?.subscription_id
       );
+      const [plan_details, sheets_detail, earned_total] = await Promise.all([
+        this.planDetails(subscription.plan_id),
+        SheetManagement.findOne({ agency_id: agency?.reference_id }).lean(),
+        this.calculateTotalReferralPoints(agency),
+      ]);
 
       return {
-        manage_subscription: subscription?.short_url,
+        next_billing_date: subscription?.current_end,
+        next_billing_price:
+          subscription?.quantity * (plan_details?.item.amount / 100),
+        total_sheets: sheets_detail.total_sheets,
+        available_sheets: Math.abs(
+          sheets_detail.total_sheets - 1 - sheets_detail.occupied_sheets.length
+        ),
+        subscription,
+        referral_points: {
+          erned_points: earned_total,
+          available_points: agency?.total_referral_point,
+        },
       };
-      // commenting un-necessary code
-      // const [plan_details, sheets_detail, earned_total] = await Promise.all([
-      //   this.planDetails(subscription.plan_id),
-      //   SheetManagement.findOne({ agency_id: agency?.reference_id }).lean(),
-      //   this.calculateTotalReferralPoints(agency),
-      // ]);
-
-      // return {
-      //   next_billing_date: subscription?.current_end,
-      //   next_billing_price:
-      //     subscription?.quantity * (plan_details?.item.amount / 100),
-      //   total_sheets: sheets_detail.total_sheets,
-      //   available_sheets: Math.abs(
-      //     sheets_detail.total_sheets - 1 - sheets_detail.occupied_sheets.length
-      //   ),
-      //   subscription,
-      //   referral_points: {
-      //     erned_points: earned_total, //this static data as of now
-      //     available_points: agency?.total_referral_point, // this is static data as of now
-      //   },
-      // };
     } catch (error) {
       logger.error(`Error while getting the referral: ${error}`);
       return throwError(error?.message, error?.statusCode);
