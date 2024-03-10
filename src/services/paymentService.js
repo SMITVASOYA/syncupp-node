@@ -106,10 +106,7 @@ class PaymentService {
           returnMessage("payment", "planNotFound"),
           statusCode.notFound
         );
-      // notify_info: {
-      //   notify_phone: +919574504819,
-      //   notify_email: "smitvtridhyaetech@gmail.com",
-      // },
+
       const subscription_obj = {
         plan_id: plan?.plan_id,
         quantity: 1,
@@ -121,10 +118,19 @@ class PaymentService {
       //   subscription_obj
       // );
 
-      const subscription = await this.razorpayApi.post(
+      // creating the customer to the razorpay
+      await this.razorpayApi.post("/customers", {
+        name: user?.first_name + " " + user?.last_name,
+        contact: user?.contact_number,
+        email: user?.email,
+        fail_existing: 0,
+      });
+
+      const { data } = await this.razorpayApi.post(
         "/subscriptions",
         subscription_obj
       );
+      const subscription = data;
 
       await Authentication.findByIdAndUpdate(
         user?._id,
@@ -167,7 +173,76 @@ class PaymentService {
       //       statusCode.forbidden
       //     );
 
+      // await PaymentHistory.create({
+      //   agency_id,
+      //   amount,
+      //   subscription_id,
+      //   currency,
+      //   payment_id: razorpay_payment_id,
+      // });
+
       console.log(JSON.stringify(body), 100);
+
+      if (body) {
+        const { payload } = body;
+        if (body?.event === "subscription.charged") {
+          const subscription_id = payload?.subscription?.entity?.id;
+          const payment_id = payload?.payment?.entity?.id;
+          const currency = payload?.payment?.entity?.currency;
+          const amount = payload?.payment?.entity?.amount;
+
+          const [agency_details, payment_history] = await Promise.all([
+            Authentication.findOne({
+              subscription_id,
+            }).lean(),
+            PaymentHistory.findOne({ subscription_id }),
+          ]);
+          if (!agency_details) return;
+          let first_time = false;
+          if (!payment_history) first_time = true;
+
+          await PaymentHistory.create({
+            agency_id: agency_details?.reference_id,
+            amount,
+            subscription_id,
+            currency,
+            payment_id,
+            first_time,
+          });
+          return;
+        } else if (body?.event === "subscription.activated") {
+          const subscription_id = payload?.subscription?.entity?.id;
+          const agency_details = await Authentication.findOne({
+            subscription_id,
+          }).lean();
+
+          if (agency_details && agency_details?.subscription_halted) {
+            await Authentication.findByIdAndUpdate(agency_details?._id, {
+              subscription_halted: undefined,
+              status: "confirmed",
+            });
+          }
+
+          return;
+        } else if (
+          body?.event === "subscription.halted" ||
+          body?.event === "subscription.pending"
+        ) {
+          const subscription_id = payload?.subscription?.entity?.id;
+          const agency_details = await Authentication.findOne({
+            subscription_id,
+          }).lean();
+
+          if (agency_details && !agency_details?.subscription_halted) {
+            await Authentication.findByIdAndUpdate(agency_details?._id, {
+              subscription_halted: moment.utc().startOf("day"),
+              status: "subscription_halted",
+            });
+          }
+
+          return;
+        }
+      }
 
       return;
     } catch (error) {
@@ -307,9 +382,9 @@ class PaymentService {
         .update(razorpay_order_id + "|" + razorpay_payment_id, "utf-8")
         .digest("hex");
 
-      var memberData = await Authentication.findOne({
+      const memberData = await Authentication.findOne({
         reference_id: payload?.user_id,
-      });
+      }).lean();
 
       if (
         expected_signature_1 === razorpay_signature ||
@@ -322,7 +397,8 @@ class PaymentService {
 
         await notificationService.addNotification({
           receiver_id: payload?.agency_id,
-          team_member_name: memberData.first_name + " " + memberData.last_name,
+          team_member_name:
+            memberData?.first_name + " " + memberData?.last_name,
           module_name: "general",
           action_name: "memberPaymentDone",
         });
@@ -336,7 +412,7 @@ class PaymentService {
 
       await notificationService.addNotification({
         receiver_id: payload?.agency_id,
-        team_member_name: memberData.first_name + " " + memberData.last_name,
+        team_member_name: memberData?.first_name + " " + memberData?.last_name,
         module_name: "general",
         action_name: "memberPaymentFail",
       });
@@ -436,13 +512,14 @@ class PaymentService {
             last_login_date: moment.utc().startOf("day"),
           }
         );
-        await PaymentHistory.create({
-          agency_id,
-          amount,
-          subscription_id,
-          currency,
-          payment_id: razorpay_payment_id,
-        });
+        // commenting to create the payment history by the webhook
+        // await PaymentHistory.create({
+        //   agency_id,
+        //   amount,
+        //   subscription_id,
+        //   currency,
+        //   payment_id: razorpay_payment_id,
+        // });
 
         await SheetManagement.findOneAndUpdate(
           { agency_id },
@@ -1089,27 +1166,30 @@ class PaymentService {
         agency?.subscription_id
       );
 
-      const [plan_details, sheets_detail, earned_total] = await Promise.all([
-        this.planDetails(subscription.plan_id),
-        SheetManagement.findOne({ agency_id: agency?.reference_id }).lean(),
-        this.calculateTotalReferralPoints(agency),
-      ]);
-      console.log(plan_details);
-
       return {
-        next_billing_date: subscription?.current_end,
-        next_billing_price:
-          subscription?.quantity * (plan_details?.item.amount / 100),
-        total_sheets: sheets_detail.total_sheets,
-        available_sheets: Math.abs(
-          sheets_detail.total_sheets - 1 - sheets_detail.occupied_sheets.length
-        ),
-        subscription,
-        referral_points: {
-          erned_points: earned_total, //this static data as of now
-          available_points: agency?.total_referral_point, // this is static data as of now
-        },
+        manage_subscription: subscription?.short_url,
       };
+      // commenting un-necessary code
+      // const [plan_details, sheets_detail, earned_total] = await Promise.all([
+      //   this.planDetails(subscription.plan_id),
+      //   SheetManagement.findOne({ agency_id: agency?.reference_id }).lean(),
+      //   this.calculateTotalReferralPoints(agency),
+      // ]);
+
+      // return {
+      //   next_billing_date: subscription?.current_end,
+      //   next_billing_price:
+      //     subscription?.quantity * (plan_details?.item.amount / 100),
+      //   total_sheets: sheets_detail.total_sheets,
+      //   available_sheets: Math.abs(
+      //     sheets_detail.total_sheets - 1 - sheets_detail.occupied_sheets.length
+      //   ),
+      //   subscription,
+      //   referral_points: {
+      //     erned_points: earned_total, //this static data as of now
+      //     available_points: agency?.total_referral_point, // this is static data as of now
+      //   },
+      // };
     } catch (error) {
       logger.error(`Error while getting the referral: ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -1624,7 +1704,9 @@ class PaymentService {
   // and the order id is generate based on the agency doing single payment
   orderPaymentDetails = async (order_id) => {
     try {
-      const { data } = await this.razorpayApi.get(`/orders/${order_id}`);
+      const { data } = await this.razorpayApi.get(
+        `/orders/${order_id}/payments`
+      );
       return data;
       // removed the npm package code
       // return await Promise.resolve(razorpay.orders.fetchPayments(order_id));

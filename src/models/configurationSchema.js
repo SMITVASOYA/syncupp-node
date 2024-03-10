@@ -18,7 +18,7 @@ const configurationSchema = new mongoose.Schema(
       activity_dueDate: { type: String, default: "0 0 * * *" },
     },
     payment: {
-      free_till_days: { type: Number, default: 15 },
+      subscription_halt_days: { type: Number, default: 15 },
     },
   },
   { timestamps: true }

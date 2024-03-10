@@ -9,6 +9,7 @@ const {
   passwordValidation,
   paginationObject,
   getKeywordType,
+  capitalizeFirstLetter,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const bcrypt = require("bcrypt");
@@ -308,7 +309,7 @@ class AdminService {
         },
       ];
 
-      if (payload?.subscription_id && payload?.agency_id)
+      if (!(payload?.subscription_id && payload?.agency_id))
         aggragate.push({ $limit: pagination.result_per_page });
 
       const [transactions, total_transactions] = await Promise.all([
@@ -352,17 +353,20 @@ class AdminService {
             transactions[i].order_id
           );
           transactions[i].method = paymentDetails?.items[0].method;
+          transactions[i].status = paymentDetails?.items[0].status;
         } else {
-          const [subscription_detail, orders_available] = await Promise.all([
-            paymentService.getSubscriptionDetail(
-              transactions[i].subscription_id
-            ),
-            PaymentHistory.findOne({
-              order_id: { $exists: true },
-              agency_id: transactions[i].agency_id,
-              subscription_id: { $exists: false },
-            }),
-          ]);
+          const [subscription_detail, orders_available, invoice_detail] =
+            await Promise.all([
+              paymentService.getSubscriptionDetail(
+                transactions[i].subscription_id
+              ),
+              PaymentHistory.findOne({
+                order_id: { $exists: true },
+                agency_id: transactions[i].agency_id,
+                subscription_id: { $exists: false },
+              }),
+              paymentService.invoices(transactions[i].subscription_id),
+            ]);
 
           if (plan && plan?.plan_id == subscription_detail?.plan_id) {
             transactions[i].plan = plan?.name;
@@ -373,7 +377,11 @@ class AdminService {
             transactions[i].plan = plan?.name;
           }
           transactions[i].method = subscription_detail.payment_method;
-          transactions[i].orders_available = orders_available ? true : false;
+          transactions[i].orders_available =
+            orders_available && transactions[i].first_time ? true : false;
+          transactions[i].status = capitalizeFirstLetter(
+            invoice_detail?.items[0]?.status
+          );
         }
       }
 
