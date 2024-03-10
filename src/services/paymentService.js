@@ -1165,11 +1165,13 @@ class PaymentService {
       const subscription = await this.subscripionDetail(
         agency?.subscription_id
       );
-      const [plan_details, sheets_detail, earned_total] = await Promise.all([
-        this.planDetails(subscription.plan_id),
-        SheetManagement.findOne({ agency_id: agency?.reference_id }).lean(),
-        this.calculateTotalReferralPoints(agency),
-      ]);
+      const [plan_details, sheets_detail, earned_total, agency_details] =
+        await Promise.all([
+          this.planDetails(subscription.plan_id),
+          SheetManagement.findOne({ agency_id: agency?.reference_id }).lean(),
+          this.calculateTotalReferralPoints(agency),
+          Agency.findById(agency?.reference_id).lean(),
+        ]);
 
       return {
         next_billing_date: subscription?.current_end,
@@ -1182,7 +1184,7 @@ class PaymentService {
         subscription,
         referral_points: {
           erned_points: earned_total,
-          available_points: agency?.total_referral_point,
+          available_points: agency_details?.total_referral_point,
         },
       };
     } catch (error) {
