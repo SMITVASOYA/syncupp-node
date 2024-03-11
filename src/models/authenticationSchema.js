@@ -34,6 +34,7 @@ const authenticationSchema = new mongoose.Schema(
         "confirm_pending",
         "agency_inactive",
         "team_agency_inactive",
+        "subscription_halted",
       ],
     },
     subscription_id: { type: String },
@@ -44,6 +45,7 @@ const authenticationSchema = new mongoose.Schema(
     last_login_date: { type: Date },
     click_count: { type: Number, default: 0 },
     is_online: { type: Boolean, default: false },
+    subscription_halted: { type: Date },
   },
   { timestamps: true }
 );

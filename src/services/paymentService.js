@@ -31,8 +31,21 @@ const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_SECRET,
 });
+const axios = require("axios");
 
 class PaymentService {
+  constructor() {
+    this.razorpayApi = axios.create({
+      baseURL: "https://api.razorpay.com/v1",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Basic ${Buffer.from(
+          `${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_SECRET}`
+        ).toString("base64")}`,
+      },
+    });
+  }
+
   createPlan = async (payload) => {
     try {
       // const planExist = await SubscriptionPlan.findOne({
@@ -93,19 +106,31 @@ class PaymentService {
           returnMessage("payment", "planNotFound"),
           statusCode.notFound
         );
-      // notify_info: {
-      //   notify_phone: +919574504819,
-      //   notify_email: "smitvtridhyaetech@gmail.com",
-      // },
+
       const subscription_obj = {
         plan_id: plan?.plan_id,
         quantity: 1,
         customer_notify: 1,
         total_count: 120,
       };
-      const subscription = await razorpay.subscriptions.create(
+      // commenting because to test the razorpay axios api call
+      // const subscription = await razorpay.subscriptions.create(
+      //   subscription_obj
+      // );
+
+      // creating the customer to the razorpay
+      await this.razorpayApi.post("/customers", {
+        name: user?.first_name + " " + user?.last_name,
+        contact: user?.contact_number,
+        email: user?.email,
+        fail_existing: 0,
+      });
+
+      const { data } = await this.razorpayApi.post(
+        "/subscriptions",
         subscription_obj
       );
+      const subscription = data;
 
       await Authentication.findByIdAndUpdate(
         user?._id,
@@ -148,7 +173,76 @@ class PaymentService {
       //       statusCode.forbidden
       //     );
 
+      // await PaymentHistory.create({
+      //   agency_id,
+      //   amount,
+      //   subscription_id,
+      //   currency,
+      //   payment_id: razorpay_payment_id,
+      // });
+
       console.log(JSON.stringify(body), 100);
+
+      if (body) {
+        const { payload } = body;
+        if (body?.event === "subscription.charged") {
+          const subscription_id = payload?.subscription?.entity?.id;
+          const payment_id = payload?.payment?.entity?.id;
+          const currency = payload?.payment?.entity?.currency;
+          const amount = payload?.payment?.entity?.amount;
+
+          const [agency_details, payment_history] = await Promise.all([
+            Authentication.findOne({
+              subscription_id,
+            }).lean(),
+            PaymentHistory.findOne({ subscription_id }),
+          ]);
+          if (!agency_details) return;
+          let first_time = false;
+          if (!payment_history) first_time = true;
+
+          await PaymentHistory.create({
+            agency_id: agency_details?.reference_id,
+            amount,
+            subscription_id,
+            currency,
+            payment_id,
+            first_time,
+          });
+          return;
+        } else if (body?.event === "subscription.activated") {
+          const subscription_id = payload?.subscription?.entity?.id;
+          const agency_details = await Authentication.findOne({
+            subscription_id,
+          }).lean();
+
+          if (agency_details && agency_details?.subscription_halted) {
+            await Authentication.findByIdAndUpdate(agency_details?._id, {
+              subscription_halted: undefined,
+              status: "confirmed",
+            });
+          }
+
+          return;
+        } else if (
+          body?.event === "subscription.halted" ||
+          body?.event === "subscription.pending"
+        ) {
+          const subscription_id = payload?.subscription?.entity?.id;
+          const agency_details = await Authentication.findOne({
+            subscription_id,
+          }).lean();
+
+          if (agency_details && !agency_details?.subscription_halted) {
+            await Authentication.findByIdAndUpdate(agency_details?._id, {
+              subscription_halted: moment.utc().startOf("day"),
+              status: "subscription_halted",
+            });
+          }
+
+          return;
+        }
+      }
 
       return;
     } catch (error) {
@@ -238,22 +332,23 @@ class PaymentService {
         )
       );
 
-      const order = await Promise.resolve(
-        razorpay.orders.create({
-          amount: prorate_value,
-          currency: "INR",
-          receipt: Date.now().toString(),
-        })
-      );
+      // removing the by default package and using the axios call instead of the npm package
+      // const order = await Promise.resolve(
+      //   razorpay.orders.create({
+      //     amount: prorate_value,
+      //     currency: "INR",
+      //     receipt: Date.now().toString(),
+      //   })
+      // );
 
-      await Authentication.findByIdAndUpdate(
-        payload?.user_id,
-        { order_id: order?.id },
-        { new: true }
-      );
-      const referral_point = Agency.findOne({ _id: user?.reference_id });
+      const { data } = await this.razorpayApi.post("/orders", {
+        amount: prorate_value,
+        currency: plan?.currency,
+        receipt: Date.now().toString(),
+      });
+
+      const order = data;
       return {
-        referral_points: referral_point?.total_referral_point, // this wil be change in future when the referral point will be integrate
         payment_id: order?.id,
         amount: prorate_value,
         currency: plan?.currency,
@@ -287,9 +382,9 @@ class PaymentService {
         .update(razorpay_order_id + "|" + razorpay_payment_id, "utf-8")
         .digest("hex");
 
-      var memberData = await Authentication.findOne({
+      const memberData = await Authentication.findOne({
         reference_id: payload?.user_id,
-      });
+      }).lean();
 
       if (
         expected_signature_1 === razorpay_signature ||
@@ -302,7 +397,8 @@ class PaymentService {
 
         await notificationService.addNotification({
           receiver_id: payload?.agency_id,
-          team_member_name: memberData.first_name + " " + memberData.last_name,
+          team_member_name:
+            memberData?.first_name + " " + memberData?.last_name,
           module_name: "general",
           action_name: "memberPaymentDone",
         });
@@ -316,7 +412,7 @@ class PaymentService {
 
       await notificationService.addNotification({
         receiver_id: payload?.agency_id,
-        team_member_name: memberData.first_name + " " + memberData.last_name,
+        team_member_name: memberData?.first_name + " " + memberData?.last_name,
         module_name: "general",
         action_name: "memberPaymentFail",
       });
@@ -416,13 +512,14 @@ class PaymentService {
             last_login_date: moment.utc().startOf("day"),
           }
         );
-        await PaymentHistory.create({
-          agency_id,
-          amount,
-          subscription_id,
-          currency,
-          payment_id: razorpay_payment_id,
-        });
+        // commenting to create the payment history by the webhook
+        // await PaymentHistory.create({
+        //   agency_id,
+        //   amount,
+        //   subscription_id,
+        //   currency,
+        //   payment_id: razorpay_payment_id,
+        // });
 
         await SheetManagement.findOneAndUpdate(
           { agency_id },
@@ -642,7 +739,12 @@ class PaymentService {
   // fetch subscription by id
   subscripionDetail = async (subscription_id) => {
     try {
-      return await razorpay.subscriptions.fetch(subscription_id);
+      const { data } = await this.razorpayApi.get(
+        `/subscriptions/${subscription_id}`
+      );
+      return data;
+      // commented because of the taking more time in the staging server
+      // return await razorpay.subscriptions.fetch(subscription_id);
     } catch (error) {
       console.log(JSON.stringify(error));
 
@@ -658,11 +760,18 @@ class PaymentService {
         reference_id: agency_id,
       }).lean();
       if (!agency) return;
+      // commmenting to apply the razorpay axios api
+      // await Promise.resolve(
+      //   razorpay.subscriptions.update(agency?.subscription_id, {
+      //     quantity,
+      //   })
+      // );
 
-      await Promise.resolve(
-        razorpay.subscriptions.update(agency?.subscription_id, {
+      await this.razorpayApi.patch(
+        `/subscriptions/${agency?.subscription_id}`,
+        {
           quantity,
-        })
+        }
       );
       return;
     } catch (error) {
@@ -1033,11 +1142,16 @@ class PaymentService {
         { new: true }
       ).lean();
 
-      await Promise.resolve(
-        razorpay.subscriptions.update(user?.subscription_id, {
-          quantity: updated_sheet?.total_sheets,
-        })
-      );
+      // removed the razorpay package code
+      // await Promise.resolve(
+      //   razorpay.subscriptions.update(user?.subscription_id, {
+      //     quantity: updated_sheet?.total_sheets,
+      //   })
+      // );
+
+      await this.razorpayApi.patch(`/subscriptions/${user?.subscription_id}`, {
+        quantity: updated_sheet?.total_sheets,
+      });
       return;
     } catch (error) {
       console.log(JSON.stringify(error));
@@ -1051,12 +1165,13 @@ class PaymentService {
       const subscription = await this.subscripionDetail(
         agency?.subscription_id
       );
-
-      const [plan_details, sheets_detail, earned_total] = await Promise.all([
-        this.planDetails(subscription.plan_id),
-        SheetManagement.findOne({ agency_id: agency?.reference_id }).lean(),
-        this.calculateTotalReferralPoints(agency),
-      ]);
+      const [plan_details, sheets_detail, earned_total, agency_details] =
+        await Promise.all([
+          this.planDetails(subscription.plan_id),
+          SheetManagement.findOne({ agency_id: agency?.reference_id }).lean(),
+          this.calculateTotalReferralPoints(agency),
+          Agency.findById(agency?.reference_id).lean(),
+        ]);
 
       return {
         next_billing_date: subscription?.current_end,
@@ -1068,8 +1183,8 @@ class PaymentService {
         ),
         subscription,
         referral_points: {
-          erned_points: earned_total, //this static data as of now
-          available_points: agency?.total_referral_point, // this is static data as of now
+          erned_points: earned_total,
+          available_points: agency_details?.total_referral_point,
         },
       };
     } catch (error) {
@@ -1098,9 +1213,34 @@ class PaymentService {
       throw error;
     }
   };
+
   planDetails = async (plan_id) => {
     try {
-      return Promise.resolve(razorpay.plans.fetch(plan_id));
+      const { data } = await this.razorpayApi.get(`/plans/${plan_id}`);
+      return data;
+      // commenting the razorpay package code
+      // return Promise.resolve(razorpay.plans.fetch(plan_id));
+    } catch (error) {
+      console.log(JSON.stringify(error));
+      logger.error(
+        `Error while getting the plan details from the razorpay: ${error}`
+      );
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  planDetailsAxios = async (plan_id) => {
+    try {
+      const response = await axios.get(
+        `https://api.razorpay.com/v1/plans/${plan_id}`,
+        {
+          auth: {
+            username: "rzp_test_lGt50R6T1BIUBR",
+            password: "TI8QOrNF6L6Qft2U9CZ5JyLq",
+          },
+        }
+      );
+      return response?.data;
     } catch (error) {
       logger.error(
         `Error while getting the plan details from the razorpay: ${error}`
@@ -1543,7 +1683,12 @@ class PaymentService {
   // this function is used to get the invoice details from the subscription id
   invoices = async (subscription_id) => {
     try {
-      return await Promise.resolve(razorpay.invoices.all({ subscription_id }));
+      const { data } = await this.razorpayApi.get(
+        `/invoices?subscription_id=${subscription_id}`
+      );
+      return data;
+      // removed the npm package code
+      // return await Promise.resolve(razorpay.invoices.all({ subscription_id }));
     } catch (error) {
       logger.error(
         `Error while getting the invoices from the Subscription id :${error} `
@@ -1556,7 +1701,12 @@ class PaymentService {
   // and the order id is generate based on the agency doing single payment
   orderPaymentDetails = async (order_id) => {
     try {
-      return await Promise.resolve(razorpay.orders.fetchPayments(order_id));
+      const { data } = await this.razorpayApi.get(
+        `/orders/${order_id}/payments`
+      );
+      return data;
+      // removed the npm package code
+      // return await Promise.resolve(razorpay.orders.fetchPayments(order_id));
     } catch (error) {
       logger.error(
         `Error while getting the payment details from the order id :${error} `
@@ -1568,9 +1718,14 @@ class PaymentService {
   // this function is used to get the subscription details from the subscription id
   getSubscriptionDetail = async (subscription_id) => {
     try {
-      return await Promise.resolve(
-        razorpay.subscriptions.fetch(subscription_id)
+      const { data } = await this.razorpayApi.get(
+        `/subscriptions/${subscription_id}`
       );
+      return data;
+      // removed the npm package code
+      // return await Promise.resolve(
+      //   razorpay.subscriptions.fetch(subscription_id)
+      // );
     } catch (error) {
       logger.error(
         `Error while getting the invoices from the Subscription id :${error} `

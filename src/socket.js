@@ -213,18 +213,25 @@ exports.socket_connection = (http_server) => {
             data_reference_id: new_message?._id,
           });
 
-          socket
-            .to(from_user?.toString())
-            .to(to_user?.toString())
-            .emit("RECEIVED_IMAGE", {
-              image_url: image_name,
-              from_user,
-              to_user,
-              message_type: new_message?.message_type,
-              _id: new_message?._id,
-              createdAt: new_message?.createdAt,
-              user_type,
-            });
+          socket.to(from_user).emit("RECEIVED_IMAGE", {
+            image_url: image_name,
+            from_user,
+            to_user,
+            message_type: new_message?.message_type,
+            _id: new_message?._id,
+            createdAt: new_message?.createdAt,
+            user_type,
+          });
+
+          socket.to(to_user).emit("RECEIVED_IMAGE", {
+            image_url: image_name,
+            from_user,
+            to_user,
+            message_type: new_message?.message_type,
+            _id: new_message?._id,
+            createdAt: new_message?.createdAt,
+            user_type,
+          });
         }
       } catch (error) {
         logger.error(`Error while uploading the images: ${error}`);

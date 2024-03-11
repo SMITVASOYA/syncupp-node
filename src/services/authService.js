@@ -327,13 +327,12 @@ class AuthService {
 
         const lastLoginDateUTC = moment.utc(agency_enroll?.last_login_date);
         const currentDateUTC = moment().startOf("day");
+        const referral_data = await Configuration.findOne().lean();
         if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
           if (
             agency_enroll?.role?.name === "team_agency" ||
             agency_enroll?.role?.name === "agency"
           ) {
-            const referral_data = await Configuration.findOne().lean();
-
             await CompetitionPoint.create({
               user_id: agency_enroll?.reference_id,
               agency_id: agency_enroll?.reference_id,
@@ -363,18 +362,17 @@ class AuthService {
 
         return this.tokenGenerator({
           ...agency_enroll,
+          subscription_halt_days:
+            referral_data?.payment?.subscription_halt_days,
         });
       } else {
         const lastLoginDateUTC = moment.utc(existing_agency?.last_login_date);
         const currentDateUTC = moment().startOf("day");
-
         if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
           if (
             existing_agency?.role?.name === "team_agency" ||
             existing_agency?.role?.name === "agency"
           ) {
-            const referral_data = await Configuration.findOne().lean();
-
             await CompetitionPoint.create({
               user_id: existing_agency?.reference_id,
               agency_id: existing_agency?.reference_id,
@@ -403,6 +401,8 @@ class AuthService {
         }
         return this.tokenGenerator({
           ...existing_agency,
+          subscription_halt_days:
+            referral_data?.payment?.subscription_halt_days,
         });
       }
     } catch (error) {
@@ -483,14 +483,13 @@ class AuthService {
 
         const lastLoginDateUTC = moment.utc(agency_enroll?.last_login_date);
         const currentDateUTC = moment().startOf("day");
+        const referral_data = await Configuration.findOne().lean();
 
         if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
           if (
             agency_enroll?.role?.name === "team_agency" ||
             agency_enroll?.role?.name === "agency"
           ) {
-            const referral_data = await Configuration.findOne().lean();
-
             await CompetitionPoint.create({
               user_id: agency_enroll?.reference_id,
               agency_id: agency_enroll?.reference_id,
@@ -520,6 +519,8 @@ class AuthService {
         }
         return this.tokenGenerator({
           ...agency_enroll,
+          subscription_halt_days:
+            referral_data?.payment?.subscription_halt_days,
         });
       } else {
         const lastLoginDateUTC = moment.utc(existing_agency?.last_login_date);
@@ -530,8 +531,6 @@ class AuthService {
             existing_agency?.role?.name === "team_agency" ||
             existing_agency?.role?.name === "agency"
           ) {
-            const referral_data = await Configuration.findOne().lean();
-
             await CompetitionPoint.create({
               user_id: existing_agency?.reference_id,
               agency_id: existing_agency?.reference_id,
@@ -560,6 +559,8 @@ class AuthService {
         }
         return this.tokenGenerator({
           ...existing_agency,
+          subscription_halt_days:
+            referral_data?.payment?.subscription_halt_days,
         });
       }
     } catch (error) {
@@ -621,7 +622,7 @@ class AuthService {
 
       // Get the current date in UTC format using Moment.js
       const currentDateUTC = moment().startOf("day");
-
+      const referral_data = await Configuration.findOne().lean();
       // Check if last login date is the same as current date
       if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
         // If the condition is true, execute the following code
@@ -629,8 +630,6 @@ class AuthService {
           existing_Data?.role?.name === "team_agency" ||
           existing_Data?.role?.name === "agency"
         ) {
-          const referral_data = await Configuration.findOne().lean();
-
           let agency_key;
 
           if (existing_Data?.role?.name === "team_agency") {
@@ -676,6 +675,7 @@ class AuthService {
           );
         }
       }
+
       await Authentication.findOneAndUpdate(
         { reference_id: existing_Data.reference_id },
         { last_login_date: moment.utc().startOf("day") },
@@ -714,6 +714,7 @@ class AuthService {
       return this.tokenGenerator({
         ...existing_Data,
         rememberMe: payload?.rememberMe,
+        subscription_halt_days: referral_data?.payment?.subscription_halt_days,
       });
     } catch (error) {
       logger.error(`Error while login: ${error.message}`);
