@@ -4,6 +4,9 @@ const invoiceController = require("../controllers/invoiceController");
 const { validateCreateInvoice } = require("../validators/invoice.validator");
 const validatorFunc = require("../utils/validatorFunction.helper");
 
+invoiceRoute.post("/add-currency", invoiceController.addCurrency);
+invoiceRoute.get("/currency", invoiceController.currencyList);
+
 invoiceRoute.use(protect);
 
 invoiceRoute.get(

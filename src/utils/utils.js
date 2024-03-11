@@ -5076,7 +5076,7 @@ exports.invoiceTemplate = (invoiceData) => {
                                         </td>
                                         <td align="left" style=" padding-top: 10px; font-weight: 400; font-size: 12px; text-overflow: ellipsis;  vertical-align: top; border-bottom: 1px solid black; padding-bottom:5px;
     border-collapse: collapse;">
-    ${item.rate} $
+    ${invoiceData?.currency_symbol} ${item.rate}
                                         </td>
                                         <td align="left" style=" padding-top: 10px; font-weight: 400; font-size: 12px; text-overflow: ellipsis;  vertical-align: top; border-bottom: 1px solid black; padding-bottom:5px;
     border-collapse: collapse;">
@@ -5084,7 +5084,7 @@ exports.invoiceTemplate = (invoiceData) => {
                                         </td>
                                         <td align="left" style=" padding-top: 10px; font-weight: 400; font-size: 12px; text-overflow: ellipsis;  vertical-align: top; border-bottom: 1px solid black; padding-bottom:5px;
     border-collapse: collapse;">
-    ${item.amount} $
+    ${invoiceData?.currency_symbol} ${item.amount} 
                                         </td>
                                       </tr>
                                 `
@@ -5107,9 +5107,9 @@ exports.invoiceTemplate = (invoiceData) => {
                                       font-weight: 500;">Subtotal</span>
                                       <span style="text-align: right; width: 50%; display: inline-table;
                                       font-weight: 600;">${
-                                        invoiceData.sub_total
-                                      }
-                                      $</span>
+                                        invoiceData?.currency_symbol
+                                      } ${invoiceData.sub_total}
+                                      </span>
                                     </li>
                                     <li style="border:1px solid #111318; margin-top: 10px;"></li>
                                     <li style="text-align: left;     width: 100%;
@@ -5118,9 +5118,11 @@ exports.invoiceTemplate = (invoiceData) => {
                                                                           font-weight: 500;">Total</span>
                                       <span style="text-align: right; width: 50%; display: inline-table;
                                                                           font-weight: 600;">${
-                                                                            invoiceData.total
-                                                                          }
-                                        $</span>
+                                                                            invoiceData?.currency_symbol
+                                                                          } ${
+    invoiceData.total
+  }
+                                        </span>
                                     </li>
                                     <li style="border:1px solid #111318; margin-top: 10px;"></li>
                                     <li style="text-align: left;     width: 100%;

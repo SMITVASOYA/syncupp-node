@@ -153,3 +153,30 @@ exports.downloadPdf = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+// Currency Listing
+
+exports.currencyList = catchAsyncError(async (req, res, next) => {
+  console.log(req?.user);
+  var list = await invoiceService.currencyList(req?.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("invoice", "currencyListFetched"),
+    list,
+    statusCode.success
+  );
+});
+
+// Currency Add
+
+exports.addCurrency = catchAsyncError(async (req, res, next) => {
+  var list = await invoiceService.addCurrency(req?.body);
+  sendResponse(
+    res,
+    true,
+    returnMessage("invoice", "currencyAdded"),
+    list,
+    statusCode.success
+  );
+});

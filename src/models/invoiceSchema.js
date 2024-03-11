@@ -18,6 +18,15 @@ const invoiceSchema = new mongoose.Schema(
       required: true,
     },
 
+    currency: {
+      type: mongoose.Types.ObjectId,
+      ref: "currency",
+      required: true,
+    },
+    memo: {
+      type: String,
+      required: true,
+    },
     invoice_content: [
       {
         item: {
@@ -32,7 +41,7 @@ const invoiceSchema = new mongoose.Schema(
         rate: {
           type: Number,
           required: true,
-          min: 1,
+          min: 0,
         },
         tax: {
           type: Number,
