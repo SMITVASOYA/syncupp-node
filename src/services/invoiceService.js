@@ -783,6 +783,7 @@ class InvoiceService {
             memo: 1,
             currency_symbol: "$currency_name.symbol",
             currency_name: "$currency_name.name",
+            currency_id: "$currency_name._id",
           },
         },
       ]);

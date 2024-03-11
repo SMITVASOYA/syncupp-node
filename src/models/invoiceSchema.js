@@ -25,7 +25,6 @@ const invoiceSchema = new mongoose.Schema(
     },
     memo: {
       type: String,
-      required: true,
     },
     invoice_content: [
       {
