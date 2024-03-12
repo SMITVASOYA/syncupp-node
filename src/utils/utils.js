@@ -2,6 +2,8 @@ const { throwError } = require("../helpers/errorUtil");
 const engMessage = require("../messages/english.json");
 const notificationMessage = require("../messages/notification.json");
 const cheerio = require("cheerio");
+const colorsData = require("../messages/colors.json");
+const colors = colorsData.colors;
 
 exports.returnMessage = (module, key, language = "en") => {
   return engMessage[module][key];
@@ -9849,4 +9851,26 @@ white-space: nowrap;">${data?.endTime ?? `&nbsp;`}</td>
   
   
   `;
+};
+
+exports.getRandomColor = () => {
+  const colorKeys = Object.keys(colors);
+  const randomColorKey =
+    colorKeys[Math.floor(Math.random() * colorKeys.length)];
+  return colors[randomColorKey];
+};
+
+exports.generateUniqueColors = (count) => {
+  const uniqueColors = new Set();
+  const letters = "0123456789ABCDEF";
+
+  while (uniqueColors.size < count) {
+    let color = "#";
+    for (let i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    uniqueColors.add(color);
+  }
+
+  return Array.from(uniqueColors);
 };

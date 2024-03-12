@@ -1,24 +1,14 @@
 const { protect, authorizeRole } = require("../middlewares/authMiddleware");
 const activityController = require("../controllers/activityController");
-const { upload } = require("../helpers/multer");
-
 const activityRoute = require("express").Router();
 activityRoute.use(protect);
-activityRoute.post(
-  "/create-task",
-  upload.array("attachments"),
-  activityController.addTask
-);
+activityRoute.post("/create-task", activityController.addTask);
 activityRoute.get("/get-status-list", activityController.statusList);
 activityRoute.post("/task-list", activityController.taskList);
 activityRoute.post("/tag-list", activityController.tagList);
 activityRoute.get("/get-task/:id", activityController.fetchTask);
 activityRoute.delete("/delete-task", activityController.deleteTask);
-activityRoute.put(
-  "/update-task/:id",
-  upload.array("attachments"),
-  activityController.updateTask
-);
+activityRoute.put("/update-task/:id", activityController.updateTask);
 activityRoute.put("/update-status/:id", activityController.updateStatus);
 
 activityRoute.post("/call-meeting", activityController.createCallActivity);
