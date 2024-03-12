@@ -6,7 +6,11 @@ const { sendResponse } = require("../utils/sendResponse");
 const activityService = new ActivityService();
 
 exports.addTask = catchAsyncError(async (req, res, next) => {
-  const createTask = await activityService.createTask(req.body, req?.user);
+  const createTask = await activityService.createTask(
+    req.body,
+    req?.user,
+    req?.files
+  );
   sendResponse(
     res,
     true,
@@ -51,7 +55,8 @@ exports.fetchTask = catchAsyncError(async (req, res, next) => {
 exports.updateTask = catchAsyncError(async (req, res, next) => {
   const updateTask = await activityService.updateTask(
     req.body,
-    req?.params?.id
+    req?.params?.id,
+    req?.files
   );
   sendResponse(
     res,

@@ -10,6 +10,8 @@ const {
   validateRequestFields,
   taskTemplate,
   activityTemplate,
+  getRandomColor,
+  generateUniqueColors,
 } = require("../utils/utils");
 const moment = require("moment");
 const { default: mongoose } = require("mongoose");
@@ -26,9 +28,10 @@ const notificationService = new NotificationService();
 const EventService = require("../services/eventService");
 const eventService = new EventService();
 const Client = require("../models/clientSchema");
+const fs = require("fs");
 
 class ActivityService {
-  createTask = async (payload, user) => {
+  createTask = async (payload, user, files) => {
     try {
       const {
         title,
@@ -39,7 +42,15 @@ class ActivityService {
         mark_as_done,
         tags,
       } = payload;
+
+      const attachments = [];
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          attachments.push("uploads/" + file.filename);
+        });
+      }
       let agency_id;
+
       if (user.role.name === "agency") {
         agency_id = user?.reference_id;
       } else if (user.role.name === "team_agency") {
@@ -77,6 +88,7 @@ class ActivityService {
         activity_type: type._id,
         agency_id,
         tags,
+        attachments: attachments,
       });
       const added_task = await newTask.save();
 
@@ -394,7 +406,6 @@ class ActivityService {
           //   },
           // },
         ];
-
         const keywordType = getKeywordType(searchObj.search);
         if (keywordType === "number") {
           const numericKeyword = parseInt(searchObj.search);
@@ -518,6 +529,21 @@ class ActivityService {
             column_id: "$status.name",
             tags: 1,
             agency_id: 1,
+            coloredTags: {
+              $map: {
+                input: "$tags",
+                as: "tag",
+                in: {
+                  name: "$$tag",
+                  color: {
+                    $arrayElemAt: [
+                      generateUniqueColors(10),
+                      { $indexOfArray: ["$tags", "$$tag"] },
+                    ],
+                  },
+                },
+              },
+            },
           },
         },
       ];
@@ -862,6 +888,21 @@ class ActivityService {
             client_name: "$client_Data.client_name",
             column_id: "$status.name",
             tags: 1,
+            coloredTags: {
+              $map: {
+                input: "$tags",
+                as: "tag",
+                in: {
+                  name: "$$tag",
+                  color: {
+                    $arrayElemAt: [
+                      generateUniqueColors(10),
+                      { $indexOfArray: ["$tags", "$$tag"] },
+                    ],
+                  },
+                },
+              },
+            },
           },
         },
       ];
@@ -1025,7 +1066,20 @@ class ActivityService {
             recurring_end_date: 1,
             activity_type: 1,
             attendees: 1,
+            attachments: 1,
             tags: 1,
+            coloredTags: {
+              $map: {
+                input: { $range: [0, { $size: "$tags" }] },
+                as: "index",
+                in: {
+                  name: { $arrayElemAt: ["$tags", "$$index"] },
+                  color: {
+                    $arrayElemAt: [generateUniqueColors(10), "$$index"],
+                  },
+                },
+              },
+            },
           },
         },
       ];
@@ -1174,7 +1228,7 @@ class ActivityService {
     }
   };
 
-  updateTask = async (payload, id) => {
+  updateTask = async (payload, id, files) => {
     try {
       const {
         title,
@@ -1185,6 +1239,23 @@ class ActivityService {
         mark_as_done,
         tags,
       } = payload;
+
+      const attachments = [];
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          attachments.push("uploads/" + file.filename);
+        });
+        // const existingFiles = await Activity.findById(id);
+        // existingFiles &&
+        //   existingFiles?.attachments.map((item) => {
+        //     fs.unlink(`/uploads/${item}`, (err) => {
+        //       if (err) {
+        //         logger.error(`Error while unlinking the documents: ${err}`);
+        //       }
+        //     });
+        //   });
+      }
+
       const status_check = await Activity.findById(id).populate(
         "activity_status"
       );
@@ -1218,6 +1289,7 @@ class ActivityService {
           client_id,
           activity_status: status?._id,
           tags,
+          ...(attachments.length > 0 && { attachments }),
         },
         { new: true, useFindAndModify: false }
       );
