@@ -12,11 +12,12 @@ const paymentHistorySchema = new mongoose.Schema(
     currency: { type: String },
     payment_mode: {
       type: String,
-      enum: ["payment", "referral"],
+      enum: ["payment", "referral", "free_trial"],
       default: "payment",
     },
     payment_id: { type: String },
     first_time: { type: Boolean, default: false },
+    plan_id: { type: String },
   },
   { timestamps: true }
 );

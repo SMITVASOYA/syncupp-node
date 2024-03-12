@@ -19,6 +19,7 @@ const configurationSchema = new mongoose.Schema(
     },
     payment: {
       subscription_halt_days: { type: Number, default: 15 },
+      free_trial: { type: Number, default: 7 },
     },
   },
   { timestamps: true }
