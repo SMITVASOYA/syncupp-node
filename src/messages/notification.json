@@ -86,5 +86,9 @@
     "clientTeamJoined": "Team member ${member_name} joined.",
     "clientTeamPaymentDone": "Team member ${member_name} payment done.",
     "clientTeamPaymentFail": "Team member ${member_name} payment fail."
+  },
+
+  "chat": {
+    "addedToGroup": "Hi, {{user_name}}. you are added to the {{group_name}} group by the {{creator_name}}."
   }
 }

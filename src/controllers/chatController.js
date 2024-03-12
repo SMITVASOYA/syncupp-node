@@ -34,3 +34,13 @@ exports.fetchUsers = catchAsyncError(async (req, res, next) => {
   const users = await groupChatService.usersList(req.user);
   sendResponse(res, true, undefined, users, 200);
 });
+
+exports.createGroup = catchAsyncError(async (req, res, next) => {
+  await groupChatService.createGroupChat(req.body, req.user);
+  sendResponse(res, true, returnMessage("chat", "groupCreated"), {}, 200);
+});
+
+exports.groups = catchAsyncError(async (req, res, next) => {
+  const groups = await groupChatService.groupsList(req.user);
+  sendResponse(res, true, undefined, groups, 200);
+});

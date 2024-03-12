@@ -15,6 +15,7 @@ const notificationSchema = new mongoose.Schema(
         "activity",
         "deleted",
         "general",
+        "group",
       ],
     },
     data_reference_id: { type: mongoose.Types.ObjectId },
@@ -23,6 +24,7 @@ const notificationSchema = new mongoose.Schema(
     is_deleted: { type: Boolean, default: false },
     from_user: { type: mongoose.Types.ObjectId },
     user_type: { type: String },
+    group_id: { type: mongoose.Types.ObjectId },
   },
   { timestamps: true }
 );

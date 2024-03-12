@@ -5,10 +5,9 @@ const { throwError } = require("./helpers/errorUtil");
 const Chat = require("./models/chatSchema");
 const Notification = require("./models/notificationSchema");
 const { returnMessage } = require("./utils/utils");
-const detect_file_type = require("detect-file-type");
 const fs = require("fs");
-const moment = require("moment");
 const Authentication = require("./models/authenticationSchema");
+const Group_Chat = require("./models/groupChatSchema");
 
 exports.socket_connection = (http_server) => {
   io = new Server(http_server, {
@@ -32,7 +31,15 @@ exports.socket_connection = (http_server) => {
     // For user joined
     socket.on("ROOM", async (obj) => {
       logger.info(obj.id, 15);
+      console.log(obj.id);
       socket.join(obj.id);
+
+      // this is used to fetch the group chat id to join that group chat id so they can receive the group chat messages
+      let group_ids = await Group_Chat.distinct("_id", {
+        members: { $in: [obj.id] },
+      });
+      group_ids.forEach((group_id) => socket.join(group_id.toString()));
+
       // for the Online status
       socket.broadcast.emit("USER_ONLINE", { user_id: obj.id });
       await Authentication.findOneAndUpdate(
@@ -66,17 +73,17 @@ exports.socket_connection = (http_server) => {
           from_user,
           to_user,
           message,
-          message_type: "message",
         });
 
-        await Notification.create({
-          type: "chat",
-          user_id: payload?.to_user,
-          from_user,
-          data_reference_id: new_chat?._id,
-          message,
-          user_type,
-        });
+        // commenting for the better optimised solution
+        // await Notification.create({
+        //   type: "chat",
+        //   user_id: payload?.to_user,
+        //   from_user,
+        //   data_reference_id: new_chat?._id,
+        //   message,
+        //   user_type,
+        // });
 
         // emiting the message to the sender to solve multiple device synchronous
         io.to(from_user).emit("RECEIVED_MESSAGE", {
@@ -107,13 +114,26 @@ exports.socket_connection = (http_server) => {
     // this socket event is used when sender and receiver are chating at the same time
     // the use of this event that delete the all of the notification of the unread messages
     // So it will not display at the same time of the chat
-    socket.on("ONGOING_CHAT", async (payload) => {
+    socket.on("NOT_ONGOING_CHAT", async (payload) => {
       try {
-        await Notification.deleteMany({
+        const notification_exist = await Notification.findOne({
           user_id: payload?.from_user,
           from_user: payload?.to_user,
           type: "chat",
+          is_read: false,
+          is_deleted: false,
         });
+
+        if (!notification_exist) {
+          await Notification.create({
+            type: "chat",
+            user_id: payload?.to_user,
+            from_user: payload?.from_user,
+            data_reference_id: payload?._id,
+            message: payload?.message,
+            user_type: payload?.user_type,
+          });
+        }
       } catch (error) {
         logger.error(`Error while receiving the message: ${error}`);
         return throwError(error?.message, error?.statusCode);
@@ -214,12 +234,13 @@ exports.socket_connection = (http_server) => {
             message_type: "image",
           });
 
-          await Notification.create({
-            user_id: payload?.to_user,
-            type: "chat",
-            from_user: payload?.from_user,
-            data_reference_id: new_message?._id,
-          });
+          // commenting for the better optimised solution
+          // await Notification.create({
+          //   user_id: payload?.to_user,
+          //   type: "chat",
+          //   from_user: payload?.from_user,
+          //   data_reference_id: new_message?._id,
+          // });
 
           io.to(from_user).emit("RECEIVED_IMAGE", {
             image_url: image_name,
@@ -288,12 +309,13 @@ exports.socket_connection = (http_server) => {
             message_type: "document",
           });
 
-          await Notification.create({
-            user_id: payload?.to_user,
-            type: "chat",
-            from_user: payload?.from_user,
-            data_reference_id: new_message?._id,
-          });
+          // commenting for the better optimised solution
+          // await Notification.create({
+          //   user_id: payload?.to_user,
+          //   type: "chat",
+          //   from_user: payload?.from_user,
+          //   data_reference_id: new_message?._id,
+          // });
 
           io.to([from_user, to_user]).emit("RECEIVED_DOCUMENT", {
             document_url: document_name,
@@ -357,6 +379,80 @@ exports.socket_connection = (http_server) => {
         socket.to(to_user).emit("CHAT_CLEARED", { message: `Chat is cleared` });
       } catch (error) {
         logger.error(`Error while clearing the chat: ${error}`);
+        return throwError(error?.message, error?.statusCode);
+      }
+    });
+
+    // this Socket event is used to send message to the Other user
+    socket.on("GROUP_SEND_MESSAGE", async (payload) => {
+      try {
+        const { from_user, group_id, message } = payload;
+
+        const [new_chat, user_details, group_detail] = await Promise.all([
+          Chat.create({
+            from_user,
+            group_id,
+            message,
+          }),
+          Authentication.findOne({ reference_id: from_user })
+            .select("first_name last_name reference_id")
+            .lean(),
+          Group_Chat.findById(group_id).lean(),
+        ]);
+
+        // emiting the message to the sender to solve multiple device synchronous
+        io.to(from_user).emit("GROUP_RECEIVED_MESSAGE", {
+          from_user,
+          group_id,
+          message,
+          createdAt: new_chat.createdAt,
+          _id: new_chat?._id,
+          message_type: new_chat?.message_type,
+          user_details,
+          members: group_detail?.members,
+        });
+
+        socket.to(group_id).emit("GROUP_RECEIVED_MESSAGE", {
+          from_user,
+          group_id,
+          message,
+          createdAt: new_chat.createdAt,
+          _id: new_chat?._id,
+          message_type: new_chat?.message_type,
+          user_details,
+          members: group_detail?.members,
+        });
+      } catch (error) {
+        logger.error(`Error while sending the in the group: ${error}`);
+        return throwError(error?.message, error?.statusCode);
+      }
+    });
+
+    // This socket event is used to create the notification for the members if they have not read the message
+    socket.on("NOT_ONGOING_CHAT", async (payload) => {
+      try {
+        payload?.members.forEach(async (member) => {
+          const notification_exist = await Notification.findOne({
+            group_id: payload?.group_id,
+            user_id: payload?.member,
+            type: "group",
+            is_read: false,
+            is_deleted: false,
+          });
+
+          if (!notification_exist) {
+            await Notification.create({
+              type: "group",
+              user_id: payload?.to_user,
+              from_user: payload?.member,
+              data_reference_id: payload?._id,
+              message: payload?.message,
+              group_id: payload?.group_id,
+            });
+          }
+        });
+      } catch (error) {
+        logger.error(`Error while receiving the message: ${error}`);
         return throwError(error?.message, error?.statusCode);
       }
     });
