@@ -281,6 +281,29 @@ class NotificationService {
             "general"
           );
         }
+
+        // cMember deleted by client
+
+        if (action_name === "memberDeleted") {
+          console.log("first");
+          await createAndEmitNotification(
+            payload.receiver_id,
+            "memberDeletedClient",
+            "general",
+            "deleted"
+          );
+        }
+
+        // cMember deleted by agency
+
+        if (action_name === "memberDeletedAgency") {
+          await createAndEmitNotification(
+            payload.receiver_id,
+            "memberDeletedAgency",
+            "general",
+            "deleted"
+          );
+        }
       }
 
       return;
@@ -356,16 +379,7 @@ class NotificationService {
     try {
       const { skip, limit } = searchObj;
       const notifications = await Notification.find({
-        /* The above code is a multi-line comment in JavaScript. It is used to add comments or
-        notes within the code that are not executed by the JavaScript engine. Comments are
-        helpful for documenting code, explaining functionality, or temporarily disabling
-        code. */
-        user_id:
-          /* The above code is a multi-line comment in JavaScript. It is used to add comments or
-        notes in the code that are not executed by the JavaScript engine. Comments are
-        helpful for documenting code, explaining functionality, or temporarily disabling
-        code. */
-          user._id,
+        user_id: user._id,
       })
         .sort({ createdAt: -1, is_read: -1 })
         .skip(skip)

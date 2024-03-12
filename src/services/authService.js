@@ -173,6 +173,8 @@ class AuthService {
         delete agency_enroll?.is_facebook_signup;
         delete agency_enroll?.is_google_signup;
 
+        // -------------------- Notification --------------------------------
+
         await notificationService.addAdminNotification({
           action_name: "agencyCreated",
           agency_name:
@@ -199,6 +201,7 @@ class AuthService {
           subject: returnMessage("emailTemplate", "agencyCreated"),
           message: agencyCreated,
         });
+        // -------------------- Notification --------------------------------
 
         return this.tokenGenerator({
           ...agency_enroll,
@@ -227,6 +230,8 @@ class AuthService {
         agency_enroll = agency_enroll.toObject();
         agency_enroll.role = role;
 
+        // -------------------- Notification --------------------------------
+
         await notificationService.addAdminNotification({
           action_name: "agencyCreated",
           agency_name:
@@ -244,6 +249,7 @@ class AuthService {
           subject: returnMessage("emailTemplate", "agencyCreated"),
           message: agencyCreated,
         });
+        // -------------------- Notification --------------------------------
 
         if (payload?.referral_code) {
           const referral_registered = await this.referralSignUp({
