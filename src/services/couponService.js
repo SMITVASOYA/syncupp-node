@@ -2,6 +2,8 @@ const AdminCoupon = require("../models/adminCouponSchema");
 const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
 const { returnMessage, paginationObject } = require("../utils/utils");
+const Agency = require("../models/agencySchema");
+const Configuration = require("../models/configurationSchema");
 
 class CouponService {
   // Add Coupon
@@ -79,7 +81,7 @@ class CouponService {
         page_count: Math.ceil(totalcoupon / pagination.result_per_page) || 0,
       };
     } catch (error) {
-      logger.error(`Error while Admin FQA Listing, ${error}`);
+      logger.error(`Error  while fetching coupon list, ${error}`);
       throwError(error?.message, error?.statusCode);
     }
   };
@@ -94,7 +96,7 @@ class CouponService {
       );
       return deletedFaqs;
     } catch (error) {
-      logger.error(`Error while Deleting FQA, ${error}`);
+      logger.error(`Error while Deleting coupon, ${error}`);
       throwError(error?.message, error?.statusCode);
     }
   };
@@ -123,7 +125,7 @@ class CouponService {
       );
       return faq;
     } catch (error) {
-      logger.error(`Error while updating FQA, ${error}`);
+      logger.error(`Error while updating coupon, ${error}`);
       throwError(error?.message, error?.statusCode);
     }
   };
@@ -163,6 +165,59 @@ class CouponService {
       return faq;
     } catch (error) {
       logger.error(`Error while Get FQA, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  getAllCouponWithOutPagination = async (user) => {
+    try {
+      const queryObj = { is_deleted: false };
+      const agency_data = await Agency.findById(user.reference_id)
+        .select("total_coupon")
+        .lean();
+
+      const coupon = await AdminCoupon.find(queryObj)
+        .select("-couponCode")
+        .lean();
+
+      const referral_data = await Configuration.findOne().lean();
+      const require_points = referral_data?.coupon?.reedem_coupon;
+      // Iterate over each coupon
+      const totalCouponIds = agency_data.total_coupon.map((coupon) =>
+        coupon.toString()
+      );
+
+      // Iterate over each coupon
+      for (let i = 0; i < coupon.length; i++) {
+        const couponId = coupon[i]._id.toString();
+
+        // Check if the coupon ID exists in agency_data.total_coupon
+        const isAvailable = totalCouponIds.includes(couponId);
+
+        // Add a flag to the coupon object
+        coupon[i].isAvailable = !isAvailable;
+      }
+      return { coupon, require_points };
+    } catch (error) {
+      logger.error(`Error whilefetching coupon list, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  getMyCoupons = async (user) => {
+    try {
+      const couponIds = user.total_coupon;
+      const agency_data = await Agency.findById(user.reference_id).select(
+        "total_coupon"
+      );
+      console.log(agency_data);
+      // Query AdminCoupon model to find coupons with IDs present in the array
+      const coupons = await AdminCoupon.find({
+        _id: { $in: agency_data?.total_coupon },
+      });
+      return coupons;
+    } catch (error) {
+      logger.error(`Error while fetching coupon list, ${error}`);
       throwError(error?.message, error?.statusCode);
     }
   };

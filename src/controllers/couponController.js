@@ -73,3 +73,28 @@ exports.getCoupon = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+exports.getAllCouponWithOutPagination = catchAsyncError(
+  async (req, res, next) => {
+    const getAllCouponWithOutPagination =
+      await couponService.getAllCouponWithOutPagination(req?.user);
+    sendResponse(
+      res,
+      true,
+      returnMessage("admin", "getAllCoupon"),
+      getAllCouponWithOutPagination,
+      statusCode.success
+    );
+  }
+);
+
+exports.getmyCoupon = catchAsyncError(async (req, res, next) => {
+  const getMyCoupons = await couponService.getMyCoupons(req?.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("admin", "getMyCoupons"),
+    getMyCoupons,
+    statusCode.success
+  );
+});
