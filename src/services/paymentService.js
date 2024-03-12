@@ -1530,13 +1530,23 @@ class PaymentService {
         Configuration.findOne().lean(),
         SheetManagement.findOne({ agency_id: agency?.reference_id }),
       ]);
-      const payable_amount = (
-        this.customPaymentCalculator(
-          subscription_detail?.current_start,
-          subscription_detail?.current_end,
-          plan
-        ) / 100
-      ).toFixed(2);
+
+      let payable_amount;
+
+      if (
+        !subscription_detail?.current_start &&
+        !subscription_detail?.current_end
+      ) {
+        payable_amount = (plan?.amount / 100).toFixed(2);
+      } else {
+        payable_amount = (
+          this.customPaymentCalculator(
+            subscription_detail?.current_start,
+            subscription_detail?.current_end,
+            plan
+          ) / 100
+        ).toFixed(2);
+      }
       const agency_data = await Agency.findById(agency.reference_id);
       const redirect_payment_page =
         agency_data?.total_referral_point >=
