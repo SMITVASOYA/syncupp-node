@@ -209,13 +209,14 @@ class PaymentService {
           let first_time = false;
           if (!payment_history) first_time = true;
 
-          await PaymentHistory.create({
+          const pp = await PaymentHistory.create({
             agency_id: agency_details?.reference_id,
             subscription_id,
             first_time,
             plan_id,
             payment_mode: "free_trial",
           });
+          console.log(pp, 219);
           return;
         } else if (body?.event === "subscription.charged") {
           const subscription_id = payload?.subscription?.entity?.id;
