@@ -246,6 +246,7 @@ class ChatService {
             ],
           },
         ],
+        is_deleted: false,
       })
         .sort({ createdAt: -1 })
         .lean();

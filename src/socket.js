@@ -176,25 +176,33 @@ exports.socket_connection = (http_server) => {
     // this socket event is used to send the images between the users
     socket.on("IMAGES", async (payload) => {
       try {
-        const { from_user, to_user, buffer, user_type } = payload;
-        console.log(buffer);
-        if (Buffer.byteLength(buffer))
-          socket.to(from_user?.toString()).emit("FILE_TO_LARGE", {
-            error: returnMessage("chat", "largeImage"),
-          });
+        const { from_user, to_user, buffer, user_type, ext } = payload;
+        // removed the size validaions
+        // if (Buffer.byteLength(buffer))
+        //   io.to(from_user?.toString()).emit("FILE_TO_LARGE", {
+        //     error: returnMessage("chat", "largeImage"),
+        //   });
+
         const required_image_type = ["jpeg", "jpg", "png"];
-        let image_obj;
-        detect_file_type.fromBuffer(buffer, (error, result) => {
-          if (error || !required_image_type.includes(result.ext))
-            socket.to(from_user?.toString()).emit("INVALID_FORMAT", {
-              error: returnMessage("chat", "invalidImageFormat"),
-            });
 
-          image_obj = result;
-        });
+        if (error || !required_image_type.includes(ext))
+          io.to(from_user).emit("INVALID_FORMAT", {
+            error: returnMessage("chat", "invalidImageFormat"),
+          });
 
-        if (image_obj) {
-          const image_name = Date.now() + "." + image_obj.ext;
+        // commented because it was not supported the some of the extensions
+        // let image_obj;
+        // detect_file_type.fromBuffer(buffer, (error, result) => {
+        //   if (error || !required_image_type.includes(result.ext))
+        //     socket.to(from_user?.toString()).emit("INVALID_FORMAT", {
+        //       error: returnMessage("chat", "invalidImageFormat"),
+        //     });
+
+        //   image_obj = result;
+        // });
+
+        if (ext) {
+          const image_name = Date.now() + "." + ext;
           fs.writeFileSync("./src/public/uploads/" + image_name, buffer, {
             encoding: "base64",
           });
@@ -213,7 +221,7 @@ exports.socket_connection = (http_server) => {
             data_reference_id: new_message?._id,
           });
 
-          socket.to(from_user).emit("RECEIVED_IMAGE", {
+          io.to(from_user).emit("RECEIVED_IMAGE", {
             image_url: image_name,
             from_user,
             to_user,
@@ -242,24 +250,33 @@ exports.socket_connection = (http_server) => {
     // this socket event is used to send the documents between the users
     socket.on("DOCUMENTS", async (payload) => {
       try {
-        const { from_user, to_user, buffer, user_type } = payload;
-        if (Buffer.byteLength(buffer) / (1024 * 1024) > 5)
-          socket.to(from_user?.toString()).emit("FILE_TO_LARGE", {
-            error: returnMessage("chat", "largeDocument"),
+        const { from_user, to_user, buffer, user_type, ext } = payload;
+        // removed file size validations
+        // if (Buffer.byteLength(buffer) / (1024 * 1024) > 5)
+        //   socket.to(from_user?.toString()).emit("FILE_TO_LARGE", {
+        //     error: returnMessage("chat", "largeDocument"),
+        //   });
+
+        const required_image_type = ["pdf", "xlsx", "csv", "doc", "docx"];
+
+        if (required_image_type.includes(ext))
+          io.to(from_user).emit("INVALID_FORMAT", {
+            error: returnMessage("chat", "invalidDocumentFormat"),
           });
-        const required_image_type = ["pdf", "xlsx", "csv"];
-        let document_obj;
-        detect_file_type.fromBuffer(buffer, (error, result) => {
-          if (error || !required_image_type.includes(result.ext))
-            socket.to(from_user?.toString()).emit("INVALID_FORMAT", {
-              error: returnMessage("chat", "invalidDocumentFormat"),
-            });
 
-          document_obj = result;
-        });
+        // removed because of the some part of the extension provided
+        // let document_obj;
+        // detect_file_type.fromBuffer(buffer, (error, result) => {
+        //   if (error || !required_image_type.includes(result.ext))
+        //     io.to(from_user?.toString()).emit("INVALID_FORMAT", {
+        //       error: returnMessage("chat", "invalidDocumentFormat"),
+        //     });
+        //   console.log(result);
+        //   document_obj = result;
+        // });
 
-        if (document_obj) {
-          const document_name = Date.now() + "." + document_obj.ext;
+        if (ext) {
+          const document_name = Date.now() + "." + ext;
           fs.writeFileSync("./src/public/uploads/" + document_name, buffer, {
             encoding: "base64",
           });
@@ -278,18 +295,15 @@ exports.socket_connection = (http_server) => {
             data_reference_id: new_message?._id,
           });
 
-          socket
-            .to(from_user?.toString())
-            .to(to_user?.toString())
-            .emit("RECEIVED_DOCUMENT", {
-              document_url: document_name,
-              user_type,
-              from_user,
-              to_user,
-              createdAt: new_message?.createdAt,
-              _id: new_message?._id,
-              message_type: new_message?.message_type,
-            });
+          io.to([from_user, to_user]).emit("RECEIVED_DOCUMENT", {
+            document_url: document_name,
+            user_type,
+            from_user,
+            to_user,
+            createdAt: new_message?.createdAt,
+            _id: new_message?._id,
+            message_type: new_message?.message_type,
+          });
         }
       } catch (error) {
         logger.error(`Error while uploading the Documents: ${error}`);
@@ -360,5 +374,13 @@ exports.eventEmitter = (event_name, payload, user_id) => {
     }
   } catch (error) {
     logger.info("Error while emitting socket error", error);
+  }
+};
+
+exports.emitEvent = (event_name, payload, users) => {
+  try {
+    io.to(users).emit(event_name, payload);
+  } catch (error) {
+    console.log(`Error while emiting event`, error);
   }
 };
