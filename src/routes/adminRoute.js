@@ -44,6 +44,7 @@ const {
   updateClientReviewValidator,
 } = require("../validators/clientReview.validator");
 const { upload } = require("../helpers/multer");
+const notificationController = require("../controllers/notificationController");
 
 //coupon code start
 const { deleteCouponValidator } = require("../validators/coupon.validator");
@@ -136,5 +137,13 @@ adminRoute.delete(
 adminRoute.post("/get-coupon-list", getCouponList);
 adminRoute.post("/transaction", transactionHistory);
 adminRoute.get("/dashboard", dashboardData);
+
+// ------------------------ Notification ------------------------
+adminRoute.get("/notification", notificationController.getNotification);
+adminRoute.post(
+  "/notification/read-notification",
+  notificationController.readNotification
+);
+// ------------------------ Notification ------------------------
 
 module.exports = adminRoute;

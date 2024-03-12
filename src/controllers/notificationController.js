@@ -8,7 +8,9 @@ const notificationService = new NotificationService();
 // create ------
 
 exports.addNotification = catchAsyncError(async (req, res, next) => {
-  const notification = await notificationService.addNotification(req?.body);
+  const notification = await notificationService.addAdminNotification(
+    req?.body
+  );
   sendResponse(
     res,
     true,

@@ -1245,15 +1245,16 @@ class ActivityService {
         files.forEach((file) => {
           attachments.push("uploads/" + file.filename);
         });
-        // const existingFiles = await Activity.findById(id);
-        // existingFiles &&
-        //   existingFiles?.attachments.map((item) => {
-        //     fs.unlink(`/uploads/${item}`, (err) => {
-        //       if (err) {
-        //         logger.error(`Error while unlinking the documents: ${err}`);
-        //       }
-        //     });
-        //   });
+        const existingFiles = await Activity.findById(id);
+
+        existingFiles &&
+          existingFiles?.attachments.map((item) => {
+            fs.unlink(`./src/public/${item}`, (err) => {
+              if (err) {
+                logger.error(`Error while unlinking the documents: ${err}`);
+              }
+            });
+          });
       }
 
       const status_check = await Activity.findById(id).populate(

@@ -360,6 +360,8 @@ class AffiliateService {
         customer_count: total_agencies ?? 0,
         click_count: loggedInUser?.click_count ?? 0,
         last_month_earning: lastMonthEarning[0]?.total ?? 0,
+        withdraw: 0,
+        unpaid: 0,
       };
     } catch (error) {
       logger.error("Error while getting dashboard data", error);

@@ -9,6 +9,7 @@ const {
   forgotPasswordEmailTemplate,
   capitalizeFirstLetter,
   invitationEmailTemplate,
+  agencyCreatedTemplate,
 } = require("../utils/utils");
 const bcrypt = require("bcrypt");
 const moment = require("moment");
@@ -32,6 +33,9 @@ const Affiliate_Referral = require("../models/affiliateReferralSchema");
 const CompetitionPoint = require("../models/competitionPointSchema");
 const Agency = require("../models/agencySchema");
 const Client = require("../models/clientSchema");
+const NotificationService = require("./notificationService");
+const Admin = require("../models/adminSchema");
+const notificationService = new NotificationService();
 class AuthService {
   tokenGenerator = (payload) => {
     try {
@@ -169,6 +173,33 @@ class AuthService {
         delete agency_enroll?.is_facebook_signup;
         delete agency_enroll?.is_google_signup;
 
+        await notificationService.addAdminNotification({
+          action_name: "agencyCreated",
+          agency_name:
+            capitalizeFirstLetter(first_name) +
+            " " +
+            capitalizeFirstLetter(last_name),
+          email: email,
+          contact_number: contact_number,
+        });
+
+        const agencyCreated = await agencyCreatedTemplate({
+          agency_name:
+            capitalizeFirstLetter(first_name) +
+            " " +
+            capitalizeFirstLetter(last_name),
+          email: email,
+          contact_number: contact_number,
+        });
+
+        const admin = await Admin.findOne({});
+
+        await sendEmail({
+          email: admin?.email,
+          subject: returnMessage("emailTemplate", "agencyCreated"),
+          message: agencyCreated,
+        });
+
         return this.tokenGenerator({
           ...agency_enroll,
           rememberMe: payload?.rememberMe,
@@ -195,6 +226,24 @@ class AuthService {
 
         agency_enroll = agency_enroll.toObject();
         agency_enroll.role = role;
+
+        await notificationService.addAdminNotification({
+          action_name: "agencyCreated",
+          agency_name:
+            capitalizeFirstLetter(first_name) +
+            " " +
+            capitalizeFirstLetter(last_name),
+          email: email,
+          contact_number: contact_number,
+        });
+
+        const admin = await Admin.findOne({});
+
+        await sendEmail({
+          email: admin?.email,
+          subject: returnMessage("emailTemplate", "agencyCreated"),
+          message: agencyCreated,
+        });
 
         if (payload?.referral_code) {
           const referral_registered = await this.referralSignUp({

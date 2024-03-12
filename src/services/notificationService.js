@@ -8,6 +8,7 @@ const {
 } = require("../utils/utils");
 
 const { eventEmitter } = require("../socket");
+const Admin = require("../models/adminSchema");
 
 class NotificationService {
   // Add Notification
@@ -17,7 +18,7 @@ class NotificationService {
 
     if (payload?.agenda) payload.agenda = extractTextFromHtml(agenda);
     try {
-      const with_unread_count = async (notification_data, user_id) => {
+      var with_unread_count = async (notification_data, user_id) => {
         const un_read_count = await Notification.countDocuments({
           user_id: user_id,
           is_read: false,
@@ -289,20 +290,88 @@ class NotificationService {
     }
   };
 
+  // Admin Notification
+  addAdminNotification = async (payload, id) => {
+    console.log(payload);
+    try {
+      const with_unread_count = async (notification_data, user_id) => {
+        const un_read_count = await Notification.countDocuments({
+          user_id: user_id,
+          is_read: false,
+        });
+        return {
+          notification: notification_data,
+          un_read_count: un_read_count,
+        };
+      };
+
+      const admin = await Admin.findOne({});
+      console.log(admin);
+      let { action_name } = payload;
+      const createAndEmitNotification = async (
+        userId,
+        messageType,
+        messageKey,
+        dataType
+      ) => {
+        const message = replaceFields(
+          returnNotification(messageKey, messageType),
+          { ...payload }
+        );
+        const notification = await Notification.create({
+          user_id: userId,
+          type: dataType,
+          data_reference_id: id,
+          message: message,
+        });
+
+        console.log(notification);
+
+        eventEmitter(
+          "NOTIFICATION",
+          await with_unread_count(notification, userId),
+          userId
+        );
+      };
+
+      //  Add team member by client
+      if (action_name === "agencyCreated") {
+        await createAndEmitNotification(
+          admin._id,
+          "agencyCreated",
+          "admin",
+          "agency"
+        );
+      }
+
+      return;
+    } catch (error) {
+      logger.error(`Error while fetching agencies: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
   // Get Notifications
   getNotification = async (user, searchObj) => {
     try {
       const { skip, limit } = searchObj;
-
       const notifications = await Notification.find({
-        user_id: user.reference_id,
+        /* The above code is a multi-line comment in JavaScript. It is used to add comments or
+        notes within the code that are not executed by the JavaScript engine. Comments are
+        helpful for documenting code, explaining functionality, or temporarily disabling
+        code. */
+        user_id:
+          /* The above code is a multi-line comment in JavaScript. It is used to add comments or
+        notes in the code that are not executed by the JavaScript engine. Comments are
+        helpful for documenting code, explaining functionality, or temporarily disabling
+        code. */
+          user._id,
       })
         .sort({ createdAt: -1, is_read: -1 })
         .skip(skip)
         .limit(limit);
-
       const un_read_count = await Notification.find({
-        user_id: user.reference_id,
+        user_id: user._id,
         is_read: false,
       }).countDocuments();
       return { notificationList: notifications, un_read_count: un_read_count };
@@ -313,14 +382,13 @@ class NotificationService {
   };
 
   // Read Notifications
-
   readNotification = async (payload, user) => {
     try {
       const { notification_id } = payload;
       if (notification_id === "all") {
         await Notification.updateMany(
           {
-            user_id: user.reference_id,
+            user_id: user._id,
           },
           {
             is_read: true,
@@ -331,7 +399,7 @@ class NotificationService {
         await Notification.findOneAndUpdate(
           {
             _id: notification_id,
-            user_id: user.reference_id,
+            user_id: user._id,
           },
           {
             is_read: true,

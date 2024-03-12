@@ -15,6 +15,7 @@ const notificationSchema = new mongoose.Schema(
         "activity",
         "deleted",
         "general",
+        "agency",
       ],
     },
     data_reference_id: { type: mongoose.Types.ObjectId },
