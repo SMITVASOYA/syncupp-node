@@ -10,6 +10,28 @@ const storage = multer.diskStorage({
     }
     if (file.mimetype.startsWith("image/")) {
       cb(null, img_dir);
+    } else if (file.mimetype.startsWith("application/pdf")) {
+      cb(null, img_dir);
+    } else if (
+      file.mimetype.startsWith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      ) ||
+      file.mimetype.startsWith("application/vnd.ms-excel")
+    ) {
+      cb(null, img_dir);
+    } else if (file.mimetype.startsWith("video/")) {
+      cb(null, img_dir);
+    } else if (file.mimetype.startsWith("text/")) {
+      cb(null, img_dir);
+    } else if (
+      file.mimetype.startsWith(
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+      ) ||
+      file.mimetype.startsWith("application/vnd.ms-powerpoint")
+    ) {
+      cb(null, img_dir);
+    } else if (file.mimetype === "application/zip") {
+      cb(null, img_dir);
     }
   },
 
@@ -28,7 +50,19 @@ const upload = multer({
     fileSize: 1024 * 1024 * 1, // 1MB
   },
   fileFilter: (req, file, cb) => {
-    const allowedExtensions = [".jpg", ".jpeg", ".png"];
+    const allowedExtensions = [
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".pdf",
+      ".xls",
+      ".xlsx",
+      ".mp4",
+      ".txt",
+      ".ppt",
+      ".pptx",
+      ".zip",
+    ];
     const fileExt = path.extname(file.originalname).toLowerCase();
     if (!allowedExtensions.includes(fileExt)) {
       const error = new Error(
