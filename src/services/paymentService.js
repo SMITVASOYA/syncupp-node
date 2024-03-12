@@ -357,13 +357,22 @@ class PaymentService {
         user?.subscription_id
       );
 
-      const prorate_value = parseInt(
-        this.customPaymentCalculator(
-          subscripion_detail?.current_start,
-          subscripion_detail?.current_end,
-          plan
-        )
-      );
+      let prorate_value;
+
+      if (
+        !subscripion_detail?.current_start &&
+        !subscripion_detail?.current_end
+      ) {
+        prorate_value = plan?.amount;
+      } else {
+        prorate_value = parseInt(
+          this.customPaymentCalculator(
+            subscripion_detail?.current_start,
+            subscripion_detail?.current_end,
+            plan
+          )
+        );
+      }
 
       // removing the by default package and using the axios call instead of the npm package
       // const order = await Promise.resolve(
