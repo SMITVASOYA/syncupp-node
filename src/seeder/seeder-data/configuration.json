@@ -1,0 +1,28 @@
+[
+  {
+    "referral": {
+      "successful_referral_point": 500,
+      "redeem_required_point": 2000,
+      "commission_percentage": 30
+    }
+  },
+  {
+    "competition": {
+      "successful_task_competition": 20,
+      "successful_login": 10
+    }
+  },
+  {
+    "cron_job": {
+      "invoice_overdue": "0 0 * * *",
+      "activity_overdue": "0 0 * * *",
+      "activity_dueDate": "0 0 * * *"
+    }
+  },
+  {
+    "payment": {
+      "subscription_halt_days": 15,
+      "free_trial": 7
+    }
+  }
+]

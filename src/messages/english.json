@@ -233,7 +233,8 @@
     "userRemoved": "User removed successfully.",
     "subscriptionCancelled": "Subscription cancelled successfully.",
     "subscriptionFetched": "Subscription details fetched successfully.",
-    "canNotCancel": "Subscription can not be cancelled."
+    "canNotCancel": "Subscription can not be cancelled.",
+    "couponpurchase": "Coupon purchased successfully."
   },
   "affiliate": {
     "registered": "User registered successfully.",

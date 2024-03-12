@@ -16,5 +16,6 @@ paymentRoute.get("/cancel-subscription", paymentConrtoller.cancelSubscription);
 paymentRoute.get("/get-subscription", paymentConrtoller.getSubscriptionDetail);
 paymentRoute.get("/payment-scopes", paymentConrtoller.paymentScopes);
 paymentRoute.post("/referral-payout", paymentConrtoller.referralPay);
+paymentRoute.post("/coupon-payout", paymentConrtoller.couponPay);
 
 module.exports = paymentRoute;
