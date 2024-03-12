@@ -15,6 +15,7 @@ const pdf = require("html-pdf");
 const NotificationService = require("./notificationService");
 const notificationService = new NotificationService();
 const moment = require("moment");
+const Currency = require("../models/masters/currencyListSchema");
 
 class InvoiceService {
   // Get Client list  ------   AGENCY API
@@ -211,6 +212,8 @@ class InvoiceService {
         invoice_content,
         client_id,
         sent,
+        currency,
+        memo,
       } = payload;
 
       if (due_date < invoice_date) {
@@ -261,6 +264,7 @@ class InvoiceService {
           name: "draft",
         });
       }
+
       var invoice = await Invoice.create({
         due_date,
         invoice_number: newInvoiceNumber,
@@ -269,6 +273,8 @@ class InvoiceService {
         sub_total,
         invoice_content: invoiceItems,
         client_id,
+        currency,
+        memo,
         agency_id: user.reference_id,
         status: getInvoiceStatus._id,
       });
@@ -416,6 +422,25 @@ class InvoiceService {
           $unwind: { path: "$customerData", preserveNullAndEmptyArrays: true },
         },
         {
+          $lookup: {
+            from: "currencies",
+            localField: "currency",
+            foreignField: "_id",
+            as: "currency_name",
+            pipeline: [
+              {
+                $project: {
+                  symbol: 1,
+                  name: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: { path: "$currency_name", preserveNullAndEmptyArrays: true },
+        },
+        {
           $match: queryObj,
         },
         {
@@ -433,6 +458,9 @@ class InvoiceService {
             createdAt: 1,
             updatedAt: 1,
             client_id: "$customerInfo.reference_id",
+            currency_symbol: "$currency_name.symbol",
+            currency_name: "$currency_name.name",
+            memo: 1,
           },
         },
       ];
@@ -692,6 +720,26 @@ class InvoiceService {
         {
           $unwind: { path: "$agencyCountry", preserveNullAndEmptyArrays: true },
         },
+
+        {
+          $lookup: {
+            from: "currencies",
+            localField: "currency",
+            foreignField: "_id",
+            as: "currency_name",
+            pipeline: [
+              {
+                $project: {
+                  symbol: 1,
+                  name: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: { path: "$currency_name", preserveNullAndEmptyArrays: true },
+        },
         {
           $project: {
             _id: 1,
@@ -732,6 +780,10 @@ class InvoiceService {
             total: 1,
             createdAt: 1,
             updatedAt: 1,
+            memo: 1,
+            currency_symbol: "$currency_name.symbol",
+            currency_name: "$currency_name.name",
+            currency_id: "$currency_name._id",
           },
         },
       ]);
@@ -746,8 +798,15 @@ class InvoiceService {
   // Update Invoice   ------   AGENCY API
   updateInvoice = async (payload, invoiceIdToUpdate) => {
     try {
-      const { due_date, invoice_content, client_id, invoice_date, sent } =
-        payload;
+      const {
+        due_date,
+        invoice_content,
+        client_id,
+        invoice_date,
+        sent,
+        currency,
+        memo,
+      } = payload;
 
       if (due_date < invoice_date) {
         return throwError(returnMessage("invoice", "invalidDueDate"));
@@ -780,6 +839,8 @@ class InvoiceService {
                 client_id,
                 invoice_date,
                 status: getInvoiceStatus,
+                currency,
+                memo,
               },
             }
           );
@@ -930,6 +991,26 @@ class InvoiceService {
           $unwind: { path: "$statusArray", preserveNullAndEmptyArrays: true },
         },
         {
+          $lookup: {
+            from: "currencies",
+            localField: "currency",
+            foreignField: "_id",
+            as: "currency_name",
+            pipeline: [
+              {
+                $project: {
+                  symbol: 1,
+                  name: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: { path: "$currency_name", preserveNullAndEmptyArrays: true },
+        },
+
+        {
           $match: {
             "statusArray.name": { $ne: "draft" }, // Exclude documents with status "draft"
           },
@@ -950,6 +1031,9 @@ class InvoiceService {
             total: 1,
             createdAt: 1,
             updatedAt: 1,
+            memo: 1,
+            currency_symbol: "$currency_name.symbol",
+            currency_name: "$currency_name.name",
           },
         },
       ];
@@ -1096,6 +1180,8 @@ class InvoiceService {
     }
   };
 
+  // Download PDF
+
   downloadPdf = async (payload, res) => {
     try {
       const { invoice_id } = payload;
@@ -1156,6 +1242,31 @@ class InvoiceService {
       console.log("Updated overdue statuses successfully");
     } catch (error) {
       logger.error(`Error while Overdue crone Job PDF, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // Currency List
+
+  currencyList = async () => {
+    try {
+      const currencies = await Currency.find({ is_deleted: false });
+      return currencies;
+    } catch (error) {
+      logger.error(`Error while Currency list Invoice, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  addCurrency = async (payload) => {
+    try {
+      await Currency.create({
+        symbol: payload.symbol,
+        name: payload.name,
+        code: payload.code,
+      });
+    } catch (error) {
+      logger.error(`Error while Currency list Invoice, ${error}`);
       throwError(error?.message, error?.statusCode);
     }
   };

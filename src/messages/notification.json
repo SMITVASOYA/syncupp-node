@@ -1,14 +1,14 @@
 {
   "activity": {
     "createCallMeeting": {
-      "clientMessage": "Hi ${client_name}! You have a ${activity_type} titled ${title} on ${due_date} at ${meeting_start_time}. Check the agenda: ${agenda}. See you there!",
-      "assignToMessage": "Hey ${assigned_to_name}! You're assigned to a ${activity_type} ${title} on ${due_date} from ${meeting_start_time} to ${meeting_end_time}. Agenda: ${agenda}. Be ready!",
+      "clientMessage": "Hi ${client_name}! You have a ${activity_type} titled ${title} on ${due_date} at ${meeting_start_time}. Check the agenda. See you there!",
+      "assignToMessage": "Hey ${assigned_to_name}! You're assigned to a ${activity_type} ${title} on ${due_date} from ${meeting_start_time} to ${meeting_end_time}. Check the agenda. Be ready!",
       "assignByMessage": "Hey ${activityData.assign_by}! You just assigned ${activityData.assign_to} to a ${activityData.activity_type} ${activityData.title} on ${formatDate(activityData.due_date)} from ${formatDate(activityData.meeting_start_time)} to ${formatDate(activityData.meeting_end_time)}",
-      "attendeesMessage": "You have a ${activity_type} titled ${title} on ${due_date} at ${meeting_start_time}. Check the agenda: ${agenda}. See you there!"
+      "attendeesMessage": "You have a ${activity_type} titled ${title} on ${due_date} at ${meeting_start_time}. Check the agenda. See you there!"
     },
     "activityUpdated": {
-      "clientMessage": "Updated: Hi ${client_name}! Your ${activity_type} titled ${title} on ${due_date} at ${meeting_start_time}. Check the agenda: ${agenda}. See you there!",
-      "assignToMessage": "Updated: Hey ${assigned_to_name}! You're assigned to a ${activity_type} titled ${title} on ${due_date} from ${meeting_start_time} to ${meeting_end_time}. Agenda: ${agenda}. Be ready!"
+      "clientMessage": "Updated: Hi ${client_name}! Your ${activity_type} titled ${title} on ${due_date} at ${meeting_start_time}. Check the agenda. See you there!",
+      "assignToMessage": "Updated: Hey ${assigned_to_name}! You're assigned to a ${activity_type} titled ${title} on ${due_date} from ${meeting_start_time} to ${meeting_end_time}. Check the agenda. Be ready!"
     },
     "activityCancelled": {
       "clientMessage": "Hi ${client_name}! The ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. ",
@@ -35,8 +35,8 @@
       "assignToMessage": "Today is the due date for ${activity_type} '${title}'."
     },
     "createTask": {
-      "clientMessage": "Hi ${client_name}! You have a task titled ${title} due on ${due_date} before ${due_time}. Check the agenda: ${agenda}. See you there!",
-      "assignToMessage": "Hey ${assigned_to_name}! You're assigned to a task titled ${title} due on ${due_date} before ${due_time}. Agenda: ${agenda}. Be ready!"
+      "clientMessage": "Hi ${client_name}! You have a task titled ${title} due on ${due_date} before ${due_time}. Check the agenda. See you there!",
+      "assignToMessage": "Hey ${assigned_to_name}! You're assigned to a task titled ${title} due on ${due_date} before ${due_time}. Check the agenda. Be ready!"
     },
     "taskCompleted": {
       "clientMessage": "Hi ${client_name}! Your task '${title}' is completed.",

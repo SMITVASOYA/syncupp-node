@@ -153,7 +153,9 @@
     "invoiceSubject": "Your Invoice - ",
     "invoiceOverdue": "Your Invoice date overdue - ",
     "invoicePaid": "Invoice paid - ",
-    "invalidDueDate": "Invoice due date should not be less than invoice date."
+    "invalidDueDate": "Invoice due date should not be less than invoice date.",
+    "currencyListFetched": "Currency list fetched.",
+    "currencyAdded": "Currency added."
   },
 
   "inquiry": {
