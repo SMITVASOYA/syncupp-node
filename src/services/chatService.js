@@ -291,10 +291,7 @@ class ChatService {
         }).lean(),
         Authentication.find({
           reference_id: { $in: chat_users_ids },
-          $or: [
-            { status: { $ne: "payment_pending" } },
-            { status: { $ne: "confirm_pending" } },
-          ],
+          status: "confirmed",
         })
           .select(
             "name first_name last_name email reference_id image_url is_online"

@@ -22,7 +22,10 @@ const configurationSchema = new mongoose.Schema(
       free_trial: { type: Number, default: 7 },
     },
     multer: {
-      size: { type: String, default: "200" },
+      size: { type: Number, default: 200 },
+    },
+    chat: {
+      file_size: { type: Number, default: 200 },
     },
   },
   { timestamps: true }

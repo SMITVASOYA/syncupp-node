@@ -12,6 +12,7 @@ const {
 const fs = require("fs");
 const Authentication = require("./models/authenticationSchema");
 const Group_Chat = require("./models/groupChatSchema");
+const Configuration = require("./models/configurationSchema");
 
 exports.socket_connection = (http_server) => {
   io = new Server(http_server, {
@@ -42,7 +43,6 @@ exports.socket_connection = (http_server) => {
       let group_ids = await Group_Chat.distinct("_id", {
         members: { $in: [obj.id] },
       });
-      console.log(group_ids, 45);
       group_ids.forEach((group_id) => socket.join(group_id.toString()));
 
       // for the Online status
@@ -160,17 +160,18 @@ exports.socket_connection = (http_server) => {
     // This socket event is used for the delete the message if the message is not seen by the other user
     socket.on("DELETE_MESSAGE", async (payload) => {
       try {
-        const is_message_seen = await Notification.findOne({
-          from_user: payload?.from_user,
-          user_id: payload?.to_user,
-          is_read: false,
-          type: "chat",
-        }).lean();
+        // stopped because of the some limitations
+        // const is_message_seen = await Notification.findOne({
+        //   from_user: payload?.from_user,
+        //   user_id: payload?.to_user,
+        //   is_read: false,
+        //   type: "chat",
+        // }).lean();
 
-        if (is_message_seen)
-          io.to(payload?.from_user?.toString()).emit("CANNOT_DELETE", {
-            error: returnMessage("chat", "canNotDelete"),
-          });
+        // if (is_message_seen)
+        //   io.to(payload?.from_user?.toString()).emit("CANNOT_DELETE", {
+        //     error: returnMessage("chat", "canNotDelete"),
+        //   });
 
         const message = await Chat.findById(payload?.chat_id).lean();
 
@@ -214,28 +215,29 @@ exports.socket_connection = (http_server) => {
     socket.on("IMAGES", async (payload) => {
       try {
         const { from_user, to_user, buffer, user_type, ext } = payload;
-        if (Buffer.byteLength(buffer))
+
+        const configuration = await Configuration.findOne().lean();
+        // removed the size validaions
+        if (
+          Buffer.byteLength(buffer) / (1024 * 1024) >
+          configuration?.chat?.file_size
+        ) {
+          let message = returnMessage("chat", "largeImage");
+          message = replaceAll("{{file_size}}", configuration?.chat?.file_size);
           io.to(from_user?.toString()).emit("FILE_TO_LARGE", {
-            error: returnMessage("chat", "largeImage"),
+            error: message,
           });
+          return;
+        }
 
         const required_image_type = ["jpeg", "jpg", "png"];
 
-        if (error || !required_image_type.includes(ext))
+        if (!required_image_type.includes(ext)) {
           io.to(from_user).emit("INVALID_FORMAT", {
             error: returnMessage("chat", "invalidImageFormat"),
           });
-
-        // commented because it was not supported the some of the extensions
-        // let image_obj;
-        // detect_file_type.fromBuffer(buffer, (error, result) => {
-        //   if (error || !required_image_type.includes(result.ext))
-        //     socket.to(from_user?.toString()).emit("INVALID_FORMAT", {
-        //       error: returnMessage("chat", "invalidImageFormat"),
-        //     });
-
-        //   image_obj = result;
-        // });
+          return;
+        }
 
         if (ext) {
           const image_name = Date.now() + "." + ext;
@@ -288,29 +290,28 @@ exports.socket_connection = (http_server) => {
     socket.on("DOCUMENTS", async (payload) => {
       try {
         const { from_user, to_user, buffer, user_type, ext } = payload;
-        // removed file size validations
-        // if (Buffer.byteLength(buffer) / (1024 * 1024) > 5)
-        //   socket.to(from_user?.toString()).emit("FILE_TO_LARGE", {
-        //     error: returnMessage("chat", "largeDocument"),
-        //   });
 
+        const configuration = await Configuration.findOne().lean();
+
+        if (
+          Buffer.byteLength(buffer) / (1024 * 1024) >
+          configuration?.chat?.file_size
+        ) {
+          let message = returnMessage("chat", "largeDocument");
+          message = replaceAll("{{file_size}}", configuration?.chat?.file_size);
+          socket.to(from_user?.toString()).emit("FILE_TO_LARGE", {
+            error: message,
+          });
+          return;
+        }
         const required_image_type = ["pdf", "xlsx", "csv", "doc", "docx"];
 
-        if (required_image_type.includes(ext))
+        if (required_image_type.includes(ext)) {
           io.to(from_user).emit("INVALID_FORMAT", {
             error: returnMessage("chat", "invalidDocumentFormat"),
           });
-
-        // removed because of the some part of the extension provided
-        // let document_obj;
-        // detect_file_type.fromBuffer(buffer, (error, result) => {
-        //   if (error || !required_image_type.includes(result.ext))
-        //     io.to(from_user?.toString()).emit("INVALID_FORMAT", {
-        //       error: returnMessage("chat", "invalidDocumentFormat"),
-        //     });
-        //   console.log(result);
-        //   document_obj = result;
-        // });
+          return;
+        }
 
         if (ext) {
           const document_name = Date.now() + "." + ext;
@@ -486,29 +487,27 @@ exports.socket_connection = (http_server) => {
     socket.on("GROUP_IMAGES", async (payload) => {
       try {
         const { from_user, group_id, buffer, ext } = payload;
-        // removed the size validaions
-        // if (Buffer.byteLength(buffer))
-        //   io.to(from_user?.toString()).emit("FILE_TO_LARGE", {
-        //     error: returnMessage("chat", "largeImage"),
-        //   });
+        const configuration = await Configuration.findOne().lean();
 
+        if (
+          Buffer.byteLength(buffer) / (1024 * 1024) >
+          configuration?.chat?.file_size
+        ) {
+          let message = returnMessage("chat", "largeImage");
+          message = replaceAll("{{file_size}}", configuration?.chat?.file_size);
+          io.to(from_user?.toString()).emit("FILE_TO_LARGE", {
+            error: message,
+          });
+          return;
+        }
         const required_image_type = ["jpeg", "jpg", "png"];
 
-        if (!required_image_type.includes(ext))
+        if (!required_image_type.includes(ext)) {
           io.to(from_user).emit("INVALID_FORMAT", {
             error: returnMessage("chat", "invalidImageFormat"),
           });
-
-        // commented because it was not supported the some of the extensions
-        // let image_obj;
-        // detect_file_type.fromBuffer(buffer, (error, result) => {
-        //   if (error || !required_image_type.includes(result.ext))
-        //     socket.to(from_user?.toString()).emit("INVALID_FORMAT", {
-        //       error: returnMessage("chat", "invalidImageFormat"),
-        //     });
-
-        //   image_obj = result;
-        // });
+          return;
+        }
 
         if (ext) {
           const image_name = Date.now() + "." + ext;
@@ -557,29 +556,29 @@ exports.socket_connection = (http_server) => {
     socket.on("GROUP_DOCUMENTS", async (payload) => {
       try {
         const { from_user, group_id, buffer, ext } = payload;
-        // removed file size validations
-        // if (Buffer.byteLength(buffer) / (1024 * 1024) > 5)
-        //   socket.to(from_user?.toString()).emit("FILE_TO_LARGE", {
-        //     error: returnMessage("chat", "largeDocument"),
-        //   });
+
+        const configuration = await Configuration.findOne().lean();
+
+        if (
+          Buffer.byteLength(buffer) / (1024 * 1024) >
+          configuration?.chat?.file_size
+        ) {
+          let message = returnMessage("chat", "largeDocument");
+          message = replaceAll("{{file_size}}", configuration?.chat?.file_size);
+          io.to(from_user).emit("FILE_TO_LARGE", {
+            error: message,
+          });
+          return;
+        }
 
         const required_image_type = ["pdf", "xlsx", "csv", "doc", "docx"];
 
-        if (required_image_type.includes(ext))
+        if (required_image_type.includes(ext)) {
           io.to(from_user).emit("INVALID_FORMAT", {
             error: returnMessage("chat", "invalidDocumentFormat"),
           });
-
-        // removed because of the some part of the extension provided
-        // let document_obj;
-        // detect_file_type.fromBuffer(buffer, (error, result) => {
-        //   if (error || !required_image_type.includes(result.ext))
-        //     io.to(from_user?.toString()).emit("INVALID_FORMAT", {
-        //       error: returnMessage("chat", "invalidDocumentFormat"),
-        //     });
-        //   console.log(result);
-        //   document_obj = result;
-        // });
+          return;
+        }
 
         if (ext) {
           const document_name = Date.now() + "." + ext;
