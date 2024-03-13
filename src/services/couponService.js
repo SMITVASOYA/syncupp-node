@@ -183,9 +183,9 @@ class CouponService {
       const referral_data = await Configuration.findOne().lean();
       const require_points = referral_data?.coupon?.reedem_coupon;
       // Iterate over each coupon
-      const totalCouponIds = agency_data.total_coupon.map((coupon) =>
-        coupon.toString()
-      );
+      const totalCouponIds =
+        agency_data &&
+        agency_data?.total_coupon?.map((coupon) => coupon.toString());
 
       // Iterate over each coupon
       for (let i = 0; i < coupon.length; i++) {
