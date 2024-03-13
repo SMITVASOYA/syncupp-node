@@ -216,6 +216,7 @@ exports.socket_connection = (http_server) => {
     // this socket event is used to send the images between the users
     socket.on("IMAGES", async (payload) => {
       try {
+        console.log("IMAGES", JSON.stringify(payload));
         const { from_user, to_user, buffer, user_type, ext } = payload;
 
         const configuration = await Configuration.findOne().lean();
@@ -291,6 +292,7 @@ exports.socket_connection = (http_server) => {
     // this socket event is used to send the documents between the users
     socket.on("DOCUMENTS", async (payload) => {
       try {
+        console.log("DOCUMENTS", JSON.stringify(payload));
         const { from_user, to_user, buffer, user_type, ext } = payload;
 
         const configuration = await Configuration.findOne().lean();
@@ -490,6 +492,8 @@ exports.socket_connection = (http_server) => {
     // this socket event is used to send the images between the users
     socket.on("GROUP_IMAGES", async (payload) => {
       try {
+        console.log("GROUP_IMAGES", JSON.stringify(payload));
+
         const { from_user, group_id, buffer, ext } = payload;
         const configuration = await Configuration.findOne().lean();
 
@@ -559,6 +563,8 @@ exports.socket_connection = (http_server) => {
     // this socket event is used to send the documents between the users
     socket.on("GROUP_DOCUMENTS", async (payload) => {
       try {
+        console.log("GROUP_DOCUMENTS", JSON.stringify(payload));
+
         const { from_user, group_id, buffer, ext } = payload;
 
         const configuration = await Configuration.findOne().lean();
