@@ -377,18 +377,40 @@ class NotificationService {
   // Get Notifications
   getNotification = async (user, searchObj) => {
     try {
-      const { skip, limit } = searchObj;
-      const notifications = await Notification.find({
-        user_id: user._id,
-      })
-        .sort({ createdAt: -1, is_read: -1 })
-        .skip(skip)
-        .limit(limit);
-      const un_read_count = await Notification.find({
-        user_id: user._id,
-        is_read: false,
-      }).countDocuments();
-      return { notificationList: notifications, un_read_count: un_read_count };
+      if (user?.role?.name === undefined) {
+        console.log("fwfw");
+        const { skip, limit } = searchObj;
+        const notifications = await Notification.find({
+          user_id: user._id,
+        })
+          .sort({ createdAt: -1, is_read: -1 })
+          .skip(skip)
+          .limit(limit);
+        const un_read_count = await Notification.find({
+          user_id: user._id,
+          is_read: false,
+        }).countDocuments();
+        return {
+          notificationList: notifications,
+          un_read_count: un_read_count,
+        };
+      } else {
+        const { skip, limit } = searchObj;
+        const notifications = await Notification.find({
+          user_id: user.reference_id,
+        })
+          .sort({ createdAt: -1, is_read: -1 })
+          .skip(skip)
+          .limit(limit);
+        const un_read_count = await Notification.find({
+          user_id: user.reference_id,
+          is_read: false,
+        }).countDocuments();
+        return {
+          notificationList: notifications,
+          un_read_count: un_read_count,
+        };
+      }
     } catch (error) {
       logger.error(`Error while fetching agencies: ${error}`);
       return throwError(error?.message, error?.statusCode);
