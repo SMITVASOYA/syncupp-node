@@ -1789,35 +1789,74 @@ class PaymentService {
 
   couponPay = async (payload, user) => {
     try {
-      const agency = await Agency.findById(user?.reference_id);
-      const referral_data = await Configuration.findOne().lean();
-      if (
-        !(agency?.total_referral_point >= referral_data?.coupon?.reedem_coupon)
-      )
-        return throwError(
-          returnMessage("referral", "insufficientReferralPoints")
+      if (user.role.name === "agency") {
+        const agency = await Agency.findById(user?.reference_id);
+        const referral_data = await Configuration.findOne().lean();
+        if (
+          !(
+            agency?.total_referral_point >= referral_data?.coupon?.reedem_coupon
+          )
+        )
+          return throwError(
+            returnMessage("referral", "insufficientReferralPoints")
+          );
+
+        // payload?.redeem_required_point =
+        //   referral_data?.referral?.redeem_required_point;
+        // const status_change = await this.referralStatusChange(payload, user);
+        // if (!status_change.success) return { success: false };
+
+        const coupon = await AdminCoupon.findById(payload?.couponId).lean();
+        await Agency.findOneAndUpdate(
+          { _id: agency?._id },
+          {
+            $inc: {
+              total_referral_point: -referral_data?.coupon?.reedem_coupon,
+            },
+            $push: {
+              total_coupon: payload?.couponId,
+            },
+          },
+          { new: true }
         );
 
-      // payload?.redeem_required_point =
-      //   referral_data?.referral?.redeem_required_point;
-      // const status_change = await this.referralStatusChange(payload, user);
-      // if (!status_change.success) return { success: false };
+        return { success: true };
+      }
 
-      const coupon = await AdminCoupon.findById(payload?.couponId).lean();
-      await Agency.findOneAndUpdate(
-        { _id: agency?._id },
-        {
-          $inc: {
-            total_referral_point: -referral_data?.coupon?.reedem_coupon,
-          },
-          $push: {
-            total_coupon: payload?.couponId,
-          },
-        },
-        { new: true }
-      );
+      if (user.role.name === "team_agency") {
+        const teamMember = await Team_Agency.findById(user?.reference_id);
+        const referral_data = await Configuration.findOne().lean();
+        if (
+          !(
+            teamMember?.total_referral_point >=
+            referral_data?.coupon?.reedem_coupon
+          )
+        )
+          return throwError(
+            returnMessage("referral", "insufficientReferralPoints")
+          );
 
-      return { success: true };
+        // payload?.redeem_required_point =
+        //   referral_data?.referral?.redeem_required_point;
+        // const status_change = await this.referralStatusChange(payload, user);
+        // if (!status_change.success) return { success: false };
+
+        const coupon = await AdminCoupon.findById(payload?.couponId).lean();
+        await Team_Agency.findOneAndUpdate(
+          { _id: teamMember?._id },
+          {
+            $inc: {
+              total_referral_point: -referral_data?.coupon?.reedem_coupon,
+            },
+            $push: {
+              total_coupon: payload?.couponId,
+            },
+          },
+          { new: true }
+        );
+
+        return { success: true };
+      }
     } catch (error) {
       logger.error(`Error while verifying referral: ${error}`);
       return throwError(

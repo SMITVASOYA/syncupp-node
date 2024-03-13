@@ -4,11 +4,7 @@ const couponController = require("../controllers/couponController");
 
 couponRoute.use(protect);
 
-couponRoute.get(
-  "/coupon-list",
-  authorizeRole("agency"),
-  couponController.getAllCouponWithOutPagination
-);
-couponRoute.get("/list", authorizeRole("agency"), couponController.getmyCoupon);
+couponRoute.get("/coupon-list", couponController.getAllCouponWithOutPagination);
+couponRoute.get("/list", couponController.getmyCoupon);
 
 module.exports = couponRoute;

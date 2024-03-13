@@ -4,6 +4,7 @@ const { throwError } = require("../helpers/errorUtil");
 const { returnMessage, paginationObject } = require("../utils/utils");
 const Agency = require("../models/agencySchema");
 const Configuration = require("../models/configurationSchema");
+const Team_Agency = require("../models/teamAgencySchema");
 
 class CouponService {
   // Add Coupon
@@ -171,33 +172,73 @@ class CouponService {
 
   getAllCouponWithOutPagination = async (user) => {
     try {
-      const queryObj = { is_deleted: false };
-      const agency_data = await Agency.findById(user.reference_id)
-        .select("total_coupon")
-        .lean();
+      if (user.role.name === "agency") {
+        const queryObj = { is_deleted: false };
+        const agency_data = await Agency.findById(user.reference_id)
+          .select("total_coupon")
+          .lean();
 
-      const coupon = await AdminCoupon.find(queryObj)
-        .select("-couponCode")
-        .lean();
+        let coupon = await AdminCoupon.find(queryObj)
+          .select("-couponCode")
+          .lean();
 
-      const referral_data = await Configuration.findOne().lean();
-      const require_points = referral_data?.coupon?.reedem_coupon;
-      // Iterate over each coupon
-      const totalCouponIds =
-        agency_data &&
-        agency_data?.total_coupon?.map((coupon) => coupon.toString());
+        coupon = coupon.filter(
+          (couponItem) =>
+            !String(agency_data.total_coupon).includes(String(couponItem._id))
+        );
 
-      // Iterate over each coupon
-      for (let i = 0; i < coupon.length; i++) {
-        const couponId = coupon[i]._id.toString();
+        const referral_data = await Configuration.findOne().lean();
+        const require_points = referral_data?.coupon?.reedem_coupon;
+        // Iterate over each coupon
+        const totalCouponIds =
+          agency_data &&
+          agency_data?.total_coupon?.map((coupon) => coupon.toString());
 
-        // Check if the coupon ID exists in agency_data.total_coupon
-        const isAvailable = totalCouponIds.includes(couponId);
+        // Iterate over each coupon
+        for (let i = 0; i < coupon.length; i++) {
+          const couponId = coupon[i]._id.toString();
 
-        // Add a flag to the coupon object
-        coupon[i].isAvailable = !isAvailable;
+          // Check if the coupon ID exists in agency_data.total_coupon
+          const isAvailable = totalCouponIds.includes(couponId);
+
+          // Add a flag to the coupon object
+          coupon[i].isAvailable = !isAvailable;
+        }
+        return { coupon, require_points };
       }
-      return { coupon, require_points };
+
+      if (user.role.name === "team_agency") {
+        const queryObj = { is_deleted: false };
+        const team_member = await Team_Agency.findById(user.reference_id)
+          .select("total_coupon")
+          .lean();
+
+        let coupon = await AdminCoupon.find(queryObj)
+          .select("-couponCode")
+          .lean();
+
+        coupon = coupon.filter(
+          (couponItem) =>
+            !String(team_member.total_coupon).includes(String(couponItem._id))
+        );
+
+        const referral_data = await Configuration.findOne().lean();
+        const require_points = referral_data?.coupon?.reedem_coupon;
+        // Iterate over each coupon
+        const totalCouponIds =
+          team_member &&
+          team_member?.total_coupon?.map((coupon) => coupon.toString());
+        // Iterate over each coupon
+        for (let i = 0; i < coupon.length; i++) {
+          const couponId = coupon[i]._id.toString();
+
+          // Check if the coupon ID exists in agency_data.total_coupon
+          const isAvailable = totalCouponIds.includes(couponId);
+          // Add a flag to the coupon object
+          coupon[i].isAvailable = !isAvailable;
+        }
+        return { coupon, require_points };
+      }
     } catch (error) {
       logger.error(`Error whilefetching coupon list, ${error}`);
       throwError(error?.message, error?.statusCode);
@@ -206,16 +247,29 @@ class CouponService {
 
   getMyCoupons = async (user) => {
     try {
-      const couponIds = user.total_coupon;
-      const agency_data = await Agency.findById(user.reference_id).select(
-        "total_coupon"
-      );
-      console.log(agency_data);
-      // Query AdminCoupon model to find coupons with IDs present in the array
-      const coupons = await AdminCoupon.find({
-        _id: { $in: agency_data?.total_coupon },
-      });
-      return coupons;
+      if (user.role.name === "agency") {
+        const couponIds = user.total_coupon;
+        const agency_data = await Agency.findById(user.reference_id).select(
+          "total_coupon"
+        );
+        // Query AdminCoupon model to find coupons with IDs present in the array
+        const coupons = await AdminCoupon.find({
+          _id: { $in: agency_data?.total_coupon },
+        });
+        return coupons;
+      }
+      if (user.role.name === "team_agency") {
+        const couponIds = user.total_coupon;
+        const member_data = await Team_Agency.findById(
+          user.reference_id
+        ).select("total_coupon");
+        console.log(member_data);
+        // Query AdminCoupon model to find coupons with IDs present in the array
+        const coupons = await AdminCoupon.find({
+          _id: { $in: member_data?.total_coupon },
+        });
+        return coupons;
+      }
     } catch (error) {
       logger.error(`Error while fetching coupon list, ${error}`);
       throwError(error?.message, error?.statusCode);

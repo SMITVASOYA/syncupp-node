@@ -3,6 +3,7 @@ const { returnMessage } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const CouponService = require("../services/couponService");
 const { sendResponse } = require("../utils/sendResponse");
+const { authorizeRole } = require("../middlewares/authMiddleware");
 const couponService = new CouponService();
 
 // Add coupon
@@ -76,8 +77,13 @@ exports.getCoupon = catchAsyncError(async (req, res, next) => {
 
 exports.getAllCouponWithOutPagination = catchAsyncError(
   async (req, res, next) => {
-    const getAllCouponWithOutPagination =
-      await couponService.getAllCouponWithOutPagination(req?.user);
+    let getAllCouponWithOutPagination;
+
+    if (authorizeRole("agency") || authorizeRole("team_agency")) {
+      getAllCouponWithOutPagination =
+        await couponService.getAllCouponWithOutPagination(req?.user);
+    }
+
     sendResponse(
       res,
       true,
@@ -89,7 +95,10 @@ exports.getAllCouponWithOutPagination = catchAsyncError(
 );
 
 exports.getmyCoupon = catchAsyncError(async (req, res, next) => {
-  const getMyCoupons = await couponService.getMyCoupons(req?.user);
+  let getMyCoupons;
+  if (authorizeRole("agency") || authorizeRole("team_agency")) {
+    getMyCoupons = await couponService.getMyCoupons(req?.user);
+  }
   sendResponse(
     res,
     true,
