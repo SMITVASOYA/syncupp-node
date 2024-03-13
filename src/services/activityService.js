@@ -3535,6 +3535,95 @@ class ActivityService {
       return throwError(error?.message, error?.statusCode);
     }
   };
+
+  // below function is used for the get the completion points for the agency and agency team member
+  completionHistory = async (payload, user) => {
+    try {
+      const pagination = paginationObject(payload);
+      const match_obj = {};
+
+      if (user?.role?.name === "agency") {
+        match_obj.agency_id = user?.reference_id;
+      } else if (user?.role?.name === "team_agency") {
+        match_obj.user_id = user?.reference_id;
+      }
+      const search_obj = {};
+      if (payload?.search && payload?.search !== "") {
+        search_obj["$or"] = [
+          {
+            "user.first_name": {
+              $regex: payload?.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+
+          {
+            "user.last_name": {
+              $regex: payload?.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            "user.name": {
+              $regex: payload?.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            point: {
+              $regex: payload?.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            type: { $regex: payload?.search.toLowerCase(), $options: "i" },
+          },
+        ];
+      }
+
+      const aggragate = [
+        { $match: match_obj },
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "user_id",
+            foreignField: "reference_id",
+            pipeline: [
+              {
+                $project: {
+                  first_name: 1,
+                  last_name: 1,
+                  name: { $concat: ["$first_name", " ", "$last_name"] },
+                },
+              },
+            ],
+            as: "user",
+          },
+        },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+        { $match: search_obj },
+      ];
+
+      const [points_history, total_points_history] = await Promise.all([
+        Competition_Point.aggregate(aggragate)
+          .sort(pagination.sort)
+          .skip(pagination.skip)
+          .limit(pagination.result_per_page),
+        Competition_Point.aggregate(aggragate),
+      ]);
+
+      return {
+        points_history,
+        page_count: Math.ceil(
+          total_points_history.length / pagination.result_per_page
+        ),
+      };
+    } catch (error) {
+      logger.error(`Error while fetching completion history: ${error}`);
+
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
 }
 
 module.exports = ActivityService;
