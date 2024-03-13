@@ -9595,7 +9595,7 @@ white-space: nowrap;">${data?.agenda ?? `&nbsp;`}</td>
 
                                         <tr>
                                         <td style=" border-top-left-radius: 5px;
-border-collapse: collapse;">Due Date :</td>
+border-collapse: collapse;">Start Date :</td>
                                         <td style="
 border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
