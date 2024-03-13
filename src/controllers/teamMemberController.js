@@ -8,13 +8,11 @@ const teamMemberService = new TeamMemberService();
 // Team Member add
 exports.add = catchAsyncError(async (req, res, next) => {
   const team_member = await teamMemberService.addTeamMember(req.body, req.user);
-  sendResponse(
-    res,
-    true,
-    returnMessage("teamMember", "teamMemberCreated"),
-    team_member,
-    statusCode.success
-  );
+  let message = returnMessage("teamMember", "teamMemberCreated");
+  if (req?.user?.role === "client") {
+    message = returnMessage("teamMember", "teamMemberCreatedByClient");
+  }
+  sendResponse(res, true, message, team_member, statusCode.success);
 });
 
 // Team Member Verification

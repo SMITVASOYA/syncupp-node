@@ -385,7 +385,10 @@ class AuthService {
           .startOf("day");
         const currentDateUTC = moment.utc().startOf("day");
         const referral_data = await Configuration.findOne().lean();
-        if (currentDateUTC.isAfter(lastLoginDateUTC)) {
+        if (
+          currentDateUTC.isAfter(lastLoginDateUTC) ||
+          !agency_enroll.last_login_date
+        ) {
           if (
             agency_enroll?.role?.name === "team_agency" ||
             agency_enroll?.role?.name === "agency"
@@ -423,9 +426,14 @@ class AuthService {
             referral_data?.payment?.subscription_halt_days,
         });
       } else {
-        const lastLoginDateUTC = moment.utc(existing_agency?.last_login_date);
-        const currentDateUTC = moment().startOf("day");
-        if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
+        const lastLoginDateUTC = moment
+          .utc(existing_agency?.last_login_date)
+          .startOf("day");
+        const currentDateUTC = moment.utc().startOf("day");
+        if (
+          currentDateUTC.isAfter(lastLoginDateUTC) ||
+          !existing_agency?.last_login_date
+        ) {
           if (
             existing_agency?.role?.name === "team_agency" ||
             existing_agency?.role?.name === "agency"
@@ -544,7 +552,10 @@ class AuthService {
         const currentDateUTC = moment.utc().startOf("day");
         const referral_data = await Configuration.findOne().lean();
 
-        if (currentDateUTC.isAfter(lastLoginDateUTC)) {
+        if (
+          currentDateUTC.isAfter(lastLoginDateUTC) ||
+          !agency_enroll?.last_login_date
+        ) {
           if (
             agency_enroll?.role?.name === "team_agency" ||
             agency_enroll?.role?.name === "agency"
@@ -582,10 +593,15 @@ class AuthService {
             referral_data?.payment?.subscription_halt_days,
         });
       } else {
-        const lastLoginDateUTC = moment.utc(existing_agency?.last_login_date);
-        const currentDateUTC = moment().startOf("day");
+        const lastLoginDateUTC = moment
+          .utc(existing_agency?.last_login_date)
+          .startOf("day");
+        const currentDateUTC = moment.utc().startOf("day");
 
-        if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
+        if (
+          currentDateUTC.isAfter(lastLoginDateUTC) ||
+          !existing_agency?.last_login_date
+        ) {
           if (
             existing_agency?.role?.name === "team_agency" ||
             existing_agency?.role?.name === "agency"
@@ -685,7 +701,10 @@ class AuthService {
       const currentDateUTC = moment.utc().startOf("day");
       const referral_data = await Configuration.findOne().lean();
       // Check if last login date is the same as current date
-      if (currentDateUTC.isAfter(lastLoginDateUTC)) {
+      if (
+        currentDateUTC.isAfter(lastLoginDateUTC) ||
+        !existing_Data?.last_login_date
+      ) {
         // If the condition is true, execute the following code
         if (
           existing_Data?.role?.name === "team_agency" ||
