@@ -32,6 +32,7 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_SECRET,
 });
 const axios = require("axios");
+const AdminCoupon = require("../models/adminCouponSchema");
 
 class PaymentService {
   constructor() {
@@ -1530,13 +1531,23 @@ class PaymentService {
         Configuration.findOne().lean(),
         SheetManagement.findOne({ agency_id: agency?.reference_id }),
       ]);
-      const payable_amount = (
-        this.customPaymentCalculator(
-          subscription_detail?.current_start,
-          subscription_detail?.current_end,
-          plan
-        ) / 100
-      ).toFixed(2);
+
+      let payable_amount;
+
+      if (
+        !subscription_detail?.current_start &&
+        !subscription_detail?.current_end
+      ) {
+        payable_amount = (plan?.amount / 100).toFixed(2);
+      } else {
+        payable_amount = (
+          this.customPaymentCalculator(
+            subscription_detail?.current_start,
+            subscription_detail?.current_end,
+            plan
+          ) / 100
+        ).toFixed(2);
+      }
       const agency_data = await Agency.findById(agency.reference_id);
       const redirect_payment_page =
         agency_data?.total_referral_point >=
@@ -1773,6 +1784,46 @@ class PaymentService {
         `Error while getting the invoices from the Subscription id :${error} `
       );
       return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  couponPay = async (payload, user) => {
+    try {
+      const agency = await Agency.findById(user?.reference_id);
+      const referral_data = await Configuration.findOne().lean();
+      if (
+        !(agency?.total_referral_point >= referral_data?.coupon?.reedem_coupon)
+      )
+        return throwError(
+          returnMessage("referral", "insufficientReferralPoints")
+        );
+
+      // payload?.redeem_required_point =
+      //   referral_data?.referral?.redeem_required_point;
+      // const status_change = await this.referralStatusChange(payload, user);
+      // if (!status_change.success) return { success: false };
+
+      const coupon = await AdminCoupon.findById(payload?.couponId).lean();
+      await Agency.findOneAndUpdate(
+        { _id: agency?._id },
+        {
+          $inc: {
+            total_referral_point: -referral_data?.coupon?.reedem_coupon,
+          },
+          $push: {
+            total_coupon: payload?.couponId,
+          },
+        },
+        { new: true }
+      );
+
+      return { success: true };
+    } catch (error) {
+      logger.error(`Error while verifying referral: ${error}`);
+      return throwError(
+        error?.message || error?.error?.description,
+        error?.statusCode
+      );
     }
   };
 }

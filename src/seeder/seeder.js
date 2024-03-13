@@ -9,6 +9,7 @@ const Role_Master = require("../models/masters/roleMasterSchema");
 const Agency_Type_Master = require("../models/masters/agencyTypeMasterSchema");
 const Activity_Type_Master = require("../models/masters/activityTypeMasterSchema");
 const Activity_Status_Master = require("../models/masters/activityStatusMasterSchema");
+const Configuration = require("../models/configurationSchema");
 // const Country_Master = require("../models/masters/countryMasterSchema");
 // const State_Master = require("../models/masters/stateMasterSchema");
 // const City_Master = require("../models/masters/cityMasterSchema");
@@ -22,6 +23,9 @@ const role_master_data = JSON.parse(
 
 const agency_type_master_data = JSON.parse(
   fs.readFileSync(`${__dirname}/seeder-data/agency_type_master.json`, "utf-8")
+);
+const configuration_data = JSON.parse(
+  fs.readFileSync(`${__dirname}/seeder-data/configuration.json`, "utf-8")
 );
 const activity_type_master_data = JSON.parse(
   fs.readFileSync(`${__dirname}/seeder-data/activity_type_master.json`, "utf-8")
@@ -45,14 +49,21 @@ const activity_status_master_data = JSON.parse(
 
 exports.insertData = async () => {
   try {
-    const [admins, roles, agency_types, activity_type, activity_status] =
-      await Promise.all([
-        Admin.countDocuments(),
-        Role_Master.countDocuments(),
-        Agency_Type_Master.countDocuments(),
-        Activity_Type_Master.countDocuments(),
-        Activity_Status_Master.countDocuments(),
-      ]);
+    const [
+      admins,
+      roles,
+      agency_types,
+      activity_type,
+      activity_status,
+      configuration,
+    ] = await Promise.all([
+      Admin.countDocuments(),
+      Role_Master.countDocuments(),
+      Agency_Type_Master.countDocuments(),
+      Activity_Type_Master.countDocuments(),
+      Activity_Status_Master.countDocuments(),
+      Configuration.countDocuments(),
+    ]);
 
     const promiseArray = [];
 
@@ -75,6 +86,10 @@ exports.insertData = async () => {
       promiseArray.push(
         Activity_Status_Master.create(activity_status_master_data)
       );
+    }
+
+    if (configuration === 0) {
+      promiseArray.push(Configuration.create(configuration_data));
     }
 
     // if (countries === 0) {

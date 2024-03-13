@@ -108,3 +108,14 @@ exports.paymentScopes = catchAsyncError(async (req, res, next) => {
   const paymentScopes = await paymentService.paymentScopes(req.user);
   sendResponse(res, true, undefined, paymentScopes, 200);
 });
+
+exports.couponPay = catchAsyncError(async (req, res, next) => {
+  const verified = await paymentService.couponPay(req.body, req.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("payment", "couponpurchase"),
+    verified,
+    200
+  );
+});

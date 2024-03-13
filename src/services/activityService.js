@@ -28,6 +28,7 @@ const notificationService = new NotificationService();
 const EventService = require("../services/eventService");
 const eventService = new EventService();
 const Client = require("../models/clientSchema");
+const ics = require("ics");
 const fs = require("fs");
 
 class ActivityService {
@@ -2072,6 +2073,32 @@ class ActivityService {
         attendees: attendees,
       });
 
+      const event = {
+        start: [
+          moment(start_date).year(),
+          moment(start_date).month() + 1, // Months are zero-based in JavaScript Date objects
+          moment(start_date).date(),
+          moment(start_time).hour(),
+          moment(end_time).minute(),
+        ],
+
+        title: title,
+        description: agenda,
+        // Other optional properties can be added here such as attendees, etc.
+      };
+      let icsContent;
+
+      ics.createEvent(event, (error, value) => {
+        if (error) {
+          logger.error(`Error while creating iCalendar event: ${error}`);
+          return throwError(error?.message, error?.statusCode);
+        } else {
+          icsContent = value;
+        }
+
+        // Do something with the generated iCalendar file, e.g., send it via email or save it to a file.
+        console.log(value);
+      });
       // --------------- Start--------------------
       const [assign_to_data, client_data, attendees_data] = await Promise.all([
         Authentication.findOne({ reference_id: assign_to }).lean(),
@@ -2092,6 +2119,7 @@ class ActivityService {
         email: client_data?.email,
         subject: returnMessage("emailTemplate", "newActivityMeeting"),
         message: activity_email_template,
+        icsContent: icsContent,
       });
       sendEmail({
         email: assign_to_data?.email,
@@ -2981,21 +3009,13 @@ class ActivityService {
         // for event in calender view
         if (!payload?.given_date) {
           event.forEach((event) => {
-            if (payload?.filter?.date === "period") {
-              event.recurring_end_date = moment
-                .utc(payload?.filter?.end_date, "DD-MM-YYYY")
-                .endOf("day");
-            }
+            // if (payload?.filter?.date === "period") {
+            //   event.recurring_end_date = moment
+            //     .utc(payload?.filter?.end_date, "DD-MM-YYYY")
+            //     .endOf("day");
+            // }
             const event_meetings = this.generateEventTimes(event);
-            // let obj = {
-            //   id: event_meetings._id,
-            //   title: event_meetings.title,
-            //   description: event_meetings.agenda,
-            //   allDay: false,
-            //   type: "event",
-            //   start: event_meetings.event_start_time,
-            //   end: event_meetings.event_end_time,
-            // };
+
             activity_array = [...activity_array, ...event_meetings];
 
             // activity_array.push(obj);

@@ -13,6 +13,11 @@ const agencySchema = new mongoose.Schema(
     country: { type: mongoose.Schema.Types.ObjectId, ref: "country_master" },
     pincode: { type: String },
     total_referral_point: { type: Number, default: 0 },
+    total_coupon: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+      },
+    ],
   },
   { timestamps: true }
 );

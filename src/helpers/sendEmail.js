@@ -16,6 +16,14 @@ const sendEmail = async (payload) => {
     to: payload.email,
     subject: payload.subject,
     html: payload.message,
+    attachments: [
+      {
+        filename: "event.ics", // Name of the attachment
+        content: payload?.icsContent, // Content of the iCalendar file
+        encoding: "base64", // Encoding type of the attachment content
+        method: "request",
+      },
+    ],
   };
 
   await transporter.sendMail(mailOptions);
