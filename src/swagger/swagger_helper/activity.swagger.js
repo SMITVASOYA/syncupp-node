@@ -296,6 +296,65 @@ const leaderboard = {
   },
 };
 
+const completionHistory = {
+  tags: ["Activity - CRM Panel"],
+  description: "",
+  summary: "Fetch completion points history",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+
+          properties: {
+            page: {
+              type: "number",
+              description: "Enter page number.",
+              default: 1,
+            },
+            items_per_page: {
+              type: "number",
+              description: "Enter item per page.",
+              default: 5,
+            },
+            sort_order: {
+              type: "string",
+              description: "Enter order of sort asc or desc.",
+              default: "desc",
+            },
+            sort_field: {
+              type: "string",
+              description: "Enter field to sort.",
+              default: "createdAt",
+            },
+            search: {
+              type: "string",
+              description: "Enter value of search",
+            },
+          },
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
 const activityRoute = {
   "/api/v1/activity/call-meeting": {
     post: createActivity,
@@ -311,6 +370,9 @@ const activityRoute = {
   },
   "/api/v1/activity/leaderboard": {
     post: leaderboard,
+  },
+  "/api/v1/activity/completion_history": {
+    post: completionHistory,
   },
 };
 

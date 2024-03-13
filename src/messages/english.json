@@ -215,7 +215,8 @@
     "createSubject": "New task created.",
     "UpdateSubject": "Updated Task.",
     "ActivityCannotUpdate": "Activity cannot be updated.",
-    "tagsList": "Tags list fetch successfully."
+    "tagsList": "Tags list fetch successfully.",
+    "completionHistory": "Points history fetched successfully."
   },
 
   "payment": {
@@ -310,14 +311,15 @@
     "historyFetched": "Chat history fetched successfully.",
     "canNotDelete": "You can only delete unseen messages.",
     "messageDeleted": "Message deleted successfully.",
-    "largeImage": "Image file should be less than 2 MB.",
-    "largeDocument": "Document file should be less than 5 MB.",
+    "largeImage": "Image file should be less than {{file_size}} MB.",
+    "largeDocument": "Document file should be less than {{file_size}} MB.",
     "invalidImageFormat": "Image file format should be jpeg, jpg, or png.",
-    "invalidDocumentFormat": "Document file format should be xlsx, pdf, or csv.",
+    "invalidDocumentFormat": "Document file format should be docx, doc, xlsx, pdf, or csv.",
     "membersRequired": "Atleast one member is required for the group chat.",
     "insufficientPermission": "You don't have permission to create group.",
     "groupNameRequired": "Group name is required.",
-    "groupCreated": "Group created successfully."
+    "groupCreated": "Group created successfully.",
+    "groupDoesNotExist": "The group does not exist."
   },
 
   "default": { "default": "Something went wrong." }

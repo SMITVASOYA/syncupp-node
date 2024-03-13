@@ -44,3 +44,18 @@ exports.groups = catchAsyncError(async (req, res, next) => {
   const groups = await groupChatService.groupsList(req.user);
   sendResponse(res, true, undefined, groups, 200);
 });
+
+exports.groupChatHistory = catchAsyncError(async (req, res, next) => {
+  const history = await groupChatService.chatHistory(req.body);
+  sendResponse(res, true, undefined, history, 200);
+});
+
+exports.updateGroup = catchAsyncError(async (req, res, next) => {
+  const updated_group = await groupChatService.updateGroup(req.body, req.user);
+  sendResponse(res, true, undefined, updated_group, 200);
+});
+
+exports.getGroup = catchAsyncError(async (req, res, next) => {
+  const group = await groupChatService.getGroup(req.params.groupId);
+  sendResponse(res, true, undefined, group, 200);
+});

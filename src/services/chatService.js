@@ -140,9 +140,9 @@ class ChatService {
     try {
       let ids;
       const client = await Client.findById(user?.reference_id).lean();
-      const agency_ids = client?.agency_ids?.map((agency) =>
-        agency?.status !== "pending" ? agency?.agency_id : false
-      );
+      const agency_ids = client?.agency_ids?.map((agency) => {
+        if (agency?.status !== "pending") return agency?.agency_id;
+      });
       if (payload?.for === "agency") {
         ids = [...agency_ids];
       } else if (payload?.for === "team") {
@@ -215,7 +215,7 @@ class ChatService {
         ids.push(team_client_detail.client_id);
       } else if (payload?.for === "agency") {
         const agency_ids = team_client_detail?.agency_ids?.map((agency) => {
-          agency?.status !== "pending" ? agency?.agency_id : false;
+          if (agency?.status !== "pending") return agency?.agency_id;
         });
 
         const team_agency_ids = await Team_Agency.distinct("_id", {
@@ -291,10 +291,7 @@ class ChatService {
         }).lean(),
         Authentication.find({
           reference_id: { $in: chat_users_ids },
-          $or: [
-            { status: { $ne: "payment_pending" } },
-            { status: { $ne: "confirm_pending" } },
-          ],
+          status: "confirmed",
         })
           .select(
             "name first_name last_name email reference_id image_url is_online"

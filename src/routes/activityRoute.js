@@ -33,5 +33,6 @@ activityRoute.get("/call-meeting/:activityId", activityController.getActivity);
 activityRoute.post("/list", activityController.getActivities);
 activityRoute.post("/leaderboard", activityController.leaderboard);
 activityRoute.post("/assigned_activity", activityController.leaderboard);
+activityRoute.post("/completion_history", activityController.completionHistory);
 
 module.exports = activityRoute;

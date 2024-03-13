@@ -96,6 +96,8 @@
   },
 
   "chat": {
-    "addedToGroup": "Hi, {{user_name}}. you are added to the {{group_name}} group by the {{creator_name}}."
+    "addedToGroup": "You are added to the {{group_name}} group by the {{creator_name}}.",
+    "newMessage": "The {{sender_name}} has sent you a new message.",
+    "newGroupMessage": "You received new message from {{group_name}}."
   }
 }

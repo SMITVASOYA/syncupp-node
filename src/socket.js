@@ -4,10 +4,15 @@ const logger = require("./logger");
 const { throwError } = require("./helpers/errorUtil");
 const Chat = require("./models/chatSchema");
 const Notification = require("./models/notificationSchema");
-const { returnMessage } = require("./utils/utils");
+const {
+  returnMessage,
+  returnNotification,
+  capitalizeFirstLetter,
+} = require("./utils/utils");
 const fs = require("fs");
 const Authentication = require("./models/authenticationSchema");
 const Group_Chat = require("./models/groupChatSchema");
+const Configuration = require("./models/configurationSchema");
 
 exports.socket_connection = (http_server) => {
   io = new Server(http_server, {
@@ -125,12 +130,24 @@ exports.socket_connection = (http_server) => {
         });
 
         if (!notification_exist) {
+          const sender_detail = await Authentication.findOne({
+            reference_id: payload?.from_user,
+          })
+            .select("first_name last_name")
+            .lean();
+          let notification_message = returnNotification("chat", "newMessage");
+          notification_message = notification_message.replaceAll(
+            "{{sender_name}}",
+            capitalizeFirstLetter(sender_detail?.first_name) +
+              " " +
+              capitalizeFirstLetter(sender_detail?.last_name)
+          );
           await Notification.create({
             type: "chat",
             user_id: payload?.to_user,
             from_user: payload?.from_user,
             data_reference_id: payload?._id,
-            message: payload?.message,
+            message: notification_message,
             user_type: payload?.user_type,
           });
         }
@@ -143,17 +160,18 @@ exports.socket_connection = (http_server) => {
     // This socket event is used for the delete the message if the message is not seen by the other user
     socket.on("DELETE_MESSAGE", async (payload) => {
       try {
-        const is_message_seen = await Notification.findOne({
-          from_user: payload?.from_user,
-          user_id: payload?.to_user,
-          is_read: false,
-          type: "chat",
-        }).lean();
+        // stopped because of the some limitations
+        // const is_message_seen = await Notification.findOne({
+        //   from_user: payload?.from_user,
+        //   user_id: payload?.to_user,
+        //   is_read: false,
+        //   type: "chat",
+        // }).lean();
 
-        if (is_message_seen)
-          socket.to(payload?.from_user?.toString()).emit("CANNOT_DELETE", {
-            error: returnMessage("chat", "canNotDelete"),
-          });
+        // if (is_message_seen)
+        //   io.to(payload?.from_user?.toString()).emit("CANNOT_DELETE", {
+        //     error: returnMessage("chat", "canNotDelete"),
+        //   });
 
         const message = await Chat.findById(payload?.chat_id).lean();
 
@@ -183,7 +201,7 @@ exports.socket_connection = (http_server) => {
         }
 
         await Chat.findByIdAndUpdate(payload?.chat_id, { is_deleted: true });
-        io.to(payload?.from_user).emit("MESSGAE_DELETED", {
+        io.to([payload?.from_user, payload?.to_user]).emit("MESSGAE_DELETED", {
           message: returnMessage("chat", "messageDeleted"),
           _id: payload?.chat_id,
         });
@@ -197,29 +215,29 @@ exports.socket_connection = (http_server) => {
     socket.on("IMAGES", async (payload) => {
       try {
         const { from_user, to_user, buffer, user_type, ext } = payload;
+
+        const configuration = await Configuration.findOne().lean();
         // removed the size validaions
-        // if (Buffer.byteLength(buffer))
-        //   io.to(from_user?.toString()).emit("FILE_TO_LARGE", {
-        //     error: returnMessage("chat", "largeImage"),
-        //   });
+        if (
+          Buffer.byteLength(buffer) / (1024 * 1024) >
+          configuration?.chat?.file_size
+        ) {
+          let message = returnMessage("chat", "largeImage");
+          message = replaceAll("{{file_size}}", configuration?.chat?.file_size);
+          io.to(from_user?.toString()).emit("FILE_TO_LARGE", {
+            error: message,
+          });
+          return;
+        }
 
         const required_image_type = ["jpeg", "jpg", "png"];
 
-        if (error || !required_image_type.includes(ext))
+        if (!required_image_type.includes(ext)) {
           io.to(from_user).emit("INVALID_FORMAT", {
             error: returnMessage("chat", "invalidImageFormat"),
           });
-
-        // commented because it was not supported the some of the extensions
-        // let image_obj;
-        // detect_file_type.fromBuffer(buffer, (error, result) => {
-        //   if (error || !required_image_type.includes(result.ext))
-        //     socket.to(from_user?.toString()).emit("INVALID_FORMAT", {
-        //       error: returnMessage("chat", "invalidImageFormat"),
-        //     });
-
-        //   image_obj = result;
-        // });
+          return;
+        }
 
         if (ext) {
           const image_name = Date.now() + "." + ext;
@@ -272,29 +290,28 @@ exports.socket_connection = (http_server) => {
     socket.on("DOCUMENTS", async (payload) => {
       try {
         const { from_user, to_user, buffer, user_type, ext } = payload;
-        // removed file size validations
-        // if (Buffer.byteLength(buffer) / (1024 * 1024) > 5)
-        //   socket.to(from_user?.toString()).emit("FILE_TO_LARGE", {
-        //     error: returnMessage("chat", "largeDocument"),
-        //   });
 
+        const configuration = await Configuration.findOne().lean();
+
+        if (
+          Buffer.byteLength(buffer) / (1024 * 1024) >
+          configuration?.chat?.file_size
+        ) {
+          let message = returnMessage("chat", "largeDocument");
+          message = replaceAll("{{file_size}}", configuration?.chat?.file_size);
+          socket.to(from_user?.toString()).emit("FILE_TO_LARGE", {
+            error: message,
+          });
+          return;
+        }
         const required_image_type = ["pdf", "xlsx", "csv", "doc", "docx"];
 
-        if (required_image_type.includes(ext))
+        if (required_image_type.includes(ext)) {
           io.to(from_user).emit("INVALID_FORMAT", {
             error: returnMessage("chat", "invalidDocumentFormat"),
           });
-
-        // removed because of the some part of the extension provided
-        // let document_obj;
-        // detect_file_type.fromBuffer(buffer, (error, result) => {
-        //   if (error || !required_image_type.includes(result.ext))
-        //     io.to(from_user?.toString()).emit("INVALID_FORMAT", {
-        //       error: returnMessage("chat", "invalidDocumentFormat"),
-        //     });
-        //   console.log(result);
-        //   document_obj = result;
-        // });
+          return;
+        }
 
         if (ext) {
           const document_name = Date.now() + "." + ext;
@@ -388,7 +405,7 @@ exports.socket_connection = (http_server) => {
       try {
         const { from_user, group_id, message } = payload;
 
-        const [new_chat, user_details, group_detail] = await Promise.all([
+        const [new_chat, user_detail, group_detail] = await Promise.all([
           Chat.create({
             from_user,
             group_id,
@@ -401,25 +418,25 @@ exports.socket_connection = (http_server) => {
         ]);
 
         // emiting the message to the sender to solve multiple device synchronous
-        io.to(from_user).emit("GROUP_RECEIVED_MESSAGE", {
-          from_user,
-          group_id,
-          message,
-          createdAt: new_chat.createdAt,
-          _id: new_chat?._id,
-          message_type: new_chat?.message_type,
-          user_details,
-          members: group_detail?.members,
-        });
+        // io.to(from_user).emit("GROUP_RECEIVED_MESSAGE", {
+        //   from_user,
+        //   group_id,
+        //   message,
+        //   createdAt: new_chat.createdAt,
+        //   _id: new_chat?._id,
+        //   message_type: new_chat?.message_type,
+        //   user_detail,
+        //   members: group_detail?.members,
+        // });
 
-        socket.to(group_id).emit("GROUP_RECEIVED_MESSAGE", {
+        io.to(group_id).emit("GROUP_RECEIVED_MESSAGE", {
           from_user,
           group_id,
           message,
           createdAt: new_chat.createdAt,
           _id: new_chat?._id,
           message_type: new_chat?.message_type,
-          user_details,
+          user_detail,
           members: group_detail?.members,
         });
       } catch (error) {
@@ -429,30 +446,239 @@ exports.socket_connection = (http_server) => {
     });
 
     // This socket event is used to create the notification for the members if they have not read the message
-    socket.on("NOT_ONGOING_CHAT", async (payload) => {
+    socket.on("NOT_ONGOING_GROUP_CHAT", async (payload) => {
       try {
-        payload?.members.forEach(async (member) => {
+        payload?.members?.forEach(async (member) => {
           const notification_exist = await Notification.findOne({
             group_id: payload?.group_id,
-            user_id: payload?.member,
+            user_id: member,
             type: "group",
             is_read: false,
             is_deleted: false,
           });
 
           if (!notification_exist) {
+            let notification_message = returnNotification(
+              "chat",
+              "newGroupMessage"
+            );
+
+            notification_message = notification_message.replaceAll(
+              "{{group_name}}",
+              capitalizeFirstLetter(payload?.group_name)
+            );
             await Notification.create({
               type: "group",
               user_id: payload?.to_user,
-              from_user: payload?.member,
+              from_user: member,
               data_reference_id: payload?._id,
-              message: payload?.message,
+              message: notification_message,
               group_id: payload?.group_id,
             });
           }
         });
       } catch (error) {
-        logger.error(`Error while receiving the message: ${error}`);
+        logger.error(`Error while receiving the message in group: ${error}`);
+        return throwError(error?.message, error?.statusCode);
+      }
+    });
+
+    // this socket event is used to send the images between the users
+    socket.on("GROUP_IMAGES", async (payload) => {
+      try {
+        const { from_user, group_id, buffer, ext } = payload;
+        const configuration = await Configuration.findOne().lean();
+
+        if (
+          Buffer.byteLength(buffer) / (1024 * 1024) >
+          configuration?.chat?.file_size
+        ) {
+          let message = returnMessage("chat", "largeImage");
+          message = replaceAll("{{file_size}}", configuration?.chat?.file_size);
+          io.to(from_user?.toString()).emit("FILE_TO_LARGE", {
+            error: message,
+          });
+          return;
+        }
+        const required_image_type = ["jpeg", "jpg", "png"];
+
+        if (!required_image_type.includes(ext)) {
+          io.to(from_user).emit("INVALID_FORMAT", {
+            error: returnMessage("chat", "invalidImageFormat"),
+          });
+          return;
+        }
+
+        if (ext) {
+          const image_name = Date.now() + "." + ext;
+          fs.writeFileSync("./src/public/uploads/" + image_name, buffer, {
+            encoding: "base64",
+          });
+
+          const new_message = await Chat.create({
+            from_user: payload?.from_user,
+            group_id: payload?.group_id,
+            image_url: image_name,
+            message_type: "image",
+          });
+
+          // commenting for the better optimised solution
+          // await Notification.create({
+          //   user_id: payload?.to_user,
+          //   type: "chat",
+          //   from_user: payload?.from_user,
+          //   data_reference_id: new_message?._id,
+          // });
+          const user_detail = await Authentication.findOne({
+            reference_id: from_user,
+          })
+            .select("first_name last_name reference_id")
+            .lean();
+
+          io.to(group_id).emit("GROUP_RECEIVED_IMAGE", {
+            image_url: image_name,
+            from_user,
+            group_id,
+            message_type: new_message?.message_type,
+            _id: new_message?._id,
+            createdAt: new_message?.createdAt,
+            user_detail,
+          });
+        }
+      } catch (error) {
+        console.log(error);
+        logger.error(`Error while uploading the images: ${error}`);
+        return throwError(error?.message, error?.statusCode);
+      }
+    });
+
+    // this socket event is used to send the documents between the users
+    socket.on("GROUP_DOCUMENTS", async (payload) => {
+      try {
+        const { from_user, group_id, buffer, ext } = payload;
+
+        const configuration = await Configuration.findOne().lean();
+
+        if (
+          Buffer.byteLength(buffer) / (1024 * 1024) >
+          configuration?.chat?.file_size
+        ) {
+          let message = returnMessage("chat", "largeDocument");
+          message = replaceAll("{{file_size}}", configuration?.chat?.file_size);
+          io.to(from_user).emit("FILE_TO_LARGE", {
+            error: message,
+          });
+          return;
+        }
+
+        const required_image_type = ["pdf", "xlsx", "csv", "doc", "docx"];
+
+        if (required_image_type.includes(ext)) {
+          io.to(from_user).emit("INVALID_FORMAT", {
+            error: returnMessage("chat", "invalidDocumentFormat"),
+          });
+          return;
+        }
+
+        if (ext) {
+          const document_name = Date.now() + "." + ext;
+          fs.writeFileSync("./src/public/uploads/" + document_name, buffer, {
+            encoding: "base64",
+          });
+
+          const new_message = await Chat.create({
+            from_user: payload?.from_user,
+            group_id: payload?.group_id,
+            document_url: document_name,
+            message_type: "document",
+          });
+
+          // commenting for the better optimised solution
+          // await Notification.create({
+          //   user_id: payload?.to_user,
+          //   type: "chat",
+          //   from_user: payload?.from_user,
+          //   data_reference_id: new_message?._id,
+          // });
+
+          const user_detail = await Authentication.findOne({
+            reference_id: from_user,
+          })
+            .select("first_name last_name reference_id")
+            .lean();
+
+          io.to(group_id).emit("GROUP_RECEIVED_DOCUMENT", {
+            document_url: document_name,
+            from_user,
+            group_id,
+            createdAt: new_message?.createdAt,
+            _id: new_message?._id,
+            message_type: new_message?.message_type,
+            user_detail,
+          });
+        }
+      } catch (error) {
+        logger.error(`Error while uploading the Documents: ${error}`);
+        return throwError(error?.message, error?.statusCode);
+      }
+    });
+
+    // This socket event is used for the delete the message if the message is not seen by the other user
+    socket.on("GROUP_DELETE_MESSAGE", async (payload) => {
+      try {
+        // commenting because of the issue
+        // const is_message_seen = await Notification.findOne({
+        //   from_user: payload?.from_user,
+        //   user_id: payload?.to_user,
+        //   is_read: false,
+        //   type: "chat",
+        // }).lean();
+
+        // if (is_message_seen)
+        //   io.to(payload?.from_user?.toString()).emit("CANNOT_DELETE", {
+        //     error: returnMessage("chat", "canNotDelete"),
+        //   });
+
+        const message = await Chat.findById(payload?.chat_id).lean();
+
+        if (message?.image_url || message?.document_url) {
+          if (
+            message?.image_url &&
+            fs.existsSync(`./src/public/uploads/${message?.image_url}`)
+          ) {
+            fs.unlink(`./src/public/uploads/${message?.image_url}`, (err) => {
+              if (err) {
+                logger.error(`Error while unlinking the image: ${err}`);
+              }
+            });
+          } else if (
+            message?.document_url &&
+            fs.existsSync(`./src/public/uploads/${message?.document_url}`)
+          ) {
+            fs.unlink(
+              `./src/public/uploads/${message?.document_url}`,
+              (err) => {
+                if (err) {
+                  logger.error(`Error while unlinking the documents: ${err}`);
+                }
+              }
+            );
+          }
+        }
+
+        await Chat.findByIdAndUpdate(payload?.chat_id, { is_deleted: true });
+        const group_detail = await Group_Chat.findById(
+          message?.group_id
+        ).lean();
+        group_detail.members = group_detail?.members?.map((member) =>
+          member?.toString()
+        );
+        io.to(group_detail.members).emit("GROUP_MESSGAE_DELETED", {
+          message: returnMessage("chat", "messageDeleted"),
+          _id: payload?.chat_id,
+        });
+      } catch (error) {
+        logger.error(`Error while deleting the message: ${error}`);
         return throwError(error?.message, error?.statusCode);
       }
     });

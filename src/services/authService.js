@@ -380,10 +380,12 @@ class AuthService {
           });
         }
 
-        const lastLoginDateUTC = moment.utc(agency_enroll?.last_login_date);
-        const currentDateUTC = moment().startOf("day");
+        const lastLoginDateUTC = moment
+          .utc(agency_enroll?.last_login_date)
+          .startOf("day");
+        const currentDateUTC = moment.utc().startOf("day");
         const referral_data = await Configuration.findOne().lean();
-        if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
+        if (currentDateUTC.isAfter(lastLoginDateUTC)) {
           if (
             agency_enroll?.role?.name === "team_agency" ||
             agency_enroll?.role?.name === "agency"
@@ -536,11 +538,13 @@ class AuthService {
           });
         }
 
-        const lastLoginDateUTC = moment.utc(agency_enroll?.last_login_date);
-        const currentDateUTC = moment().startOf("day");
+        const lastLoginDateUTC = moment
+          .utc(agency_enroll?.last_login_date)
+          .startOf("day");
+        const currentDateUTC = moment.utc().startOf("day");
         const referral_data = await Configuration.findOne().lean();
 
-        if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
+        if (currentDateUTC.isAfter(lastLoginDateUTC)) {
           if (
             agency_enroll?.role?.name === "team_agency" ||
             agency_enroll?.role?.name === "agency"
@@ -673,13 +677,15 @@ class AuthService {
       delete existing_Data?.is_google_signup;
       delete existing_Data?.password;
 
-      const lastLoginDateUTC = moment.utc(existing_Data?.last_login_date);
+      const lastLoginDateUTC = moment
+        .utc(existing_Data?.last_login_date)
+        .startOf("day");
 
       // Get the current date in UTC format using Moment.js
-      const currentDateUTC = moment().startOf("day");
+      const currentDateUTC = moment.utc().startOf("day");
       const referral_data = await Configuration.findOne().lean();
       // Check if last login date is the same as current date
-      if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
+      if (currentDateUTC.isAfter(lastLoginDateUTC)) {
         // If the condition is true, execute the following code
         if (
           existing_Data?.role?.name === "team_agency" ||

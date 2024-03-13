@@ -164,3 +164,17 @@ exports.tagList = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+exports.completionHistory = catchAsyncError(async (req, res, next) => {
+  const completionHistory = await activityService.completionHistory(
+    req.body,
+    req.user
+  );
+  sendResponse(
+    res,
+    true,
+    returnMessage("activity", "completionHistory"),
+    completionHistory,
+    statusCode.success
+  );
+});

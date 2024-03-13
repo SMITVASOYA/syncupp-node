@@ -9,10 +9,12 @@ const {
   returnNotification,
   capitalizeFirstLetter,
 } = require("../utils/utils");
-const Group_Chat = require("../models/groupChatSchema");
+const Group_Chat = require("../models/groupChatSchema.js");
 const { emitEvent, eventEmitter } = require("../socket.js");
 const Notification = require("../models/notificationSchema.js");
 const Chat = require("../models/chatSchema.js");
+const statusCode = require("../messages/statusCodes.json");
+const { default: mongoose } = require("mongoose");
 
 class GroupChatService {
   // this function is used to fetch the users list to create the group
@@ -116,25 +118,15 @@ class GroupChatService {
 
       members.forEach(async (member) => {
         if (member === user?.reference_id) return;
-        let message = notification_message;
-        const [member_details, pending_notification] = await Promise.all([
-          Authentication.findOne({
-            reference_id: member,
-          }).lean(),
+        const [pending_notification] = await Promise.all([
           Notification.countDocuments({
             user_id: member,
             is_read: false,
           }),
         ]);
 
-        message = message.replaceAll(
-          "{{user_name}}",
-          capitalizeFirstLetter(member_details?.first_name) +
-            " " +
-            capitalizeFirstLetter(member_details?.last_name)
-        );
         notification_obj.user_id = member;
-        notification_obj.message = message;
+        notification_obj.message = notification_message;
 
         await Notification.create(notification_obj);
 
@@ -206,6 +198,7 @@ class GroupChatService {
             const group_obj = {
               group_name: group?.group_name,
               last_message_date: chat_messages[i]?.createdAt,
+              _id: group?._id,
             };
 
             const unread = notifications.some(
@@ -224,6 +217,212 @@ class GroupChatService {
       return [...final_group_array, ...group_ids];
     } catch (error) {
       logger.error(`Error while fetching the group list: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  chatHistory = async (payload) => {
+    try {
+      return await Chat.aggregate([
+        {
+          $match: {
+            group_id: new mongoose.Types.ObjectId(payload?.group_id),
+          },
+        },
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "from_user",
+            foreignField: "reference_id",
+            as: "user_detail",
+            pipeline: [
+              {
+                $project: {
+                  first_name: 1,
+                  last_name: 1,
+                  reference_id: 1,
+                  _id: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: { path: "$user_detail", preserveNullAndEmptyArrays: true },
+        },
+      ]).sort({ createdAt: 1 });
+    } catch (error) {
+      logger.error(
+        `Error while feching the chat history of the group: ${error}`
+      );
+    }
+    return throwError(error?.message, error?.statusCode);
+  };
+
+  // update the group by the creator only
+  updateGroup = async (payload, user) => {
+    try {
+      const group_exist = await Group_Chat.findOne({
+        _id: payload?.group_id,
+        created_by: user?.reference_id,
+        is_deleted: false,
+      }).lean();
+      if (!group_exist)
+        return throwError(
+          returnMessage("chat", "groupDoesNotExist"),
+          statusCode?.notFound
+        );
+
+      group_exist.members = group_exist?.members?.map((member) =>
+        member?.toString()
+      );
+      payload.members.push(user?.reference_id?.toString());
+      payload.members = [...new Set(payload?.members)];
+
+      const new_users = [];
+      const existing_users = [];
+
+      payload?.members?.forEach((member) =>
+        !group_exist?.members.includes(member)
+          ? new_users.push(member)
+          : existing_users.push(member)
+      );
+
+      const updated_group = await Group_Chat.findByIdAndUpdate(
+        group_exist?._id,
+        {
+          group_name: payload?.group_name,
+          members: payload?.members,
+        },
+        { new: true }
+      );
+
+      emitEvent("GROUP_UPDATED", updated_group, existing_users);
+
+      if (new_users.length > 0) {
+        emitEvent("GROUP_CREATED", updated_group, new_users);
+
+        const notification_obj = {
+          data_reference_id: updated_group?._id,
+          from_user: user?.reference_id,
+          type: "group",
+        };
+
+        let notification_message = returnNotification("chat", "addedToGroup");
+
+        notification_message = notification_message.replaceAll(
+          "{{group_name}}",
+          updated_group?.group_name
+        );
+
+        notification_message = notification_message.replaceAll(
+          "{{creator_name}}",
+          capitalizeFirstLetter(user?.first_name) +
+            " " +
+            capitalizeFirstLetter(user?.last_name)
+        );
+
+        new_users.forEach(async (member) => {
+          if (member === user?.reference_id) return;
+          const [pending_notification] = await Promise.all([
+            Notification.countDocuments({
+              user_id: member,
+              is_read: false,
+            }),
+          ]);
+
+          notification_obj.user_id = member;
+          notification_obj.message = notification_message;
+
+          await Notification.create(notification_obj);
+
+          eventEmitter(
+            "NOTIFICATION",
+            {
+              notification: notification_obj,
+              un_read_count: pending_notification,
+            },
+            member
+          );
+          return;
+        });
+      }
+    } catch (error) {
+      logger.error(`Error while updating the group details: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // fetch the group by the id
+  getGroup = async (group_id) => {
+    try {
+      const group = await Group_Chat.aggregate([
+        {
+          $match: {
+            _id: new mongoose.Types.ObjectId(group_id),
+            is_deleted: false,
+          },
+        },
+
+        {
+          $lookup: {
+            from: "authentications",
+            let: { members: "$members" },
+            pipeline: [
+              { $match: { $expr: { $in: ["$reference_id", "$$members"] } } },
+              {
+                $lookup: {
+                  from: "role_masters",
+                  let: { role: "$role" },
+                  pipeline: [
+                    { $match: { $expr: { $eq: ["$_id", "$$role"] } } },
+                    { $project: { name: 1 } },
+                  ],
+                  as: "role",
+                },
+              },
+              { $unwind: { path: "$role", preserveNullAndEmptyArrays: true } },
+              {
+                $project: {
+                  first_name: 1,
+                  last_name: 1,
+                  email: 1,
+                  role: 1,
+                  reference_id: 1,
+                },
+              },
+            ],
+            as: "members",
+          },
+        },
+      ]);
+
+      // {
+      //   $lookup: {
+      //     from: "authentications",
+      //     localField: "members",
+      //     foreignField: "reference_id",
+      //     as: "members",
+      //     pipeline: [
+      //       {
+      //         $project: {
+      //           first_name: 1,
+      //           last_name: 1,
+      //           reference_id: 1,
+      //           _id: 1,
+      //         },
+      //       },
+      //     ],
+      //   },
+      // },
+      if (!group)
+        return throwError(
+          returnMessage("chat", "groupDoesNotExist"),
+          statusCode?.notFound
+        );
+      return group;
+    } catch (error) {
+      logger.error(`Error while fetching the group details: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };

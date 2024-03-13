@@ -28,13 +28,13 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
     if (!user) return throwError(returnMessage("auth", "unAuthorized"), 401);
 
     // Convert last_login_date to UTC format using Moment.js
-    const lastLoginDateUTC = moment.utc(user.last_login_date);
+    const lastLoginDateUTC = moment.utc(user.last_login_date).startOf("day");
 
     // Get the current date in UTC format using Moment.js
-    const currentDateUTC = moment().startOf("day");
+    const currentDateUTC = moment.utc().startOf("day");
 
     // Check if last login date is the same as current date
-    if (lastLoginDateUTC.isSameOrBefore(currentDateUTC)) {
+    if (currentDateUTC.isAfter(lastLoginDateUTC)) {
       // If the condition is true, execute the following code
       if (user?.role?.name === "team_agency" || user?.role?.name === "agency") {
         const referral_data = await Configuration.findOne().lean();
