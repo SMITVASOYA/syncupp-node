@@ -21,6 +21,9 @@ const configurationSchema = new mongoose.Schema(
       subscription_halt_days: { type: Number, default: 15 },
       free_trial: { type: Number, default: 7 },
     },
+    multer: {
+      size: { type: String, default: "200" },
+    },
   },
   { timestamps: true }
 );

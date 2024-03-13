@@ -300,12 +300,22 @@ class InvoiceService {
         agency_id: user_id,
         ...(client_id && { client_id: new ObjectId(client_id) }),
       };
-      // Add date range conditions
+      // Add date range conditions for invoice date and due date
       if (searchObj.start_date && searchObj.end_date) {
-        queryObj.due_date = {
-          $gte: new Date(searchObj.start_date),
-          $lte: new Date(searchObj.end_date),
-        };
+        queryObj.$and = [
+          {
+            $or: [
+              { invoice_date: { $gte: new Date(searchObj.start_date) } },
+              { due_date: { $gte: new Date(searchObj.start_date) } },
+            ],
+          },
+          {
+            $or: [
+              { invoice_date: { $lte: new Date(searchObj.end_date) } },
+              { due_date: { $lte: new Date(searchObj.end_date) } },
+            ],
+          },
+        ];
       }
 
       if (searchObj.search && searchObj.search !== "") {
@@ -936,12 +946,22 @@ class InvoiceService {
         agency_id: new ObjectId(agency_id),
       };
 
-      // Add date range conditions
+      // Add date range conditions for invoice date and due date
       if (searchObj.start_date && searchObj.end_date) {
-        queryObj.due_date = {
-          $gte: new Date(searchObj.start_date),
-          $lte: new Date(searchObj.end_date),
-        };
+        queryObj.$and = [
+          {
+            $or: [
+              { invoice_date: { $gte: new Date(searchObj.start_date) } },
+              { due_date: { $gte: new Date(searchObj.start_date) } },
+            ],
+          },
+          {
+            $or: [
+              { invoice_date: { $lte: new Date(searchObj.end_date) } },
+              { due_date: { $lte: new Date(searchObj.end_date) } },
+            ],
+          },
+        ];
       }
 
       if (searchObj.search && searchObj.search !== "") {

@@ -17,6 +17,12 @@ const teamAgencySchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    total_referral_point: { type: Number, default: 0 },
+    total_coupon: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+      },
+    ],
   },
   { timestamps: true }
 );

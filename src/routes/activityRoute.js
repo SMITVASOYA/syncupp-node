@@ -1,11 +1,12 @@
 const { protect, authorizeRole } = require("../middlewares/authMiddleware");
 const activityController = require("../controllers/activityController");
-const { upload } = require("../helpers/multer");
+const { upload, checkFileSize } = require("../helpers/multer");
 
 const activityRoute = require("express").Router();
 activityRoute.use(protect);
 activityRoute.post(
   "/create-task",
+  checkFileSize,
   upload.array("attachments"),
   activityController.addTask
 );
@@ -17,6 +18,8 @@ activityRoute.delete("/delete-task", activityController.deleteTask);
 activityRoute.put(
   "/update-task/:id",
   upload.array("attachments"),
+  checkFileSize,
+
   activityController.updateTask
 );
 activityRoute.put("/update-status/:id", activityController.updateStatus);
