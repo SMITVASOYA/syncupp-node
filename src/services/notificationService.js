@@ -421,27 +421,53 @@ class NotificationService {
   readNotification = async (payload, user) => {
     try {
       const { notification_id } = payload;
-      if (notification_id === "all") {
-        await Notification.updateMany(
-          {
-            user_id: user._id,
-          },
-          {
-            is_read: true,
-          },
-          { new: true }
-        );
+
+      if (user?.role?.name === undefined) {
+        if (notification_id === "all") {
+          await Notification.updateMany(
+            {
+              user_id: user._id,
+            },
+            {
+              is_read: true,
+            },
+            { new: true }
+          );
+        } else {
+          await Notification.findOneAndUpdate(
+            {
+              _id: notification_id,
+              user_id: user._id,
+            },
+            {
+              is_read: true,
+            },
+            { new: true, useFindAndModify: false }
+          );
+        }
       } else {
-        await Notification.findOneAndUpdate(
-          {
-            _id: notification_id,
-            user_id: user._id,
-          },
-          {
-            is_read: true,
-          },
-          { new: true, useFindAndModify: false }
-        );
+        if (notification_id === "all") {
+          await Notification.updateMany(
+            {
+              user_id: user.reference_id,
+            },
+            {
+              is_read: true,
+            },
+            { new: true }
+          );
+        } else {
+          await Notification.findOneAndUpdate(
+            {
+              _id: notification_id,
+              user_id: user.reference_id,
+            },
+            {
+              is_read: true,
+            },
+            { new: true, useFindAndModify: false }
+          );
+        }
       }
 
       return;
