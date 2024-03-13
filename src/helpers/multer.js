@@ -1,6 +1,15 @@
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
+const Configuration = require("../models/configurationSchema");
+
+function getTotalSize(files) {
+  let totalSize = 0;
+  for (const file of files) {
+    totalSize += file.size;
+  }
+  return totalSize;
+}
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -23,6 +32,14 @@ const storage = multer.diskStorage({
       cb(null, img_dir);
     } else if (file.mimetype.startsWith("text/")) {
       cb(null, img_dir);
+    } else if (file.mimetype.startsWith("text/csv")) {
+      cb(null, img_dir);
+    } else if (file.mimetype.startsWith("image/svg+xml")) {
+      cb(null, img_dir);
+    } else if (file.mimetype.startsWith("image/gif")) {
+      cb(null, img_dir);
+    } else if (file.mimetype.startsWith("application/x-rar-compressed")) {
+      cb(null, img_dir);
     } else if (
       file.mimetype.startsWith(
         "application/vnd.openxmlformats-officedocument.presentationml.presentation"
@@ -31,6 +48,13 @@ const storage = multer.diskStorage({
     ) {
       cb(null, img_dir);
     } else if (file.mimetype === "application/zip") {
+      cb(null, img_dir);
+    } else if (
+      file.mimetype.startsWith("application/msword") ||
+      file.mimetype.startsWith(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      )
+    ) {
       cb(null, img_dir);
     }
   },
@@ -47,7 +71,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 1024 * 1024 * 1, // 1MB
+    fileSize: 200 * 1024 * 1024, // 200MB maximum file size
   },
   fileFilter: (req, file, cb) => {
     const allowedExtensions = [
@@ -62,6 +86,22 @@ const upload = multer({
       ".ppt",
       ".pptx",
       ".zip",
+      ".doc",
+      ".docx",
+      ".avi",
+      ".mov",
+      ".wmv",
+      ".flv",
+      ".mkv",
+      ".mpg",
+      ".mpeg",
+      ".mp2",
+      ".3gp",
+      ".webm",
+      ".rar",
+      ".csv",
+      ".svg",
+      ".gif",
     ];
     const fileExt = path.extname(file.originalname).toLowerCase();
     if (!allowedExtensions.includes(fileExt)) {
@@ -76,5 +116,17 @@ const upload = multer({
     cb(null, true);
   },
 });
+// Middleware to check total file size before uploading
+const checkFileSize = async (req, res, next) => {
+  const maxSize = await Configuration.findOne({});
+  const limit = parseInt(maxSize?.multer?.size) * 1024 * 1024;
 
-module.exports = { upload };
+  if (req.files && getTotalSize(req.files) > limit) {
+    const error = new Error("Total file size exceeds 200MB limit");
+    error.status = 400;
+    return next(error);
+  }
+  next();
+};
+
+module.exports = { upload, checkFileSize };
