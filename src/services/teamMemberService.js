@@ -608,35 +608,35 @@ class TeamMemberService {
       } else if (agency?.role?.name === "agency" && payload?.client_team) {
         // ------------------------------- Notification------------------------
 
-        if (Array.isArray(teamMemberIds)) {
-          teamMemberIds &&
-            teamMemberIds.map(async (item) => {
-              console.log(item);
-              const memberData = await Authentication.findOne({
-                reference_id: item,
-              });
-              console.log(agency);
-              await notificationService.addNotification({
-                module_name: "general",
-                action_name: "memberDeletedAgency",
-                receiver_id: payload?.client_id,
-                agency_name: agency.first_name + " " + agency.last_name,
-                member_name: memberData.first_name + " " + memberData.last_name,
-              });
-            });
-        } else {
-          console.log(teamMemberIds);
-          const memberData = await Authentication.findOne({
-            reference_id: teamMemberIds,
-          });
-          await notificationService.addNotification({
-            module_name: "general",
-            action_name: "memberDeletedAgency",
-            receiver_id: payload?.client_id,
-            agency_name: agency.first_name + " " + agency.last_name,
-            member_name: memberData.first_name + " " + memberData.last_name,
-          });
-        }
+        // if (Array.isArray(teamMemberIds)) {
+        //   teamMemberIds &&
+        //     teamMemberIds.map(async (item) => {
+        //       console.log(item);
+        //       const memberData = await Authentication.findOne({
+        //         reference_id: item,
+        //       });
+        //       console.log(agency);
+        //       await notificationService.addNotification({
+        //         module_name: "general",
+        //         action_name: "memberDeletedAgency",
+        //         receiver_id: payload?.client_id,
+        //         agency_name: agency.first_name + " " + agency.last_name,
+        //         member_name: memberData.first_name + " " + memberData.last_name,
+        //       });
+        //     });
+        // } else {
+        //   console.log(teamMemberIds);
+        //   const memberData = await Authentication.findOne({
+        //     reference_id: teamMemberIds,
+        //   });
+        //   await notificationService.addNotification({
+        //     module_name: "general",
+        //     action_name: "memberDeletedAgency",
+        //     receiver_id: payload?.client_id,
+        //     agency_name: agency.first_name + " " + agency.last_name,
+        //     member_name: memberData.first_name + " " + memberData.last_name,
+        //   });
+        // }
 
         // ------------------------------- Notification------------------------
 
@@ -726,34 +726,34 @@ class TeamMemberService {
 
         // ------------------------------- Notification------------------------
 
-        if (Array.isArray(teamMemberIds)) {
-          teamMemberIds &&
-            teamMemberIds.map(async (item) => {
-              console.log(item);
-              const memberData = await Authentication.findOne({
-                _id: item,
-              });
+        // if (Array.isArray(teamMemberIds)) {
+        //   teamMemberIds &&
+        //     teamMemberIds.map(async (item) => {
+        //       console.log(item);
+        //       const memberData = await Authentication.findOne({
+        //         _id: item,
+        //       });
 
-              await notificationService.addNotification({
-                module_name: "general",
-                action_name: "memberDeleted",
-                receiver_id: payload?.agency_id,
-                client_name: agency.first_name + " " + agency.last_name,
-                member_name: memberData.first_name + " " + memberData.last_name,
-              });
-            });
-        } else {
-          const memberData = await Authentication.findOne({
-            _id: teamMemberIds,
-          });
-          await notificationService.addNotification({
-            module_name: "general",
-            action_name: "memberDeleted",
-            receiver_id: payload?.agency_id,
-            client_name: agency.first_name + " " + agency.last_name,
-            member_name: memberData.first_name + " " + memberData.last_name,
-          });
-        }
+        //       await notificationService.addNotification({
+        //         module_name: "general",
+        //         action_name: "memberDeleted",
+        //         receiver_id: payload?.agency_id,
+        //         client_name: agency.first_name + " " + agency.last_name,
+        //         member_name: memberData.first_name + " " + memberData.last_name,
+        //       });
+        //     });
+        // } else {
+        //   const memberData = await Authentication.findOne({
+        //     _id: teamMemberIds,
+        //   });
+        //   await notificationService.addNotification({
+        //     module_name: "general",
+        //     action_name: "memberDeleted",
+        //     receiver_id: payload?.agency_id,
+        //     client_name: agency.first_name + " " + agency.last_name,
+        //     member_name: memberData.first_name + " " + memberData.last_name,
+        //   });
+        // }
 
         // ------------------------------- Notification------------------------
       }
