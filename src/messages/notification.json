@@ -16,7 +16,8 @@
     },
     "activityCompleted": {
       "clientMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is completed.",
-      "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is completed."
+      "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is completed.",
+      "assignByMessage": "Hey ${assigned_by_name}! The ${activity_type} '${title}' is completed by ${assigned_to_name}."
     },
     "activityInProgress": {
       "clientMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is in progress.",
@@ -24,7 +25,8 @@
     },
     "activityPending": {
       "clientMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is in pending.",
-      "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is pending."
+      "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is pending.",
+      "assignByMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is in pending."
     },
     "activityOverdue": {
       "clientMessage": "Your ${activity_type} '${title}' has been overdue.",
@@ -40,11 +42,13 @@
     },
     "taskCompleted": {
       "clientMessage": "Hi ${client_name}! Your task '${title}' is completed.",
-      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is completed. Great job!"
+      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is completed. Great job!",
+      "assignByMessage": "Hi ${assigned_by_name}! The task '${title}' is completed by ${assigned_to_name}."
     },
     "taskPending": {
       "clientMessage": "Hi ${client_name}! Your task '${title}' is pending.",
-      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is pending."
+      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is pending.",
+      "assignByMessage": "Hi ${client_name}! Your task '${title}' is pending."
     },
     "taskUpdated": {
       "clientMessage": "Updated: Hi ${client_name}! Your task titled ${title} now has a due date on ${due_date} before ${due_time}. See you there!",

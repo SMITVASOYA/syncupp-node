@@ -80,7 +80,8 @@ exports.deleteTask = catchAsyncError(async (req, res, next) => {
 exports.updateStatus = catchAsyncError(async (req, res, next) => {
   const updateStatus = await activityService.statusUpdate(
     req?.body,
-    req.params.id
+    req.params.id,
+    req?.user
   );
   sendResponse(
     res,

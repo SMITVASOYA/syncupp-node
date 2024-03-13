@@ -139,16 +139,31 @@ class NotificationService {
             userId
           );
         };
-        await createAndEmitNotification(
-          client_id,
-          message_type,
-          "clientMessage"
-        );
-        await createAndEmitNotification(
-          assign_to,
-          message_type,
-          "assignToMessage"
-        );
+
+        if (payload?.log_user === "member") {
+          console.log(payload.assign_by._id);
+          await createAndEmitNotification(
+            client_id,
+            message_type,
+            "clientMessage"
+          );
+          await createAndEmitNotification(
+            payload.assign_by._id,
+            message_type,
+            "assignByMessage"
+          );
+        } else {
+          await createAndEmitNotification(
+            client_id,
+            message_type,
+            "clientMessage"
+          );
+          await createAndEmitNotification(
+            assign_to,
+            message_type,
+            "assignToMessage"
+          );
+        }
       }
 
       // Agreement

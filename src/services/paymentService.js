@@ -438,13 +438,13 @@ class PaymentService {
 
         // ---------------------- Notification ----------------------
 
-        await notificationService.addNotification({
-          receiver_id: payload?.agency_id,
-          team_member_name:
-            memberData?.first_name + " " + memberData?.last_name,
-          module_name: "general",
-          action_name: "memberPaymentDone",
-        });
+        // await notificationService.addNotification({
+        //   receiver_id: payload?.agency_id,
+        //   team_member_name:
+        //     memberData?.first_name + " " + memberData?.last_name,
+        //   module_name: "general",
+        //   action_name: "memberPaymentDone",
+        // });
 
         // ---------------------- Notification ----------------------
 
@@ -453,12 +453,12 @@ class PaymentService {
 
       // ---------------------- Notification ----------------------
 
-      await notificationService.addNotification({
-        receiver_id: payload?.agency_id,
-        team_member_name: memberData?.first_name + " " + memberData?.last_name,
-        module_name: "general",
-        action_name: "memberPaymentFail",
-      });
+      // await notificationService.addNotification({
+      //   receiver_id: payload?.agency_id,
+      //   team_member_name: memberData?.first_name + " " + memberData?.last_name,
+      //   module_name: "general",
+      //   action_name: "memberPaymentFail",
+      // });
 
       // ---------------------- Notification ----------------------
 

@@ -19,7 +19,6 @@ activityRoute.put(
   "/update-task/:id",
   upload.array("attachments"),
   checkFileSize,
-
   activityController.updateTask
 );
 activityRoute.put("/update-status/:id", activityController.updateStatus);
