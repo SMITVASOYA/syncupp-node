@@ -314,7 +314,8 @@
     "invalidDocumentFormat": "Document file format should be xlsx, pdf, or csv.",
     "membersRequired": "Atleast one member is required for the group chat.",
     "insufficientPermission": "You don't have permission to create group.",
-    "groupNameRequired": "Group name is required."
+    "groupNameRequired": "Group name is required.",
+    "groupCreated": "Group created successfully."
   },
 
   "default": { "default": "Something went wrong." }

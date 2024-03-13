@@ -91,6 +91,11 @@
   },
 
   "admin": {
-    "agencyCreated": "A new agency named ${agency_name} has been registered"
+    "agencyCreated": "A new agency named ${agency_name} has been registered",
+    "clientTeamPaymentFail": "Team member ${member_name} payment fail."
+  },
+
+  "chat": {
+    "addedToGroup": "Hi, {{user_name}}. you are added to the {{group_name}} group by the {{creator_name}}."
   }
 }

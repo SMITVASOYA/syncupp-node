@@ -41,6 +41,11 @@ class ChatService {
       })
         .sort({ createdAt: 1 })
         .lean();
+
+      await Notification.updateMany(
+        { user_id: user?.reference_id, from_user: payload?.to_user },
+        { $set: { is_read: true } }
+      );
       return chats;
     } catch (error) {
       logger.error(`Erroe while fetching the chat history: ${error}`);

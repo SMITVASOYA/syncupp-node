@@ -1548,7 +1548,7 @@ class PaymentService {
           ) / 100
         ).toFixed(2);
       }
-      const agency_data = await Agency.findById(agency.reference_id);
+      const agency_data = await Agency.findById(agency.reference_id).lean();
       const redirect_payment_page =
         agency_data?.total_referral_point >=
         config?.referral?.redeem_required_point
@@ -1556,8 +1556,8 @@ class PaymentService {
           : false;
 
       return {
-        payable_amount,
-        referral_point: agency?.total_referral_point,
+        payable_amount: plan?.symbol + " " + payable_amount,
+        referral_point: agency_data?.total_referral_point,
         redeem_required_point: config?.referral?.redeem_required_point,
         redirect_payment_page,
         available_sheets:
