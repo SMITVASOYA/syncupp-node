@@ -146,13 +146,20 @@ class ChatService {
       if (payload?.for === "agency") {
         ids = [...agency_ids];
       } else if (payload?.for === "team") {
-        const [team_agency_ids, team_client_ids] = await Promise.all([
-          Team_Agency.distinct("_id", {
-            agency_id: { $in: agency_ids },
-          }).lean(),
-          Team_Client.distinct("_id", { client_id: user?.reference_id }).lean(),
-        ]);
-        ids = [...team_agency_ids, ...team_client_ids];
+        // removed the agency team members from the combined
+        // const [team_agency_ids, team_client_ids] = await Promise.all([
+        //   Team_Agency.distinct("_id", {
+        //     agency_id: { $in: agency_ids },
+        //   }).lean(),
+        //   Team_Client.distinct("_id", { client_id: user?.reference_id }).lean(),
+        // ]);
+        // ids = [...team_agency_ids, ...team_client_ids];
+
+        const team_client_ids = await Team_Client.distinct("_id", {
+          client_id: user?.reference_id,
+        }).lean();
+
+        ids = [...team_client_ids];
       }
       return await this.fetchChatusers(user, ids);
     } catch (error) {

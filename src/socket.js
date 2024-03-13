@@ -44,7 +44,7 @@ exports.socket_connection = (http_server) => {
         members: { $in: [obj.id] },
       });
       group_ids.forEach((group_id) => socket.join(group_id.toString()));
-
+      console.log(group_ids, 47);
       // for the Online status
       socket.broadcast.emit("USER_ONLINE", { user_id: obj.id });
       await Authentication.findOneAndUpdate(
@@ -66,12 +66,15 @@ exports.socket_connection = (http_server) => {
 
     // When Data delivered
     socket.on("CONFIRMATION", (payload) => {
-      logger.info(`Event Confirmation : ${payload.name} ${payload.id}`);
+      logger.info(
+        `Event Confirmation : ${payload?.event} ${payload.name} ${payload.id}`
+      );
     });
 
     // this Socket event is used to send message to the Other user
     socket.on("SEND_MESSAGE", async (payload) => {
       try {
+        console.log("SEND_MESSAGE");
         const { from_user, to_user, message, user_type } = payload;
 
         const new_chat = await Chat.create({
@@ -121,6 +124,7 @@ exports.socket_connection = (http_server) => {
     // So it will not display at the same time of the chat
     socket.on("NOT_ONGOING_CHAT", async (payload) => {
       try {
+        console.log("NOT_ONGOING_CHAT");
         const notification_exist = await Notification.findOne({
           user_id: payload?.from_user,
           from_user: payload?.to_user,
@@ -214,6 +218,7 @@ exports.socket_connection = (http_server) => {
     // this socket event is used to send the images between the users
     socket.on("IMAGES", async (payload) => {
       try {
+        console.log("IMAGES");
         const { from_user, to_user, buffer, user_type, ext } = payload;
 
         const configuration = await Configuration.findOne().lean();
@@ -289,6 +294,7 @@ exports.socket_connection = (http_server) => {
     // this socket event is used to send the documents between the users
     socket.on("DOCUMENTS", async (payload) => {
       try {
+        console.log("DOCUMENTS");
         const { from_user, to_user, buffer, user_type, ext } = payload;
 
         const configuration = await Configuration.findOne().lean();
@@ -306,7 +312,7 @@ exports.socket_connection = (http_server) => {
         }
         const required_image_type = ["pdf", "xlsx", "csv", "doc", "docx"];
 
-        if (required_image_type.includes(ext)) {
+        if (!required_image_type.includes(ext)) {
           io.to(from_user).emit("INVALID_FORMAT", {
             error: returnMessage("chat", "invalidDocumentFormat"),
           });
@@ -333,16 +339,19 @@ exports.socket_connection = (http_server) => {
           //   from_user: payload?.from_user,
           //   data_reference_id: new_message?._id,
           // });
-
-          io.to([from_user, to_user]).emit("RECEIVED_DOCUMENT", {
-            document_url: document_name,
-            user_type,
-            from_user,
-            to_user,
-            createdAt: new_message?.createdAt,
-            _id: new_message?._id,
-            message_type: new_message?.message_type,
-          });
+          console.log([from_user.toString(), to_user.toString()]);
+          io.to([from_user.toString(), to_user.toString()]).emit(
+            "RECEIVED_DOCUMENT",
+            {
+              document_url: document_name,
+              user_type,
+              from_user,
+              to_user,
+              createdAt: new_message?.createdAt,
+              _id: new_message?._id,
+              message_type: new_message?.message_type,
+            }
+          );
         }
       } catch (error) {
         logger.error(`Error while uploading the Documents: ${error}`);
@@ -403,6 +412,7 @@ exports.socket_connection = (http_server) => {
     // this Socket event is used to send message to the Other user
     socket.on("GROUP_SEND_MESSAGE", async (payload) => {
       try {
+        console.log("GROUP_SEND_MESSAGE");
         const { from_user, group_id, message } = payload;
 
         const [new_chat, user_detail, group_detail] = await Promise.all([
@@ -448,6 +458,7 @@ exports.socket_connection = (http_server) => {
     // This socket event is used to create the notification for the members if they have not read the message
     socket.on("NOT_ONGOING_GROUP_CHAT", async (payload) => {
       try {
+        console.log("NOT_ONGOING_GROUP_CHAT");
         payload?.members?.forEach(async (member) => {
           const notification_exist = await Notification.findOne({
             group_id: payload?.group_id,
@@ -486,6 +497,8 @@ exports.socket_connection = (http_server) => {
     // this socket event is used to send the images between the users
     socket.on("GROUP_IMAGES", async (payload) => {
       try {
+        console.log("GROUP_IMAGES");
+
         const { from_user, group_id, buffer, ext } = payload;
         const configuration = await Configuration.findOne().lean();
 
@@ -555,6 +568,8 @@ exports.socket_connection = (http_server) => {
     // this socket event is used to send the documents between the users
     socket.on("GROUP_DOCUMENTS", async (payload) => {
       try {
+        console.log("GROUP_DOCUMENTS");
+
         const { from_user, group_id, buffer, ext } = payload;
 
         const configuration = await Configuration.findOne().lean();
@@ -573,7 +588,7 @@ exports.socket_connection = (http_server) => {
 
         const required_image_type = ["pdf", "xlsx", "csv", "doc", "docx"];
 
-        if (required_image_type.includes(ext)) {
+        if (!required_image_type.includes(ext)) {
           io.to(from_user).emit("INVALID_FORMAT", {
             error: returnMessage("chat", "invalidDocumentFormat"),
           });
