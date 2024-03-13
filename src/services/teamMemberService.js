@@ -7,6 +7,9 @@ const {
   paginationObject,
   welcomeMail,
   capitalizeFirstLetter,
+  memberDeletedTemplate,
+  memberDeletedClient,
+  clientMemberAdded,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const bcrypt = require("bcrypt");
@@ -168,7 +171,7 @@ class TeamMemberService {
           role: team_role?._id,
         });
 
-        await Authentication.create({
+        const newMember = await Authentication.create({
           first_name,
           last_name,
           name:
@@ -188,8 +191,26 @@ class TeamMemberService {
           module_name: "general",
           action_name: "agencyAdded",
           member_name: first_name + " " + last_name,
-          client_name: user?.first_name + " " + user?.last_name,
+          client_name: user?.first_name + " " + user?.last_name, // notification
           receiver_id: agency_id,
+        });
+
+        const agencyData = await Authentication.findOne({
+          reference_id: agency_id,
+        });
+
+        const createdMember = clientMemberAdded({
+          created_by: user?.first_name + " " + user?.last_name, // Mail
+          member_name: first_name + " " + last_name,
+          email: email,
+          contact_number: contact_number,
+          member_id: newMember._id,
+        });
+
+        sendEmail({
+          email: agencyData?.email,
+          subject: returnMessage("emailTemplate", "memberAdded"),
+          message: createdMember,
         });
 
         // ------------------  Notifications ----------------
@@ -608,35 +629,68 @@ class TeamMemberService {
       } else if (agency?.role?.name === "agency" && payload?.client_team) {
         // ------------------------------- Notification------------------------
 
-        // if (Array.isArray(teamMemberIds)) {
-        //   teamMemberIds &&
-        //     teamMemberIds.map(async (item) => {
-        //       console.log(item);
-        //       const memberData = await Authentication.findOne({
-        //         reference_id: item,
-        //       });
-        //       console.log(agency);
-        //       await notificationService.addNotification({
-        //         module_name: "general",
-        //         action_name: "memberDeletedAgency",
-        //         receiver_id: payload?.client_id,
-        //         agency_name: agency.first_name + " " + agency.last_name,
-        //         member_name: memberData.first_name + " " + memberData.last_name,
-        //       });
-        //     });
-        // } else {
-        //   console.log(teamMemberIds);
-        //   const memberData = await Authentication.findOne({
-        //     reference_id: teamMemberIds,
-        //   });
-        //   await notificationService.addNotification({
-        //     module_name: "general",
-        //     action_name: "memberDeletedAgency",
-        //     receiver_id: payload?.client_id,
-        //     agency_name: agency.first_name + " " + agency.last_name,
-        //     member_name: memberData.first_name + " " + memberData.last_name,
-        //   });
-        // }
+        const client_data = await Authentication.findOne({
+          reference_id: payload?.client_id,
+        });
+        if (Array.isArray(teamMemberIds)) {
+          teamMemberIds &&
+            teamMemberIds.map(async (item) => {
+              console.log(item);
+              var memberData = await Authentication.findOne({
+                reference_id: item,
+              });
+              console.log(agency);
+              await notificationService.addNotification({
+                module_name: "general",
+                action_name: "memberDeletedAgency",
+                receiver_id: payload?.client_id,
+                agency_name: agency?.first_name + " " + agency?.last_name,
+                member_name:
+                  memberData?.first_name + " " + memberData?.last_name,
+              });
+
+              const deleteMember = memberDeletedTemplate({
+                deleted_by: agency?.first_name + " " + agency?.last_name,
+                member_name:
+                  memberData?.first_name + " " + memberData?.last_name,
+                email: memberData?.email,
+                contact_number: memberData?.contact_number,
+                member_id: item,
+              });
+
+              sendEmail({
+                email: client_data?.email,
+                subject: returnMessage("emailTemplate", "memberDeleted"),
+                message: deleteMember,
+              });
+            });
+        } else {
+          console.log(teamMemberIds);
+          const memberData = await Authentication.findOne({
+            reference_id: teamMemberIds,
+          });
+          await notificationService.addNotification({
+            module_name: "general",
+            action_name: "memberDeletedAgency",
+            receiver_id: payload?.client_id,
+            agency_name: agency?.first_name + " " + agency?.last_name,
+            member_name: memberData?.first_name + " " + memberData?.last_name,
+          });
+
+          const deleteMember = memberDeletedTemplate({
+            deleted_by: agency?.first_name + " " + agency?.last_name,
+            member_name: memberData?.first_name + " " + memberData?.last_name,
+            email: memberData?.email,
+            contact_number: memberData?.contact_number,
+            member_id: teamMemberIds,
+          });
+
+          sendEmail({
+            email: client_data?.email,
+            subject: returnMessage("emailTemplate", "memberDeleted"),
+            message: deleteMember,
+          });
+        }
 
         // ------------------------------- Notification------------------------
 
@@ -726,34 +780,68 @@ class TeamMemberService {
 
         // ------------------------------- Notification------------------------
 
-        // if (Array.isArray(teamMemberIds)) {
-        //   teamMemberIds &&
-        //     teamMemberIds.map(async (item) => {
-        //       console.log(item);
-        //       const memberData = await Authentication.findOne({
-        //         _id: item,
-        //       });
+        const agencyData = await Authentication.findOne({
+          reference_id: payload?.agency_id,
+        });
 
-        //       await notificationService.addNotification({
-        //         module_name: "general",
-        //         action_name: "memberDeleted",
-        //         receiver_id: payload?.agency_id,
-        //         client_name: agency.first_name + " " + agency.last_name,
-        //         member_name: memberData.first_name + " " + memberData.last_name,
-        //       });
-        //     });
-        // } else {
-        //   const memberData = await Authentication.findOne({
-        //     _id: teamMemberIds,
-        //   });
-        //   await notificationService.addNotification({
-        //     module_name: "general",
-        //     action_name: "memberDeleted",
-        //     receiver_id: payload?.agency_id,
-        //     client_name: agency.first_name + " " + agency.last_name,
-        //     member_name: memberData.first_name + " " + memberData.last_name,
-        //   });
-        // }
+        if (Array.isArray(teamMemberIds)) {
+          teamMemberIds &&
+            teamMemberIds.map(async (item) => {
+              var memberData = await Authentication.findOne({
+                reference_id: item,
+              });
+              console.log(memberData, "fefegegegeg");
+
+              await notificationService.addNotification({
+                module_name: "general",
+                action_name: "memberDeleted",
+                receiver_id: payload?.agency_id,
+                client_name: agency?.first_name + " " + agency?.last_name,
+                member_name:
+                  memberData?.first_name + " " + memberData?.last_name,
+              });
+
+              const deleteMember = memberDeletedClient({
+                deleted_by: agency?.first_name + " " + agency?.last_name,
+                member_name:
+                  memberData?.first_name + " " + memberData?.last_name,
+                email: memberData?.email,
+                contact_number: memberData?.contact_number,
+                member_id: item,
+              });
+
+              sendEmail({
+                email: agencyData?.email,
+                subject: returnMessage("emailTemplate", "memberDeleted"),
+                message: deleteMember,
+              });
+            });
+        } else {
+          const memberData = await Authentication.findOne({
+            reference_id: teamMemberIds,
+          });
+          await notificationService.addNotification({
+            module_name: "general",
+            action_name: "memberDeleted",
+            receiver_id: payload?.agency_id,
+            client_name: agency.first_name + " " + agency.last_name,
+            member_name: memberData.first_name + " " + memberData.last_name,
+          });
+
+          const deleteMember = memberDeletedClient({
+            deleted_by: agency?.first_name + " " + agency?.last_name,
+            member_name: memberData?.first_name + " " + memberData?.last_name,
+            email: memberData?.email,
+            contact_number: memberData?.contact_number,
+            member_id: teamMemberIds,
+          });
+
+          sendEmail({
+            email: agencyData?.email,
+            subject: returnMessage("emailTemplate", "memberDeleted"),
+            message: deleteMember,
+          });
+        }
 
         // ------------------------------- Notification------------------------
       }

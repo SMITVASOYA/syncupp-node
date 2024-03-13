@@ -176,7 +176,9 @@
     "activityInProgress": "Activity in progress",
     "activityInPending": "Activity in pending",
     "activityInOverdue": "Activity has been overdue",
-    "agencyCreated": "A new agency registered"
+    "agencyCreated": "A new agency registered",
+    "memberDeleted": "Team member deleted",
+    "memberAdded": "Team member added"
   },
 
   "client": {

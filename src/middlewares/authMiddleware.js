@@ -9,6 +9,7 @@ const moment = require("moment");
 
 const Configuration = require("../models/configurationSchema");
 const Agency = require("../models/agencySchema");
+const Team_Agency = require("../models/teamAgencySchema");
 exports.protect = catchAsyncErrors(async (req, res, next) => {
   const token = req.headers.authorization || req.headers.token;
 
@@ -46,17 +47,33 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
           role: user?.role?.name,
         });
 
-        await Agency.findOneAndUpdate(
-          { _id: user.reference_id },
-          {
-            $inc: {
-              total_referral_point:
-                referral_data?.competition?.successful_login,
+        if (user?.role?.name === "agency") {
+          await Agency.findOneAndUpdate(
+            { _id: user.reference_id },
+            {
+              $inc: {
+                total_referral_point:
+                  referral_data?.competition?.successful_login,
+              },
+              last_login_date: moment.utc().startOf("day"),
             },
-            last_login_date: moment.utc().startOf("day"),
-          },
-          { new: true }
-        );
+            { new: true }
+          );
+        }
+
+        if (user?.role?.name === "team_agency") {
+          await Team_Agency.findOneAndUpdate(
+            { _id: user.reference_id },
+            {
+              $inc: {
+                total_referral_point:
+                  referral_data?.competition?.successful_login,
+              },
+              last_login_date: moment.utc().startOf("day"),
+            },
+            { new: true }
+          );
+        }
       }
     }
 

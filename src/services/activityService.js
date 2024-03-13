@@ -1319,16 +1319,37 @@ class ActivityService {
             },
             { new: true }
           );
-          await Agency.findOneAndUpdate(
-            { _id: current_activity.agency_id },
-            {
-              $inc: {
-                total_referral_point:
-                  -referral_data?.competition?.successful_task_competition,
+
+          const userData = await Authentication.findOne({
+            reference_id: current_activity.assign_to,
+          }).populate("role");
+
+          if (userData.role.name === "agency") {
+            await Agency.findOneAndUpdate(
+              { _id: current_activity.assign_to },
+              {
+                $inc: {
+                  total_referral_point:
+                    -referral_data?.competition?.successful_task_competition,
+                },
               },
-            },
-            { new: true }
-          );
+              { new: true }
+            );
+          }
+
+          if (userData.role.name === "team_agency") {
+            await Team_Agency.findOneAndUpdate(
+              { _id: current_activity.assign_to },
+              {
+                $inc: {
+                  total_referral_point:
+                    -referral_data?.competition?.successful_task_competition,
+                },
+              },
+              { new: true }
+            );
+          }
+
           const assign_role = await Authentication.findOne({
             reference_id: current_activity.assign_to,
           }).populate("role", "name");
@@ -1370,16 +1391,32 @@ class ActivityService {
             },
             { new: true }
           );
-          await Agency.findOneAndUpdate(
-            { _id: current_activity.agency_id },
-            {
-              $inc: {
-                total_referral_point:
-                  referral_data?.competition?.successful_task_competition,
+
+          if (userData.role.name === "agency") {
+            await Agency.findOneAndUpdate(
+              { _id: current_activity.assign_to },
+              {
+                $inc: {
+                  total_referral_point:
+                    referral_data?.competition?.successful_task_competition,
+                },
               },
-            },
-            { new: true }
-          );
+              { new: true }
+            );
+          }
+          if (userData.role.name === "team_agency") {
+            await Team_Agency.findOneAndUpdate(
+              { _id: current_activity.assign_to },
+              {
+                $inc: {
+                  total_referral_point:
+                    -referral_data?.competition?.successful_task_competition,
+                },
+              },
+              { new: true }
+            );
+          }
+
           const assign_role = await Authentication.findOne({
             reference_id: current_activity.assign_to,
           }).populate("role", "name");
