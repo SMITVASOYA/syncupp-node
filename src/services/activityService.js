@@ -404,14 +404,16 @@ class ActivityService {
               $options: "i",
             },
           },
-          // {
-          //   "tags.name": {
-          //     $elemMatch: {
-          //       $regex: searchObj.search.toLowerCase(),
-          //       $options: "i",
-          //     },
-          //   },
-          // },
+          {
+            tags: {
+              $elemMatch: {
+                name: {
+                  $regex: searchObj.search.toLowerCase(),
+                  $options: "i",
+                },
+              },
+            },
+          },
 
           // {
           //   assigned_by_name: {
