@@ -12914,10 +12914,18 @@ white-space: nowrap;">${data?.contact_number ?? `&nbsp;`}</td>
   `;
 };
 
+let lastRandomColor = null;
+
 exports.getRandomColor = () => {
   const colorKeys = Object.keys(colors);
-  const randomColorKey =
-    colorKeys[Math.floor(Math.random() * colorKeys.length)];
+  let randomColorKey;
+
+  // Ensure that the randomly selected color is not the same as the last one
+  do {
+    randomColorKey = colorKeys[Math.floor(Math.random() * colorKeys.length)];
+  } while (randomColorKey === lastRandomColor);
+
+  lastRandomColor = randomColorKey;
   return colors[randomColorKey];
 };
 

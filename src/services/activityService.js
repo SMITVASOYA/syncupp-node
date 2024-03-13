@@ -11,7 +11,7 @@ const {
   taskTemplate,
   activityTemplate,
   getRandomColor,
-  generateUniqueColors,
+  capitalizeFirstLetter,
 } = require("../utils/utils");
 const moment = require("moment");
 const { default: mongoose } = require("mongoose");
@@ -30,6 +30,7 @@ const eventService = new EventService();
 const Client = require("../models/clientSchema");
 const ics = require("ics");
 const fs = require("fs");
+const { ObjectId } = require("mongodb");
 
 class ActivityService {
   createTask = async (payload, user, files) => {
@@ -51,7 +52,6 @@ class ActivityService {
         });
       }
       let agency_id;
-
       if (user.role.name === "agency") {
         agency_id = user?.reference_id;
       } else if (user.role.name === "team_agency") {
@@ -77,6 +77,17 @@ class ActivityService {
 
       const type = await ActivityType.findOne({ name: "task" }).lean();
 
+      let newTags = [];
+      tags?.forEach((item) =>
+        newTags.push({
+          name: capitalizeFirstLetter(item),
+          color: getRandomColor(),
+        })
+      );
+
+      console.log(newTags);
+      console.log(tags);
+
       const newTask = new Activity({
         title,
         agenda,
@@ -88,7 +99,7 @@ class ActivityService {
         activity_status: status._id,
         activity_type: type._id,
         agency_id,
-        tags,
+        tags: newTags,
         attachments: attachments,
       });
       const added_task = await newTask.save();
@@ -328,7 +339,9 @@ class ActivityService {
           filter["$match"] = {
             ...filter["$match"],
             tags: {
-              $elemMatch: { $regex: searchObj?.filter?.tag.toLowerCase() },
+              $elemMatch: {
+                name: { $regex: searchObj?.filter?.tag.toLowerCase() },
+              },
             },
           };
         }
@@ -391,14 +404,14 @@ class ActivityService {
               $options: "i",
             },
           },
-          {
-            tags: {
-              $elemMatch: {
-                $regex: searchObj.search.toLowerCase(),
-                $options: "i",
-              },
-            },
-          },
+          // {
+          //   "tags.name": {
+          //     $elemMatch: {
+          //       $regex: searchObj.search.toLowerCase(),
+          //       $options: "i",
+          //     },
+          //   },
+          // },
 
           // {
           //   assigned_by_name: {
@@ -530,21 +543,6 @@ class ActivityService {
             column_id: "$status.name",
             tags: 1,
             agency_id: 1,
-            coloredTags: {
-              $map: {
-                input: "$tags",
-                as: "tag",
-                in: {
-                  name: "$$tag",
-                  color: {
-                    $arrayElemAt: [
-                      generateUniqueColors(10),
-                      { $indexOfArray: ["$tags", "$$tag"] },
-                    ],
-                  },
-                },
-              },
-            },
           },
         },
       ];
@@ -889,21 +887,6 @@ class ActivityService {
             client_name: "$client_Data.client_name",
             column_id: "$status.name",
             tags: 1,
-            coloredTags: {
-              $map: {
-                input: "$tags",
-                as: "tag",
-                in: {
-                  name: "$$tag",
-                  color: {
-                    $arrayElemAt: [
-                      generateUniqueColors(10),
-                      { $indexOfArray: ["$tags", "$$tag"] },
-                    ],
-                  },
-                },
-              },
-            },
           },
         },
       ];
@@ -1069,18 +1052,6 @@ class ActivityService {
             attendees: 1,
             attachments: 1,
             tags: 1,
-            coloredTags: {
-              $map: {
-                input: { $range: [0, { $size: "$tags" }] },
-                as: "index",
-                in: {
-                  name: { $arrayElemAt: ["$tags", "$$index"] },
-                  color: {
-                    $arrayElemAt: [generateUniqueColors(10), "$$index"],
-                  },
-                },
-              },
-            },
           },
         },
       ];
@@ -1279,6 +1250,15 @@ class ActivityService {
         status = await ActivityStatus.findOne({ name: "completed" }).lean();
       }
 
+      let newTags = [];
+      tags &&
+        tags?.forEach((item) =>
+          newTags.push({
+            name: capitalizeFirstLetter(item),
+            color: getRandomColor(),
+          })
+        );
+
       const current_activity = await Activity.findById(id).lean();
       const updateTasks = await Activity.findByIdAndUpdate(
         id,
@@ -1290,7 +1270,7 @@ class ActivityService {
           assign_to,
           client_id,
           activity_status: status?._id,
-          tags,
+          ...(newTags[0] && { tags: new ObjectId(newTags) }),
           ...(attachments.length > 0 && { attachments }),
         },
         { new: true, useFindAndModify: false }
@@ -3558,14 +3538,20 @@ class ActivityService {
       }
 
       let tags_data = await Activity.find(queryObj).select("tags").lean();
+      console.log(tags_data);
       let tagsList = [];
       tags_data.forEach((item) => {
-        tagsList = tagsList.concat(item.tags);
+        let tagData = [];
+        item.tags.forEach((tag) => {
+          tagData.push(tag.name);
+        });
+
+        tagsList = tagsList.concat(tagData);
       });
       let uniqueTags = [
         ...new Set(tagsList.filter((tag) => tag !== undefined)),
       ];
-
+      console.log(uniqueTags);
       return uniqueTags;
     } catch (error) {
       logger.error(`Error while fetch tags list : ${error}`);

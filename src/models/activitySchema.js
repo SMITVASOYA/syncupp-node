@@ -27,7 +27,10 @@ const activitySchema = new mongoose.Schema(
     ],
     tags: [
       {
-        type: String,
+        name: {
+          type: String,
+        },
+        color: { type: String },
       },
     ],
     activity_status: {
