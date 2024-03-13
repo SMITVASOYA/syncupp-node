@@ -66,7 +66,9 @@ exports.socket_connection = (http_server) => {
 
     // When Data delivered
     socket.on("CONFIRMATION", (payload) => {
-      logger.info(`Event Confirmation : ${payload.name} ${payload.id}`);
+      logger.info(
+        `Event Confirmation : ${payload?.event} ${payload.name} ${payload.id}`
+      );
     });
 
     // this Socket event is used to send message to the Other user
