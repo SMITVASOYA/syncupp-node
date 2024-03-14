@@ -146,13 +146,24 @@ exports.socket_connection = (http_server) => {
               " " +
               capitalizeFirstLetter(sender_detail?.last_name)
           );
-          await Notification.create({
-            type: "chat",
-            user_id: payload?.to_user,
-            from_user: payload?.from_user,
-            data_reference_id: payload?._id,
-            message: notification_message,
-            user_type: payload?.user_type,
+          const [notification, pending_notification] = await Promsie.all([
+            Notification.create({
+              type: "chat",
+              user_id: payload?.to_user,
+              from_user: payload?.from_user,
+              data_reference_id: payload?._id,
+              message: notification_message,
+              user_type: payload?.user_type,
+            }),
+            Notification.countDocuments({
+              user_id: payload?.to_user,
+              is_read: false,
+            }),
+          ]);
+
+          socket.to(payload?.to_user?.toString()).emit("NOTIFICATION", {
+            notification,
+            un_read_count: pending_notification,
           });
         }
       } catch (error) {
@@ -205,7 +216,10 @@ exports.socket_connection = (http_server) => {
         }
 
         await Chat.findByIdAndUpdate(payload?.chat_id, { is_deleted: true });
-        io.to([payload?.from_user, payload?.to_user]).emit("MESSGAE_DELETED", {
+        io.to([
+          payload?.from_user.toString(),
+          payload?.to_user.toString(),
+        ]).emit("MESSGAE_DELETED", {
           message: returnMessage("chat", "messageDeleted"),
           _id: payload?.chat_id,
         });
@@ -478,13 +492,23 @@ exports.socket_connection = (http_server) => {
               "{{group_name}}",
               capitalizeFirstLetter(payload?.group_name)
             );
-            await Notification.create({
-              type: "group",
-              user_id: payload?.to_user,
-              from_user: member,
-              data_reference_id: payload?._id,
-              message: notification_message,
-              group_id: payload?.group_id,
+            const [notification, pending_notification] = await Promise.all([
+              Notification.create({
+                type: "group",
+                user_id: payload?.to_user,
+                from_user: member,
+                data_reference_id: payload?._id,
+                message: notification_message,
+                group_id: payload?.group_id,
+              }),
+              Notification.countDocuments({
+                user_id: payload?.to_user,
+                is_read: false,
+              }),
+            ]);
+            socket.to(payload?.to_user?.toString()).emit("NOTIFICATION", {
+              notification,
+              un_read_count: pending_notification,
             });
           }
         });

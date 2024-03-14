@@ -1066,10 +1066,8 @@ class AuthService {
       }
 
       const referral_code_exist = await Authentication.findOne({
-        referral_code,
-      })
-        .select("referral_code")
-        .lean();
+        $or: [{ referral_code }, { affiliate_referral_code: referral_code }],
+      }).lean();
       if (referral_code_exist) return this.referralCodeGenerator();
 
       return referral_code;
@@ -1141,7 +1139,7 @@ class AuthService {
         affiliate_referral_code: referral_code,
       }).lean();
 
-      if (!affiliateCheck && !affiliateCheck)
+      if (!affiliateCheck && !crmAffiliate)
         return throwError(returnMessage("auth", "referralCodeNotFound"));
 
       if (affiliateCheck) {
