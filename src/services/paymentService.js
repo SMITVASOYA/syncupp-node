@@ -1546,11 +1546,12 @@ class PaymentService {
       ) {
         let start = moment().startOf("day");
         const current_month_days = moment().daysInMonth();
-        const end = moment.unix(subscripion_detail?.charge_at).startOf("day");
+        const end = moment.unix(subscription_detail?.charge_at).startOf("day");
         const days_diff = Math.abs(moment.duration(end.diff(start)).asDays());
-        prorate_value = parseInt(
-          ((plan?.amount / current_month_days) * days_diff).toFixed(2)
-        );
+        prorate_value = (
+          ((plan?.amount / current_month_days) * days_diff) /
+          100
+        ).toFixed(2);
       } else {
         payable_amount = (
           this.customPaymentCalculator(
