@@ -472,6 +472,9 @@ exports.socket_connection = (http_server) => {
     socket.on("NOT_ONGOING_GROUP_CHAT", async (payload) => {
       try {
         console.log("NOT_ONGOING_GROUP_CHAT");
+        const group_detail = await Group_Chat.findById(payload?.group_id)
+          .select("group_name")
+          .lean();
         payload?.members?.forEach(async (member) => {
           const notification_exist = await Notification.findOne({
             group_id: payload?.group_id,
@@ -489,7 +492,7 @@ exports.socket_connection = (http_server) => {
 
             notification_message = notification_message.replaceAll(
               "{{group_name}}",
-              capitalizeFirstLetter(payload?.group_name)
+              capitalizeFirstLetter(group_detail?.group_name)
             );
             const notification = await Notification.create({
               type: "group",

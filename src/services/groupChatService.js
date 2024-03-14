@@ -119,18 +119,15 @@ class GroupChatService {
 
       members.forEach(async (member) => {
         if (member === user?.reference_id?.toString()) return;
-        const [pending_notification] = await Promise.all([
-          Notification.countDocuments({
-            user_id: member,
-            is_read: false,
-          }),
-        ]);
 
         notification_obj.user_id = member;
         notification_obj.message = notification_message;
 
         await Notification.create(notification_obj);
-
+        const pending_notification = await Notification.countDocuments({
+          user_id: member,
+          is_read: false,
+        });
         eventEmitter(
           "NOTIFICATION",
           {
@@ -336,17 +333,16 @@ class GroupChatService {
 
         new_users.forEach(async (member) => {
           if (member === user?.reference_id) return;
-          const [pending_notification] = await Promise.all([
-            Notification.countDocuments({
-              user_id: member,
-              is_read: false,
-            }),
-          ]);
 
           notification_obj.user_id = member;
           notification_obj.message = notification_message;
 
           await Notification.create(notification_obj);
+
+          const pending_notification = await Notification.countDocuments({
+            user_id: member,
+            is_read: false,
+          });
 
           eventEmitter(
             "NOTIFICATION",
