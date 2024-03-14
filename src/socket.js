@@ -507,7 +507,7 @@ exports.socket_connection = (http_server) => {
             });
 
             const pending_notification = await Notification.countDocuments({
-              user_id: payload?.to_user,
+              user_id: member,
               is_read: false,
             });
 
