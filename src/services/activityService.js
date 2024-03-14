@@ -2211,7 +2211,6 @@ class ActivityService {
         recurring_end_date: recurring_date,
         attendees: attendees,
       });
-      console.log(payload.meeting_start_time);
 
       const event = {
         start: [
@@ -2296,32 +2295,7 @@ class ActivityService {
       return throwError(error?.message, error?.statusCode);
     }
   };
-  // getIcalObjectInstance = (
-  //   starttime,
-  //   endtime,
-  //   summary,
-  //   description,
-  //   name,
-  //   email
-  // ) => {
-  //   const cal = ical({
-  //     domain: "mytestwebsite.com",
-  //     name: "My test calendar event",
-  //   });
-  //   cal.domain("mytestwebsite.com");
-  //   cal.createEvent({
-  //     start: starttime, // eg : moment()
-  //     end: endtime, // eg : moment(1,'days')
-  //     summary: summary, // 'Summary of your event'
-  //     description: description, // 'More description'
-  //     organizer: {
-  //       // 'organizer details'
-  //       name: name,
-  //       email: email,
-  //     },
-  //   });
-  //   return cal;
-  // };
+
   // this function is used to fetch the call or other call detials by id
   getActivity = async (activity_id) => {
     try {
