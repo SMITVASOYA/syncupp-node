@@ -228,7 +228,18 @@ class GroupChatService {
         { group_id: payload?.group_id, user_id: user?.reference_id },
         { $set: { is_read: true } }
       );
+      const pending_notification = await Notification.countDocuments({
+        user_id: user?.reference_id,
+        is_read: false,
+      });
 
+      eventEmitter(
+        "NOTIFICATION",
+        {
+          un_read_count: pending_notification,
+        },
+        user?.reference_id
+      );
       return await Chat.aggregate([
         {
           $match: {

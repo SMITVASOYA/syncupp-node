@@ -500,11 +500,10 @@ exports.socket_connection = (http_server) => {
             );
             const notification = await Notification.create({
               type: "group",
-              user_id: payload?.to_user,
-              from_user: member,
+              group_id: payload?.group_id,
+              user_id: member,
               data_reference_id: payload?._id,
               message: notification_message,
-              group_id: payload?.group_id,
             });
 
             const pending_notification = await Notification.countDocuments({
