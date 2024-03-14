@@ -61,6 +61,7 @@ class GroupChatService {
       return await Authentication.find({
         reference_id: { $in: member_ids },
         is_deleted: false,
+        status: "confirmed",
       })
         .populate("role", "name")
         .select("first_name last_name email role reference_id")
@@ -117,7 +118,7 @@ class GroupChatService {
       );
 
       members.forEach(async (member) => {
-        if (member === user?.reference_id) return;
+        if (member === user?.reference_id?.toString()) return;
         const [pending_notification] = await Promise.all([
           Notification.countDocuments({
             user_id: member,
