@@ -8,7 +8,8 @@
     },
     "activityUpdated": {
       "clientMessage": "Updated: Hi ${client_name}! Your ${activity_type} titled ${title} on ${due_date} at ${meeting_start_time}. Check the agenda. See you there!",
-      "assignToMessage": "Updated: Hey ${assigned_to_name}! You're assigned to a ${activity_type} titled ${title} on ${due_date} from ${meeting_start_time} to ${meeting_end_time}. Check the agenda. Be ready!"
+      "assignToMessage": "Updated: Hey ${assigned_to_name}! You're assigned to a ${activity_type} titled ${title} on ${due_date} from ${meeting_start_time} to ${meeting_end_time}. Check the agenda. Be ready!",
+      "attendeesMessage": "Updated: The ${activity_type} titled ${title} on ${due_date} at ${meeting_start_time}. Check the agenda. See you there!"
     },
     "activityCancelled": {
       "clientMessage": "Hi ${client_name}! The ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. ",
