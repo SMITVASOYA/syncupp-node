@@ -644,10 +644,11 @@ class ScheduleEvent {
       }
       const existingEvent = await Event.findById(eventId);
       if (
-        existingEvent &&
-        existingEvent?.event_start_time?.valueOf() === start_time?.valueOf() &&
-        existingEvent?.event_end_time?.valueOf() === end_time?.valueOf() &&
-        existingEvent?.due_date?.valueOf() === start_date?.valueOf() &&
+        (existingEvent &&
+          existingEvent?.event_start_time?.valueOf() ===
+            start_time?.valueOf() &&
+          existingEvent?.event_end_time?.valueOf() === end_time?.valueOf() &&
+          existingEvent?.due_date?.valueOf() === start_date?.valueOf()) ||
         existingEvent?.recurring_end_date?.valueOf() ===
           recurring_date?.valueOf()
       ) {
