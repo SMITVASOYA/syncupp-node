@@ -205,7 +205,10 @@ exports.socket_connection = (http_server) => {
         }
 
         await Chat.findByIdAndUpdate(payload?.chat_id, { is_deleted: true });
-        io.to([payload?.from_user, payload?.to_user]).emit("MESSGAE_DELETED", {
+        io.to([
+          payload?.from_user.toString(),
+          payload?.to_user.toString(),
+        ]).emit("MESSGAE_DELETED", {
           message: returnMessage("chat", "messageDeleted"),
           _id: payload?.chat_id,
         });
