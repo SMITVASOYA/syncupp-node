@@ -60,14 +60,14 @@ class ActivityService {
         const agencies = await Team_Agency.findById(user?.reference_id).lean();
         agency_id = agencies.agency_id;
       }
-      const dueDateObject = moment(due_date);
+      const dueDateObject = moment(due_date).startOf("day");
       const duetimeObject = moment(due_date);
 
       const timeOnly = duetimeObject.format("HH:mm:ss");
 
       const currentDate = moment().startOf("day");
 
-      if (dueDateObject.isSameOrBefore(currentDate)) {
+      if (!dueDateObject.isSameOrAfter(currentDate)) {
         return throwError(returnMessage("activity", "dateinvalid"));
       }
       let status;
@@ -1260,14 +1260,14 @@ class ActivityService {
       if (status_check?.activity_status?.name === "completed") {
         return throwError(returnMessage("activity", "CannotUpdate"));
       }
-      const dueDateObject = moment(due_date);
+      const dueDateObject = moment(due_date).startOf("day");
       const duetimeObject = moment(due_date);
 
       const timeOnly = duetimeObject.format("HH:mm:ss");
 
       const currentDate = moment().startOf("day");
 
-      if (dueDateObject.isSameOrBefore(currentDate)) {
+      if (!dueDateObject.isSameOrAfter(currentDate)) {
         return throwError(returnMessage("activity", "dateinvalid"));
       }
       let status;
