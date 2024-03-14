@@ -1141,7 +1141,7 @@ class AuthService {
         affiliate_referral_code: referral_code,
       }).lean();
 
-      if (!affiliateCheck && !affiliateCheck)
+      if (!affiliateCheck && !crmAffiliate)
         return throwError(returnMessage("auth", "referralCodeNotFound"));
 
       if (affiliateCheck) {
