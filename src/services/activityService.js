@@ -2163,13 +2163,6 @@ class ActivityService {
         // Other optional properties can be added here such as attendees, etc.
       };
 
-      // ics.createEvent(event, (error, value) => {
-      //   if (error) {
-      //     logger.error(`Error while creating iCalendar event: ${error}`);
-      //     return throwError(error?.message, error?.statusCode);
-      //   } else {
-      //     icsContent = value;
-      //   }
       const file = await new Promise((resolve, reject) => {
         const filename = "ExampleEvent.ics";
         ics.createEvent(event, (error, value) => {
@@ -2180,8 +2173,6 @@ class ActivityService {
           resolve(value, filename, { type: "text/calendar" });
         });
       });
-
-      console.log(file, "icsContent");
 
       // --------------- Start--------------------
       const [assign_to_data, client_data, attendees_data] = await Promise.all([
