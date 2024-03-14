@@ -221,8 +221,13 @@ class GroupChatService {
     }
   };
 
-  chatHistory = async (payload) => {
+  chatHistory = async (payload, user) => {
     try {
+      await Notification.updateMany(
+        { group_id: payload?.group_id, user_id: user?.reference_id },
+        { $set: { is_read: true } }
+      );
+
       return await Chat.aggregate([
         {
           $match: {
