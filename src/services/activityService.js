@@ -1606,8 +1606,11 @@ class ActivityService {
         },
         { new: true, useFindAndModify: false }
       );
-
-      if (current_status?.toString() !== update_status?._id?.toString()) {
+      const type = await ActivityType.findOne({ name: "task" }).lean();
+      if (
+        current_status?.toString() !== update_status?._id?.toString() &&
+        current_activity?.activity_type?.toString() === type?._id?.toString()
+      ) {
         const referral_data = await Configuration.findOne().lean();
 
         // Decrement completion points if transitioning from completed to pending, in_progress, or overdue
@@ -2230,7 +2233,6 @@ class ActivityService {
         recurring_end_date: recurring_date,
         attendees: attendees,
       });
-      console.log(payload.meeting_start_time);
 
       const event = {
         start: [
@@ -2315,32 +2317,7 @@ class ActivityService {
       return throwError(error?.message, error?.statusCode);
     }
   };
-  // getIcalObjectInstance = (
-  //   starttime,
-  //   endtime,
-  //   summary,
-  //   description,
-  //   name,
-  //   email
-  // ) => {
-  //   const cal = ical({
-  //     domain: "mytestwebsite.com",
-  //     name: "My test calendar event",
-  //   });
-  //   cal.domain("mytestwebsite.com");
-  //   cal.createEvent({
-  //     start: starttime, // eg : moment()
-  //     end: endtime, // eg : moment(1,'days')
-  //     summary: summary, // 'Summary of your event'
-  //     description: description, // 'More description'
-  //     organizer: {
-  //       // 'organizer details'
-  //       name: name,
-  //       email: email,
-  //     },
-  //   });
-  //   return cal;
-  // };
+
   // this function is used to fetch the call or other call detials by id
   getActivity = async (activity_id) => {
     try {
