@@ -40,7 +40,8 @@
     },
     "createTask": {
       "clientMessage": "Hi ${client_name}! You have a task titled ${title} due on ${due_date} before ${due_time}. Check the agenda. See you there!",
-      "assignToMessage": "Hey ${assigned_to_name}! You're assigned to a task titled ${title} due on ${due_date} before ${due_time}. Check the agenda. Be ready!"
+      "assignToMessage": "Hey ${assigned_to_name}! You're assigned to a task titled ${title} due on ${due_date} before ${due_time}. Check the agenda. Be ready!",
+      "assignByMessage": "Hi ${agency_name}!${assigned_to_name} just created a task titled ${title} due on ${due_date} before ${due_time}. Check the agenda. See you there!"
     },
     "taskCompleted": {
       "clientMessage": "Hi ${client_name}! Your task '${title}' is completed.",

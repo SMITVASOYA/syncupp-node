@@ -153,6 +153,7 @@ class ActivityService {
             client_name: "$client_Data.client_name",
             column_id: "$status.name",
             assign_email: "$team_Data.email",
+            agency_id: 1,
           },
         },
       ];
@@ -174,30 +175,69 @@ class ActivityService {
         subject: returnMessage("activity", "createSubject"),
         message: taskMessage,
       });
-      // ----------------------- Notification Start -----------------------
-      const client_data = await Authentication.findOne({
-        reference_id: client_id,
-      });
-      await notificationService.addNotification(
-        {
-          assign_by: user.reference_id,
-          assigned_by_name: user.first_name + " " + user.last_name,
-          client_name: client_data.first_name + " " + client_data.last_name,
-          assigned_to_name:
-            getTask[0].assigned_to_first_name +
-            " " +
-            getTask[0].assigned_to_last_name,
-          ...payload,
-          module_name: "task",
-          activity_type_action: "createTask",
-          activity_type: "task",
-          due_time: moment(due_date).format("HH:mm"),
-          due_date: moment(due_date).format("DD-MM-YYYY"),
-        },
-        getTask[0]?._id
-      );
 
-      // ----------------------- Notification END -----------------------
+      if (user.role.name === "agency") {
+        // ----------------------- Notification Start -----------------------
+        const client_data = await Authentication.findOne({
+          reference_id: client_id,
+        });
+        await notificationService.addNotification(
+          {
+            assign_by: user.reference_id,
+            assigned_by_name: user.first_name + " " + user.last_name,
+            client_name: client_data.first_name + " " + client_data.last_name,
+            assigned_to_name:
+              getTask[0].assigned_to_first_name +
+              " " +
+              getTask[0].assigned_to_last_name,
+            ...payload,
+            module_name: "task",
+            activity_type_action: "createTask",
+            activity_type: "task",
+            due_time: moment(due_date).format("HH:mm"),
+            due_date: moment(due_date).format("DD-MM-YYYY"),
+          },
+          getTask[0]?._id
+        );
+
+        // ----------------------- Notification END -----------------------
+      }
+
+      if (
+        user.role.name === "team_agency" ||
+        user.role.name === "team_client"
+      ) {
+        // ----------------------- Notification Start -----------------------
+
+        const agencyData = await Authentication.findOne({
+          reference_id: getTask[0]?.agency_id,
+        });
+
+        const client_data = await Authentication.findOne({
+          reference_id: client_id,
+        }).lean();
+        await notificationService.addNotification(
+          {
+            agency_name: agencyData?.first_name + " " + agencyData?.last_name,
+            agency_id: agencyData?.reference_id,
+            assigned_by_name: user.first_name + " " + user.last_name,
+            client_name: client_data.first_name + " " + client_data.last_name,
+            assigned_to_name:
+              getTask[0].assigned_to_first_name +
+              " " +
+              getTask[0].assigned_to_last_name,
+            ...payload,
+            module_name: "task",
+            activity_type_action: "createTask",
+            activity_type: "task",
+            due_time: moment(due_date).format("HH:mm"),
+            due_date: moment(due_date).format("DD-MM-YYYY"),
+            log_user: "member",
+          },
+          getTask[0]?._id
+        );
+        // ----------------------- Notification END -----------------------
+      }
 
       return added_task;
     } catch (error) {
