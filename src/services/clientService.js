@@ -433,6 +433,9 @@ class ClientService {
             email: { $regex: payload.search, $options: "i" },
           },
           {
+            name: { $regex: payload.search, $options: "i" },
+          },
+          {
             contact_number: { $regex: payload.search, $options: "i" },
           },
           {
@@ -482,13 +485,12 @@ class ClientService {
           },
         },
         { $unwind: "$reference_id" },
-        { $match: query_obj },
         {
           $project: {
             first_name: 1,
             last_name: 1,
             email: 1,
-            name: 1,
+            name: { $concat: ["$first_name", " ", "$last_name"] },
             contact_number: 1,
             createdAt: 1,
             reference_id: {
@@ -499,6 +501,7 @@ class ClientService {
             },
           },
         },
+        { $match: query_obj },
       ];
       const [clients, totalClients] = await Promise.all([
         Authentication.aggregate(aggrage_array)

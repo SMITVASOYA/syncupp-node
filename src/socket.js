@@ -716,8 +716,8 @@ exports.eventEmitter = (event_name, payload, user_id) => {
 
 exports.emitEvent = (event_name, payload, users) => {
   try {
-    console.log(users, 719);
-    io.to(users).emit(event_name, payload);
+    console.log(users, event_name, 719);
+    users?.length > 0 && io.to(users).emit(event_name, payload);
   } catch (error) {
     console.log(`Error while emiting event`, error);
   }
