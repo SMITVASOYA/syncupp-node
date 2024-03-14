@@ -179,3 +179,8 @@ exports.completionHistory = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+exports.competitionStats = catchAsyncError(async (req, res, next) => {
+  const competitionStats = await activityService.competitionStats(req.user);
+  sendResponse(res, true, undefined, competitionStats, statusCode.success);
+});

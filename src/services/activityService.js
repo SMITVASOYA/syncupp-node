@@ -991,6 +991,24 @@ class ActivityService {
         {
           $unwind: "$assign_by",
         },
+
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "attendees",
+            foreignField: "reference_id",
+            as: "attendeesData",
+            pipeline: [
+              {
+                $project: {
+                  email: 1,
+                  reference_id: 1,
+                  _id: 0,
+                },
+              },
+            ],
+          },
+        },
         {
           $lookup: {
             from: "activity_status_masters",
@@ -1055,9 +1073,10 @@ class ActivityService {
             meeting_end_time: 1,
             recurring_end_date: 1,
             activity_type: 1,
-            attendees: 1,
+            attendees: "$attendeesData",
             attachments: 1,
             tags: 1,
+            internal_info: 1,
           },
         },
       ];
@@ -2423,6 +2442,7 @@ class ActivityService {
             recurring_end_date: 1,
             activity_type: 1,
             attendees: 1,
+            internal_info: 1,
           },
         },
       ];
@@ -3773,6 +3793,46 @@ class ActivityService {
     } catch (error) {
       logger.error(`Error while fetching completion history: ${error}`);
 
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // competition  points statistics for the agency and agency team member
+  competitionStats = async (user) => {
+    try {
+      let total_referral_points;
+      const match_condition = { user_id: user?.reference_id };
+      if (user?.role?.name === "agency") {
+        total_referral_points = await Agency.findById(
+          user?.reference_id
+        ).lean();
+      } else if (user?.role?.name === "team_agency") {
+        match_condition.type = { $ne: "referral" };
+        total_referral_points = await Team_Agency.findById(
+          user?.reference_id
+        ).lean();
+      }
+
+      const [competition] = await Competition_Point.aggregate([
+        { $match: match_condition },
+        {
+          $group: {
+            _id: "$user_id",
+            totalPoints: {
+              $sum: {
+                $toInt: "$point",
+              },
+            },
+          },
+        },
+      ]);
+
+      return {
+        available_points: total_referral_points?.total_referral_point || 0,
+        earned_points: competition?.totalPoints || 0,
+      };
+    } catch (error) {
+      logger.error(`Error while fetching the competition stats: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
