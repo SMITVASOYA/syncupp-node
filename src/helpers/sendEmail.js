@@ -19,9 +19,10 @@ const sendEmail = async (payload) => {
     attachments: [
       {
         filename: "event.ics", // Name of the attachment
-        content: payload?.icsContent, // Content of the iCalendar file
-        encoding: "base64", // Encoding type of the attachment content
+        content: payload?.icsContent?.toString(), // Content of the iCalendar file
+        encoding: "utf8", // Encoding type of the attachment content
         method: "request",
+        contentType: "text/calendar",
       },
     ],
   };
