@@ -567,7 +567,6 @@ class TeamMemberService {
 
   // this function will used for the delete team member only for the agency
   deleteMember = async (payload, agency) => {
-    console.log(agency);
     try {
       const { teamMemberIds } = payload;
       const activity_status = await Activity_Status.findOne({
@@ -635,11 +634,9 @@ class TeamMemberService {
         if (Array.isArray(teamMemberIds)) {
           teamMemberIds &&
             teamMemberIds.map(async (item) => {
-              console.log(item);
               var memberData = await Authentication.findOne({
                 reference_id: item,
               });
-              console.log(agency);
               await notificationService.addNotification({
                 module_name: "general",
                 action_name: "memberDeletedAgency",
@@ -665,7 +662,6 @@ class TeamMemberService {
               });
             });
         } else {
-          console.log(teamMemberIds);
           const memberData = await Authentication.findOne({
             reference_id: teamMemberIds,
           });
@@ -790,7 +786,6 @@ class TeamMemberService {
               var memberData = await Authentication.findOne({
                 reference_id: item,
               });
-              console.log(memberData, "fefegegegeg");
 
               await notificationService.addNotification({
                 module_name: "general",
@@ -1105,6 +1100,8 @@ class TeamMemberService {
         teams = await Team_Agency.distinct("_id", {
           agency_id: agency?.agency_id,
         }).lean();
+        // we need to add the agency details also for the attandees
+        teams.unshift(agency?.agency_id);
         // console.log(agency_detail, "agency_detail");
 
         // teams = await Team_Agency.distinct("_id", {
