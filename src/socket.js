@@ -33,6 +33,10 @@ exports.socket_connection = (http_server) => {
       logger.info(`Socket ${socket.id} has disconnected.`);
     });
 
+    socket.on("JOIN_ROOM", (payload) => {
+      socket.join(payload?._id?.toString());
+    });
+
     // For user joined
     socket.on("ROOM", async (obj) => {
       logger.info(obj.id, 15);
