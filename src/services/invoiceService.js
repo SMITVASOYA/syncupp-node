@@ -26,7 +26,9 @@ class InvoiceService {
         {
           $match: {
             "agency_ids.agency_id": reference_id,
-            "agency_ids.status": { $ne: "deleted" },
+            "agency_ids.status": {
+              $in: ["active", "inactive"],
+            },
           },
         },
         {

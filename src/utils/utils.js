@@ -694,7 +694,7 @@ exports.agrementEmail = (data) => {
                                           >
                                             <a
                                               target="_blank"
-                                              href="https://www.tridhyatech.com"
+                                              href="${process.env.REACT_APP_URL}"
                                               style="
                                                 -webkit-text-size-adjust: none;
                                                 -ms-text-size-adjust: none;
@@ -1036,7 +1036,7 @@ exports.agrementEmail = (data) => {
                                             color: #2d3142;
                                             font-size: 16px;
                                           "
-                                          href="https://www.tridhyatech.com"
+                                          href="${process.env.REACT_APP_URL}"
                                         ></a>
                                       </p>
                                     </td>
@@ -4766,7 +4766,9 @@ exports.invoiceTemplate = (invoiceData) => {
                                       margin: 0;
                                       font-size: 0px;
                                     ">
-                                  <a target="_blank" href="https://www.tridhyatech.com" style="
+                                  <a target="_blank" href="${
+                                    process.env.REACT_APP_URL
+                                  }" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
@@ -5250,7 +5252,9 @@ exports.invoiceTemplate = (invoiceData) => {
                                           text-decoration: underline;
                                           color: #2d3142;
                                           font-size: 16px;
-                                        " href="https://www.tridhyatech.com"></a>
+                                        " href="${
+                                          process.env.REACT_APP_URL
+                                        }"></a>
                                   </p>
                                 </td>
                               </tr>
@@ -5936,7 +5940,7 @@ exports.inquiryTemplate = (data) => {
                                     >
                                       <a
                                         target="_blank"
-                                        href="https://www.tridhyatech.com"
+                                        href="${process.env.REACT_APP_URL}"
                                         style="
                                           -webkit-text-size-adjust: none;
                                           -ms-text-size-adjust: none;
@@ -6436,7 +6440,7 @@ exports.inquiryTemplate = (data) => {
                                             color: #2d3142;
                                             font-size: 16px;
                                           "
-                                          href="https://www.tridhyatech.com"
+                                          href="${process.env.REACT_APP_URL}"
                                         ></a>
                                       </p>
                                     </td>
@@ -6947,7 +6951,9 @@ exports.activityTemplate = (data) => {
                                       margin: 0;
                                       font-size: 0px;
                                     ">
-                                  <a target="_blank" href="https://www.tridhyatech.com" style="
+                                  <a target="_blank" href="${
+                                    process.env.REACT_APP_URL
+                                  }" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
@@ -7310,7 +7316,9 @@ white-space: nowrap;">${data?.status}</td>
                                           text-decoration: underline;
                                           color: #2d3142;
                                           font-size: 16px;
-                                        " href="https://www.tridhyatech.com"></a>
+                                        " href="${
+                                          process.env.REACT_APP_URL
+                                        }"></a>
                                   </p>
                                 </td>
                               </tr>
@@ -7792,7 +7800,7 @@ exports.invitationEmailTemplate = (data) => {
                                       margin: 0;
                                       font-size: 0px;
                                     ">
-                                  <a target="_blank" href="https://www.tridhyatech.com" style="
+                                  <a target="_blank" href="${process.env.REACT_APP_URL}" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
@@ -8033,7 +8041,7 @@ exports.invitationEmailTemplate = (data) => {
                                           text-decoration: underline;
                                           color: #2d3142;
                                           font-size: 16px;
-                                        " href="https://www.tridhyatech.com"></a>
+                                        " href="${process.env.REACT_APP_URL}"></a>
                                   </p>
                                 </td>
                               </tr>
@@ -8655,7 +8663,7 @@ exports.taskTemplate = (data) => {
                                       margin: 0;
                                       font-size: 0px;
                                     ">
-                                  <a target="_blank" href="https://www.tridhyatech.com" style="
+                                  <a target="_blank" href="${process.env.REACT_APP_URL}" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
@@ -8954,7 +8962,7 @@ exports.taskTemplate = (data) => {
                                           text-decoration: underline;
                                           color: #2d3142;
                                           font-size: 16px;
-                                        " href="https://www.tridhyatech.com"></a>
+                                        " href="${process.env.REACT_APP_URL}"></a>
                                   </p>
                                 </td>
                               </tr>
@@ -9432,7 +9440,9 @@ exports.eventTemplate = (data) => {
                                       margin: 0;
                                       font-size: 0px;
                                     ">
-                                  <a target="_blank" href="https://www.tridhyatech.com" style="
+                                  <a target="_blank" href="${
+                                    process.env.REACT_APP_URL
+                                  }" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
@@ -9757,7 +9767,9 @@ white-space: nowrap;">${data?.endTime ?? `&nbsp;`}</td>
                                           text-decoration: underline;
                                           color: #2d3142;
                                           font-size: 16px;
-                                        " href="https://www.tridhyatech.com"></a>
+                                        " href="${
+                                          process.env.REACT_APP_URL
+                                        }"></a>
                                   </p>
                                 </td>
                               </tr>
@@ -10239,7 +10251,9 @@ exports.agencyCreatedTemplate = (data) => {
                                       margin: 0;
                                       font-size: 0px;
                                     ">
-                                  <a target="_blank" href="https://www.tridhyatech.com" style="
+                                  <a target="_blank" href="${
+                                    process.env.REACT_APP_URL
+                                  }" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
@@ -10508,7 +10522,9 @@ white-space: nowrap;">${data?.contact_number ?? `&nbsp;`}</td>
                                           text-decoration: underline;
                                           color: #2d3142;
                                           font-size: 16px;
-                                        " href="https://www.tridhyatech.com"></a>
+                                        " href="${
+                                          process.env.REACT_APP_URL
+                                        }"></a>
                                   </p>
                                 </td>
                               </tr>
@@ -10989,7 +11005,9 @@ exports.memberDeletedTemplate = (data) => {
                                       margin: 0;
                                       font-size: 0px;
                                     ">
-                                  <a target="_blank" href="https://www.tridhyatech.com" style="
+                                  <a target="_blank" href="${
+                                    process.env.REACT_APP_URL
+                                  }" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
@@ -11276,7 +11294,9 @@ white-space: nowrap;">${data?.contact_number ?? `&nbsp;`}</td>
                                           text-decoration: underline;
                                           color: #2d3142;
                                           font-size: 16px;
-                                        " href="https://www.tridhyatech.com"></a>
+                                        " href="${
+                                          process.env.REACT_APP_URL
+                                        }"></a>
                                   </p>
                                 </td>
                               </tr>
@@ -11758,7 +11778,9 @@ exports.memberDeletedClient = (data) => {
                                       margin: 0;
                                       font-size: 0px;
                                     ">
-                                  <a target="_blank" href="https://www.tridhyatech.com" style="
+                                  <a target="_blank" href="${
+                                    process.env.REACT_APP_URL
+                                  }" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
@@ -12047,7 +12069,9 @@ white-space: nowrap;">${data?.contact_number ?? `&nbsp;`}</td>
                                           text-decoration: underline;
                                           color: #2d3142;
                                           font-size: 16px;
-                                        " href="https://www.tridhyatech.com"></a>
+                                        " href="${
+                                          process.env.REACT_APP_URL
+                                        }"></a>
                                   </p>
                                 </td>
                               </tr>
@@ -12529,7 +12553,9 @@ exports.clientMemberAdded = (data) => {
                                       margin: 0;
                                       font-size: 0px;
                                     ">
-                                  <a target="_blank" href="https://www.tridhyatech.com" style="
+                                  <a target="_blank" href="${
+                                    process.env.REACT_APP_URL
+                                  }" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
@@ -12818,7 +12844,9 @@ white-space: nowrap;">${data?.contact_number ?? `&nbsp;`}</td>
                                           text-decoration: underline;
                                           color: #2d3142;
                                           font-size: 16px;
-                                        " href="https://www.tridhyatech.com"></a>
+                                        " href="${
+                                          process.env.REACT_APP_URL
+                                        }"></a>
                                   </p>
                                 </td>
                               </tr>
