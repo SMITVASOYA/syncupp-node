@@ -989,6 +989,24 @@ class ActivityService {
         {
           $unwind: "$assign_by",
         },
+
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "attendees",
+            foreignField: "reference_id",
+            as: "attendeesData",
+            pipeline: [
+              {
+                $project: {
+                  email: 1,
+                  reference_id: 1,
+                  _id: 0,
+                },
+              },
+            ],
+          },
+        },
         {
           $lookup: {
             from: "activity_status_masters",
@@ -1053,9 +1071,10 @@ class ActivityService {
             meeting_end_time: 1,
             recurring_end_date: 1,
             activity_type: 1,
-            attendees: 1,
+            attendees: "$attendeesData",
             attachments: 1,
             tags: 1,
+            internal_info: 1,
           },
         },
       ];
@@ -2414,6 +2433,7 @@ class ActivityService {
             recurring_end_date: 1,
             activity_type: 1,
             attendees: 1,
+            internal_info: 1,
           },
         },
       ];
