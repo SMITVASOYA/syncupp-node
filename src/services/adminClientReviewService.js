@@ -46,6 +46,12 @@ class ClientReviewService {
               $options: "i",
             },
           },
+          {
+            review: {
+              $regex: searchObj.search.toLowerCase(),
+              $options: "i",
+            },
+          },
         ];
 
         // const keywordType = getKeywordType(searchObj.search);

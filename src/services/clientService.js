@@ -486,7 +486,9 @@ class ClientService {
             ],
           },
         },
-        { $unwind: "$reference_id" },
+        {
+          $unwind: { path: "$reference_id", preserveNullAndEmptyArrays: true },
+        },
         {
           $project: {
             first_name: 1,

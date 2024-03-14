@@ -9648,7 +9648,9 @@ white-space: nowrap;">${data?.endTime ?? `&nbsp;`}</td>
                                       </td>
                                     </tr>
                                   </table>
-                                  <a target="_blank" href="#" style="
+                                  <a target="_blank" href="${
+                                    process.env.REACT_APP_URL
+                                  }/events" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;

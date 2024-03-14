@@ -60,9 +60,9 @@
     "getCoupon": "Coupon fetch successfully.",
     "clientReviewAdded": "Client Review added successfully.",
     "getAllClientReview": "Fetch client successfully.",
-    "deleteClientReview": "Client deleted successfully.",
-    "clientReviewUpdated": "Client updated successfully.",
-    "getClientReviewByID": "Fetch client successfully.",
+    "deleteClientReview": "Client  Review deleted successfully.",
+    "clientReviewUpdated": "Client Review updated successfully.",
+    "getClientReviewByID": "Fetch Review client successfully.",
     "agencyFetched": "Agency fetched successfully.",
     "transactionFetched": "Transaction History fetched successfully."
   },
