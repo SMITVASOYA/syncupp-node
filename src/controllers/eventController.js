@@ -60,7 +60,7 @@ exports.updateEvent = catchAsyncError(async (req, res, next) => {
 });
 
 exports.deleteEvent = catchAsyncError(async (req, res, next) => {
-  const updateStatus = await eventService.deleteEvent(req.params.id);
+  const updateStatus = await eventService.deleteEvent(req.params.id, req.user);
   sendResponse(
     res,
     true,

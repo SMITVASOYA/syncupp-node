@@ -9,7 +9,7 @@ const teamMemberService = new TeamMemberService();
 exports.add = catchAsyncError(async (req, res, next) => {
   const team_member = await teamMemberService.addTeamMember(req.body, req.user);
   let message = returnMessage("teamMember", "teamMemberCreated");
-  if (req?.user?.role === "client") {
+  if (req?.user?.role?.name === "client") {
     message = returnMessage("teamMember", "teamMemberCreatedByClient");
   }
   sendResponse(res, true, message, team_member, statusCode.success);

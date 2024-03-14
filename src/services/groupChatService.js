@@ -288,6 +288,10 @@ class GroupChatService {
           : existing_users.push(member)
       );
 
+      const removed_users = group_exist?.members?.filter(
+        (member) => !payload?.members?.includes(member)
+      );
+
       const updated_group = await Group_Chat.findByIdAndUpdate(
         group_exist?._id,
         {
@@ -296,6 +300,8 @@ class GroupChatService {
         },
         { new: true }
       );
+
+      emitEvent("REMOVED_FROM_GROUP", updated_group, removed_users);
 
       emitEvent("GROUP_UPDATED", updated_group, existing_users);
 

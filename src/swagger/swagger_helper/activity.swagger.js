@@ -355,6 +355,30 @@ const completionHistory = {
   },
 };
 
+const competitionStats = {
+  tags: ["Activity - CRM Panel"],
+  description: "",
+  summary: "Fetch competition points Stats",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
 const activityRoute = {
   "/api/v1/activity/call-meeting": {
     post: createActivity,
@@ -373,6 +397,9 @@ const activityRoute = {
   },
   "/api/v1/activity/completion_history": {
     post: completionHistory,
+  },
+  "/api/v1/activity/competitionStats": {
+    get: competitionStats,
   },
 };
 
