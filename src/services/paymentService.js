@@ -364,7 +364,13 @@ class PaymentService {
         !subscripion_detail?.current_start &&
         !subscripion_detail?.current_end
       ) {
-        prorate_value = plan?.amount;
+        let start = moment().startOf("day");
+        const current_month_days = moment().daysInMonth();
+        const end = moment.unix(subscripion_detail?.charge_at).startOf("day");
+        const days_diff = Math.abs(moment.duration(end.diff(start)).asDays());
+        prorate_value = parseInt(
+          ((plan?.amount / current_month_days) * days_diff).toFixed(2)
+        );
       } else {
         prorate_value = parseInt(
           this.customPaymentCalculator(
@@ -1538,7 +1544,13 @@ class PaymentService {
         !subscription_detail?.current_start &&
         !subscription_detail?.current_end
       ) {
-        payable_amount = (plan?.amount / 100).toFixed(2);
+        let start = moment().startOf("day");
+        const current_month_days = moment().daysInMonth();
+        const end = moment.unix(subscripion_detail?.charge_at).startOf("day");
+        const days_diff = Math.abs(moment.duration(end.diff(start)).asDays());
+        prorate_value = parseInt(
+          ((plan?.amount / current_month_days) * days_diff).toFixed(2)
+        );
       } else {
         payable_amount = (
           this.customPaymentCalculator(
