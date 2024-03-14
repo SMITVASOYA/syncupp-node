@@ -9570,7 +9570,7 @@ exports.eventTemplate = (data) => {
                                           </tr>
                                           <tr>
                                             <td style=" border-top-left-radius: 5px;
-  border-collapse: collapse;">Created By :</td>
+  border-collapse: collapse;">${data?.action_type ?? `&nbsp;`} :</td>
                                             <td style="
   border-collapse: collapse; font-weight: 600; max-width: 100px;
  overflow: hidden;

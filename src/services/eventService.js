@@ -122,6 +122,7 @@ class ScheduleEvent {
             endTime: event_end_time,
             agenda: agenda,
             recurring_end_date: payload?.recurring_end_date,
+            action_type: "Created By",
           };
           email &&
             email.map((item) => {
@@ -163,6 +164,7 @@ class ScheduleEvent {
           endTime: event_end_time,
           agenda: agenda,
           recurring_end_date: payload?.recurring_end_date,
+          action_type: "Created By",
         };
         email &&
           email.map((item) => {
@@ -671,6 +673,7 @@ class ScheduleEvent {
           recurring_end_date: moment(getEvent?.recurring_end_date)?.format(
             "DD/MM/YYYY"
           ),
+          action_type: "Updated By",
         };
         email &&
           email.map((item) => {
@@ -755,6 +758,7 @@ class ScheduleEvent {
             recurring_end_date: moment(getEvent?.recurring_end_date)?.format(
               "DD/MM/YYYY"
             ),
+            action_type: "Updated By",
           };
           email &&
             email.map((item) => {
@@ -798,6 +802,7 @@ class ScheduleEvent {
           recurring_end_date: moment(getEvent?.recurring_end_date)?.format(
             "DD/MM/YYYY"
           ),
+          action_type: "Updated By",
         };
         email &&
           email.map((item) => {
@@ -816,7 +821,7 @@ class ScheduleEvent {
     }
   };
 
-  deleteEvent = async (id) => {
+  deleteEvent = async (id, user) => {
     try {
       const updateevent = await Event.findByIdAndUpdate(
         {
@@ -831,7 +836,7 @@ class ScheduleEvent {
       let data = {
         EventTitle: "Event Cancled",
         EventName: getEvent?.title,
-        created_by: user.first_name + " " + user.last_name,
+        created_by: user?.first_name + " " + user?.last_name,
         start_date: moment(getEvent?.due_date)?.format("DD/MM/YYYY"),
         startTime: moment(getEvent?.event_start_time).format("HH:mm:ss"),
         endTime: moment(getEvent?.event_end_time).format("HH:mm:ss"),
@@ -839,9 +844,10 @@ class ScheduleEvent {
         recurring_end_date: moment(getEvent?.recurring_end_date)?.format(
           "DD/MM/YYYY"
         ),
+        action_type: "Deleted By",
       };
-      email &&
-        email.map((item) => {
+      getEvent?.email &&
+        getEvent?.email.map((item) => {
           const eventMessage = eventTemplate(data);
           sendEmail({
             email: item,

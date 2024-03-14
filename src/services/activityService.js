@@ -1606,8 +1606,11 @@ class ActivityService {
         },
         { new: true, useFindAndModify: false }
       );
-
-      if (current_status?.toString() !== update_status?._id?.toString()) {
+      const type = await ActivityType.findOne({ name: "task" }).lean();
+      if (
+        current_status?.toString() !== update_status?._id?.toString() &&
+        current_activity?.activity_type?.toString() === type?._id?.toString()
+      ) {
         const referral_data = await Configuration.findOne().lean();
 
         // Decrement completion points if transitioning from completed to pending, in_progress, or overdue
