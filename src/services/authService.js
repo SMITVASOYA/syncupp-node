@@ -140,6 +140,7 @@ class AuthService {
 
       if (!payload?.referral_code) {
         payload.referral_code = await this.referralCodeGenerator();
+        let affiliate_referral_code = await this.referralCodeGenerator();
 
         if (!payload.referral_code)
           return throwError(returnMessage("referral", "codeGenerationFailed"));
@@ -156,6 +157,7 @@ class AuthService {
           role: role?._id,
           status: "payment_pending",
           referral_code: payload.referral_code,
+          affiliate_referral_code: affiliate_referral_code,
         });
         agency_enroll = agency_enroll.toObject();
         agency_enroll.role = role;
@@ -185,7 +187,7 @@ class AuthService {
           contact_number: contact_number,
         });
 
-        const agencyCreated = await agencyCreatedTemplate({
+        var agencyCreated = await agencyCreatedTemplate({
           agency_name:
             capitalizeFirstLetter(first_name) +
             " " +
@@ -209,6 +211,7 @@ class AuthService {
         });
       } else if (payload?.referral_code) {
         let new_referral_code = await this.referralCodeGenerator();
+        let affiliate_referral_code = await this.referralCodeGenerator();
 
         if (!new_referral_code)
           return throwError(returnMessage("referral", "codeGenerationFailed"));
@@ -225,6 +228,7 @@ class AuthService {
           role: role?._id,
           status: "payment_pending",
           referral_code: new_referral_code,
+          affiliate_referral_code: affiliate_referral_code,
         });
 
         agency_enroll = agency_enroll.toObject();
@@ -339,6 +343,8 @@ class AuthService {
         ]);
 
         const referral_code = await this.referralCodeGenerator();
+        let affiliate_referral_code = await this.referralCodeGenerator();
+
         if (!referral_code) return returnMessage("default");
 
         let agency_enroll = await Authentication.create({
@@ -354,6 +360,7 @@ class AuthService {
           status: "payment_pending",
           is_google_signup: true,
           referral_code,
+          affiliate_referral_code: affiliate_referral_code,
         });
 
         agency_enroll = agency_enroll.toObject();
@@ -505,6 +512,8 @@ class AuthService {
         ]);
 
         const referral_code = await this.referralCodeGenerator();
+        let affiliate_referral_code = await this.referralCodeGenerator();
+
         if (!referral_code) return returnMessage("default");
 
         let agency_enroll = await Authentication.create({
@@ -520,6 +529,7 @@ class AuthService {
           status: "payment_pending",
           is_facebook_signup: true,
           referral_code,
+          affiliate_referral_code: affiliate_referral_code,
         });
 
         agency_enroll = agency_enroll.toObject();
@@ -1084,19 +1094,31 @@ class AuthService {
 
   affiliateReferralSignUp = async ({ referral_code, referred_to, email }) => {
     try {
-      const referral_code_exist = await Affiliate.findOne({
+      const affiliateCheck = await Affiliate.findOne({
         referral_code,
         email,
       }).lean();
+      const crmAffiliate = await Authentication.findOne({
+        affiliate_referral_code: referral_code,
+      }).lean();
 
-      if (!referral_code_exist)
+      if (!affiliateCheck && !affiliateCheck)
         return throwError(returnMessage("auth", "referralCodeNotFound"));
 
-      await Affiliate_Referral.create({
-        referral_code,
-        referred_by: referral_code_exist._id,
-        referred_to: referred_to,
-      });
+      if (affiliateCheck) {
+        await Affiliate_Referral.create({
+          referral_code,
+          referred_by: affiliateCheck._id,
+          referred_to: referred_to,
+        });
+      }
+      if (crmAffiliate) {
+        await Affiliate_Referral.create({
+          referral_code,
+          referred_by: crmAffiliate.reference_id,
+          referred_to: referred_to,
+        });
+      }
 
       return;
     } catch (error) {

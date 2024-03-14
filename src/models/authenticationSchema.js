@@ -41,7 +41,7 @@ const authenticationSchema = new mongoose.Schema(
     subscribe_date: { typr: String },
     order_id: { type: String },
     referral_code: { type: String },
-
+    affiliate_referral_code: { type: String },
     last_login_date: { type: Date },
     click_count: { type: Number, default: 0 },
     is_online: { type: Boolean, default: false },

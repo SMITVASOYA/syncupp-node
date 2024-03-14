@@ -277,6 +277,7 @@ class ClientService {
         );
 
         const referral_code = await this.referralCodeGenerator();
+        let affiliate_referral_code = await this.referralCodeGenerator();
 
         await Authentication.findByIdAndUpdate(
           client_auth?._id,
@@ -284,6 +285,7 @@ class ClientService {
             status: "confirmed",
             password: hash_password,
             referral_code: referral_code,
+            affiliate_referral_code: affiliate_referral_code,
           },
           { new: true }
         );

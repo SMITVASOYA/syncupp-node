@@ -292,12 +292,14 @@ class TeamMemberService {
         });
 
         const referral_code = await this.referralCodeGenerator();
+        let affiliate_referral_code = await this.referralCodeGenerator();
 
         teamMember.email = email;
         teamMember.invitation_token = undefined;
         teamMember.password = hash_password;
         teamMember.status = "confirmed";
         teamMember.referral_code = referral_code;
+        teamMember.affiliate_referral_code = affiliate_referral_code;
 
         await teamMember.save();
         const welcome_mail = welcomeMail(teamMember?.name);
