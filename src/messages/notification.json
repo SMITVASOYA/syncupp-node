@@ -12,7 +12,8 @@
     },
     "activityCancelled": {
       "clientMessage": "Hi ${client_name}! The ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. ",
-      "assignToMessage": "Hi ${assigned_to_name}! The ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. "
+      "assignToMessage": "Hi ${assigned_to_name}! The ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. ",
+      "assignByMessage": "Hi ${assigned_by_name}! The ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. "
     },
     "activityCompleted": {
       "clientMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is completed.",
@@ -56,7 +57,8 @@
     },
     "taskInProgress": {
       "clientMessage": "Hi ${client_name}! Your task '${title}' is in progress.",
-      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is in progress."
+      "assignToMessage": "Hey ${assigned_to_name}! The task '${ title}' assigned to you is in progress.",
+      "assignByMessage": "Hi ${assigned_by_name}! The task '${title}' is in progress."
     },
     "taskCancelled": {
       "clientMessage": "Hi ${client_name}! The task titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. ",

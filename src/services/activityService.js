@@ -342,12 +342,10 @@ class ActivityService {
           };
         }
         if (searchObj?.filter?.tag) {
-          filter["$match"] = {
-            ...filter["$match"],
-            tags: {
-              $elemMatch: {
-                name: { $regex: searchObj?.filter?.tag.toLowerCase() },
-              },
+          const tagRegex = new RegExp(searchObj.filter.tag.toLowerCase(), "i"); // 'i' flag for case-insensitive matching
+          filter["$match"].tags = {
+            $elemMatch: {
+              name: tagRegex,
             },
           };
         }
@@ -699,10 +697,10 @@ class ActivityService {
           };
         }
         if (searchObj?.filter?.tag) {
-          filter["$match"] = {
-            ...filter["$match"],
-            tags: {
-              $elemMatch: { $regex: searchObj?.filter?.tag.toLowerCase() },
+          const tagRegex = new RegExp(searchObj.filter.tag.toLowerCase(), "i"); // 'i' flag for case-insensitive matching
+          filter["$match"].tags = {
+            $elemMatch: {
+              name: tagRegex,
             },
           };
         }
@@ -1892,6 +1890,7 @@ class ActivityService {
       } else {
         //   ----------    Notifications start ----------
         if (user.role.name === "agency") {
+          console.log("agency");
           const activity_email_template = activityTemplate({
             ...getTask[0],
             activity_type: getTask[0].activity_type,
@@ -1918,33 +1917,97 @@ class ActivityService {
             subject: returnMessage("emailTemplate", emailTempKey),
             message: activity_email_template,
           });
+
+          //   ----------    Notifications start ----------
+
+          await notificationService.addNotification(
+            {
+              client_name: client_data.first_name + " " + client_data.last_name,
+              assigned_to_name:
+                assign_to_data.first_name + " " + assign_to_data.last_name,
+              ...getTask[0],
+              module_name: "activity",
+              activity_type_action: task_status,
+              activity_type:
+                getTask[0]?.activity_type.name === "others"
+                  ? "activity"
+                  : "call meeting",
+              meeting_start_time: moment(getTask[0].meeting_start_time).format(
+                "HH:mm"
+              ),
+              due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
+              tags: getTask[0].tags,
+            },
+            id
+          );
+          //   ----------    Notifications end ----------
         }
 
-        //   ----------    Notifications start ----------
+        if (
+          user.role.name === "team_agency" ||
+          user.role.name === "team_client"
+        ) {
+          console.log("team agency");
 
-        await notificationService.addNotification(
-          {
-            client_name: client_data.first_name + " " + client_data.last_name,
-            assigned_to_name:
-              assign_to_data.first_name + " " + assign_to_data.last_name,
+          const agencyData = await Authentication.findById(
+            getTask[0].assign_by._id
+          );
+
+          const activity_email_template = activityTemplate({
             ...getTask[0],
-            module_name: "activity",
-            activity_type_action: task_status,
-            activity_type:
-              getTask[0]?.activity_type.name === "others"
-                ? "activity"
-                : "call meeting",
+            activity_type: getTask[0].activity_type,
+            meeting_end_time: moment(getTask[0].meeting_end_time).format(
+              "HH:mm"
+            ),
             meeting_start_time: moment(getTask[0].meeting_start_time).format(
               "HH:mm"
             ),
+            recurring_end_date: getTask[0]?.recurring_end_date
+              ? moment(getTask[0].recurring_end_date).format("DD-MM-YYYY")
+              : null,
             due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
-            tags: getTask[0].tags,
-          },
-          id
-        );
-        //   ----------    Notifications end ----------
-      }
+            status: payload.status,
+            client_name: client_data.first_name + " " + client_data.last_name,
+          });
+          await sendEmail({
+            email: client_data?.email,
+            subject: returnMessage("emailTemplate", emailTempKey),
+            message: activity_email_template,
+          });
+          sendEmail({
+            email: assign_to_data?.email,
+            subject: returnMessage("emailTemplate", emailTempKey),
+            message: activity_email_template,
+          });
 
+          //   ----------    Notifications start ----------
+
+          await notificationService.addNotification(
+            {
+              client_name: client_data.first_name + " " + client_data.last_name,
+              assigned_to_name:
+                assign_to_data.first_name + " " + assign_to_data.last_name,
+              ...getTask[0],
+              module_name: "activity",
+              activity_type_action: task_status,
+              activity_type:
+                getTask[0]?.activity_type.name === "others"
+                  ? "activity"
+                  : "call meeting",
+              meeting_start_time: moment(getTask[0].meeting_start_time).format(
+                "HH:mm"
+              ),
+              due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
+              tags: getTask[0].tags,
+              log_user: "member",
+              assigned_by_name: getTask[0]?.assigned_by_name,
+              assign_by: agencyData?.reference_id,
+            },
+            id
+          );
+          //   ----------    Notifications end ----------
+        }
+      }
       return updateTasks;
     } catch (error) {
       logger.error(`Error while Updating status, ${error}`);

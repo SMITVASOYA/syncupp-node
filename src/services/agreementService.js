@@ -412,6 +412,17 @@ class AgreementService {
         _id: agreementId,
         is_deleted: false,
       }).lean();
+      if (payload?.send) {
+        await Agreement.findByIdAndUpdate(
+          {
+            _id: agreementId,
+          },
+          {
+            status: "sent",
+          },
+          { new: true, useFindAndModify: false }
+        );
+      }
 
       if (status === "sent") {
         const clientDetails = await Authentication.findOne({
