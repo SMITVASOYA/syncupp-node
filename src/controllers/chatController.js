@@ -46,7 +46,7 @@ exports.groups = catchAsyncError(async (req, res, next) => {
 });
 
 exports.groupChatHistory = catchAsyncError(async (req, res, next) => {
-  const history = await groupChatService.chatHistory(req.body);
+  const history = await groupChatService.chatHistory(req.body, req.user);
   sendResponse(res, true, undefined, history, 200);
 });
 
