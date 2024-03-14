@@ -1548,7 +1548,7 @@ class PaymentService {
         const current_month_days = moment().daysInMonth();
         const end = moment.unix(subscription_detail?.charge_at).startOf("day");
         const days_diff = Math.abs(moment.duration(end.diff(start)).asDays());
-        prorate_value = (
+        payable_amount = (
           ((plan?.amount / current_month_days) * days_diff) /
           100
         ).toFixed(2);
