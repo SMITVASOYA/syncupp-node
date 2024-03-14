@@ -1576,31 +1576,33 @@ class ActivityService {
         message: taskMessage,
       });
 
-      // -------------- Socket notification start --------------------
+      if (user?.role?.name === "agency") {
+        // -------------- Socket notification start --------------------
 
-      const client_data = await Authentication.findOne({
-        reference_id: client_id,
-      });
-      let taskAction = "update";
-      // For Complete
-      if (mark_as_done) taskAction = "completed";
-      await notificationService.addNotification(
-        {
-          ...payload,
-          module_name: "task",
-          activity_type_action: taskAction,
-          activity_type: "task",
-          agenda: agenda,
-          title: title,
-          client_name: client_data.first_name + " " + client_data.last_name,
-          assigned_to_name: getTask[0]?.assigned_to_name,
-          due_time: new Date(due_date).toTimeString().split(" ")[0],
-          due_date: new Date(due_date).toLocaleDateString("en-GB"),
-        },
-        id
-      );
+        const client_data = await Authentication.findOne({
+          reference_id: client_id,
+        });
+        let taskAction = "update";
+        // For Complete
+        if (mark_as_done) taskAction = "completed";
+        await notificationService.addNotification(
+          {
+            ...payload,
+            module_name: "task",
+            activity_type_action: taskAction,
+            activity_type: "task",
+            agenda: agenda,
+            title: title,
+            client_name: client_data.first_name + " " + client_data.last_name,
+            assigned_to_name: getTask[0]?.assigned_to_name,
+            due_time: new Date(due_date).toTimeString().split(" ")[0],
+            due_date: new Date(due_date).toLocaleDateString("en-GB"),
+          },
+          id
+        );
 
-      // -------------- Socket notification end --------------------
+        // -------------- Socket notification end --------------------
+      }
 
       return updateTasks;
     } catch (error) {
@@ -2728,54 +2730,55 @@ class ActivityService {
         },
         { new: true }
       );
+      if (user?.role?.name === "agency") {
+        // --------------- Start--------------------
+        let task_status = "update";
+        let emailTempKey = "activityUpdated";
+        if (payload.mark_as_done) {
+          task_status = "completed";
+          emailTempKey = "activityCompleted";
+        }
 
-      // --------------- Start--------------------
-      let task_status = "update";
-      let emailTempKey = "activityUpdated";
-      if (payload.mark_as_done) {
-        task_status = "completed";
-        emailTempKey = "activityCompleted";
-      }
-
-      const [assign_to_data, client_data] = await Promise.all([
-        Authentication.findOne({ reference_id: assign_to }),
-        Authentication.findOne({ reference_id: client_id }),
-      ]);
-      const activity_email_template = activityTemplate({
-        ...payload,
-        status: payload.mark_as_done ? "completed" : "pending",
-        assigned_by_name: user.first_name + " " + user.last_name,
-        client_name: client_data.first_name + " " + client_data.last_name,
-        assigned_to_name:
-          assign_to_data.first_name + " " + assign_to_data.last_name,
-      });
-
-      sendEmail({
-        email: client_data?.email,
-        subject: returnMessage("emailTemplate", emailTempKey),
-        message: activity_email_template,
-      });
-      sendEmail({
-        email: assign_to_data?.email,
-        subject: returnMessage("emailTemplate", emailTempKey),
-        message: activity_email_template,
-      });
-      await notificationService.addNotification(
-        {
-          assign_by: user.reference_id,
+        const [assign_to_data, client_data] = await Promise.all([
+          Authentication.findOne({ reference_id: assign_to }),
+          Authentication.findOne({ reference_id: client_id }),
+        ]);
+        const activity_email_template = activityTemplate({
+          ...payload,
+          status: payload.mark_as_done ? "completed" : "pending",
           assigned_by_name: user.first_name + " " + user.last_name,
           client_name: client_data.first_name + " " + client_data.last_name,
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
-          ...payload,
-          module_name: "activity",
-          activity_type_action: task_status,
-          activity_type:
-            activity_type === "others" ? "activity" : "call meeting",
-        },
-        activity_id
-      );
-      // ---------------- End ---------------
+        });
+
+        sendEmail({
+          email: client_data?.email,
+          subject: returnMessage("emailTemplate", emailTempKey),
+          message: activity_email_template,
+        });
+        sendEmail({
+          email: assign_to_data?.email,
+          subject: returnMessage("emailTemplate", emailTempKey),
+          message: activity_email_template,
+        });
+        await notificationService.addNotification(
+          {
+            assign_by: user.reference_id,
+            assigned_by_name: user.first_name + " " + user.last_name,
+            client_name: client_data.first_name + " " + client_data.last_name,
+            assigned_to_name:
+              assign_to_data.first_name + " " + assign_to_data.last_name,
+            ...payload,
+            module_name: "activity",
+            activity_type_action: task_status,
+            activity_type:
+              activity_type === "others" ? "activity" : "call meeting",
+          },
+          activity_id
+        );
+        // ---------------- End ---------------
+      }
 
       return;
     } catch (error) {
