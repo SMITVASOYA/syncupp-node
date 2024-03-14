@@ -480,6 +480,7 @@ exports.socket_connection = (http_server) => {
           .select("group_name")
           .lean();
         payload?.members?.forEach(async (member) => {
+          if (member.toString() == payload?.from_user?.toString()) return;
           const notification_exist = await Notification.findOne({
             group_id: payload?.group_id,
             user_id: member,
@@ -508,10 +509,12 @@ exports.socket_connection = (http_server) => {
 
             const pending_notification = await Notification.countDocuments({
               user_id: member,
+              type: "group",
+              group_id: payload?.group_id,
+              user_id: member,
               is_read: false,
             });
-
-            socket.to(payload?.to_user?.toString()).emit("NOTIFICATION", {
+            io.to(member).emit("NOTIFICATION", {
               notification,
               un_read_count: pending_notification,
             });
