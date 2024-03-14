@@ -13,6 +13,7 @@ const {
   getRandomColor,
   capitalizeFirstLetter,
 } = require("../utils/utils");
+const ical = require("ical-generator");
 const moment = require("moment");
 const { default: mongoose } = require("mongoose");
 const Team_Agency = require("../models/teamAgencySchema");
@@ -30,6 +31,7 @@ const eventService = new EventService();
 const Client = require("../models/clientSchema");
 const ics = require("ics");
 const fs = require("fs");
+// import { createEvent } from "ics";
 const { ObjectId } = require("mongodb");
 
 class ActivityService {
@@ -2228,33 +2230,40 @@ class ActivityService {
         recurring_end_date: recurring_date,
         attendees: attendees,
       });
+      console.log(payload.meeting_start_time);
 
       const event = {
         start: [
           moment(start_date).year(),
           moment(start_date).month() + 1, // Months are zero-based in JavaScript Date objects
           moment(start_date).date(),
-          moment(start_time).hour(),
-          moment(end_time).minute(),
+          moment(payload.meeting_start_time, "HH:mm").hour(), // Use .hour() to get the hour as a number
+          moment(payload.meeting_start_time, "HH:mm").minute(),
+        ],
+        end: [
+          moment(recurring_date).year(),
+          moment(recurring_date).month() + 1, // Months are zero-based in JavaScript Date objects
+          moment(recurring_date).date(),
+          moment(payload.meeting_end_time, "HH:mm").hour(), // Use .hour() to get the hour as a number
+          moment(payload.meeting_end_time, "HH:mm").minute(),
         ],
 
         title: title,
         description: agenda,
         // Other optional properties can be added here such as attendees, etc.
       };
-      let icsContent;
 
-      ics.createEvent(event, (error, value) => {
-        if (error) {
-          logger.error(`Error while creating iCalendar event: ${error}`);
-          return throwError(error?.message, error?.statusCode);
-        } else {
-          icsContent = value;
-        }
+      const file = await new Promise((resolve, reject) => {
+        const filename = "ExampleEvent.ics";
+        ics.createEvent(event, (error, value) => {
+          if (error) {
+            reject(error);
+          }
 
-        // Do something with the generated iCalendar file, e.g., send it via email or save it to a file.
-        console.log(value);
+          resolve(value, filename, { type: "text/calendar" });
+        });
       });
+
       // --------------- Start--------------------
       const [assign_to_data, client_data, attendees_data] = await Promise.all([
         Authentication.findOne({ reference_id: assign_to }).lean(),
@@ -2275,12 +2284,13 @@ class ActivityService {
         email: client_data?.email,
         subject: returnMessage("emailTemplate", "newActivityMeeting"),
         message: activity_email_template,
-        icsContent: icsContent,
+        icsContent: file,
       });
       sendEmail({
         email: assign_to_data?.email,
         subject: returnMessage("emailTemplate", "newActivityMeeting"),
         message: activity_email_template,
+        icsContent: file,
       });
       await notificationService.addNotification(
         {
@@ -2305,7 +2315,32 @@ class ActivityService {
       return throwError(error?.message, error?.statusCode);
     }
   };
-
+  // getIcalObjectInstance = (
+  //   starttime,
+  //   endtime,
+  //   summary,
+  //   description,
+  //   name,
+  //   email
+  // ) => {
+  //   const cal = ical({
+  //     domain: "mytestwebsite.com",
+  //     name: "My test calendar event",
+  //   });
+  //   cal.domain("mytestwebsite.com");
+  //   cal.createEvent({
+  //     start: starttime, // eg : moment()
+  //     end: endtime, // eg : moment(1,'days')
+  //     summary: summary, // 'Summary of your event'
+  //     description: description, // 'More description'
+  //     organizer: {
+  //       // 'organizer details'
+  //       name: name,
+  //       email: email,
+  //     },
+  //   });
+  //   return cal;
+  // };
   // this function is used to fetch the call or other call detials by id
   getActivity = async (activity_id) => {
     try {
@@ -3784,6 +3819,46 @@ class ActivityService {
     } catch (error) {
       logger.error(`Error while fetching completion history: ${error}`);
 
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // competition  points statistics for the agency and agency team member
+  competitionStats = async (user) => {
+    try {
+      let total_referral_points;
+      const match_condition = { user_id: user?.reference_id };
+      if (user?.role?.name === "agency") {
+        total_referral_points = await Agency.findById(
+          user?.reference_id
+        ).lean();
+      } else if (user?.role?.name === "team_agency") {
+        match_condition.type = { $ne: "referral" };
+        total_referral_points = await Team_Agency.findById(
+          user?.reference_id
+        ).lean();
+      }
+
+      const [competition] = await Competition_Point.aggregate([
+        { $match: match_condition },
+        {
+          $group: {
+            _id: "$user_id",
+            totalPoints: {
+              $sum: {
+                $toInt: "$point",
+              },
+            },
+          },
+        },
+      ]);
+
+      return {
+        available_points: total_referral_points?.total_referral_point || 0,
+        earned_points: competition?.totalPoints || 0,
+      };
+    } catch (error) {
+      logger.error(`Error while fetching the competition stats: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
