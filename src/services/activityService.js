@@ -2155,6 +2155,13 @@ class ActivityService {
           moment(start_date).month() + 1, // Months are zero-based in JavaScript Date objects
           moment(start_date).date(),
           moment(start_time).hour(),
+          moment(start_time).minute(),
+        ],
+        end: [
+          moment(recurring_date).year(),
+          moment(recurring_date).month() + 1, // Months are zero-based in JavaScript Date objects
+          moment(recurring_date).date(),
+          moment(end_time).hour(),
           moment(end_time).minute(),
         ],
 
