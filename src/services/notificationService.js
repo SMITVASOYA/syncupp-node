@@ -15,7 +15,6 @@ class NotificationService {
   addNotification = async (payload, id) => {
     let { module_name, activity_type_action, client_id, assign_to, agenda } =
       payload;
-
     if (payload?.agenda) payload.agenda = extractTextFromHtml(agenda);
     try {
       var with_unread_count = async (notification_data, user_id) => {
@@ -73,16 +72,29 @@ class NotificationService {
           );
         };
 
-        await createAndEmitNotification(
-          client_id,
-          message_type,
-          "clientMessage"
-        );
-        await createAndEmitNotification(
-          assign_to,
-          message_type,
-          "assignToMessage"
-        );
+        if (payload?.log_user === "member") {
+          await createAndEmitNotification(
+            client_id,
+            message_type,
+            "clientMessage"
+          );
+          await createAndEmitNotification(
+            payload.assign_by,
+            message_type,
+            "assignByMessage"
+          );
+        } else {
+          await createAndEmitNotification(
+            client_id,
+            message_type,
+            "clientMessage"
+          );
+          await createAndEmitNotification(
+            assign_to,
+            message_type,
+            "assignToMessage"
+          );
+        }
         attendees &&
           attendees[0] &&
           attendees.map(async (item) => {
