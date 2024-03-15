@@ -1925,8 +1925,7 @@ class ActivityService {
           const agencyData = await Authentication.findById(
             getTask[0].assign_by._id
           );
-          console.log(agencyData);
-          console.log("fetgegeg");
+
           //   ----------    Notifications start ----------
           await notificationService.addNotification(
             {
@@ -1952,7 +1951,6 @@ class ActivityService {
       } else {
         //   ----------    Notifications start ----------
         if (user.role.name === "agency") {
-          console.log("agency");
           const activity_email_template = activityTemplate({
             ...getTask[0],
             activity_type: getTask[0].activity_type,
@@ -2009,8 +2007,6 @@ class ActivityService {
           user.role.name === "team_agency" ||
           user.role.name === "team_client"
         ) {
-          console.log("team agency");
-
           const agencyData = await Authentication.findById(
             getTask[0].assign_by._id
           );
@@ -3730,7 +3726,6 @@ class ActivityService {
       }
 
       let tags_data = await Activity.find(queryObj).select("tags").lean();
-      console.log(tags_data);
       let tagsList = [];
       tags_data.forEach((item) => {
         let tagData = [];
@@ -3743,7 +3738,6 @@ class ActivityService {
       let uniqueTags = [
         ...new Set(tagsList.filter((tag) => tag !== undefined)),
       ];
-      console.log(uniqueTags);
       return uniqueTags;
     } catch (error) {
       logger.error(`Error while fetch tags list : ${error}`);

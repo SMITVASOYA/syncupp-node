@@ -704,7 +704,7 @@ exports.agrementEmail = (data) => {
                                                 font-size: 14px;
                                               "
                                               ><img
-                                                src="logo.png"
+                                                src="${process.env.SERVER_URL}/template/syncupp-logo.png"
                                                 alt="Logo"
                                                 style="
                                                   display: block;
@@ -738,7 +738,7 @@ exports.agrementEmail = (data) => {
                                           padding: 0 20px;
                                         "
                                       >
-                                        ${data.title}
+                                        ${data?.title}
                                       </h3>
                                       <table
                                         cellpadding="0"
@@ -765,7 +765,7 @@ exports.agrementEmail = (data) => {
                                               font-size: 14px;
                                             "
                                           >
-                                            ${data.dueDate}
+                                            ${data?.dueDate}
                                           </td>
                                         </tr>
                                       </table>
@@ -807,7 +807,7 @@ exports.agrementEmail = (data) => {
                                               padding: 0 10px;
                                             "
                                           >
-                                            <p>${data.content}</p>
+                                            <p>${data?.content}</p>
                                             <!-- <p>
                                               Lorem ipsum dolor sit, amet
                                               consectetur adipisicing elit. Quia
@@ -875,9 +875,9 @@ exports.agrementEmail = (data) => {
                                                 padding-left: 0;
                                               "
                                             >
-                                              <li>${data.receiverName}</li>
-                                              <li>${data.receiverEmail}</li>
-                                              <li>${data.receiverNumber}</li>
+                                              <li>${data?.receiverName}</li>
+                                              <li>${data?.receiverEmail}</li>
+                                              <li>${data?.receiverNumber}</li>
                                             </ul>
                                           </td>
                                           <td
@@ -895,9 +895,9 @@ exports.agrementEmail = (data) => {
                                                 padding-left: 0;
                                               "
                                             >
-                                              <li>${data.senderName}</li>
-                                              <li>${data.senderEmail}</li>
-                                              <li>${data.receiverNumber}</li>
+                                              <li>${data?.senderName}</li>
+                                              <li>${data?.senderEmail}</li>
+                                              <li>${data?.senderNumber}</li>
                                             </ul>
                                           </td>
                                         </tr>
@@ -5950,7 +5950,7 @@ exports.inquiryTemplate = (data) => {
                                           font-size: 14px;
                                         "
                                         ><img
-                                          src="logo.png"
+                                          src="${process.env.SERVER_URL}/template/syncupp-logo.png"
                                           alt="Logo"
                                           style="
                                             display: block;
@@ -6960,7 +6960,9 @@ exports.activityTemplate = (data) => {
                                         text-decoration: underline;
                                         color: #2d3142;
                                         font-size: 14px;
-                                      "><img src="logo.png" alt="Logo" style="
+                                      "><img src="${
+                                        process.env.SERVER_URL
+                                      }/template/syncupp-logo.png" alt="Logo" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -7807,7 +7809,7 @@ exports.invitationEmailTemplate = (data) => {
                                         text-decoration: underline;
                                         color: #2d3142;
                                         font-size: 14px;
-                                      "><img src="logo.png" alt="Logo" style="
+                                      "><img src="${process.env.SERVER_URL}/template/syncupp-logo.png" alt="Logo" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -7886,7 +7888,7 @@ exports.invitationEmailTemplate = (data) => {
                                         color: #111318;
                                         text-align: center;
                                       ">
-                                    Hi <span>(Name)</span>,&nbsp;
+                                    Hi <span>${data?.email}</span>,&nbsp;
                                   </h3>
                                   <p style="
                                         margin: 0;
@@ -7923,7 +7925,6 @@ exports.invitationEmailTemplate = (data) => {
                                     benefits. This invitation is a token of our
                                     appreciation for your continued support.
                                   </p>
-                                  <img src="fp-image.png" alt="forgot password" />
                                   <a target="_blank" href="${data.link}" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
@@ -8670,7 +8671,7 @@ exports.taskTemplate = (data) => {
                                         text-decoration: underline;
                                         color: #2d3142;
                                         font-size: 14px;
-                                      "><img src="logo.png" alt="Logo" style="
+                                      "><img src="${process.env.SERVER_URL}/template/syncupp-logo.png" alt="Logo" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -9449,7 +9450,9 @@ exports.eventTemplate = (data) => {
                                         text-decoration: underline;
                                         color: #2d3142;
                                         font-size: 14px;
-                                      "><img src="logo.png" alt="Logo" style="
+                                      "><img src="${
+                                        process.env.SERVER_URL
+                                      }/template/syncupp-logo.png" alt="Logo" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -10262,7 +10265,9 @@ exports.agencyCreatedTemplate = (data) => {
                                         text-decoration: underline;
                                         color: #2d3142;
                                         font-size: 14px;
-                                      "><img src="logo.png" alt="Logo" style="
+                                      "><img src="${
+                                        process.env.SERVER_URL
+                                      }/template/syncupp-logo.png" alt="Logo" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -11016,7 +11021,9 @@ exports.memberDeletedTemplate = (data) => {
                                         text-decoration: underline;
                                         color: #2d3142;
                                         font-size: 14px;
-                                      "><img src="logo.png" alt="Logo" style="
+                                      "><img src="${
+                                        process.env.SERVER_URL
+                                      }/template/syncupp-logo.png" alt="Logo" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -11789,7 +11796,9 @@ exports.memberDeletedClient = (data) => {
                                         text-decoration: underline;
                                         color: #2d3142;
                                         font-size: 14px;
-                                      "><img src="logo.png" alt="Logo" style="
+                                      "><img src="${
+                                        process.env.SERVER_URL
+                                      }/template/syncupp-logo.png" alt="Logo" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -12564,7 +12573,9 @@ exports.clientMemberAdded = (data) => {
                                         text-decoration: underline;
                                         color: #2d3142;
                                         font-size: 14px;
-                                      "><img src="logo.png" alt="Logo" style="
+                                      "><img src="${
+                                        process.env.SERVER_URL
+                                      }/template/syncupp-logo.png" alt="Logo" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
