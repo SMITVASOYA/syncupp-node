@@ -16,7 +16,6 @@ class NotificationService {
     let { module_name, activity_type_action, client_id, assign_to, agenda } =
       payload;
 
-    console.log(payload);
     if (payload?.agenda) payload.agenda = extractTextFromHtml(agenda);
     try {
       var with_unread_count = async (notification_data, user_id) => {
@@ -76,7 +75,6 @@ class NotificationService {
 
         if (payload?.log_user === "member") {
           if (activity_type_action === "createTask") {
-            console.log(payload);
             await createAndEmitNotification(
               payload.agency_id,
               message_type,
@@ -354,7 +352,6 @@ class NotificationService {
         // cMember deleted by client
 
         if (action_name === "memberDeleted") {
-          console.log("first");
           await createAndEmitNotification(
             payload.receiver_id,
             "memberDeletedClient",
@@ -384,7 +381,6 @@ class NotificationService {
 
   // Admin Notification
   addAdminNotification = async (payload, id) => {
-    console.log(payload);
     try {
       const with_unread_count = async (notification_data, user_id) => {
         const un_read_count = await Notification.countDocuments({
@@ -398,7 +394,6 @@ class NotificationService {
       };
 
       const admin = await Admin.findOne({});
-      console.log(admin);
       let { action_name } = payload;
       const createAndEmitNotification = async (
         userId,
@@ -416,8 +411,6 @@ class NotificationService {
           data_reference_id: id,
           message: message,
         });
-
-        console.log(notification);
 
         eventEmitter(
           "NOTIFICATION",
@@ -447,7 +440,6 @@ class NotificationService {
   getNotification = async (user, searchObj) => {
     try {
       if (user?.role?.name === undefined) {
-        console.log("fwfw");
         const { skip, limit } = searchObj;
         const notifications = await Notification.find({
           user_id: user._id,
