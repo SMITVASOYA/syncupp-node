@@ -1007,12 +1007,12 @@ class PaymentService {
         if (occupied_sheets?.items[i] != undefined) {
           occupied_sheets.items[i] = {
             ...occupied_sheets?.items[i],
-            seat_no: i + 1,
+            seat_no: (i + 1).toString(),
             status: "Allocated",
           };
         } else {
           occupied_sheets.items[i] = {
-            seat_no: i + 1,
+            seat_no: (i + 1).toString(),
             status: "Available",
           };
         }
@@ -1054,9 +1054,9 @@ class PaymentService {
           }
 
           if (payload?.sort_order === "asc") {
-            return nameA.localeCompare(nameB);
+            return nameA?.localeCompare(nameB);
           } else {
-            return nameB.localeCompare(nameA);
+            return nameB?.localeCompare(nameA);
           }
         });
       }
