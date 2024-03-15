@@ -72,7 +72,8 @@
     },
     "taskOverdue": {
       "clientMessage": "Task '${title}' has been overdue.",
-      "assignToMessage": "Task '${title}' has been overdue."
+      "assignToMessage": "Task '${title}' has been overdue.",
+      "assignByMessage": "Task '${title}' has been overdue."
     },
     "taskDueDate": {
       "clientMessage": "Today is the due date for Task '${title}'.",
