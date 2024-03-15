@@ -75,6 +75,27 @@ class NotificationService {
         };
 
         if (payload?.log_user === "member") {
+          if (activity_type_action === "createTask") {
+            console.log(payload);
+            await createAndEmitNotification(
+              payload.agency_id,
+              message_type,
+              "assignByMessage"
+            );
+
+            await createAndEmitNotification(
+              payload.assign_to,
+              message_type,
+              "assignToMessage"
+            );
+
+            await createAndEmitNotification(
+              payload.client_id,
+              message_type,
+              "clientMessage"
+            );
+          }
+
           await createAndEmitNotification(
             client_id,
             message_type,

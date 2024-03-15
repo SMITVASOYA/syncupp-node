@@ -818,6 +818,7 @@ class InvoiceService {
         sent,
         currency,
         memo,
+        invoice_number,
       } = payload;
 
       if (due_date < invoice_date) {
@@ -853,6 +854,7 @@ class InvoiceService {
                 status: getInvoiceStatus,
                 currency,
                 memo,
+                invoice_number,
               },
             }
           );

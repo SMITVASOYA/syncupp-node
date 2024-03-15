@@ -1265,7 +1265,7 @@ class ActivityService {
     }
   };
 
-  updateTask = async (payload, id, files) => {
+  updateTask = async (payload, id, files, logInUser) => {
     try {
       const {
         title,
@@ -1576,7 +1576,7 @@ class ActivityService {
         message: taskMessage,
       });
 
-      if (user?.role?.name === "agency") {
+      if (logInUser?.role?.name === "agency") {
         // -------------- Socket notification start --------------------
 
         const client_data = await Authentication.findOne({
@@ -2341,6 +2341,61 @@ class ActivityService {
         });
         await notificationService.addNotification(
           {
+            assign_by: user.reference_id,
+            assigned_by_name: user.first_name + " " + user.last_name,
+            client_name: client_data.first_name + " " + client_data.last_name,
+            assigned_to_name:
+              assign_to_data.first_name + " " + assign_to_data.last_name,
+            ...payload,
+            module_name: "activity",
+            activity_type_action: "create_call_meeting",
+            activity_type:
+              activity_type === "others" ? "activity" : "call meeting",
+          },
+          newActivity._id
+        );
+        // ---------------- End ---------------
+      }
+      if (user?.role?.name === "team_agency") {
+        // --------------- Start--------------------
+        const [assign_to_data, client_data, attendees_data] = await Promise.all(
+          [
+            Authentication.findOne({ reference_id: assign_to }).lean(),
+            Authentication.findOne({ reference_id: client_id }).lean(),
+            Authentication.find({ reference_id: { $in: attendees } }).lean(),
+          ]
+        );
+
+        const activity_email_template = activityTemplate({
+          ...payload,
+          status: mark_as_done ? "completed" : "pending",
+          assigned_by_name: user.first_name + " " + user.last_name,
+          client_name: client_data.first_name + " " + client_data.last_name,
+          assigned_to_name:
+            assign_to_data.first_name + " " + assign_to_data.last_name,
+        });
+
+        sendEmail({
+          email: client_data?.email,
+          subject: returnMessage("emailTemplate", "newActivityMeeting"),
+          message: activity_email_template,
+          icsContent: file,
+        });
+        sendEmail({
+          email: assign_to_data?.email,
+          subject: returnMessage("emailTemplate", "newActivityMeeting"),
+          message: activity_email_template,
+          icsContent: file,
+        });
+
+        const agencyData = await Authentication.findOne({
+          reference_id: newActivity?.agency_id,
+        });
+
+        await notificationService.addNotification(
+          {
+            agency_name: agencyData?.first_name + " " + agencyData?.last_name,
+            agency_id: agencyData?.reference_id,
             assign_by: user.reference_id,
             assigned_by_name: user.first_name + " " + user.last_name,
             client_name: client_data.first_name + " " + client_data.last_name,

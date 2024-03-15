@@ -4999,7 +4999,7 @@ exports.invoiceTemplate = (invoiceData) => {
                                              invoiceData?.to?.contact_number
                                                ? invoiceData?.to
                                                    ?.contact_number + ","
-                                               : `&nbsp;`
+                                               : "-"
                                            }
                                           </li>
                                         </ul>
@@ -5055,7 +5055,7 @@ exports.invoiceTemplate = (invoiceData) => {
                                     <thead style="color: rgb(96, 96, 96); font-weight: 400;
                                     border-bottom: 1px solid black; text-align: left;">
                                       <th style="font-size: 14px; font-weight: 500;">Item</th>
-                                      <th style="font-size: 14px; font-weight: 500;">Desctiptions</th>
+                                      <th style="font-size: 14px; font-weight: 500;">Descriptions</th>
                                       <th style="font-size: 14px; font-weight: 500;">Qty</th>
                                       <th style="font-size: 14px; font-weight: 500;">Rate</th>
                                       <th style="font-size: 14px; font-weight: 500;">Tax</th>
