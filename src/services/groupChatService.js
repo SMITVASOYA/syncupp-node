@@ -119,18 +119,15 @@ class GroupChatService {
 
       members.forEach(async (member) => {
         if (member === user?.reference_id?.toString()) return;
-        const [pending_notification] = await Promise.all([
-          Notification.countDocuments({
-            user_id: member,
-            is_read: false,
-          }),
-        ]);
 
         notification_obj.user_id = member;
         notification_obj.message = notification_message;
 
         await Notification.create(notification_obj);
-
+        const pending_notification = await Notification.countDocuments({
+          user_id: member,
+          is_read: false,
+        });
         eventEmitter(
           "NOTIFICATION",
           {
@@ -183,7 +180,7 @@ class GroupChatService {
       ]);
 
       const updated_group_id = [];
-      const final_group_array = [];
+      let final_group_array = [];
       for (let i = 0; i < chat_messages.length; i++) {
         if (
           !updated_group_id.includes(chat_messages[i]?.group_id?.toString())
@@ -199,6 +196,7 @@ class GroupChatService {
             const group_obj = {
               group_name: group?.group_name,
               last_message_date: chat_messages[i]?.createdAt,
+              createdAt: chat_messages[i]?.createdAt,
               _id: group?._id,
             };
 
@@ -214,8 +212,10 @@ class GroupChatService {
           }
         }
       }
+      final_group_array = [...final_group_array, ...group_ids];
 
-      return [...final_group_array, ...group_ids];
+      final_group_array.sort((a, b) => b.createdAt - a.createdAt);
+      return final_group_array;
     } catch (error) {
       logger.error(`Error while fetching the group list: ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -228,7 +228,18 @@ class GroupChatService {
         { group_id: payload?.group_id, user_id: user?.reference_id },
         { $set: { is_read: true } }
       );
+      const pending_notification = await Notification.countDocuments({
+        user_id: user?.reference_id,
+        is_read: false,
+      });
 
+      eventEmitter(
+        "NOTIFICATION",
+        {
+          un_read_count: pending_notification,
+        },
+        user?.reference_id
+      );
       return await Chat.aggregate([
         {
           $match: {
@@ -336,17 +347,16 @@ class GroupChatService {
 
         new_users.forEach(async (member) => {
           if (member === user?.reference_id) return;
-          const [pending_notification] = await Promise.all([
-            Notification.countDocuments({
-              user_id: member,
-              is_read: false,
-            }),
-          ]);
 
           notification_obj.user_id = member;
           notification_obj.message = notification_message;
 
           await Notification.create(notification_obj);
+
+          const pending_notification = await Notification.countDocuments({
+            user_id: member,
+            is_read: false,
+          });
 
           eventEmitter(
             "NOTIFICATION",

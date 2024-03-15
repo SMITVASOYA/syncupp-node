@@ -431,10 +431,6 @@ class PaymentService {
         .update(razorpay_order_id + "|" + razorpay_payment_id, "utf-8")
         .digest("hex");
 
-      const memberData = await Authentication.findOne({
-        reference_id: payload?.user_id,
-      }).lean();
-
       if (
         expected_signature_1 === razorpay_signature ||
         expected_signature_2 === razorpay_signature
@@ -454,7 +450,11 @@ class PaymentService {
 
         // ---------------------- Notification ----------------------
 
-        return { success: true, message: status_change?.message };
+        return {
+          success: true,
+          message: status_change?.message,
+          updated_agency_detail: status_change?.updated_agency_detail,
+        };
       }
 
       // ---------------------- Notification ----------------------
@@ -553,13 +553,14 @@ class PaymentService {
         razorpay_payment_id,
       } = payload;
       if (payload?.agency_id && !payload?.user_id) {
-        await Authentication.findOneAndUpdate(
+        let updated_agency_detail = await Authentication.findOneAndUpdate(
           { reference_id: agency_id },
           {
             status: "confirmed",
             subscribe_date: moment().format("YYYY-MM-DD").toString(),
             last_login_date: moment.utc().startOf("day"),
-          }
+          },
+          { new: true }
         );
         // commenting to create the payment history by the webhook
         // await PaymentHistory.create({
@@ -579,9 +580,15 @@ class PaymentService {
           },
           { upsert: true }
         );
+        updated_agency_detail = updated_agency_detail.toJSON();
+        delete updated_agency_detail?.password;
+        delete updated_agency_detail?.is_google_signup;
+        delete updated_agency_detail?.is_facebook_signup;
+        delete updated_agency_detail?.subscription_id;
         return {
           success: true,
           message: returnMessage("payment", "paymentCompleted"),
+          updated_agency_detail,
         };
       } else if (payload?.agency_id && payload?.user_id) {
         const [agency_details, user_details, sheets] = await Promise.all([

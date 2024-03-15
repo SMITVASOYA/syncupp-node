@@ -33,6 +33,10 @@ exports.socket_connection = (http_server) => {
       logger.info(`Socket ${socket.id} has disconnected.`);
     });
 
+    socket.on("JOIN_ROOM", (payload) => {
+      socket.join(payload?._id?.toString());
+    });
+
     // For user joined
     socket.on("ROOM", async (obj) => {
       logger.info(obj.id, 15);
@@ -160,7 +164,8 @@ exports.socket_connection = (http_server) => {
             is_read: false,
           });
 
-          io.to(payload?.to_user?.toString()).emit("NOTIFICATION", {
+          const user_id = payload?.to_user?.toString();
+          io.to(user_id).emit("NOTIFICATION", {
             notification,
             un_read_count: pending_notification,
           });
@@ -472,7 +477,11 @@ exports.socket_connection = (http_server) => {
     socket.on("NOT_ONGOING_GROUP_CHAT", async (payload) => {
       try {
         console.log("NOT_ONGOING_GROUP_CHAT");
+        const group_detail = await Group_Chat.findById(payload?.group_id)
+          .select("group_name")
+          .lean();
         payload?.members?.forEach(async (member) => {
+          if (member.toString() == payload?.from_user?.toString()) return;
           const notification_exist = await Notification.findOne({
             group_id: payload?.group_id,
             user_id: member,
@@ -489,23 +498,25 @@ exports.socket_connection = (http_server) => {
 
             notification_message = notification_message.replaceAll(
               "{{group_name}}",
-              capitalizeFirstLetter(payload?.group_name)
+              capitalizeFirstLetter(group_detail?.group_name)
             );
             const notification = await Notification.create({
               type: "group",
-              user_id: payload?.to_user,
-              from_user: member,
+              group_id: payload?.group_id,
+              user_id: member,
               data_reference_id: payload?._id,
               message: notification_message,
-              group_id: payload?.group_id,
             });
 
             const pending_notification = await Notification.countDocuments({
-              user_id: payload?.to_user,
+              user_id: member,
+              type: "group",
+              group_id: payload?.group_id,
+              user_id: member,
               is_read: false,
             });
-
-            socket.to(payload?.to_user?.toString()).emit("NOTIFICATION", {
+            const member_id = member?.toString();
+            io.to(member_id).emit("NOTIFICATION", {
               notification,
               un_read_count: pending_notification,
             });
