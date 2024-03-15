@@ -2308,50 +2308,54 @@ class ActivityService {
         });
       });
 
-      // --------------- Start--------------------
-      const [assign_to_data, client_data, attendees_data] = await Promise.all([
-        Authentication.findOne({ reference_id: assign_to }).lean(),
-        Authentication.findOne({ reference_id: client_id }).lean(),
-        Authentication.find({ reference_id: { $in: attendees } }).lean(),
-      ]);
+      if (user?.role?.name === "agency") {
+        // --------------- Start--------------------
+        const [assign_to_data, client_data, attendees_data] = await Promise.all(
+          [
+            Authentication.findOne({ reference_id: assign_to }).lean(),
+            Authentication.findOne({ reference_id: client_id }).lean(),
+            Authentication.find({ reference_id: { $in: attendees } }).lean(),
+          ]
+        );
 
-      const activity_email_template = activityTemplate({
-        ...payload,
-        status: mark_as_done ? "completed" : "pending",
-        assigned_by_name: user.first_name + " " + user.last_name,
-        client_name: client_data.first_name + " " + client_data.last_name,
-        assigned_to_name:
-          assign_to_data.first_name + " " + assign_to_data.last_name,
-      });
-
-      sendEmail({
-        email: client_data?.email,
-        subject: returnMessage("emailTemplate", "newActivityMeeting"),
-        message: activity_email_template,
-        icsContent: file,
-      });
-      sendEmail({
-        email: assign_to_data?.email,
-        subject: returnMessage("emailTemplate", "newActivityMeeting"),
-        message: activity_email_template,
-        icsContent: file,
-      });
-      await notificationService.addNotification(
-        {
-          assign_by: user.reference_id,
+        const activity_email_template = activityTemplate({
+          ...payload,
+          status: mark_as_done ? "completed" : "pending",
           assigned_by_name: user.first_name + " " + user.last_name,
           client_name: client_data.first_name + " " + client_data.last_name,
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
-          ...payload,
-          module_name: "activity",
-          activity_type_action: "create_call_meeting",
-          activity_type:
-            activity_type === "others" ? "activity" : "call meeting",
-        },
-        newActivity._id
-      );
-      // ---------------- End ---------------
+        });
+
+        sendEmail({
+          email: client_data?.email,
+          subject: returnMessage("emailTemplate", "newActivityMeeting"),
+          message: activity_email_template,
+          icsContent: file,
+        });
+        sendEmail({
+          email: assign_to_data?.email,
+          subject: returnMessage("emailTemplate", "newActivityMeeting"),
+          message: activity_email_template,
+          icsContent: file,
+        });
+        await notificationService.addNotification(
+          {
+            assign_by: user.reference_id,
+            assigned_by_name: user.first_name + " " + user.last_name,
+            client_name: client_data.first_name + " " + client_data.last_name,
+            assigned_to_name:
+              assign_to_data.first_name + " " + assign_to_data.last_name,
+            ...payload,
+            module_name: "activity",
+            activity_type_action: "create_call_meeting",
+            activity_type:
+              activity_type === "others" ? "activity" : "call meeting",
+          },
+          newActivity._id
+        );
+        // ---------------- End ---------------
+      }
 
       return;
     } catch (error) {
