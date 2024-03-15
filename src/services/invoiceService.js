@@ -808,7 +808,7 @@ class InvoiceService {
   };
 
   // Update Invoice   ------   AGENCY API
-  updateInvoice = async (payload, invoiceIdToUpdate) => {
+  updateInvoice = async (payload, invoiceIdToUpdate, user) => {
     try {
       const {
         due_date,
@@ -820,6 +820,18 @@ class InvoiceService {
         memo,
         invoice_number,
       } = payload;
+
+      const draftKey = await Invoice_Status_Master.findOne({ name: "draft" });
+
+      const isInvoice = await Invoice.findOne({
+        invoice_number: invoice_number,
+        agency_id: user.reference_id,
+        status: { $ne: draftKey?._id },
+      });
+
+      if (isInvoice) {
+        return throwError(returnMessage("invoice", "invoiceNumberExists"));
+      }
 
       if (due_date < invoice_date) {
         return throwError(returnMessage("invoice", "invalidDueDate"));

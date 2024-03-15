@@ -102,7 +102,7 @@ exports.deleteInvoice = catchAsyncError(async (req, res, next) => {
 // Update Invoice  ------   Agency API
 
 exports.updateInvoice = catchAsyncError(async (req, res, next) => {
-  await invoiceService.updateInvoice(req.body, req?.params?.id);
+  await invoiceService.updateInvoice(req.body, req?.params?.id, req?.user);
   sendResponse(
     res,
     true,
