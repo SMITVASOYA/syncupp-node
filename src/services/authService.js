@@ -1167,12 +1167,13 @@ class AuthService {
       const { email } = payload;
       if (!validateEmail(email)) return returnMessage("auth", "invalidEmail");
       const email_exist = await Authentication.findOne({ email }).lean();
-      if (!email_exist) return returnMessage("auth", "emailExist");
+      if (email_exist) return returnMessage("auth", "emailExist");
       const link = `${process.env.REACT_APP_URL}/signup?referral=${user?.referral_code}`;
 
       const refferralEmail = invitationEmailTemplate({
         link: link,
-        user: `${user?.first_name}+ " "+ ${user?.last_name} `,
+        user: `${user?.first_name} ${user?.last_name} `,
+        email,
       });
 
       await sendEmail({

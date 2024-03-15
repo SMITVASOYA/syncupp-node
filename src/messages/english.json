@@ -239,7 +239,8 @@
     "subscriptionCancelled": "Subscription cancelled successfully.",
     "subscriptionFetched": "Subscription details fetched successfully.",
     "canNotCancel": "Subscription can not be cancelled.",
-    "couponpurchase": "Coupon purchased successfully."
+    "couponpurchase": "Coupon purchased successfully.",
+    "CouponNotExist": "Coupon does not exists."
   },
   "affiliate": {
     "registered": "User registered successfully.",
