@@ -558,7 +558,6 @@ class PaymentService {
           {
             status: "confirmed",
             subscribe_date: moment().format("YYYY-MM-DD").toString(),
-            last_login_date: moment.utc().startOf("day"),
           },
           { new: true }
         );
@@ -667,15 +666,6 @@ class PaymentService {
               " " +
               capitalizeFirstLetter(user_details?.last_name),
             invitation_text
-          );
-
-          await Authentication.findByIdAndUpdate(
-            user_details?._id,
-            {
-              status: "confirm_pending",
-              last_login_date: moment.utc().startOf("day"),
-            },
-            { new: true }
           );
 
           await sendEmail({
@@ -1040,17 +1030,17 @@ class PaymentService {
         occupied_sheets?.items.sort((a, b) => {
           let nameA, nameB;
           if (payload?.sort_field === "name") {
-            nameA = a.name.toLowerCase();
-            nameB = b.name.toLowerCase();
+            nameA = a?.name?.toLowerCase();
+            nameB = b?.name?.toLowerCase();
           } else if (payload?.sort_field === "role") {
-            nameA = a.role.toLowerCase();
-            nameB = b.role.toLowerCase();
+            nameA = a?.role?.toLowerCase();
+            nameB = b?.role?.toLowerCase();
           } else if (payload?.sort_field === "status") {
-            nameA = a.status.toLowerCase();
-            nameB = b.status.toLowerCase();
+            nameA = a?.status?.toLowerCase();
+            nameB = b?.status?.toLowerCase();
           } else if (payload?.sort_field === "seat_no") {
-            nameA = a.seat_no;
-            nameB = b.seat_no;
+            nameA = a?.seat_no;
+            nameB = b?.seat_no;
           }
 
           if (payload?.sort_order === "asc") {
@@ -1430,15 +1420,6 @@ class PaymentService {
               " " +
               capitalizeFirstLetter(user_details?.last_name),
             invitation_text
-          );
-
-          await Authentication.findByIdAndUpdate(
-            user_details?._id,
-            {
-              status: "confirm_pending",
-              last_login_date: moment.utc().startOf("day"),
-            },
-            { new: true }
           );
 
           await sendEmail({

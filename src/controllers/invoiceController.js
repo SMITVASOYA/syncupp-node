@@ -157,7 +157,6 @@ exports.downloadPdf = catchAsyncError(async (req, res, next) => {
 // Currency Listing
 
 exports.currencyList = catchAsyncError(async (req, res, next) => {
-  console.log(req?.user);
   var list = await invoiceService.currencyList(req?.user);
   sendResponse(
     res,
