@@ -78,6 +78,9 @@
     "taskDueDate": {
       "clientMessage": "Today is the due date for Task '${title}'.",
       "assignToMessage": "Today is the due date for Task '${title}'."
+    },
+    "meetingAlert": {
+      "alertMessage": "The meeting titled '${title}' will start in 15 minutes; please get ready."
     }
   },
   "agreement": {

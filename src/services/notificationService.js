@@ -49,6 +49,8 @@ class NotificationService {
           message_type = "activityOverdue";
         if (activity_type_action === "dueDateAlert")
           message_type = "activityDueDate";
+        if (activity_type_action === "meetingAlert")
+          message_type = "meetingAlert";
 
         const createAndEmitNotification = async (
           userId,
@@ -106,6 +108,35 @@ class NotificationService {
             message_type,
             "assignByMessage"
           );
+        }
+
+        if (activity_type_action === "meetingAlert") {
+          console.log("first");
+          await createAndEmitNotification(
+            payload.client_id,
+            message_type,
+            "alertMessage"
+          );
+          await createAndEmitNotification(
+            payload.assign_by,
+            message_type,
+            "alertMessage"
+          );
+          await createAndEmitNotification(
+            payload.assign_to,
+            message_type,
+            "alertMessage"
+          );
+
+          attendees &&
+            attendees[0] &&
+            attendees.map(async (item) => {
+              await createAndEmitNotification(
+                item,
+                message_type,
+                "alertMessage"
+              );
+            });
         } else {
           await createAndEmitNotification(
             client_id,
@@ -117,16 +148,17 @@ class NotificationService {
             message_type,
             "assignToMessage"
           );
+
+          attendees &&
+            attendees[0] &&
+            attendees.map(async (item) => {
+              await createAndEmitNotification(
+                item,
+                message_type,
+                "attendeesMessage"
+              );
+            });
         }
-        attendees &&
-          attendees[0] &&
-          attendees.map(async (item) => {
-            await createAndEmitNotification(
-              item,
-              message_type,
-              "attendeesMessage"
-            );
-          });
       }
 
       // Task

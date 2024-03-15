@@ -4,6 +4,9 @@ const invoiceService = new InvoiceService();
 const ActivityService = require("../services/activityService");
 const activityService = new ActivityService();
 const Configuration = require("../models/configurationSchema");
+const Activity_Type_Master = require("../models/masters/activityTypeMasterSchema");
+const Activity = require("../models/activitySchema");
+const moment = require("moment");
 
 exports.setupNightlyCronJob = async () => {
   const config = await Configuration.findOne({});
@@ -23,5 +26,42 @@ exports.setupNightlyCronJob = async () => {
   cron.schedule(activityDueDateCronSchedule, () => {
     console.log("Running the nightly cron job activity for due date...");
     activityService.dueDateCronJob();
+  });
+
+  // Crone job for 15 minutes start
+
+  cron.schedule("* * * * *", async () => {
+    console.log("first");
+    const currentDate = moment().startOf("day");
+    const callMeeting = await Activity_Type_Master.findOne({
+      name: "call_meeting",
+    });
+    const meetings = await Activity.find({
+      activity_type: callMeeting._id,
+      is_deleted: false,
+      meeting_start_time: {
+        $gte: currentDate.toDate(), // Meetings starting today
+        $lte: moment().add(15, "minutes").toDate(), // Meetings starting within 15 minutes
+      },
+    }).lean();
+
+    meetings.forEach((meeting) => {
+      const meetingStartTime = moment.utc(meeting.meeting_start_time);
+      const cronTime = moment(meetingStartTime)
+        .subtract(15, "minutes")
+        .toDate();
+      const cronTimeString = moment(cronTime).format("m H D M *");
+      console.log(meetingStartTime);
+      console.log(cronTime);
+      console.log(cronTimeString);
+      cron.schedule(cronTimeString, () => {
+        console.log(
+          `Running the 15 min befor call meeting of ${meeting.title}...`
+        );
+        console.log(meeting._id);
+        activityService.meetingAlertCronJob(meeting); // Pass meeting details to the cron job function
+      });
+    });
+    console.log("Crone job for 15 minutes done");
   });
 };

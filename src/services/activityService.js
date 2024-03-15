@@ -3505,8 +3505,20 @@ class ActivityService {
       throwError(error?.message, error?.statusCode);
     }
   };
-  // below function is used to fetch the top 3 performar weekly and monthly
-  // This will be used in the gamification module
+
+  meetingAlertCronJob = async (data) => {
+    try {
+      await notificationService.addNotification({
+        ...data,
+        module_name: "activity",
+        activity_type_action: "meetingAlert",
+      });
+    } catch (error) {
+      logger.error(`Error while Overdue crone Job PDF, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
   leaderboard = async (payload, user) => {
     try {
       let start_date, end_date;
