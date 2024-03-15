@@ -1035,20 +1035,20 @@ class PaymentService {
         });
       }
 
-      if (payload?.sort && payload?.sort !== "") {
+      if (payload?.sort_field && payload?.sort_field !== "") {
         // Sort the results based on the name
         occupied_sheets?.items.sort((a, b) => {
           let nameA, nameB;
-          if (payload?.sort === "name") {
+          if (payload?.sort_field === "name") {
             nameA = a.name.toLowerCase();
             nameB = b.name.toLowerCase();
-          } else if (payload?.sort === "role") {
+          } else if (payload?.sort_field === "role") {
             nameA = a.role.toLowerCase();
             nameB = b.role.toLowerCase();
-          } else if (payload?.sort === "status") {
+          } else if (payload?.sort_field === "status") {
             nameA = a.status.toLowerCase();
             nameB = b.status.toLowerCase();
-          } else if (payload?.sort === "seat_no") {
+          } else if (payload?.sort_field === "seat_no") {
             nameA = a.seat_no;
             nameB = b.seat_no;
           }
@@ -1809,6 +1809,8 @@ class PaymentService {
 
   couponPay = async (payload, user) => {
     try {
+      const coupon = await AdminCoupon.findById(payload?.couponId).lean();
+      if (!coupon) return returnMessage("payment", "CouponNotExist");
       if (user.role.name === "agency") {
         const agency = await Agency.findById(user?.reference_id);
         const referral_data = await Configuration.findOne().lean();
@@ -1821,12 +1823,6 @@ class PaymentService {
             returnMessage("referral", "insufficientReferralPoints")
           );
 
-        // payload?.redeem_required_point =
-        //   referral_data?.referral?.redeem_required_point;
-        // const status_change = await this.referralStatusChange(payload, user);
-        // if (!status_change.success) return { success: false };
-
-        const coupon = await AdminCoupon.findById(payload?.couponId).lean();
         await Agency.findOneAndUpdate(
           { _id: agency?._id },
           {
@@ -1834,7 +1830,7 @@ class PaymentService {
               total_referral_point: -referral_data?.coupon?.reedem_coupon,
             },
             $push: {
-              total_coupon: payload?.couponId,
+              total_coupon: coupon?._id,
             },
           },
           { new: true }
@@ -1869,7 +1865,7 @@ class PaymentService {
               total_referral_point: -referral_data?.coupon?.reedem_coupon,
             },
             $push: {
-              total_coupon: payload?.couponId,
+              total_coupon: coupon?._id,
             },
           },
           { new: true }
