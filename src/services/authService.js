@@ -762,15 +762,13 @@ class AuthService {
           let agency_key;
 
           if (existing_Data?.role?.name === "team_agency") {
-            agency_key = existing_Data.team_agency_detail.agency_id;
-            await Agency.findOneAndUpdate(
-              { _id: existing_Data.team_agency_detail.agency_id },
+            await Team_Agency.findOneAndUpdate(
+              { _id: existing_Data.reference_id },
               {
                 $inc: {
                   total_referral_point:
                     referral_data?.competition?.successful_login,
                 },
-                last_login_date: moment.utc().startOf("day"),
               },
               { new: true }
             );
