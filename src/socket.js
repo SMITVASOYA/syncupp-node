@@ -164,7 +164,8 @@ exports.socket_connection = (http_server) => {
             is_read: false,
           });
 
-          io.to(payload?.to_user?.toString()).emit("NOTIFICATION", {
+          const user_id = payload?.to_user?.toString();
+          io.to(user_id).emit("NOTIFICATION", {
             notification,
             un_read_count: pending_notification,
           });
@@ -514,7 +515,8 @@ exports.socket_connection = (http_server) => {
               user_id: member,
               is_read: false,
             });
-            io.to(member).emit("NOTIFICATION", {
+            const member_id = member?.toString();
+            io.to(member_id).emit("NOTIFICATION", {
               notification,
               un_read_count: pending_notification,
             });
