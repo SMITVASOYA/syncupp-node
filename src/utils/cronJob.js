@@ -31,7 +31,6 @@ exports.setupNightlyCronJob = async () => {
   // Crone job for 15 minutes start
 
   cron.schedule("* * * * *", async () => {
-    console.log("first");
     const currentDate = moment().startOf("day");
     const callMeeting = await Activity_Type_Master.findOne({
       name: "call_meeting",
@@ -51,17 +50,10 @@ exports.setupNightlyCronJob = async () => {
         .subtract(15, "minutes")
         .toDate();
       const cronTimeString = moment(cronTime).format("m H D M *");
-      console.log(meetingStartTime);
-      console.log(cronTime);
-      console.log(cronTimeString);
+
       cron.schedule(cronTimeString, () => {
-        console.log(
-          `Running the 15 min befor call meeting of ${meeting.title}...`
-        );
-        console.log(meeting._id);
         activityService.meetingAlertCronJob(meeting); // Pass meeting details to the cron job function
       });
     });
-    console.log("Crone job for 15 minutes done");
   });
 };
