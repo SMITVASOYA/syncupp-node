@@ -17,6 +17,7 @@ const notificationSchema = new mongoose.Schema(
         "general",
         "agency",
         "group",
+        "payment",
       ],
     },
     data_reference_id: { type: mongoose.Types.ObjectId },

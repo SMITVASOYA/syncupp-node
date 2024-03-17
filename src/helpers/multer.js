@@ -3,6 +3,10 @@ const fs = require("fs");
 const path = require("path");
 const Configuration = require("../models/configurationSchema");
 
+let configure;
+(async () => {
+  configure = await Configuration.findOne().lean();
+})();
 function getTotalSize(files) {
   let totalSize = 0;
   for (const file of files) {
@@ -71,7 +75,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 200 * 1024 * 1024, // 200MB maximum file size
+    fileSize: configure?.multer?.size || 200 * 1024 * 1024, // 200MB maximum file size
   },
   fileFilter: (req, file, cb) => {
     const allowedExtensions = [
@@ -118,9 +122,8 @@ const upload = multer({
 });
 // Middleware to check total file size before uploading
 const checkFileSize = async (req, res, next) => {
-  const maxSize = await Configuration.findOne({});
+  const maxSize = await Configuration.findOne({}).lean();
   const limit = parseInt(maxSize?.multer?.size) * 1024 * 1024;
-
   if (req.files && getTotalSize(req.files) > limit) {
     const error = new Error("Total file size exceeds 200MB limit");
     error.status = 400;

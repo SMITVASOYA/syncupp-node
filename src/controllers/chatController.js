@@ -59,3 +59,13 @@ exports.getGroup = catchAsyncError(async (req, res, next) => {
   const group = await groupChatService.getGroup(req.params.groupId);
   sendResponse(res, true, undefined, group, 200);
 });
+
+exports.uploadImage = catchAsyncError(async (req, res, next) => {
+  await chatService.uploadImage(req.body, req.file);
+  sendResponse(res, true, undefined, {}, 200);
+});
+
+exports.uploadDocument = catchAsyncError(async (req, res, next) => {
+  await chatService.uploadDocument(req.body, req.file);
+  sendResponse(res, true, undefined, {}, 200);
+});

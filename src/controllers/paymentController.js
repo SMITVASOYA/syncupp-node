@@ -119,3 +119,13 @@ exports.couponPay = catchAsyncError(async (req, res, next) => {
     200
   );
 });
+
+exports.deactivateAccount = catchAsyncError(async (req, res, next) => {
+  sendResponse(
+    res,
+    true,
+    returnMessage("payment", "accountDeactivated"),
+    {},
+    200
+  );
+});

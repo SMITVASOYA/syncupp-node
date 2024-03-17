@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { admin_connection, crm_connection } = require("../config/connection");
+const { crm_connection } = require("../config/connection");
 
 const agreementSchema = new mongoose.Schema(
   {

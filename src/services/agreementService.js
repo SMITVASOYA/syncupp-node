@@ -7,13 +7,11 @@ const {
   paginationObject,
   getKeywordType,
 } = require("../utils/utils");
-// const { getKeywordType } = require("./commonSevice");
-const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const sendEmail = require("../helpers/sendEmail");
 const Authentication = require("../models/authenticationSchema");
 const Client = require("../models/clientSchema");
-const { default: mongoose, Mongoose } = require("mongoose");
+const { default: mongoose } = require("mongoose");
 const Handlebars = require("handlebars");
 const pdf = require("html-pdf");
 const moment = require("moment");

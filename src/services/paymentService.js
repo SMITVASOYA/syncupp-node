@@ -16,6 +16,7 @@ const {
   paginationObject,
   capitalizeFirstLetter,
   getKeywordType,
+  returnNotification,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const crypto = require("crypto");
@@ -24,8 +25,6 @@ const sendEmail = require("../helpers/sendEmail");
 const Configuration = require("../models/configurationSchema");
 const CompetitionPoint = require("../models/competitionPointSchema");
 const ReferralHistory = require("../models/referralHistorySchema");
-const NotificationService = require("./notificationService");
-const notificationService = new NotificationService();
 const Agency = require("../models/agencySchema");
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -33,6 +32,10 @@ const razorpay = new Razorpay({
 });
 const axios = require("axios");
 const AdminCoupon = require("../models/adminCouponSchema");
+const Event = require("../models/eventSchema");
+const Invoice = require("../models/invoiceSchema");
+const Agreement = require("../models/agreementSchema");
+const { eventEmitter } = require("../socket");
 
 class PaymentService {
   constructor() {
@@ -270,7 +273,6 @@ class PaymentService {
           if (agency_details && !agency_details?.subscription_halted) {
             await Authentication.findByIdAndUpdate(agency_details?._id, {
               subscription_halted: moment.utc().startOf("day"),
-              status: "subscription_halted",
             });
           }
 
@@ -1229,6 +1231,12 @@ class PaymentService {
           Agency.findById(agency?.reference_id).lean(),
         ]);
 
+      if (agency?.subscription_halted) {
+        await Authentication.findByIdAndUpdate(agency?._id, {
+          subscription_halted_displayed: true,
+        });
+      }
+
       return {
         next_billing_date: subscription?.current_end,
         next_billing_price:
@@ -1883,6 +1891,158 @@ class PaymentService {
         error?.message || error?.error?.description,
         error?.statusCode
       );
+    }
+  };
+
+  deactivateAgency = async (agency) => {
+    try {
+      const { data } = await this.razorpayApi.post(
+        `/subscriptions/${agency?.subscription_id}/cancel`,
+        {
+          cancel_at_cycle_end: 0,
+        }
+      );
+      if (!data || data?.status !== "cancelled")
+        return throwError(returnMessage("default", "default"));
+
+      await this.deactivateAccount(agency);
+    } catch (error) {
+      logger.error(`Error while deactivating the agency: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // deactivate account for the agency and delete all connected users
+  deactivateAccount = async (agency) => {
+    try {
+      const team_agency = await Team_Agency.distinct("_id", {
+        agency_id: agency?.reference_id,
+      });
+      await Promise.all([
+        Team_Agency.updateMany(
+          { agency_id: agency?.reference_id },
+          { is_deleted: true }
+        ),
+        Authentication.updateMany(
+          { reference_id: { $in: team_agency } },
+          { is_deleted: true }
+        ),
+        Client.updateMany(
+          { "agency_ids.agency_id": agency?.reference_id },
+          { "agency_ids.status": "deleted" }
+        ),
+        Team_Client.updateMany(
+          { "agency_ids.agency_id": agency?.reference_id },
+          { "agency_ids.status": "deleted" }
+        ),
+        Authentication.updateMany(
+          { reference_id: agency?.reference_id },
+          { is_deleted: true, status: "subscription_cancelled" }
+        ),
+        Activity.updateMany(
+          { agency_id: agency?.reference_id },
+          { is_deleted: true }
+        ),
+        Agreement.updateMany({ agency_id: agency?._id }, { is_deleted: true }),
+        Event.updateMany(
+          { agency_id: agency?.reference_id },
+          { is_deleted: true }
+        ),
+        Invoice.updateMany(
+          { agency_id: agency?.reference_id },
+          { is_deleted: true }
+        ),
+      ]);
+      return;
+    } catch (error) {
+      logger.error(
+        `Error while deleting all of the users from the agency: ${error}`
+      );
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // cron for the AGency to check subscription is expired or not and if it is expired with the given date then
+  //  delete the user and do the cancel the subscription
+
+  cronForSubscription = async () => {
+    try {
+      const [agencies, configuration] = await Promise.all([
+        Authentication.find({
+          subscription_id: { $exists: true },
+          is_deleted: false,
+        }).lean(),
+        Configuration.findOne({}).lean(),
+      ]);
+
+      for (let i = 0; i < agencies.length; i++) {
+        const subscription_detail = await this.subscripionDetail(
+          agencies[i].subscription_id
+        );
+        if (
+          (subscription_detail?.status === "pending" ||
+            subscription_detail?.status === "halted") &&
+          agencies[i].subscription_halted
+        ) {
+          const today = moment.utc();
+          const subscription_halt_date = moment.utc(
+            agencies[i].subscription_halted
+          );
+
+          const days_diff = Math.abs(
+            today.diff(subscription_halt_date, "days")
+          );
+
+          if (days_diff > configuration?.payment?.subscription_halt_days) {
+            await this.deactivateAgency(agencies[i]);
+          }
+        } else if (subscription_detail?.status === "active") {
+          const renew_date = moment.unix(subscription_detail?.charge_at);
+          const today = moment.utc();
+          const days_diff = Math.abs(today.diff(renew_date, "days"));
+          let notification_message = returnNotification(
+            "payment",
+            "nextSubscriptionStart"
+          );
+
+          if (days_diff == 3) {
+            notification_message = notification_message.replaceAll(
+              "{{no_days}}",
+              3
+            );
+          } else if (days_diff === 1) {
+            notification_message = notification_message.replaceAll(
+              "{{no_days}}",
+              1
+            );
+          }
+
+          const notification = await Notification.create({
+            type: "payment",
+            user_id: agencies[i].reference_id,
+            message: notification_message,
+          });
+
+          const pending_notification = await Notification.countDocuments({
+            user_id: agencies[i].reference_id,
+            is_read: false,
+          });
+
+          eventEmitter(
+            "NOTIFICATION",
+            {
+              notification,
+              un_read_count: pending_notification,
+            },
+            agencies[i].reference_id
+          );
+        }
+      }
+    } catch (error) {
+      logger.error(
+        `Error while running the cron of the subscription expire cron: ${error}`
+      );
+      console.log(error);
     }
   };
 }

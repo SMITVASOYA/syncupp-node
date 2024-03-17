@@ -228,6 +228,29 @@ const paymentScopes = {
   },
 };
 
+const deactivateAccount = {
+  tags: ["Payment - CRM Panel"],
+  description: "",
+  summary: "Deactivate the account of the agency.",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
 const paymentRoute = {
   "/api/v1/payment/history": {
     post: paymentHistory,
@@ -246,6 +269,9 @@ const paymentRoute = {
   },
   "/api/v1/payment/payment-scopes": {
     get: paymentScopes,
+  },
+  "/api/v1/payment/de-activated": {
+    get: deactivateAccount,
   },
 };
 

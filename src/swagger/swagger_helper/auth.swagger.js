@@ -530,6 +530,24 @@ const updateProfile = {
   },
 };
 
+const checkSubscriptionHalt = {
+  tags: ["CRM Panel"],
+  description: "",
+  summary: "Get Subscription halt details",
+  responses: {
+    200: {
+      descripition: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
 const authRoutes = {
   "/api/v1/auth/signup": {
     post: registerAgency,
@@ -566,6 +584,9 @@ const authRoutes = {
   },
   "/api/v1/auth/update-profile": {
     patch: updateProfile,
+  },
+  "/api/v1/auth/subscription-halt": {
+    get: checkSubscriptionHalt,
   },
 };
 

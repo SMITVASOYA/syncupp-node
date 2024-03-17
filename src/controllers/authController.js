@@ -181,3 +181,10 @@ exports.refferalEmail = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+exports.checkSubscriptionHalt = catchAsyncError(async (req, res, next) => {
+  const checkSubscriptionHalt = await authService.checkSubscriptionHalt(
+    req.user
+  );
+  sendResponse(res, true, undefined, checkSubscriptionHalt, statusCode.success);
+});
