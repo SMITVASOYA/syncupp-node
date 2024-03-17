@@ -3,7 +3,7 @@
     "createCallMeeting": {
       "clientMessage": "Hi ${client_name}! You have a ${activity_type} titled ${title} on ${due_date} at ${meeting_start_time}. Check the agenda. See you there!",
       "assignToMessage": "Hey ${assigned_to_name}! You're assigned to a ${activity_type} ${title} on ${due_date} from ${meeting_start_time} to ${meeting_end_time}. Check the agenda. Be ready!",
-      "assignByMessage": "Hey ${activityData.assign_by}! You just assigned ${activityData.assign_to} to a ${activityData.activity_type} ${activityData.title} on ${formatDate(activityData.due_date)} from ${formatDate(activityData.meeting_start_time)} to ${formatDate(activityData.meeting_end_time)}",
+      "assignByMessage": "Hey ${agency_name}!${assigned_to_name} just created a ${activity_type} titled ${title} on ${due_date} from ${meeting_start_time} to ${meeting_end_time}. Check the agenda.",
       "attendeesMessage": "You have a ${activity_type} titled ${title} on ${due_date} at ${meeting_start_time}. Check the agenda. See you there!"
     },
     "activityUpdated": {
@@ -78,6 +78,9 @@
     "taskDueDate": {
       "clientMessage": "Today is the due date for Task '${title}'.",
       "assignToMessage": "Today is the due date for Task '${title}'."
+    },
+    "meetingAlert": {
+      "alertMessage": "The meeting titled '${title}' will start in 15 minutes; please get ready."
     }
   },
   "agreement": {

@@ -56,7 +56,8 @@ exports.updateTask = catchAsyncError(async (req, res, next) => {
   const updateTask = await activityService.updateTask(
     req.body,
     req?.params?.id,
-    req?.files
+    req?.files,
+    req?.user
   );
   sendResponse(
     res,

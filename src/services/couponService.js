@@ -248,7 +248,6 @@ class CouponService {
   getMyCoupons = async (user) => {
     try {
       if (user.role.name === "agency") {
-        const couponIds = user.total_coupon;
         const agency_data = await Agency.findById(user.reference_id).select(
           "total_coupon"
         );
@@ -259,11 +258,9 @@ class CouponService {
         return coupons;
       }
       if (user.role.name === "team_agency") {
-        const couponIds = user.total_coupon;
         const member_data = await Team_Agency.findById(
           user.reference_id
         ).select("total_coupon");
-        console.log(member_data);
         // Query AdminCoupon model to find coupons with IDs present in the array
         const coupons = await AdminCoupon.find({
           _id: { $in: member_data?.total_coupon },

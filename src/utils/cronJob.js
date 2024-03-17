@@ -6,6 +6,10 @@ const PaymentService = require("../services/paymentService");
 const activityService = new ActivityService();
 const Configuration = require("../models/configurationSchema");
 const paymentService = new PaymentService();
+const Activity_Type_Master = require("../models/masters/activityTypeMasterSchema");
+const Activity = require("../models/activitySchema");
+const moment = require("moment");
+
 exports.setupNightlyCronJob = async () => {
   const config = await Configuration.findOne({});
   const invoiceCronSchedule = config?.cron_job.invoice_overdue;
@@ -30,5 +34,33 @@ exports.setupNightlyCronJob = async () => {
   cron.schedule(payment_cron_schedule, () => {
     console.log("Running the nightly cron job to expire the subscription...");
     paymentService.cronForSubscription();
+    // Crone job for 15 minutes start
+  });
+
+  cron.schedule("* * * * *", async () => {
+    const currentDate = moment().startOf("day");
+    const callMeeting = await Activity_Type_Master.findOne({
+      name: "call_meeting",
+    });
+    const meetings = await Activity.find({
+      activity_type: callMeeting._id,
+      is_deleted: false,
+      meeting_start_time: {
+        $gte: currentDate.toDate(), // Meetings starting today
+        $lte: moment().add(15, "minutes").toDate(), // Meetings starting within 15 minutes
+      },
+    }).lean();
+
+    meetings.forEach((meeting) => {
+      const meetingStartTime = moment.utc(meeting.meeting_start_time);
+      const cronTime = moment(meetingStartTime)
+        .subtract(15, "minutes")
+        .toDate();
+      const cronTimeString = moment(cronTime).format("m H D M *");
+
+      cron.schedule(cronTimeString, () => {
+        activityService.meetingAlertCronJob(meeting); // Pass meeting details to the cron job function
+      });
+    });
   });
 };

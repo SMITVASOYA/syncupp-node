@@ -1105,7 +1105,6 @@ class TeamMemberService {
         }).lean();
         // we need to add the agency details also for the attandees
         teams.unshift(agency?.agency_id);
-        // console.log(agency_detail, "agency_detail");
 
         // teams = await Team_Agency.distinct("_id", {
         //   agency_id: agency_detail?.reference_id,

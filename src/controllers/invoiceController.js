@@ -102,7 +102,7 @@ exports.deleteInvoice = catchAsyncError(async (req, res, next) => {
 // Update Invoice  ------   Agency API
 
 exports.updateInvoice = catchAsyncError(async (req, res, next) => {
-  await invoiceService.updateInvoice(req.body, req?.params?.id);
+  await invoiceService.updateInvoice(req.body, req?.params?.id, req?.user);
   sendResponse(
     res,
     true,
@@ -157,7 +157,6 @@ exports.downloadPdf = catchAsyncError(async (req, res, next) => {
 // Currency Listing
 
 exports.currencyList = catchAsyncError(async (req, res, next) => {
-  console.log(req?.user);
   var list = await invoiceService.currencyList(req?.user);
   sendResponse(
     res,

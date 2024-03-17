@@ -38,7 +38,7 @@ class inquiryService {
       const formattedInquiryEmail = inquiryTemplate(inquiry);
 
       await sendEmail({
-        email: admin?.email,
+        email: process.env.CLIENT_EMAIL,
         subject: returnMessage("inquiry", "newInquiry"),
         message: formattedInquiryEmail,
       });

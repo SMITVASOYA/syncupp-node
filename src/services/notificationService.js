@@ -15,6 +15,7 @@ class NotificationService {
   addNotification = async (payload, id) => {
     let { module_name, activity_type_action, client_id, assign_to, agenda } =
       payload;
+
     if (payload?.agenda) payload.agenda = extractTextFromHtml(agenda);
     try {
       var with_unread_count = async (notification_data, user_id) => {
@@ -47,6 +48,8 @@ class NotificationService {
           message_type = "activityOverdue";
         if (activity_type_action === "dueDateAlert")
           message_type = "activityDueDate";
+        if (activity_type_action === "meetingAlert")
+          message_type = "meetingAlert";
 
         const createAndEmitNotification = async (
           userId,
@@ -73,6 +76,26 @@ class NotificationService {
         };
 
         if (payload?.log_user === "member") {
+          if (activity_type_action === "createTask") {
+            await createAndEmitNotification(
+              payload.agency_id,
+              message_type,
+              "assignByMessage"
+            );
+
+            await createAndEmitNotification(
+              payload.assign_to,
+              message_type,
+              "assignToMessage"
+            );
+
+            await createAndEmitNotification(
+              payload.client_id,
+              message_type,
+              "clientMessage"
+            );
+          }
+
           await createAndEmitNotification(
             client_id,
             message_type,
@@ -83,6 +106,35 @@ class NotificationService {
             message_type,
             "assignByMessage"
           );
+        }
+
+        if (activity_type_action === "meetingAlert") {
+          console.log("first");
+          await createAndEmitNotification(
+            payload.client_id,
+            message_type,
+            "alertMessage"
+          );
+          await createAndEmitNotification(
+            payload.assign_by,
+            message_type,
+            "alertMessage"
+          );
+          await createAndEmitNotification(
+            payload.assign_to,
+            message_type,
+            "alertMessage"
+          );
+
+          attendees &&
+            attendees[0] &&
+            attendees.map(async (item) => {
+              await createAndEmitNotification(
+                item,
+                message_type,
+                "alertMessage"
+              );
+            });
         } else {
           await createAndEmitNotification(
             client_id,
@@ -94,16 +146,17 @@ class NotificationService {
             message_type,
             "assignToMessage"
           );
+
+          attendees &&
+            attendees[0] &&
+            attendees.map(async (item) => {
+              await createAndEmitNotification(
+                item,
+                message_type,
+                "attendeesMessage"
+              );
+            });
         }
-        attendees &&
-          attendees[0] &&
-          attendees.map(async (item) => {
-            await createAndEmitNotification(
-              item,
-              message_type,
-              "attendeesMessage"
-            );
-          });
       }
 
       // Task
@@ -159,6 +212,18 @@ class NotificationService {
               message_type,
               "assignByMessage"
             );
+
+            await createAndEmitNotification(
+              payload.assign_to,
+              message_type,
+              "assignToMessage"
+            );
+
+            await createAndEmitNotification(
+              payload.client_id,
+              message_type,
+              "clientMessage"
+            );
           } else {
             await createAndEmitNotification(
               client_id,
@@ -166,7 +231,7 @@ class NotificationService {
               "clientMessage"
             );
             await createAndEmitNotification(
-              payload.assign_by._id,
+              payload.assign_by,
               message_type,
               "assignByMessage"
             );
@@ -319,7 +384,6 @@ class NotificationService {
         // cMember deleted by client
 
         if (action_name === "memberDeleted") {
-          console.log("first");
           await createAndEmitNotification(
             payload.receiver_id,
             "memberDeletedClient",
@@ -349,7 +413,6 @@ class NotificationService {
 
   // Admin Notification
   addAdminNotification = async (payload, id) => {
-    console.log(payload);
     try {
       const with_unread_count = async (notification_data, user_id) => {
         const un_read_count = await Notification.countDocuments({
@@ -363,7 +426,6 @@ class NotificationService {
       };
 
       const admin = await Admin.findOne({});
-      console.log(admin);
       let { action_name } = payload;
       const createAndEmitNotification = async (
         userId,
@@ -381,8 +443,6 @@ class NotificationService {
           data_reference_id: id,
           message: message,
         });
-
-        console.log(notification);
 
         eventEmitter(
           "NOTIFICATION",
@@ -412,7 +472,6 @@ class NotificationService {
   getNotification = async (user, searchObj) => {
     try {
       if (user?.role?.name === undefined) {
-        console.log("fwfw");
         const { skip, limit } = searchObj;
         const notifications = await Notification.find({
           user_id: user._id,

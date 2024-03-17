@@ -1265,7 +1265,7 @@ class ActivityService {
     }
   };
 
-  updateTask = async (payload, id, files) => {
+  updateTask = async (payload, id, files, logInUser) => {
     try {
       const {
         title,
@@ -1576,7 +1576,7 @@ class ActivityService {
         message: taskMessage,
       });
 
-      if (user?.role?.name === "agency") {
+      if (logInUser?.role?.name === "agency") {
         // -------------- Socket notification start --------------------
 
         const client_data = await Authentication.findOne({
@@ -1927,8 +1927,7 @@ class ActivityService {
           const agencyData = await Authentication.findById(
             getTask[0].assign_by._id
           );
-          console.log(agencyData);
-          console.log("fetgegeg");
+
           //   ----------    Notifications start ----------
           await notificationService.addNotification(
             {
@@ -1954,7 +1953,6 @@ class ActivityService {
       } else {
         //   ----------    Notifications start ----------
         if (user.role.name === "agency") {
-          console.log("agency");
           const activity_email_template = activityTemplate({
             ...getTask[0],
             activity_type: getTask[0].activity_type,
@@ -2011,8 +2009,6 @@ class ActivityService {
           user.role.name === "team_agency" ||
           user.role.name === "team_client"
         ) {
-          console.log("team agency");
-
           const agencyData = await Authentication.findById(
             getTask[0].assign_by._id
           );
@@ -2308,50 +2304,109 @@ class ActivityService {
         });
       });
 
-      // --------------- Start--------------------
-      const [assign_to_data, client_data, attendees_data] = await Promise.all([
-        Authentication.findOne({ reference_id: assign_to }).lean(),
-        Authentication.findOne({ reference_id: client_id }).lean(),
-        Authentication.find({ reference_id: { $in: attendees } }).lean(),
-      ]);
+      if (user?.role?.name === "agency") {
+        // --------------- Start--------------------
+        const [assign_to_data, client_data, attendees_data] = await Promise.all(
+          [
+            Authentication.findOne({ reference_id: assign_to }).lean(),
+            Authentication.findOne({ reference_id: client_id }).lean(),
+            Authentication.find({ reference_id: { $in: attendees } }).lean(),
+          ]
+        );
 
-      const activity_email_template = activityTemplate({
-        ...payload,
-        status: mark_as_done ? "completed" : "pending",
-        assigned_by_name: user.first_name + " " + user.last_name,
-        client_name: client_data.first_name + " " + client_data.last_name,
-        assigned_to_name:
-          assign_to_data.first_name + " " + assign_to_data.last_name,
-      });
-
-      sendEmail({
-        email: client_data?.email,
-        subject: returnMessage("emailTemplate", "newActivityMeeting"),
-        message: activity_email_template,
-        icsContent: file,
-      });
-      sendEmail({
-        email: assign_to_data?.email,
-        subject: returnMessage("emailTemplate", "newActivityMeeting"),
-        message: activity_email_template,
-        icsContent: file,
-      });
-      await notificationService.addNotification(
-        {
-          assign_by: user.reference_id,
+        const activity_email_template = activityTemplate({
+          ...payload,
+          status: mark_as_done ? "completed" : "pending",
           assigned_by_name: user.first_name + " " + user.last_name,
           client_name: client_data.first_name + " " + client_data.last_name,
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
+        });
+
+        sendEmail({
+          email: client_data?.email,
+          subject: returnMessage("emailTemplate", "newActivityMeeting"),
+          message: activity_email_template,
+          icsContent: file,
+        });
+        sendEmail({
+          email: assign_to_data?.email,
+          subject: returnMessage("emailTemplate", "newActivityMeeting"),
+          message: activity_email_template,
+          icsContent: file,
+        });
+        await notificationService.addNotification(
+          {
+            assign_by: user.reference_id,
+            assigned_by_name: user.first_name + " " + user.last_name,
+            client_name: client_data.first_name + " " + client_data.last_name,
+            assigned_to_name:
+              assign_to_data.first_name + " " + assign_to_data.last_name,
+            ...payload,
+            module_name: "activity",
+            activity_type_action: "create_call_meeting",
+            activity_type:
+              activity_type === "others" ? "activity" : "call meeting",
+          },
+          newActivity._id
+        );
+        // ---------------- End ---------------
+      }
+      if (user?.role?.name === "team_agency") {
+        // --------------- Start--------------------
+        const [assign_to_data, client_data, attendees_data] = await Promise.all(
+          [
+            Authentication.findOne({ reference_id: assign_to }).lean(),
+            Authentication.findOne({ reference_id: client_id }).lean(),
+            Authentication.find({ reference_id: { $in: attendees } }).lean(),
+          ]
+        );
+
+        const activity_email_template = activityTemplate({
           ...payload,
-          module_name: "activity",
-          activity_type_action: "create_call_meeting",
-          activity_type:
-            activity_type === "others" ? "activity" : "call meeting",
-        },
-        newActivity._id
-      );
-      // ---------------- End ---------------
+          status: mark_as_done ? "completed" : "pending",
+          assigned_by_name: user.first_name + " " + user.last_name,
+          client_name: client_data.first_name + " " + client_data.last_name,
+          assigned_to_name:
+            assign_to_data.first_name + " " + assign_to_data.last_name,
+        });
+
+        sendEmail({
+          email: client_data?.email,
+          subject: returnMessage("emailTemplate", "newActivityMeeting"),
+          message: activity_email_template,
+          icsContent: file,
+        });
+        sendEmail({
+          email: assign_to_data?.email,
+          subject: returnMessage("emailTemplate", "newActivityMeeting"),
+          message: activity_email_template,
+          icsContent: file,
+        });
+
+        const agencyData = await Authentication.findOne({
+          reference_id: newActivity?.agency_id,
+        });
+
+        await notificationService.addNotification(
+          {
+            agency_name: agencyData?.first_name + " " + agencyData?.last_name,
+            agency_id: agencyData?.reference_id,
+            assign_by: user.reference_id,
+            assigned_by_name: user.first_name + " " + user.last_name,
+            client_name: client_data.first_name + " " + client_data.last_name,
+            assigned_to_name:
+              assign_to_data.first_name + " " + assign_to_data.last_name,
+            ...payload,
+            module_name: "activity",
+            activity_type_action: "create_call_meeting",
+            activity_type:
+              activity_type === "others" ? "activity" : "call meeting",
+          },
+          newActivity._id
+        );
+        // ---------------- End ---------------
+      }
 
       return;
     } catch (error) {
@@ -3450,8 +3505,20 @@ class ActivityService {
       throwError(error?.message, error?.statusCode);
     }
   };
-  // below function is used to fetch the top 3 performar weekly and monthly
-  // This will be used in the gamification module
+
+  meetingAlertCronJob = async (data) => {
+    try {
+      await notificationService.addNotification({
+        ...data,
+        module_name: "activity",
+        activity_type_action: "meetingAlert",
+      });
+    } catch (error) {
+      logger.error(`Error while Overdue crone Job PDF, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
   leaderboard = async (payload, user) => {
     try {
       let start_date, end_date;
@@ -3733,7 +3800,6 @@ class ActivityService {
       }
 
       let tags_data = await Activity.find(queryObj).select("tags").lean();
-      console.log(tags_data);
       let tagsList = [];
       tags_data.forEach((item) => {
         let tagData = [];
@@ -3746,7 +3812,6 @@ class ActivityService {
       let uniqueTags = [
         ...new Set(tagsList.filter((tag) => tag !== undefined)),
       ];
-      console.log(uniqueTags);
       return uniqueTags;
     } catch (error) {
       logger.error(`Error while fetch tags list : ${error}`);

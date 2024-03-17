@@ -240,7 +240,8 @@
     "subscriptionFetched": "Subscription details fetched successfully.",
     "canNotCancel": "Subscription can not be cancelled.",
     "couponpurchase": "Coupon purchased successfully.",
-    "accountDeactivated": "Account de-activated successfully."
+    "accountDeactivated": "Account de-activated successfully.",
+    "CouponNotExist": "Coupon does not exists."
   },
   "affiliate": {
     "registered": "User registered successfully.",
