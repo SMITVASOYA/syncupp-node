@@ -540,7 +540,7 @@ class ScheduleEvent {
             ...filter["$match"],
             $or: [
               {
-                $and: [
+                $or: [
                   { due_date: { $gte: new Date(start_date) } },
                   { due_date: { $lte: new Date(end_date) } },
                 ],

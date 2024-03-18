@@ -598,6 +598,7 @@ class ClientService {
           pincode: payload?.pincode,
           address: payload?.address,
           title: payload?.title,
+          contact_number: payload?.contact_number,
         },
         { new: true }
       );
