@@ -24,5 +24,20 @@
       "subscription_halt_days": 15,
       "free_trial": 7
     }
+  },
+  {
+    "coupon": {
+      "reedem_coupon": 50
+    }
+  },
+  {
+    "multer": {
+      "size": 200
+    }
+  },
+  {
+    "chat": {
+      "file_size": 200
+    }
   }
 ]

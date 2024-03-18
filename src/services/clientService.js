@@ -608,6 +608,7 @@ class ClientService {
           first_name: payload?.first_name,
           last_name: payload?.last_name,
           name: payload?.name,
+          contact_number: payload?.contact_number,
         },
         { new: true }
       );

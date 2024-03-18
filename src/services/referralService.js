@@ -41,7 +41,7 @@ class referralClass {
       const total_points = referral_points_history.reduce(
         (accumulator, currentValue) => {
           // Remove the "+" sign and convert the string to a number
-          const points = parseInt(currentValue.point.substring(1));
+          const points = parseInt(currentValue.point);
           return accumulator + points;
         },
         0

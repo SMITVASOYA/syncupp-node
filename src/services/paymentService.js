@@ -1026,16 +1026,16 @@ class PaymentService {
       if (payload?.search && payload?.search !== "") {
         // Create a regex pattern based on the query
         const regex = new RegExp(
-          payload?.search.toLowerCase().split(/\s+/).join(".*")
+          payload?.search?.toLowerCase().split(/\s+/).join(".*")
         );
         occupied_sheets.items = occupied_sheets?.items?.filter((item) => {
           return (
-            regex.test(item.first_name.toLowerCase()) ||
-            regex.test(item.last_name.toLowerCase()) ||
-            regex.test(item.name.toLowerCase()) ||
-            regex.test(item.role.toLowerCase()) ||
-            regex.test(item.status.toLowerCase()) ||
-            regex.test(item.seat_no)
+            regex.test(item?.first_name?.toLowerCase()) ||
+            regex.test(item?.last_name?.toLowerCase()) ||
+            regex.test(item?.name?.toLowerCase()) ||
+            regex.test(item?.role?.toLowerCase()) ||
+            regex.test(item?.status?.toLowerCase()) ||
+            regex.test(item?.seat_no)
           );
         });
       }
