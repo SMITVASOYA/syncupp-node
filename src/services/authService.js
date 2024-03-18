@@ -837,7 +837,7 @@ class AuthService {
             module_name: "referral",
             action_type: "login",
             referred_to: userData?.first_name + " " + userData?.last_name,
-            referred_to: existing_agency?.reference_id,
+            receiver_id: existing_Data?.reference_id,
             points: referral_data.competition?.successful_login.toString(),
           });
 
@@ -1173,9 +1173,6 @@ class AuthService {
         reference_id: referred_to?.reference_id,
       });
 
-      const agencyData = await Authentication.findOne({
-        reference_id: referral_code_exist?.reference_id,
-      });
       await notificationService.addNotification({
         module_name: "referral",
         action_type: "signUp",
