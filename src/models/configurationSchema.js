@@ -28,6 +28,9 @@ const configurationSchema = new mongoose.Schema(
     chat: {
       file_size: { type: Number, default: 200 },
     },
+    coupon: {
+      reedem_coupon: { type: Number, default: 50 },
+    },
   },
   { timestamps: true }
 );
