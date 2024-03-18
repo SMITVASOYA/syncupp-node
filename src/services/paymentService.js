@@ -132,12 +132,12 @@ class PaymentService {
       // );
 
       // creating the customer to the razorpay
-      await this.razorpayApi.post("/customers", {
-        name: user?.first_name + " " + user?.last_name,
-        contact: user?.contact_number,
-        email: user?.email,
-        fail_existing: 0,
-      });
+      // await this.razorpayApi.post("/customers", {
+      //   name: user?.first_name + " " + user?.last_name,
+      //   contact: user?.contact_number,
+      //   email: user?.email,
+      //   fail_existing: 0,
+      // });
 
       const { data } = await this.razorpayApi.post(
         "/subscriptions",
