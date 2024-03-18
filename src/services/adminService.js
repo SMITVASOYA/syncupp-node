@@ -12,7 +12,7 @@ const {
   capitalizeFirstLetter,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const sendEmail = require("../helpers/sendEmail");
 const PaymentHistory = require("../models/paymentHistorySchema");
