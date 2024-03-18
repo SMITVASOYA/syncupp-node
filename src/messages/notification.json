@@ -46,7 +46,7 @@
     "taskCompleted": {
       "clientMessage": "Hi ${client_name}! Your task '${title}' is completed.",
       "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is completed. Great job!",
-      "assignByMessage": "Hi ${assigned_by_name}! The task '${title}' is completed by ${assigned_to_name}."
+      "assignByMessage": "Hi ${agency_name}! The task '${title}' is completed by ${assigned_to_name}."
     },
     "taskPending": {
       "clientMessage": "Hi ${client_name}! Your task '${title}' is pending.",
@@ -55,7 +55,8 @@
     },
     "taskUpdated": {
       "clientMessage": "Updated: Hi ${client_name}! Your task titled ${title} now has a due date on ${due_date} before ${due_time}. See you there!",
-      "assignToMessage": "Updated: Hey ${assigned_to_name}! You're assigned to a task titled ${title} due on ${due_date} before ${due_time}. Be ready!"
+      "assignToMessage": "Updated: Hey ${assigned_to_name}! You're assigned to a task titled ${title} due on ${due_date} before ${due_time}. Be ready!",
+      "assignByMessage": "Updated: Hi ${agency_name}! Your task titled ${title} now has a due date on ${due_date} before ${due_time}. See you there!"
     },
     "taskInProgress": {
       "clientMessage": "Hi ${client_name}! Your task '${title}' is in progress.",
