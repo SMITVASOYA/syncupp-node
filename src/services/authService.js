@@ -11,7 +11,7 @@ const {
   invitationEmailTemplate,
   agencyCreatedTemplate,
 } = require("../utils/utils");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const moment = require("moment");
 const { throwError } = require("../helpers/errorUtil");
 const Authentication = require("../models/authenticationSchema");

@@ -1554,6 +1554,7 @@ class ActivityService {
             client_name: "$client_Data.client_name",
             column_id: "$status.name",
             assign_email: "$team_Data.email",
+            agency_id: 1,
           },
         },
       ];
@@ -1584,7 +1585,7 @@ class ActivityService {
         });
         let taskAction = "update";
         // For Complete
-        if (mark_as_done) taskAction = "completed";
+        if (mark_as_done === "true") taskAction = "completed";
         await notificationService.addNotification(
           {
             ...payload,
@@ -1597,6 +1598,45 @@ class ActivityService {
             assigned_to_name: getTask[0]?.assigned_to_name,
             due_time: new Date(due_date).toTimeString().split(" ")[0],
             due_date: new Date(due_date).toLocaleDateString("en-GB"),
+          },
+          id
+        );
+
+        // -------------- Socket notification end --------------------
+      }
+
+      if (logInUser?.role?.name === "team_agency") {
+        // -------------- Socket notification start --------------------
+
+        const client_data = await Authentication.findOne({
+          reference_id: client_id,
+        });
+
+        const agencyData = await Authentication.findOne({
+          reference_id: getTask[0]?.agency_id,
+        });
+        let taskAction = "update";
+        // For Complete
+
+        console.log(typeof mark_as_done);
+        if (mark_as_done === "true") taskAction = "completed";
+        console.log(mark_as_done);
+        console.log(taskAction);
+        await notificationService.addNotification(
+          {
+            ...payload,
+            module_name: "task",
+            activity_type_action: taskAction,
+            activity_type: "task",
+            agenda: agenda,
+            title: title,
+            client_name: client_data.first_name + " " + client_data.last_name,
+            agency_name: agencyData.first_name + " " + agencyData.last_name,
+            agency_id: getTask[0]?.agency_id,
+            assigned_to_name: getTask[0]?.assigned_to_name,
+            due_time: new Date(due_date).toTimeString().split(" ")[0],
+            due_date: new Date(due_date).toLocaleDateString("en-GB"),
+            log_user: "member",
           },
           id
         );

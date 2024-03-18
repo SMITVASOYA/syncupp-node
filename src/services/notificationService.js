@@ -224,6 +224,20 @@ class NotificationService {
               message_type,
               "clientMessage"
             );
+          }
+
+          if (activity_type_action === "update") {
+            await createAndEmitNotification(
+              payload.agency_id,
+              message_type,
+              "assignByMessage"
+            );
+
+            await createAndEmitNotification(
+              payload.client_id,
+              message_type,
+              "clientMessage"
+            );
           } else {
             await createAndEmitNotification(
               client_id,

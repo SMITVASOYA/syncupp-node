@@ -12,7 +12,7 @@ const {
   clientMemberAdded,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const sendEmail = require("../helpers/sendEmail");
 const Authentication = require("../models/authenticationSchema");
@@ -1310,10 +1310,8 @@ class TeamMemberService {
       }
 
       const referral_code_exist = await Authentication.findOne({
-        referral_code,
-      })
-        .select("referral_code")
-        .lean();
+        $or: [{ referral_code }, { affiliate_referral_code: referral_code }],
+      }).lean();
       if (referral_code_exist) return this.referralCodeGenerator();
 
       return referral_code;
