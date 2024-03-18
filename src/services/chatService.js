@@ -146,7 +146,10 @@ class ChatService {
         if (agency?.status !== "pending") return agency?.agency_id;
       });
       if (payload?.for === "agency") {
-        ids = [...agency_ids];
+        const team_agency_ids = await Team_Agency.distinct("_id", {
+            agency_id: { $in: agency_ids },
+          }).lean(),
+          ids = [...agency_ids, ...team_agency_ids];
       } else if (payload?.for === "team") {
         // removed the agency team members from the combined
         // const [team_agency_ids, team_client_ids] = await Promise.all([
@@ -216,11 +219,11 @@ class ChatService {
       ).lean();
 
       if (payload?.for === "team") {
-        const team_agency_ids = await Team_Agency.distinct("_id", {
-          agency_id: team_client_detail?.client_id,
+        const team_client_ids = await Team_Client.distinct("_id", {
+          client_id: team_client_detail?.client_id,
           _id: { $ne: team_client_detail._id },
         }).lean();
-        ids = [...team_agency_ids];
+        ids = [...team_client_ids];
         ids.push(team_client_detail.client_id);
       } else if (payload?.for === "agency") {
         const agency_ids = team_client_detail?.agency_ids?.map((agency) => {
