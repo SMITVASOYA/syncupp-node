@@ -683,6 +683,10 @@ class PaymentService {
             invitation_text
           );
 
+          await Authentication.findByIdAndUpdate(user_details?._id, {
+            status: "confirm_pending",
+          });
+
           await sendEmail({
             email: user_details?.email,
             subject: returnMessage("emailTemplate", "invitation"),
