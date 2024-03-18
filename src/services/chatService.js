@@ -369,8 +369,8 @@ class ChatService {
         receivers = payload?.group_id;
       }
 
-      const new_message = await Chat.create(chat_obj);
-
+      let new_message = await Chat.create(chat_obj);
+      new_message = new_message.toJSON();
       const socket_obj = {
         ...new_message,
         user_detail,
@@ -412,8 +412,8 @@ class ChatService {
         receivers = payload?.group_id;
       }
 
-      const new_message = await Chat.create(chat_obj);
-
+      let new_message = await Chat.create(chat_obj);
+      new_message = new_message.toJSON();
       const socket_obj = {
         ...new_message,
         user_detail,
