@@ -40,7 +40,7 @@ exports.setupNightlyCronJob = async () => {
   // Crone job for 15 minutes start
   const callMeetingCron = config?.cron_job.call_meeting_alert;
   cron.schedule(callMeetingCron, async () => {
-    const currentDate = moment().startOf("day");
+    const currentUtcDate = moment().utc(); // Get current UTC time
     const callMeeting = await Activity_Type_Master.findOne({
       name: "call_meeting",
     });
@@ -48,16 +48,18 @@ exports.setupNightlyCronJob = async () => {
       activity_type: callMeeting._id,
       is_deleted: false,
       meeting_start_time: {
-        $gte: currentDate.toDate(), // Meetings starting today
-        $lte: moment().add(15, "minutes").toDate(), // Meetings starting within 15 minutes
+        $gte: currentUtcDate.toDate(), // Meetings starting today
+        $lte: moment(currentUtcDate).add(15, "minutes").toDate(),
       },
     }).lean();
 
     meetings.forEach((meeting) => {
-      const meetingStartTime = moment.utc(meeting.meeting_start_time);
-      const cronTime = moment(meetingStartTime)
+      const meetingStartTimeUtc = moment.utc(meeting.meeting_start_time);
+      const cronTime = moment(meetingStartTimeUtc)
         .subtract(15, "minutes")
         .toDate();
+      console.log(moment.utc(cronTime).tz("Asia/Kolkata"));
+
       const cronTimeString = moment(cronTime).format("m H D M *");
 
       cron.schedule(cronTimeString, () => {

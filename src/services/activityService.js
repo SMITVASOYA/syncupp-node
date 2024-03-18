@@ -1418,6 +1418,20 @@ class ActivityService {
             type: "task",
             role: assign_role?.role?.name,
           });
+
+          const agencyData = await Authentication.findOne({
+            reference_id: current_activity.agency_id,
+          });
+
+          await notificationService.addNotification({
+            module_name: "referral",
+            action_type: "taskDeduct",
+            task_name: current_activity?.title,
+            referred_by: agencyData?.first_name + " " + agencyData?.last_name,
+            receiver_id: current_activity?.agency_id,
+            points:
+              referral_data.competition.successful_task_competition?.toString(),
+          });
         }
 
         if (
@@ -1484,6 +1498,20 @@ class ActivityService {
               +referral_data.competition.successful_task_competition?.toString(),
             type: "task",
             role: assign_role?.role?.name,
+          });
+
+          const agencyData = await Authentication.findOne({
+            reference_id: current_activity.agency_id,
+          });
+
+          await notificationService.addNotification({
+            module_name: "referral",
+            action_type: "taskAdded",
+            task_name: current_activity?.title,
+            referred_by: agencyData?.first_name + " " + agencyData?.last_name,
+            receiver_id: current_activity.agency_id,
+            points:
+              referral_data.competition.successful_task_competition?.toString(),
           });
         }
       }
@@ -1737,6 +1765,20 @@ class ActivityService {
             type: "task",
             role: assign_role?.role?.name,
           });
+
+          const agencyData = await Authentication.findOne({
+            reference_id: current_activity.agency_id,
+          });
+
+          await notificationService.addNotification({
+            module_name: "referral",
+            action_type: "taskDeduct",
+            task_name: current_activity?.title,
+            referred_by: agencyData?.first_name + " " + agencyData?.last_name,
+            receiver_id: current_activity.agency_id,
+            points:
+              referral_data.competition.successful_task_competition?.toString(),
+          });
         }
 
         // Increment completion points if transitioning from pending or overdue to completed
@@ -1788,6 +1830,20 @@ class ActivityService {
               +referral_data.competition.successful_task_competition?.toString(),
             type: "task",
             role: assign_role?.role?.name,
+          });
+
+          const agencyData = await Authentication.findOne({
+            reference_id: current_activity.agency_id,
+          });
+
+          await notificationService.addNotification({
+            module_name: "referral",
+            action_type: "taskAdded",
+            task_name: current_activity?.title,
+            referred_by: agencyData?.first_name + " " + agencyData?.last_name,
+            receiver_id: current_activity.agency_id,
+            points:
+              referral_data.competition.successful_task_competition?.toString(),
           });
         }
       }
@@ -1972,6 +2028,7 @@ class ActivityService {
           await notificationService.addNotification(
             {
               client_name: client_data.first_name + " " + client_data.last_name,
+              agency_name: agencyData.first_name + " " + agencyData.last_name,
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
               ...getTask[0],

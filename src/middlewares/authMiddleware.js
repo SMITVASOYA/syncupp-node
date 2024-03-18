@@ -6,6 +6,8 @@ const { returnMessage } = require("../utils/utils");
 const Competition_Point = require("../models/competitionPointSchema");
 
 const moment = require("moment");
+const NotificationService = require("../services/notificationService");
+const notificationService = new NotificationService();
 
 const Configuration = require("../models/configurationSchema");
 const Agency = require("../models/agencySchema");
@@ -51,6 +53,18 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
           point: +referral_data.competition.successful_login.toString(),
           type: "login",
           role: user?.role?.name,
+        });
+
+        const userData = await Authentication.findOne({
+          reference_id: user.reference_id,
+        });
+
+        await notificationService.addNotification({
+          module_name: "referral",
+          action_type: "login",
+          referred_to: userData?.first_name + " " + userData?.last_name,
+          receiver_id: user.reference_id,
+          points: referral_data.competition.successful_login.toString(),
         });
 
         if (user?.role?.name === "agency") {

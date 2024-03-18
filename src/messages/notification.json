@@ -115,5 +115,11 @@
   },
   "payment": {
     "nextSubscriptionStart": "Your next subscription will start in {{no_days}} days"
+  },
+  "referral": {
+    "signUp": "New user ${referred_to} joined ${points} Points added.",
+    "login": "First login ${points} Points added.",
+    "taskDeduct": "${points} points deducted of Task ${task_name}.",
+    "taskAdded": "${points} points added of Task ${task_name}."
   }
 }
