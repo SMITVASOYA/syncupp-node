@@ -425,7 +425,7 @@ class NotificationService {
         console.log(payload, "gegege");
         if (payload.action_type === "login") {
           await createAndEmitNotification(
-            payload.referred_to,
+            payload.receiver_id,
             "login",
             "referral",
             "referral"
