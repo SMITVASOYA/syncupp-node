@@ -147,9 +147,9 @@ class ChatService {
       });
       if (payload?.for === "agency") {
         const team_agency_ids = await Team_Agency.distinct("_id", {
-            agency_id: { $in: agency_ids },
-          }).lean(),
-          ids = [...agency_ids, ...team_agency_ids];
+          agency_id: { $in: agency_ids },
+        }).lean();
+        ids = [...agency_ids, ...team_agency_ids];
       } else if (payload?.for === "team") {
         // removed the agency team members from the combined
         // const [team_agency_ids, team_client_ids] = await Promise.all([

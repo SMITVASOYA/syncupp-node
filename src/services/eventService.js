@@ -641,6 +641,8 @@ class ScheduleEvent {
           .endOf("day");
         if (!recurring_date.isSameOrAfter(start_date))
           return throwError(returnMessage("event", "invalidRecurringDate"));
+      } else {
+        recurring_date = null;
       }
 
       const or_condition = [
