@@ -9,7 +9,7 @@ const {
   validateEmail,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const sendEmail = require("../helpers/sendEmail");
 const Affiliate_Referral = require("../models/affiliateReferralSchema");

@@ -233,6 +233,7 @@ exports.socket_connection = (http_server) => {
       }
     });
 
+    // commented because of the api implementations
     // this socket event is used to send the images between the users
     socket.on("IMAGES", async (payload) => {
       try {
@@ -275,14 +276,6 @@ exports.socket_connection = (http_server) => {
             message_type: "image",
           });
 
-          // commenting for the better optimised solution
-          // await Notification.create({
-          //   user_id: payload?.to_user,
-          //   type: "chat",
-          //   from_user: payload?.from_user,
-          //   data_reference_id: new_message?._id,
-          // });
-
           io.to(from_user).emit("RECEIVED_IMAGE", {
             image_url: image_name,
             from_user,
@@ -309,6 +302,7 @@ exports.socket_connection = (http_server) => {
       }
     });
 
+    // commented because of the api implementations
     // this socket event is used to send the documents between the users
     socket.on("DOCUMENTS", async (payload) => {
       try {
@@ -528,6 +522,7 @@ exports.socket_connection = (http_server) => {
       }
     });
 
+    // commented because of the api implementations
     // this socket event is used to send the images between the users
     socket.on("GROUP_IMAGES", async (payload) => {
       try {
@@ -599,6 +594,7 @@ exports.socket_connection = (http_server) => {
       }
     });
 
+    // commented because of the api implementations
     // this socket event is used to send the documents between the users
     socket.on("GROUP_DOCUMENTS", async (payload) => {
       try {
@@ -738,10 +734,12 @@ exports.eventEmitter = (event_name, payload, user_id) => {
   try {
     if (Array.isArray(user_id)) {
       user_id.forEach((user_id) => {
-        io.to(user_id?.toString()).emit(event_name, payload);
+        user_id = user_id?.toString();
+        io.to(user_id).emit(event_name, payload);
       });
     } else {
-      io.to(user_id?.toString()).emit(event_name, payload);
+      user_id = user_id?.toString();
+      io.to(user_id).emit(event_name, payload);
     }
   } catch (error) {
     logger.info("Error while emitting socket error", error);

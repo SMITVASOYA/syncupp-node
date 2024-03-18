@@ -2,8 +2,10 @@ const cron = require("node-cron");
 const InvoiceService = require("../services/invoiceService");
 const invoiceService = new InvoiceService();
 const ActivityService = require("../services/activityService");
+const PaymentService = require("../services/paymentService");
 const activityService = new ActivityService();
 const Configuration = require("../models/configurationSchema");
+const paymentService = new PaymentService();
 const Activity_Type_Master = require("../models/masters/activityTypeMasterSchema");
 const Activity = require("../models/activitySchema");
 const moment = require("moment");
@@ -26,6 +28,13 @@ exports.setupNightlyCronJob = async () => {
   cron.schedule(activityDueDateCronSchedule, () => {
     console.log("Running the nightly cron job activity for due date...");
     activityService.dueDateCronJob();
+  });
+
+  const payment_cron_schedule = config?.cron_job?.payment;
+  cron.schedule(payment_cron_schedule, () => {
+    console.log("Running the nightly cron job to expire the subscription...");
+    paymentService.cronForSubscription();
+    // Crone job for 15 minutes start
   });
 
   // Crone job for 15 minutes start

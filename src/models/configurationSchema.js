@@ -17,6 +17,7 @@ const configurationSchema = new mongoose.Schema(
       activity_overdue: { type: String, default: "0 0 * * *" },
       activity_dueDate: { type: String, default: "0 0 * * *" },
       call_meeting_alert: { type: String, default: "* * * * *" },
+      payment: { type: String, default: "0 0 * * *" },
     },
     payment: {
       subscription_halt_days: { type: Number, default: 15 },

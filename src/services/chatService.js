@@ -8,6 +8,8 @@ const Team_Agency = require("../models/teamAgencySchema");
 const Notification = require("../models/notificationSchema");
 const { default: mongoose } = require("mongoose");
 const { returnMessage } = require("../utils/utils");
+const Group_Chat = require("../models/groupChatSchema");
+const { eventEmitter } = require("../socket");
 
 class ChatService {
   // this function is used to get hte history between 2 users
@@ -144,7 +146,10 @@ class ChatService {
         if (agency?.status !== "pending") return agency?.agency_id;
       });
       if (payload?.for === "agency") {
-        ids = [...agency_ids];
+        const team_agency_ids = await Team_Agency.distinct("_id", {
+            agency_id: { $in: agency_ids },
+          }).lean(),
+          ids = [...agency_ids, ...team_agency_ids];
       } else if (payload?.for === "team") {
         // removed the agency team members from the combined
         // const [team_agency_ids, team_client_ids] = await Promise.all([
@@ -214,11 +219,11 @@ class ChatService {
       ).lean();
 
       if (payload?.for === "team") {
-        const team_agency_ids = await Team_Agency.distinct("_id", {
-          agency_id: team_client_detail?.client_id,
+        const team_client_ids = await Team_Client.distinct("_id", {
+          client_id: team_client_detail?.client_id,
           _id: { $ne: team_client_detail._id },
         }).lean();
-        ids = [...team_agency_ids];
+        ids = [...team_client_ids];
         ids.push(team_client_detail.client_id);
       } else if (payload?.for === "agency") {
         const agency_ids = team_client_detail?.agency_ids?.map((agency) => {
@@ -333,6 +338,93 @@ class ChatService {
       return users;
     } catch (error) {
       logger.error(`Error while fetching chat users: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  uploadImage = async (payload, file) => {
+    try {
+      const chat_obj = {
+        from_user: payload?.from_user,
+        message_type: "image",
+      };
+
+      if (file) {
+        chat_obj.image_url = file?.filename;
+      }
+
+      let user_detail, event_name, receivers;
+      if (payload?.to_user) {
+        chat_obj.to_user = payload?.to_user;
+        event_name = "RECEIVED_IMAGE";
+        receivers = [payload?.from_user, payload?.to_user];
+      } else if (payload?.group_id) {
+        chat_obj.group_id = payload?.group_id;
+        user_detail = await Authentication.findOne({
+          reference_id: payload?.from_user,
+        })
+          .select("first_name last_name reference_id")
+          .lean();
+        event_name = "GROUP_RECEIVED_IMAGE";
+        receivers = payload?.group_id;
+      }
+
+      const new_message = await Chat.create(chat_obj);
+
+      const socket_obj = {
+        ...new_message,
+        user_detail,
+        user_type: payload?.user_type,
+      };
+
+      eventEmitter(event_name, socket_obj, receivers);
+      return;
+    } catch (error) {
+      logger.error(`Error while uploading the image: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  uploadDocument = async (payload, file) => {
+    try {
+      const chat_obj = {
+        from_user: payload?.from_user,
+        message_type: "document",
+      };
+
+      if (file) {
+        chat_obj.document_url = file?.filename;
+      }
+
+      let user_detail, event_name, receivers;
+      if (payload?.to_user) {
+        chat_obj.to_user = payload?.to_user;
+        event_name = "RECEIVED_DOCUMENT";
+        receivers = [payload?.from_user, payload?.to_user];
+      } else if (payload?.group_id) {
+        chat_obj.group_id = payload?.group_id;
+        user_detail = await Authentication.findOne({
+          reference_id: payload?.from_user,
+        })
+          .select("first_name last_name reference_id")
+          .lean();
+        event_name = "GROUP_RECEIVED_DOCUMENT";
+        receivers = payload?.group_id;
+      }
+
+      const new_message = await Chat.create(chat_obj);
+
+      const socket_obj = {
+        ...new_message,
+        user_detail,
+        user_type: payload?.user_type,
+      };
+
+      eventEmitter(event_name, socket_obj, receivers);
+
+      return;
+    } catch (error) {
+      logger.error(`Error while uploading the image: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };

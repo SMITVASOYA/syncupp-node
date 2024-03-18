@@ -12,7 +12,7 @@ const {
   clientMemberAdded,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const sendEmail = require("../helpers/sendEmail");
 const Authentication = require("../models/authenticationSchema");
@@ -945,6 +945,7 @@ class TeamMemberService {
           const query_obj = {
             "agency_ids.agency_id": user?.reference_id,
             client_id: payload?.client_id,
+            "agency_ids.status": { $ne: "deleted" },
           };
 
           const team_clients_ids = await Team_Client.distinct("_id", query_obj);

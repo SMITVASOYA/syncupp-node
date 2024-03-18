@@ -11,7 +11,7 @@ const {
   invitationEmailTemplate,
   agencyCreatedTemplate,
 } = require("../utils/utils");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const moment = require("moment");
 const { throwError } = require("../helpers/errorUtil");
 const Authentication = require("../models/authenticationSchema");
@@ -1192,6 +1192,27 @@ class AuthService {
       return;
     } catch (error) {
       logger.error(`Error while sending email: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  checkSubscriptionHalt = async (agency) => {
+    try {
+      if (
+        agency?.role?.name === "agency" &&
+        agency?.subscription_halted &&
+        agency?.subscription_halted_displayed
+      ) {
+        return {
+          is_subscription_halted: true,
+          subscription_halted_date: agency?.subscription_halted,
+        };
+      }
+      return {
+        is_subscription_halted: false,
+      };
+    } catch (error) {
+      logger.error(`Error while checking the subscription halt: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };

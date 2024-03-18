@@ -21,4 +21,5 @@ authRoute.post("/change-password", authController.changePassword);
 authRoute.get("/profile", authController.getProfile);
 authRoute.patch("/update-profile", authController.updateProfile);
 authRoute.post("/send-referral", authController.refferalEmail);
+authRoute.get("/subscription-halt", authController.checkSubscriptionHalt);
 module.exports = authRoute;
