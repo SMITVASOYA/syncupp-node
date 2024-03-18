@@ -29,8 +29,8 @@ exports.setupNightlyCronJob = async () => {
   });
 
   // Crone job for 15 minutes start
-
-  cron.schedule("* * * * *", async () => {
+  const callMeetingCron = config?.cron_job.call_meeting_alert;
+  cron.schedule(callMeetingCron, async () => {
     const currentDate = moment().startOf("day");
     const callMeeting = await Activity_Type_Master.findOne({
       name: "call_meeting",

@@ -33,6 +33,7 @@ const razorpay = new Razorpay({
 });
 const axios = require("axios");
 const AdminCoupon = require("../models/adminCouponSchema");
+const Affiliate_Referral = require("../models/affiliateReferralSchema");
 
 class PaymentService {
   constructor() {
@@ -234,7 +235,7 @@ class PaymentService {
           let first_time = false;
           if (!payment_history) first_time = true;
 
-          await PaymentHistory.create({
+          const paymentData = await PaymentHistory.create({
             agency_id: agency_details?.reference_id,
             amount,
             subscription_id,
@@ -243,6 +244,18 @@ class PaymentService {
             first_time,
             plan_id,
           });
+
+          await Affiliate_Referral.findOneAndUpdate(
+            {
+              referred_to: agency_details?.reference_id,
+              $eq: { status: "inactive" },
+            },
+            {
+              $set: { status: "active", payment_id: paymentData._id },
+            },
+            { new: true }
+          );
+
           return;
         } else if (body?.event === "subscription.activated") {
           const subscription_id = payload?.subscription?.entity?.id;

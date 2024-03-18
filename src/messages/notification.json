@@ -59,7 +59,7 @@
     },
     "taskInProgress": {
       "clientMessage": "Hi ${client_name}! Your task '${title}' is in progress.",
-      "assignToMessage": "Hey ${assigned_to_name}! The task '${ title}' assigned to you is in progress.",
+      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is in progress.",
       "assignByMessage": "Hi ${assigned_by_name}! The task '${title}' is in progress."
     },
     "taskCancelled": {
