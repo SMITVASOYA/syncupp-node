@@ -416,6 +416,18 @@ class AuthService {
               role: agency_enroll?.role?.name,
             });
 
+            const userData = await Authentication.findOne({
+              reference_id: agency_enroll?.reference_id,
+            });
+
+            await notificationService.addNotification({
+              module_name: "referral",
+              action_type: "login",
+              referred_to: userData?.first_name + " " + userData?.last_name,
+              receiver_id: agency_enroll?.reference_id,
+              points: referral_data.competition.successful_login.toString(),
+            });
+
             await Agency.findOneAndUpdate(
               { _id: agency_enroll?.reference_id },
               {
@@ -467,6 +479,18 @@ class AuthService {
               point: +referral_data?.competition?.successful_login?.toString(),
               type: "login",
               role: existing_agency?.role?.name,
+            });
+
+            const userData = await Authentication.findOne({
+              reference_id: existing_agency?.reference_id,
+            });
+
+            await notificationService.addNotification({
+              module_name: "referral",
+              action_type: "login",
+              referred_to: userData?.first_name + " " + userData?.last_name,
+              receiver_id: existing_agency?.reference_id,
+              points: referral_data.competition.successful_login.toString(),
             });
 
             await Agency.findOneAndUpdate(
@@ -601,6 +625,17 @@ class AuthService {
               role: agency_enroll?.role?.name,
               login_date: moment.utc().startOf("day"),
             });
+            const userData = await Authentication.findOne({
+              reference_id: agency_enroll?.reference_id,
+            });
+
+            await notificationService.addNotification({
+              module_name: "referral",
+              action_type: "login",
+              referred_to: userData?.first_name + " " + userData?.last_name,
+              receiver_id: agency_enroll?.reference_id,
+              points: referral_data.competition.successful_login.toString(),
+            });
 
             await Agency.findOneAndUpdate(
               { _id: agency_enroll?.reference_id },
@@ -652,6 +687,18 @@ class AuthService {
               point: +referral_data?.competition?.successful_login?.toString(),
               type: "login",
               role: existing_agency?.role?.name,
+            });
+
+            const userData = await Authentication.findOne({
+              reference_id: existing_agency?.reference_id,
+            });
+
+            await notificationService.addNotification({
+              module_name: "referral",
+              action_type: "login",
+              referred_to: userData?.first_name + " " + userData?.last_name,
+              receiver_id: existing_agency?.reference_id,
+              points: referral_data.competition.successful_login.toString(),
             });
 
             await Agency.findOneAndUpdate(
@@ -780,6 +827,18 @@ class AuthService {
             point: +referral_data?.competition?.successful_login?.toString(),
             type: "login",
             role: existing_Data?.role?.name,
+          });
+
+          const userData = await Authentication.findOne({
+            reference_id: existing_Data?.reference_id,
+          });
+
+          await notificationService.addNotification({
+            module_name: "referral",
+            action_type: "login",
+            referred_to: userData?.first_name + " " + userData?.last_name,
+            receiver_id: existing_Data?.reference_id,
+            points: referral_data.competition?.successful_login.toString(),
           });
 
           if (existing_Data?.role?.name === "agency") {
@@ -1108,6 +1167,18 @@ class AuthService {
         agency_id: referral_code_exist?.reference_id,
         point: referral_data?.referral?.successful_referral_point,
         type: "referral",
+      });
+
+      const userData = await Authentication.findOne({
+        reference_id: referred_to?.reference_id,
+      });
+
+      await notificationService.addNotification({
+        module_name: "referral",
+        action_type: "signUp",
+        referred_to: userData?.first_name + " " + userData?.last_name,
+        receiver_id: referral_code_exist?.reference_id,
+        points: referral_data?.referral?.successful_referral_point,
       });
 
       await Agency.findOneAndUpdate(

@@ -418,6 +418,44 @@ class NotificationService {
         }
       }
 
+      // referral Points
+
+      if (module_name === "referral") {
+        console.log(payload.action_type, "fsgg");
+        console.log(payload, "gegege");
+        if (payload.action_type === "login") {
+          await createAndEmitNotification(
+            payload.receiver_id,
+            "login",
+            "referral",
+            "referral"
+          );
+        }
+        if (payload.action_type === "signUp") {
+          await createAndEmitNotification(
+            payload.receiver_id,
+            "signUp",
+            "referral",
+            "referral"
+          );
+        }
+        let message_type;
+        if (payload.action_type === "taskDeduct") message_type = "taskDeduct";
+        if (payload.action_type === "taskAdded") message_type = "taskAdded";
+        if (
+          payload.action_type === "taskDeduct" ||
+          payload.action_type === "taskAdded"
+        ) {
+          console.log("first");
+          await createAndEmitNotification(
+            payload.receiver_id,
+            message_type,
+            "referral",
+            "referral"
+          );
+        }
+      }
+
       return;
     } catch (error) {
       logger.error(`Error while fetching agencies: ${error}`);
