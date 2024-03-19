@@ -1793,9 +1793,6 @@ exports.invitationEmail = (link, username, invitation_text) => {
                                     >
                                       ${invitation_text}
                                     </p>
-                                    <img
-                                      src="${process.env.SERVER_URL}/template/fp-image.png"
-                                    />
                                     <a
                                       target="_blank"
                                       href="${link}"
@@ -2847,9 +2844,6 @@ exports.welcomeMail = (username) => {
                                       >
                                         Welcome to the Syncupp. you have succcessfully joined with the SyncUpp.
                                       </p>
-                                      <img
-                                        src="${process.env.SERVER_URL}/template/fp-image.png"
-                                      />
                                     </td>
                                   </tr>
                                 </table>

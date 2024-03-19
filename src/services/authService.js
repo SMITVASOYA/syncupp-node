@@ -391,7 +391,6 @@ class AuthService {
           .utc(agency_enroll?.last_login_date)
           .startOf("day");
         const currentDateUTC = moment.utc().startOf("day");
-        const referral_data = await Configuration.findOne().lean();
         console.log(
           currentDateUTC,
           lastLoginDateUTC,
@@ -404,6 +403,8 @@ class AuthService {
           currentDateUTC.isAfter(lastLoginDateUTC) ||
           !agency_enroll.last_login_date
         ) {
+          const referral_data = await Configuration.findOne().lean();
+
           if (
             agency_enroll?.role?.name === "team_agency" ||
             agency_enroll?.role?.name === "agency"
@@ -453,6 +454,8 @@ class AuthService {
             referral_data?.payment?.subscription_halt_days,
         });
       } else {
+        const referral_data = await Configuration.findOne().lean();
+
         const lastLoginDateUTC = moment
           .utc(existing_agency?.last_login_date)
           .startOf("day");
@@ -600,7 +603,6 @@ class AuthService {
           .utc(agency_enroll?.last_login_date)
           .startOf("day");
         const currentDateUTC = moment.utc().startOf("day");
-        const referral_data = await Configuration.findOne().lean();
         console.log(
           currentDateUTC,
           lastLoginDateUTC,
@@ -613,6 +615,8 @@ class AuthService {
           currentDateUTC.isAfter(lastLoginDateUTC) ||
           !agency_enroll?.last_login_date
         ) {
+          const referral_data = await Configuration.findOne().lean();
+
           if (
             agency_enroll?.role?.name === "team_agency" ||
             agency_enroll?.role?.name === "agency"
@@ -661,6 +665,8 @@ class AuthService {
             referral_data?.payment?.subscription_halt_days,
         });
       } else {
+        const referral_data = await Configuration.findOne().lean();
+
         const lastLoginDateUTC = moment
           .utc(existing_agency?.last_login_date)
           .startOf("day");

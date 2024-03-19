@@ -2228,7 +2228,7 @@ class ActivityService {
       if (activity_type === "others" && payload?.recurring_end_date) {
         recurring_date = moment
           .utc(payload?.recurring_end_date, "DD-MM-YYYY")
-          .endOf("day");
+          .startOf("day");
         if (!recurring_date.isSameOrAfter(start_date))
           return throwError(returnMessage("activity", "invalidRecurringDate"));
       }
@@ -2768,7 +2768,7 @@ class ActivityService {
       if (activity_type === "others" && payload?.recurring_end_date) {
         recurring_date = moment
           .utc(payload?.recurring_end_date, "DD-MM-YYYY")
-          .endOf("day");
+          .startOf("day");
         if (!recurring_date.isSameOrAfter(start_date))
           return throwError(returnMessage("activity", "invalidRecurringDate"));
       }
@@ -3892,7 +3892,7 @@ class ActivityService {
       if (activity_type === "others" && payload?.recurring_end_date) {
         recurring_date = moment
           .utc(payload?.recurring_end_date, "DD-MM-YYYY")
-          .endOf("day");
+          .startOf("day");
         if (!recurring_date.isSameOrAfter(start_date))
           return throwError(returnMessage("activity", "invalidRecurringDate"));
       }
