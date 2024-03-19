@@ -29,6 +29,7 @@ exports.socket_connection = (http_server) => {
         "https://syncupp.com",
         "http://localhost:5014",
       ],
+      methods: ["GET", "PATCH", "POST", "HEAD", "OPTIONS"],
     },
   });
 
