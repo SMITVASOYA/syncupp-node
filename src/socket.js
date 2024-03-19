@@ -26,6 +26,8 @@ exports.socket_connection = (http_server) => {
         "http://104.248.10.11:5014",
         "https://app.syncupp.com",
         "https://app.syncupp.com:5014",
+        "https://syncupp.com",
+        "http://localhost:5014",
       ],
     },
   });
