@@ -379,7 +379,7 @@ class AffiliateService {
       });
 
       const user = await Authentication.findOne({
-        referral_code: referral_code,
+        affiliate_referral_code: referral_code,
       });
 
       if (!affiliate && !user) {

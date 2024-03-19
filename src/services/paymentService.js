@@ -247,14 +247,16 @@ class PaymentService {
             first_time,
             plan_id,
           });
-
+          console.log(paymentData);
+          console.log(agency_details?.reference_id);
           await Affiliate_Referral.findOneAndUpdate(
             {
               referred_to: agency_details?.reference_id,
               $eq: { status: "inactive" },
             },
             {
-              $set: { status: "active", payment_id: paymentData._id },
+              status: "active",
+              payment_id: paymentData._id,
             },
             { new: true }
           );
@@ -468,7 +470,7 @@ class PaymentService {
         return {
           success: true,
           message: status_change?.message,
-          updated_agency_detail: status_change?.updated_agency_detail,
+          data: status_change?.data,
         };
       }
 
@@ -602,7 +604,7 @@ class PaymentService {
         return {
           success: true,
           message: returnMessage("payment", "paymentCompleted"),
-          updated_agency_detail,
+          data: { user: updated_agency_detail },
         };
       } else if (payload?.agency_id && payload?.user_id) {
         const [agency_details, user_details, sheets] = await Promise.all([
