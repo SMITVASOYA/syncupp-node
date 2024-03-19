@@ -148,7 +148,7 @@ class AuthService {
         let agency_enroll = await Authentication.create({
           first_name,
           last_name,
-          email,
+          email: email?.toLowerCase(),
           password: encrypted_password,
           contact_number,
           image_url,
@@ -219,7 +219,7 @@ class AuthService {
         let agency_enroll = await Authentication.create({
           first_name,
           last_name,
-          email,
+          email: email?.toLowerCase(),
           password: encrypted_password,
           contact_number,
           image_url,
@@ -811,10 +811,11 @@ class AuthService {
           existing_Data?.role?.name === "team_agency" ||
           existing_Data?.role?.name === "agency"
         ) {
-          let agency_key;
+          let agency_key,
+            parent_id = existing_Data?.reference_id;
 
           if (existing_Data?.role?.name === "team_agency") {
-            await Team_Agency.findOneAndUpdate(
+            const team_detail = await Team_Agency.findOneAndUpdate(
               { _id: existing_Data.reference_id },
               {
                 $inc: {
@@ -824,11 +825,12 @@ class AuthService {
               },
               { new: true }
             );
+            parent_id = team_detail?.agency_id;
           }
 
           await CompetitionPoint.create({
             user_id: existing_Data?.reference_id,
-            agency_id: agency_key ? agency_key : existing_Data?.reference_id,
+            agency_id: parent_id,
             point: +referral_data?.competition?.successful_login?.toString(),
             type: "login",
             role: existing_Data?.role?.name,

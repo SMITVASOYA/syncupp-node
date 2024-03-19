@@ -46,10 +46,16 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
       // If the condition is true, execute the following code
       if (user?.role?.name === "team_agency" || user?.role?.name === "agency") {
         const referral_data = await Configuration.findOne().lean();
-
+        let parent_id = user?.reference_id;
+        if (user?.role?.name === "team_agency") {
+          const team_agency_detail = await Team_Agency.findById(
+            user?.reference_id
+          ).lean();
+          parent_id = team_agency_detail?.agency_id;
+        }
         await Competition_Point.create({
           user_id: user.reference_id,
-          agency_id: user.reference_id,
+          agency_id: parent_id,
           point: +referral_data.competition.successful_login.toString(),
           type: "login",
           role: user?.role?.name,

@@ -31,6 +31,7 @@ exports.socket_connection = (http_server) => {
       ],
       methods: ["GET", "PATCH", "POST", "HEAD", "OPTIONS"],
     },
+    transports: ["websocket"],
   });
 
   io.on("connection", (socket) => {

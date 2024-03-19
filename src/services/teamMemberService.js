@@ -109,7 +109,7 @@ class TeamMemberService {
           " " +
           capitalizeFirstLetter(last_name),
         status: "payment_pending",
-        email,
+        email: email?.toLowerCase(),
         reference_id: team_agency?._id,
         contact_number,
         invitation_token,
@@ -178,7 +178,7 @@ class TeamMemberService {
             capitalizeFirstLetter(first_name) +
             " " +
             capitalizeFirstLetter(last_name),
-          email,
+          email: email?.toLowerCase(),
           contact_number,
           role: team_auth_role?._id,
           reference_id: new_team_client?._id,

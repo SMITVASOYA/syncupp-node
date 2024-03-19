@@ -101,7 +101,7 @@ class ClientService {
             capitalizeFirstLetter(first_name) +
             " " +
             capitalizeFirstLetter(last_name),
-          email,
+          email: email?.toLowerCase(),
           contact_number: payload?.contact_number,
           role: role?._id,
           reference_id: new_client?._id,

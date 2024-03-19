@@ -3833,7 +3833,7 @@ class ActivityService {
           $unwind: "$user",
         },
       ];
-      return Competition_Point.aggregate(aggragate);
+      return await Competition_Point.aggregate(aggragate);
     } catch (error) {
       logger.error(`Error while fetching the leaderboard users: ${error}`);
       return throwError(error?.message, error?.statusCode);
