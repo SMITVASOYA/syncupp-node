@@ -570,7 +570,7 @@ class PaymentService {
         razorpay_payment_id,
       } = payload;
       if (payload?.agency_id && !payload?.user_id) {
-        let updated_agency_detail = await Authentication.findOneAndUpdate(
+        await Authentication.findOneAndUpdate(
           { reference_id: agency_id },
           {
             status: "confirmed",
@@ -578,6 +578,12 @@ class PaymentService {
           },
           { new: true }
         );
+
+        let updated_agency_detail = await Authentication.findOne({
+          reference_id: agency_id,
+        })
+          .populate("role", "name")
+          .lean();
         // commenting to create the payment history by the webhook
         // await PaymentHistory.create({
         //   agency_id,
