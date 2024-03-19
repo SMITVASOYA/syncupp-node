@@ -46,7 +46,7 @@ class ScheduleEvent {
       if (payload?.recurring_end_date) {
         recurring_date = moment
           .utc(payload?.recurring_end_date, "DD-MM-YYYY")
-          .endOf("day");
+          .startOf("day");
         if (!recurring_date.isSameOrAfter(start_date))
           return throwError(returnMessage("event", "invalidRecurringDate"));
       }
@@ -638,7 +638,7 @@ class ScheduleEvent {
       if (payload?.recurring_end_date) {
         recurring_date = moment
           .utc(payload?.recurring_end_date, "DD-MM-YYYY")
-          .endOf("day");
+          .startOf("day");
         if (!recurring_date.isSameOrAfter(start_date))
           return throwError(returnMessage("event", "invalidRecurringDate"));
       } else {
