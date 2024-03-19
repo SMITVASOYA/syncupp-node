@@ -602,7 +602,7 @@ class PaymentService {
           },
           { upsert: true }
         );
-        updated_agency_detail = updated_agency_detail.toJSON();
+        // updated_agency_detail = updated_agency_detail.toJSON();
         delete updated_agency_detail?.password;
         delete updated_agency_detail?.is_google_signup;
         delete updated_agency_detail?.is_facebook_signup;
