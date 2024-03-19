@@ -23,6 +23,7 @@ exports.socket_connection = (http_server) => {
         "http://localhost:3001",
         "http://localhost",
         "http://104.248.10.11:5010",
+        "http://104.248.10.11",
         "http://104.248.10.11:5014",
         "https://app.syncupp.com",
         "https://app.syncupp.com:5014",
@@ -31,7 +32,6 @@ exports.socket_connection = (http_server) => {
       ],
       methods: ["GET", "PATCH", "POST", "HEAD", "OPTIONS"],
     },
-    transports: ["websocket"],
   });
 
   io.on("connection", (socket) => {
