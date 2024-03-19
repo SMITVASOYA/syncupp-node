@@ -2432,6 +2432,27 @@ class ActivityService {
           message: activity_email_template,
           icsContent: file,
         });
+
+        attendees_data &&
+          attendees_data[0] &&
+          attendees_data.map((item) => {
+            const activity_email_template = activityTemplate({
+              ...payload,
+              status: mark_as_done ? "completed" : "pending",
+              assigned_by_name: user.first_name + " " + user.last_name,
+              client_name: client_data.first_name + " " + client_data.last_name,
+              assigned_to_name:
+                assign_to_data.first_name + " " + assign_to_data.last_name,
+            });
+
+            sendEmail({
+              email: item?.email,
+              subject: returnMessage("emailTemplate", "newActivityMeeting"),
+              message: activity_email_template,
+              icsContent: file,
+            });
+          });
+
         await notificationService.addNotification(
           {
             assign_by: user.reference_id,
@@ -2481,6 +2502,26 @@ class ActivityService {
           icsContent: file,
         });
 
+        attendees_data &&
+          attendees_data[0] &&
+          attendees_data.map((item) => {
+            const activity_email_template = activityTemplate({
+              ...payload,
+              status: mark_as_done ? "completed" : "pending",
+              assigned_by_name: user.first_name + " " + user.last_name,
+              client_name: client_data.first_name + " " + client_data.last_name,
+              assigned_to_name:
+                assign_to_data.first_name + " " + assign_to_data.last_name,
+            });
+
+            sendEmail({
+              email: item?.email,
+              subject: returnMessage("emailTemplate", "newActivityMeeting"),
+              message: activity_email_template,
+              icsContent: file,
+            });
+          });
+
         const agencyData = await Authentication.findOne({
           reference_id: newActivity?.agency_id,
         });
@@ -2499,6 +2540,7 @@ class ActivityService {
             activity_type_action: "create_call_meeting",
             activity_type:
               activity_type === "others" ? "activity" : "call meeting",
+            log_user: "member",
           },
           newActivity._id
         );
@@ -2891,10 +2933,13 @@ class ActivityService {
           emailTempKey = "activityCompleted";
         }
 
-        const [assign_to_data, client_data] = await Promise.all([
-          Authentication.findOne({ reference_id: assign_to }),
-          Authentication.findOne({ reference_id: client_id }),
-        ]);
+        const [assign_to_data, client_data, attendees_data] = await Promise.all(
+          [
+            Authentication.findOne({ reference_id: assign_to }),
+            Authentication.findOne({ reference_id: client_id }),
+            Authentication.find({ reference_id: { $in: attendees } }).lean(),
+          ]
+        );
         const activity_email_template = activityTemplate({
           ...payload,
           status: payload.mark_as_done ? "completed" : "pending",
@@ -2914,6 +2959,26 @@ class ActivityService {
           subject: returnMessage("emailTemplate", emailTempKey),
           message: activity_email_template,
         });
+
+        attendees_data &&
+          attendees_data[0] &&
+          attendees_data.map((item) => {
+            const activity_email_template = activityTemplate({
+              ...payload,
+              status: payload.mark_as_done ? "completed" : "pending",
+              assigned_by_name: user.first_name + " " + user.last_name,
+              client_name: client_data.first_name + " " + client_data.last_name,
+              assigned_to_name:
+                assign_to_data.first_name + " " + assign_to_data.last_name,
+            });
+
+            sendEmail({
+              email: item?.email,
+              subject: returnMessage("emailTemplate", emailTempKey),
+              message: activity_email_template,
+            });
+          });
+
         await notificationService.addNotification(
           {
             assign_by: user.reference_id,
@@ -2931,7 +2996,86 @@ class ActivityService {
         );
         // ---------------- End ---------------
       }
+      if (user?.role?.name === "team_agency") {
+        // --------------- Start--------------------
+        let task_status = "update";
+        let emailTempKey = "activityUpdated";
+        if (payload.mark_as_done) {
+          task_status = "completed";
+          emailTempKey = "activityCompleted";
+        }
 
+        const [assign_to_data, client_data, attendees_data, agencyData] =
+          await Promise.all([
+            Authentication.findOne({ reference_id: assign_to }),
+            Authentication.findOne({ reference_id: client_id }),
+            Authentication.find({ reference_id: { $in: attendees } }).lean(),
+            Authentication.findOne({
+              reference_id: user?.agency_id
+                ? user?.agency_id
+                : user?.reference_id,
+            }).lean(),
+          ]);
+
+        const activity_email_template = activityTemplate({
+          ...payload,
+          status: payload.mark_as_done ? "completed" : "pending",
+          assigned_by_name: user.first_name + " " + user.last_name,
+          client_name: client_data.first_name + " " + client_data.last_name,
+          assigned_to_name:
+            assign_to_data.first_name + " " + assign_to_data.last_name,
+        });
+
+        sendEmail({
+          email: client_data?.email,
+          subject: returnMessage("emailTemplate", emailTempKey),
+          message: activity_email_template,
+        });
+        sendEmail({
+          email: assign_to_data?.email,
+          subject: returnMessage("emailTemplate", emailTempKey),
+          message: activity_email_template,
+        });
+
+        attendees_data &&
+          attendees_data[0] &&
+          attendees_data.map((item) => {
+            const activity_email_template = activityTemplate({
+              ...payload,
+              status: payload.mark_as_done ? "completed" : "pending",
+              assigned_by_name: user.first_name + " " + user.last_name,
+              client_name: client_data.first_name + " " + client_data.last_name,
+              assigned_to_name:
+                assign_to_data.first_name + " " + assign_to_data.last_name,
+            });
+
+            sendEmail({
+              email: item?.email,
+              subject: returnMessage("emailTemplate", emailTempKey),
+              message: activity_email_template,
+            });
+          });
+
+        await notificationService.addNotification(
+          {
+            assign_by: user.reference_id,
+            assigned_by_name: user.first_name + " " + user.last_name,
+            client_name: client_data.first_name + " " + client_data.last_name,
+            assigned_to_name:
+              assign_to_data.first_name + " " + assign_to_data.last_name,
+            ...payload,
+            module_name: "activity",
+            activity_type_action: task_status,
+            activity_type:
+              activity_type === "others" ? "activity" : "call meeting",
+            agency_id: user?.agency_id ? user?.agency_id : user?.reference_id,
+            agency_name: agencyData.first_name + " " + agencyData.last_name,
+            log_user: "member",
+          },
+          activity_id
+        );
+        // ---------------- End ---------------
+      }
       return;
     } catch (error) {
       logger.error(`Error while updating call meeting and other: ${error}`);

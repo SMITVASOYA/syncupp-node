@@ -15,7 +15,6 @@ class NotificationService {
   addNotification = async (payload, id) => {
     let { module_name, activity_type_action, client_id, assign_to, agenda } =
       payload;
-
     if (payload?.agenda) payload.agenda = extractTextFromHtml(agenda);
     try {
       var with_unread_count = async (notification_data, user_id) => {
@@ -56,6 +55,8 @@ class NotificationService {
           messageType,
           receiver
         ) => {
+          console.log(userId, messageType, receiver);
+
           const message = replaceFields(
             returnNotification("activity", messageType, receiver),
             { ...payload }
@@ -74,21 +75,28 @@ class NotificationService {
             userId
           );
         };
+        console.log(payload);
 
         if (payload?.log_user === "member") {
-          if (activity_type_action === "createTask") {
+          if (activity_type_action === "create_call_meeting") {
+            console.log("1");
             await createAndEmitNotification(
               payload.agency_id,
               message_type,
               "assignByMessage"
             );
-
             await createAndEmitNotification(
-              payload.assign_to,
+              payload.client_id,
               message_type,
-              "assignToMessage"
+              "clientMessage"
             );
-
+          }
+          if (activity_type_action === "update") {
+            await createAndEmitNotification(
+              payload.agency_id,
+              message_type,
+              "assignByMessage"
+            );
             await createAndEmitNotification(
               payload.client_id,
               message_type,
@@ -96,19 +104,22 @@ class NotificationService {
             );
           }
 
-          await createAndEmitNotification(
-            client_id,
-            message_type,
-            "clientMessage"
-          );
-          await createAndEmitNotification(
-            payload.assign_by,
-            message_type,
-            "assignByMessage"
-          );
-        }
-
-        if (activity_type_action === "meetingAlert") {
+          if (
+            activity_type_action !== "update" &&
+            activity_type_action !== "create_call_meeting"
+          ) {
+            await createAndEmitNotification(
+              client_id,
+              message_type,
+              "clientMessage"
+            );
+            await createAndEmitNotification(
+              payload.assign_by,
+              message_type,
+              "assignByMessage"
+            );
+          }
+        } else if (activity_type_action === "meetingAlert") {
           console.log("first");
           await createAndEmitNotification(
             payload.client_id,
@@ -146,17 +157,17 @@ class NotificationService {
             message_type,
             "assignToMessage"
           );
-
-          attendees &&
-            attendees[0] &&
-            attendees.map(async (item) => {
-              await createAndEmitNotification(
-                item,
-                message_type,
-                "attendeesMessage"
-              );
-            });
         }
+
+        attendees &&
+          attendees[0] &&
+          attendees.map(async (item) => {
+            await createAndEmitNotification(
+              item,
+              message_type,
+              "attendeesMessage"
+            );
+          });
       }
 
       // Task
