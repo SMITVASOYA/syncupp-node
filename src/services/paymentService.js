@@ -247,14 +247,16 @@ class PaymentService {
             first_time,
             plan_id,
           });
-
+          console.log(paymentData);
+          console.log(agency_details?.reference_id);
           await Affiliate_Referral.findOneAndUpdate(
             {
               referred_to: agency_details?.reference_id,
               $eq: { status: "inactive" },
             },
             {
-              $set: { status: "active", payment_id: paymentData._id },
+              status: "active",
+              payment_id: paymentData._id,
             },
             { new: true }
           );
