@@ -1159,6 +1159,7 @@ class PaymentService {
         removed_user:
           removeUserData.first_name + " " + removeUserData.last_name,
         agency_name: user.first_name + " " + user.last_name,
+        user_type: roleName,
       });
       sendEmail({
         email: admin?.email,

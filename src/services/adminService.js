@@ -21,6 +21,7 @@ const { default: mongoose } = require("mongoose");
 const Authentication = require("../models/authenticationSchema");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
 const paymentService = new PaymentService();
+const moment = require("moment");
 
 class AdminService {
   tokenGenerator = (payload) => {
@@ -402,11 +403,15 @@ class AdminService {
   // Dashboard Data
   dashboardData = async () => {
     try {
+      const currentDate = moment();
+      const startOfMonth = moment(currentDate).startOf("month");
+      const endOfMonth = moment(currentDate).endOf("month");
       const [
         activeAgencies,
         activeClients,
         activeTeamAgency,
         activeTeamClient,
+        thisMonthTotal,
       ] = await Promise.all([
         Authentication.aggregate([
           {
@@ -516,13 +521,30 @@ class AdminService {
             $count: "activeTeamClient",
           },
         ]),
+        PaymentHistory.aggregate([
+          {
+            $match: {
+              payment_mode: "payment",
+              createdAt: {
+                $gte: startOfMonth.toDate(),
+                $lte: endOfMonth.toDate(),
+              },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalAmount: { $sum: "$amount" },
+            },
+          },
+        ]),
       ]);
       return {
-        active_agencies: activeAgencies[0]?.activeAgencies ?? null,
-        active_clients: activeClients[0]?.activeClients ?? null,
-        active_team_agency: activeTeamAgency[0]?.activeTeamAgency ?? null,
-        active_team_client: activeTeamClient[0]?.activeTeamClient ?? null,
-        // Next_billing_amount: 0,
+        active_agencies: activeAgencies[0]?.activeAgencies ?? 0,
+        active_clients: activeClients[0]?.activeClients ?? 0,
+        active_team_agency: activeTeamAgency[0]?.activeTeamAgency ?? 0,
+        active_team_client: activeTeamClient[0]?.activeTeamClient ?? 0,
+        this_billing_amount: thisMonthTotal[0]?.totalAmount ?? 0,
       };
     } catch (error) {
       logger.error(`Error while fetch dashboard data for agency: ${error}`);
