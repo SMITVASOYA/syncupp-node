@@ -476,6 +476,7 @@ class NotificationService {
 
   // Admin Notification
   addAdminNotification = async (payload, id) => {
+    console.log(payload);
     try {
       const with_unread_count = async (notification_data, user_id) => {
         const un_read_count = await Notification.countDocuments({
@@ -522,6 +523,33 @@ class NotificationService {
           "admin",
           "agency"
         );
+      }
+
+      //  seat remover
+      if (action_name === "seatRemoved") {
+        console.log(payload);
+        if (payload.user_type === "client") {
+          await createAndEmitNotification(
+            admin._id,
+            "clientSeatRemoved",
+            "admin",
+            "deleted"
+          );
+        } else if (payload.user_type === "Team Agency") {
+          await createAndEmitNotification(
+            admin._id,
+            "teamAgencySeatRemoved",
+            "admin",
+            "deleted"
+          );
+        } else if (payload.user_type === "Team Client") {
+          await createAndEmitNotification(
+            admin._id,
+            "teamClientSeatRemoved",
+            "admin",
+            "deleted"
+          );
+        }
       }
 
       return;

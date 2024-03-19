@@ -17,6 +17,7 @@ const {
   capitalizeFirstLetter,
   getKeywordType,
   returnNotification,
+  seatRemoved,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const crypto = require("crypto");
@@ -38,6 +39,7 @@ const Invoice = require("../models/invoiceSchema");
 const Agreement = require("../models/agreementSchema");
 const { eventEmitter } = require("../socket");
 const NotificationService = require("./notificationService");
+const Admin = require("../models/adminSchema");
 const notificationService = new NotificationService();
 
 class PaymentService {
@@ -1131,6 +1133,39 @@ class PaymentService {
       );
 
       const remove_user = user_exist[0];
+
+      // ---------------- Notification ----------------
+      const removeUserData = await Authentication.findOne({
+        reference_id: remove_user.user_id,
+      }).lean();
+      let roleName;
+      if (remove_user.role === "client") roleName = "client";
+      if (remove_user.role === "team_agency") roleName = "Team Agency";
+      if (remove_user.role === "team_client") roleName = "Team Client";
+      await notificationService.addAdminNotification({
+        action_name: "seatRemoved",
+        user_type: roleName,
+        removed_user:
+          removeUserData.first_name + " " + removeUserData.last_name,
+        agency_name: user.first_name + " " + user.last_name,
+        user_type: roleName,
+        ...removeUserData,
+      });
+
+      const admin = await Admin.findOne({});
+
+      const seatTemplate = seatRemoved({
+        ...removeUserData,
+        removed_user:
+          removeUserData.first_name + " " + removeUserData.last_name,
+        agency_name: user.first_name + " " + user.last_name,
+      });
+      sendEmail({
+        email: admin?.email,
+        subject: returnMessage("emailTemplate", "seatRemoved"),
+        message: seatTemplate,
+      });
+      // ---------------- Notification ----------------
 
       // this will used to check weather this user id has assined any task and it is in the pending state
       let activity_assigned;

@@ -105,6 +105,9 @@
   },
 
   "admin": {
+    "clientSeatRemoved": "Client ${removed_user} seat removed by  ${agency_name}",
+    "teamClientSeatRemoved": "Team client member ${removed_user} seat removed by  ${agency_name}",
+    "teamAgencySeatRemoved": "Member ${removed_user} seat removed by  ${agency_name}",
     "agencyCreated": "A new agency named ${agency_name} has been registered",
     "clientTeamPaymentFail": "Team member ${member_name} payment fail."
   },
