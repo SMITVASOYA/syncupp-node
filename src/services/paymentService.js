@@ -37,6 +37,8 @@ const Event = require("../models/eventSchema");
 const Invoice = require("../models/invoiceSchema");
 const Agreement = require("../models/agreementSchema");
 const { eventEmitter } = require("../socket");
+const NotificationService = require("./notificationService");
+const notificationService = new NotificationService();
 
 class PaymentService {
   constructor() {
@@ -238,7 +240,7 @@ class PaymentService {
           let first_time = false;
           if (!payment_history) first_time = true;
 
-          const paymentData = await PaymentHistory.create({
+          await PaymentHistory.create({
             agency_id: agency_details?.reference_id,
             amount,
             subscription_id,
@@ -247,19 +249,6 @@ class PaymentService {
             first_time,
             plan_id,
           });
-          console.log(paymentData);
-          console.log(agency_details?.reference_id);
-          await Affiliate_Referral.findOneAndUpdate(
-            {
-              referred_to: agency_details?.reference_id,
-              $eq: { status: "inactive" },
-            },
-            {
-              status: "active",
-              payment_id: paymentData._id,
-            },
-            { new: true }
-          );
 
           return;
         } else if (body?.event === "subscription.activated") {
@@ -274,6 +263,18 @@ class PaymentService {
               status: "confirmed",
             });
           }
+
+          await Affiliate_Referral.findOneAndUpdate(
+            {
+              referred_to: agency_details?.reference_id,
+              $eq: { status: "inactive" },
+            },
+            {
+              status: "active",
+              payment_id: payload?.subscription?.entity?.plan_id,
+            },
+            { new: true }
+          );
 
           return;
         } else if (
