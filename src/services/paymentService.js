@@ -471,7 +471,7 @@ class PaymentService {
         return {
           success: true,
           message: status_change?.message,
-          updated_agency_detail: status_change?.updated_agency_detail,
+          data: status_change?.data,
         };
       }
 
@@ -571,7 +571,7 @@ class PaymentService {
         razorpay_payment_id,
       } = payload;
       if (payload?.agency_id && !payload?.user_id) {
-        let updated_agency_detail = await Authentication.findOneAndUpdate(
+        await Authentication.findOneAndUpdate(
           { reference_id: agency_id },
           {
             status: "confirmed",
@@ -579,6 +579,12 @@ class PaymentService {
           },
           { new: true }
         );
+
+        let updated_agency_detail = await Authentication.findOne({
+          reference_id: agency_id,
+        })
+          .populate("role", "name")
+          .lean();
         // commenting to create the payment history by the webhook
         // await PaymentHistory.create({
         //   agency_id,
@@ -597,7 +603,7 @@ class PaymentService {
           },
           { upsert: true }
         );
-        updated_agency_detail = updated_agency_detail.toJSON();
+        // updated_agency_detail = updated_agency_detail.toJSON();
         delete updated_agency_detail?.password;
         delete updated_agency_detail?.is_google_signup;
         delete updated_agency_detail?.is_facebook_signup;
@@ -605,7 +611,7 @@ class PaymentService {
         return {
           success: true,
           message: returnMessage("payment", "paymentCompleted"),
-          updated_agency_detail,
+          data: { user: updated_agency_detail },
         };
       } else if (payload?.agency_id && payload?.user_id) {
         const [agency_details, user_details, sheets] = await Promise.all([

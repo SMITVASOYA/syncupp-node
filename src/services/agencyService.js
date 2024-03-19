@@ -5,8 +5,6 @@ const { paginationObject, capitalizeFirstLetter } = require("../utils/utils");
 const Role_Master = require("../models/masters/roleMasterSchema");
 const Authentication = require("../models/authenticationSchema");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
-const PaymentService = require("./paymentService");
-const paymentService = new PaymentService();
 const ReferralService = require("./referralService");
 const Client = require("../models/clientSchema");
 const Team_Agency = require("../models/teamAgencySchema");
@@ -15,7 +13,8 @@ const referralService = new ReferralService();
 const moment = require("moment");
 const Invoice = require("../models/invoiceSchema");
 const mongoose = require("mongoose");
-
+const PaymentService = require("../services/paymentService");
+const paymentService = new PaymentService();
 // Register Agency
 class AgencyService {
   agencyRegistration = async (payload) => {
@@ -138,11 +137,19 @@ class AgencyService {
       } else if (payload?.delete) update_obj.is_deleted = true;
 
       await Authentication.updateMany(
-        { _id: { $in: payload?.agencies }, status: { $ne: "payment_pending" } },
+        { _id: { $in: payload?.agencies } },
         update_obj,
         { new: true }
       );
-
+      if (payload?.delete) {
+        let agency = await Authentication.find({
+          _id: { $in: payload?.agencies },
+          status: { $ne: "payment_pending" },
+        }).lean();
+        for (let i = 0; i < agency?.length; i++) {
+          paymentService.deactivateAgency(agency[i]);
+        }
+      }
       return true;
     } catch (error) {
       logger.error(`Error while updating an agency status: ${error}`);
