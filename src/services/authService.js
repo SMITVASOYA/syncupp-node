@@ -399,12 +399,11 @@ class AuthService {
           currentDateUTC.isAfter(lastLoginDateUTC) ||
             !agency_enroll.last_login_date
         );
+        const referral_data = await Configuration.findOne().lean();
         if (
           currentDateUTC.isAfter(lastLoginDateUTC) ||
           !agency_enroll.last_login_date
         ) {
-          const referral_data = await Configuration.findOne().lean();
-
           if (
             agency_enroll?.role?.name === "team_agency" ||
             agency_enroll?.role?.name === "agency"
@@ -426,7 +425,7 @@ class AuthService {
               action_type: "login",
               referred_to: userData?.first_name + " " + userData?.last_name,
               receiver_id: agency_enroll?.reference_id,
-              points: referral_data.competition.successful_login.toString(),
+              points: referral_data?.competition?.successful_login?.toString(),
             });
 
             await Agency.findOneAndUpdate(
@@ -493,7 +492,7 @@ class AuthService {
               action_type: "login",
               referred_to: userData?.first_name + " " + userData?.last_name,
               receiver_id: existing_agency?.reference_id,
-              points: referral_data.competition.successful_login.toString(),
+              points: referral_data?.competition?.successful_login?.toString(),
             });
 
             await Agency.findOneAndUpdate(
@@ -611,12 +610,12 @@ class AuthService {
           currentDateUTC.isAfter(lastLoginDateUTC) ||
             !agency_enroll.last_login_date
         );
+        const referral_data = await Configuration.findOne().lean();
+
         if (
           currentDateUTC.isAfter(lastLoginDateUTC) ||
           !agency_enroll?.last_login_date
         ) {
-          const referral_data = await Configuration.findOne().lean();
-
           if (
             agency_enroll?.role?.name === "team_agency" ||
             agency_enroll?.role?.name === "agency"
@@ -638,7 +637,7 @@ class AuthService {
               action_type: "login",
               referred_to: userData?.first_name + " " + userData?.last_name,
               receiver_id: agency_enroll?.reference_id,
-              points: referral_data.competition.successful_login.toString(),
+              points: referral_data?.competition?.successful_login?.toString(),
             });
 
             await Agency.findOneAndUpdate(
@@ -704,7 +703,7 @@ class AuthService {
               action_type: "login",
               referred_to: userData?.first_name + " " + userData?.last_name,
               receiver_id: existing_agency?.reference_id,
-              points: referral_data.competition.successful_login.toString(),
+              points: referral_data.competition?.successful_login?.toString(),
             });
 
             await Agency.findOneAndUpdate(
@@ -844,7 +843,7 @@ class AuthService {
             action_type: "login",
             referred_to: userData?.first_name + " " + userData?.last_name,
             receiver_id: existing_Data?.reference_id,
-            points: referral_data.competition?.successful_login.toString(),
+            points: referral_data.competition?.successful_login?.toString(),
           });
 
           if (existing_Data?.role?.name === "agency") {
