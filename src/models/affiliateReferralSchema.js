@@ -19,8 +19,7 @@ const affiliateReferralSchema = new mongoose.Schema(
     },
     status: { type: String, default: "inactive" },
     payment_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "payment_history",
+      type: String,
     },
   },
   { timestamps: true }
