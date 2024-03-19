@@ -468,7 +468,7 @@ class PaymentService {
         return {
           success: true,
           message: status_change?.message,
-          updated_agency_detail: status_change?.updated_agency_detail,
+          data: status_change?.data,
         };
       }
 
@@ -602,7 +602,7 @@ class PaymentService {
         return {
           success: true,
           message: returnMessage("payment", "paymentCompleted"),
-          updated_agency_detail,
+          data: { user: updated_agency_detail },
         };
       } else if (payload?.agency_id && payload?.user_id) {
         const [agency_details, user_details, sheets] = await Promise.all([
