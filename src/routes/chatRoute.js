@@ -8,7 +8,7 @@ chatRoute.post("/users", chatController.fetchUsersList);
 chatRoute.post("/history", chatController.chatHistory);
 chatRoute.get("/group/users", chatController.fetchUsers);
 chatRoute.post("/group/create", chatController.createGroup);
-chatRoute.get("/groups", chatController.groups);
+chatRoute.post("/groups", chatController.groups);
 chatRoute.post("/group/history", chatController.groupChatHistory);
 chatRoute.patch("/group/update", chatController.updateGroup);
 chatRoute.get("/group/:groupId", chatController.getGroup);

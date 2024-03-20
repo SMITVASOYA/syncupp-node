@@ -109,7 +109,8 @@ class PaymentService {
       )
         return throwError(returnMessage("payment", "alreadyPaid"));
       const [plan, configuration] = await Promise.all([
-        SubscriptionPlan.findOne({ active: true }).lean(),
+        // SubscriptionPlan.findOne({ active: true }).lean(),
+        SubscriptionPlan.findOne({ _id: "65efe3bbb934aafea0ece22a" }).lean(),
         Configuration.findOne().lean(),
       ]);
 
@@ -269,7 +270,7 @@ class PaymentService {
           await Affiliate_Referral.findOneAndUpdate(
             {
               referred_to: agency_details?.reference_id,
-              $eq: { status: "inactive" },
+              status: "inactive",
             },
             {
               status: "active",
@@ -343,11 +344,24 @@ class PaymentService {
 
   oneTimePayment = async (payload, user) => {
     try {
-      if (user?.role?.name !== "agency")
-        return throwError(
-          returnMessage("auth", "forbidden"),
-          statusCode.forbidden
-        );
+      let check_agency = await Team_Agency.findById(user?.reference_id)
+        .populate("role", "name")
+        .lean();
+      if (user?.role?.name !== "agency") {
+        if (check_agency?.role?.name !== "admin") {
+          return throwError(
+            returnMessage("auth", "forbidden"),
+            statusCode.forbidden
+          );
+        }
+      }
+      if (check_agency?.role?.name === "admin") {
+        let agency_data = await Authentication.findOne({
+          reference_id: check_agency?.agency_id,
+        }).lean();
+        user.subscribe_date = agency_data.subscribe_date;
+        user.subscription_id = agency_data.subscription_id;
+      }
 
       if (
         user?.status === "payment_pending" ||
