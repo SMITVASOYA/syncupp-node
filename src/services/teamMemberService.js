@@ -775,10 +775,10 @@ class TeamMemberService {
           !activity_assigned
         ) {
           // Delete from Authentication collection
-          await Team_Client.updateOne(
+          await Team_Client.updateMany(
             {
               _id: { $in: teamMemberIds },
-              "agency_ids.agency_id": agency?.reference_id,
+              "agency_ids.agency_id": payload?.agency_id,
             },
             { $set: { "agency_ids.$.status": "deleted" } },
             { new: true }
