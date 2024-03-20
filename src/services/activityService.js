@@ -183,15 +183,15 @@ class ActivityService {
         });
         await notificationService.addNotification(
           {
-            assign_by: user.reference_id,
-            assigned_by_name: user.first_name + " " + user.last_name,
+            assign_by: user?.reference_id,
+            assigned_by_name: user?.first_name + " " + user?.last_name,
             client_name: client_data
               ? client_data.first_name + " " + client_data.last_name
               : "",
             assigned_to_name:
-              getTask[0].assigned_to_first_name +
+              getTask[0]?.assigned_to_first_name +
               " " +
-              getTask[0].assigned_to_last_name,
+              getTask[0]?.assigned_to_last_name,
             ...payload,
             module_name: "task",
             activity_type_action: "createTask",
@@ -222,14 +222,14 @@ class ActivityService {
           {
             agency_name: agencyData?.first_name + " " + agencyData?.last_name,
             agency_id: agencyData?.reference_id,
-            assigned_by_name: user.first_name + " " + user.last_name,
+            assigned_by_name: user?.first_name + " " + user?.last_name,
             client_name: client_data
               ? client_data.first_name + " " + client_data.last_name
               : "",
             assigned_to_name:
-              getTask[0].assigned_to_first_name +
+              getTask[0]?.assigned_to_first_name +
               " " +
-              getTask[0].assigned_to_last_name,
+              getTask[0]?.assigned_to_last_name,
             ...payload,
             module_name: "task",
             activity_type_action: "createTask",
@@ -1513,7 +1513,7 @@ class ActivityService {
             action_type: "taskAdded",
             task_name: current_activity?.title,
             referred_by: agencyData?.first_name + " " + agencyData?.last_name,
-            receiver_id: current_activity.agency_id,
+            receiver_id: current_activity?.agency_id,
             points:
               referral_data.competition.successful_task_competition?.toString(),
           });
@@ -1667,7 +1667,7 @@ class ActivityService {
             client_name: client_data
               ? client_data.first_name + " " + client_data.last_name
               : "",
-            agency_name: agencyData.first_name + " " + agencyData.last_name,
+            agency_name: agencyData?.first_name + " " + agencyData?.last_name,
             agency_id: getTask[0]?.agency_id,
             assigned_to_name: getTask[0]?.assigned_to_name,
             due_time: new Date(due_date).toTimeString().split(" ")[0],
@@ -1783,7 +1783,7 @@ class ActivityService {
             action_type: "taskDeduct",
             task_name: current_activity?.title,
             referred_by: agencyData?.first_name + " " + agencyData?.last_name,
-            receiver_id: current_activity.agency_id,
+            receiver_id: current_activity?.agency_id,
             points:
               referral_data.competition.successful_task_competition?.toString(),
           });
@@ -1849,7 +1849,7 @@ class ActivityService {
             action_type: "taskAdded",
             task_name: current_activity?.title,
             referred_by: agencyData?.first_name + " " + agencyData?.last_name,
-            receiver_id: current_activity.agency_id,
+            receiver_id: current_activity?.agency_id,
             points:
               referral_data.competition.successful_task_competition?.toString(),
           });
@@ -2011,15 +2011,15 @@ class ActivityService {
                 ? client_data.first_name + " " + client_data.last_name
                 : "",
               assigned_to_name:
-                assign_to_data.first_name + " " + assign_to_data.last_name,
+                assign_to_data?.first_name + " " + assign_to_data?.last_name,
               ...getTask[0],
               module_name: "task",
               activity_type_action: task_status,
               activity_type: "task",
-              meeting_start_time: moment(getTask[0].meeting_start_time).format(
+              meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
                 "HH:mm"
               ),
-              due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
+              due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
             },
             id
           );
@@ -2040,18 +2040,18 @@ class ActivityService {
               client_name: client_data
                 ? client_data.first_name + " " + client_data.last_name
                 : "",
-              agency_name: agencyData.first_name + " " + agencyData.last_name,
+              agency_name: agencyData?.first_name + " " + agencyData?.last_name,
               assigned_to_name:
-                assign_to_data.first_name + " " + assign_to_data.last_name,
+                assign_to_data?.first_name + " " + assign_to_data?.last_name,
               ...getTask[0],
               module_name: "task",
               log_user: "member",
               activity_type_action: task_status,
               activity_type: "task",
-              meeting_start_time: moment(getTask[0].meeting_start_time).format(
+              meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
                 "HH:mm"
               ),
-              due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
+              due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
               assigned_by_name: getTask[0]?.assigned_by_name,
               assign_by: agencyData?.reference_id,
             },
@@ -2099,7 +2099,7 @@ class ActivityService {
                 ? client_data.first_name + " " + client_data.last_name
                 : "",
               assigned_to_name:
-                assign_to_data.first_name + " " + assign_to_data.last_name,
+                assign_to_data?.first_name + " " + assign_to_data?.last_name,
               ...getTask[0],
               module_name: "activity",
               activity_type_action: task_status,
@@ -2107,11 +2107,11 @@ class ActivityService {
                 getTask[0]?.activity_type.name === "others"
                   ? "activity"
                   : "call meeting",
-              meeting_start_time: moment(getTask[0].meeting_start_time).format(
+              meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
                 "HH:mm"
               ),
-              due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
-              tags: getTask[0].tags,
+              due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
+              tags: getTask[0]?.tags,
             },
             id
           );
@@ -2162,7 +2162,7 @@ class ActivityService {
                 ? client_data.first_name + " " + client_data.last_name
                 : "",
               assigned_to_name:
-                assign_to_data.first_name + " " + assign_to_data.last_name,
+                assign_to_data?.first_name + " " + assign_to_data?.last_name,
               ...getTask[0],
               module_name: "activity",
               activity_type_action: task_status,
@@ -2170,10 +2170,10 @@ class ActivityService {
                 getTask[0]?.activity_type.name === "others"
                   ? "activity"
                   : "call meeting",
-              meeting_start_time: moment(getTask[0].meeting_start_time).format(
+              meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
                 "HH:mm"
               ),
-              due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
+              due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
               tags: getTask[0].tags,
               log_user: "member",
               assigned_by_name: getTask[0]?.assigned_by_name,
@@ -2475,20 +2475,20 @@ class ActivityService {
 
         await notificationService.addNotification(
           {
-            assign_by: user.reference_id,
-            assigned_by_name: user.first_name + " " + user.last_name,
+            assign_by: user?.reference_id,
+            assigned_by_name: user?.first_name + " " + user?.last_name,
             client_name: client_data
               ? client_data.first_name + " " + client_data.last_name
               : "",
             assigned_to_name:
-              assign_to_data.first_name + " " + assign_to_data.last_name,
+              assign_to_data?.first_name + " " + assign_to_data?.last_name,
             ...payload,
             module_name: "activity",
             activity_type_action: "create_call_meeting",
             activity_type:
               activity_type === "others" ? "activity" : "call meeting",
           },
-          newActivity._id
+          newActivity?._id
         );
         // ---------------- End ---------------
       }
@@ -2553,13 +2553,13 @@ class ActivityService {
           {
             agency_name: agencyData?.first_name + " " + agencyData?.last_name,
             agency_id: agencyData?.reference_id,
-            assign_by: user.reference_id,
-            assigned_by_name: user.first_name + " " + user.last_name,
+            assign_by: user?.reference_id,
+            assigned_by_name: user?.first_name + " " + user?.last_name,
             client_name: client_data
               ? client_data.first_name + " " + client_data.last_name
               : "",
             assigned_to_name:
-              assign_to_data.first_name + " " + assign_to_data.last_name,
+              assign_to_data?.first_name + " " + assign_to_data?.last_name,
             ...payload,
             module_name: "activity",
             activity_type_action: "create_call_meeting",
@@ -2567,7 +2567,7 @@ class ActivityService {
               activity_type === "others" ? "activity" : "call meeting",
             log_user: "member",
           },
-          newActivity._id
+          newActivity?._id
         );
         // ---------------- End ---------------
       }
@@ -3007,13 +3007,13 @@ class ActivityService {
 
         await notificationService.addNotification(
           {
-            assign_by: user.reference_id,
-            assigned_by_name: user.first_name + " " + user.last_name,
+            assign_by: user?.reference_id,
+            assigned_by_name: user?.first_name + " " + user?.last_name,
             client_name: client_data
               ? client_data.first_name + " " + client_data.last_name
               : "",
             assigned_to_name:
-              assign_to_data.first_name + " " + assign_to_data.last_name,
+              assign_to_data?.first_name + " " + assign_to_data?.last_name,
             ...payload,
             module_name: "activity",
             activity_type_action: task_status,
@@ -3087,20 +3087,20 @@ class ActivityService {
 
         await notificationService.addNotification(
           {
-            assign_by: user.reference_id,
-            assigned_by_name: user.first_name + " " + user.last_name,
+            assign_by: user?.reference_id,
+            assigned_by_name: user?.first_name + " " + user?.last_name,
             client_name: client_data
               ? client_data.first_name + " " + client_data.last_name
               : "",
             assigned_to_name:
-              assign_to_data.first_name + " " + assign_to_data.last_name,
+              assign_to_data?.first_name + " " + assign_to_data?.last_name,
             ...payload,
             module_name: "activity",
             activity_type_action: task_status,
             activity_type:
               activity_type === "others" ? "activity" : "call meeting",
             agency_id: user?.agency_id ? user?.agency_id : user?.reference_id,
-            agency_name: agencyData.first_name + " " + agencyData.last_name,
+            agency_name: agencyData?.first_name + " " + agencyData?.last_name,
             log_user: "member",
           },
           activity_id
@@ -3756,7 +3756,7 @@ class ActivityService {
           await notificationService.addNotification({
             module_name: "activity",
             activity_type_action: "dueDateAlert",
-            title: item.title,
+            title: item?.title,
             activity_type:
               item?.activity_type.name === "others"
                 ? "activity"
@@ -3766,7 +3766,7 @@ class ActivityService {
           await notificationService.addNotification({
             module_name: "task",
             activity_type_action: "dueDateAlert",
-            title: item.title,
+            title: item?.title,
           });
         }
       });

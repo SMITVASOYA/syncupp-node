@@ -158,15 +158,15 @@ class AgreementService {
         // ----------------  Notification start    -----------------
         await notificationService.addNotification(
           {
-            receiver_name: agreement[0].receiver_fullName,
-            sender_name: agreement[0].sender_fullName,
+            receiver_name: agreement[0]?.receiver_fullName,
+            sender_name: agreement[0]?.sender_fullName,
             receiver_id: clientDetails?.reference_id,
             title,
             agreement_content,
             module_name: "agreement",
             action_type: "create",
           },
-          agreement[0]._id
+          agreement[0]?._id
         );
         // ----------------  Notification end    -----------------
       }
@@ -664,10 +664,10 @@ class AgreementService {
       if (agreements.status === "draft") {
         await notificationService.addNotification(
           {
-            receiver_name: agreement[0].receiver_fullName,
-            sender_name: agreement[0].sender_fullName,
-            receiver_id: clientDetails.reference_id,
-            title: agreement[0].title,
+            receiver_name: agreement[0]?.receiver_fullName,
+            sender_name: agreement[0]?.sender_fullName,
+            receiver_id: clientDetails?.reference_id,
+            title: agreement[0]?.title,
             module_name: "agreement",
             action_type: "create",
           },
@@ -806,15 +806,15 @@ class AgreementService {
         if (status === "sent") {
           await notificationService.addNotification(
             {
-              receiver_name: agreement[0].receiver_fullName,
-              sender_name: agreement[0].sender_fullName,
-              sender_id: agreement[0].sender_id,
-              title: agreement[0].title,
+              receiver_name: agreement[0]?.receiver_fullName,
+              sender_name: agreement[0]?.sender_fullName,
+              sender_id: agreement[0]?.sender_id,
+              title: agreement[0]?.title,
               module_name: "agreement",
               action_type: "create",
               receiver_id: clientDetails?.reference_id,
             },
-            agreement[0]._id
+            agreement[0]?._id
           );
         }
 
@@ -834,15 +834,15 @@ class AgreementService {
       if (status === "agreed") {
         await notificationService.addNotification(
           {
-            receiver_name: agreement[0].receiver_fullName,
-            sender_name: agreement[0].sender_fullName,
-            receiver_id: agreement[0].receiver_id,
-            title: agreement[0].title,
+            receiver_name: agreement[0]?.receiver_fullName,
+            sender_name: agreement[0]?.sender_fullName,
+            receiver_id: agreement[0]?.receiver_id,
+            title: agreement[0]?.title,
             module_name: "agreement",
             action_type: "statusUpdate",
-            sender_id: agreement[0].sender_id_notification,
+            sender_id: agreement[0]?.sender_id_notification,
           },
-          agreement[0]._id
+          agreement[0]?._id
         );
       }
 
