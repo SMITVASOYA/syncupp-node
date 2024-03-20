@@ -102,7 +102,8 @@
     "alreadyVerified": "You have already verified for this agency.",
     "teamMemberNotFound": "Team member not found.",
     "teamMemberRejected": "Team member rejected successfully.",
-    "invalidVerificationLink": "Invitation link is invalid."
+    "invalidVerificationLink": "Invitation link is invalid.",
+    "insufficientPermission": "You don't have permission to create team member."
   },
 
   "agency": {

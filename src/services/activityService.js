@@ -183,15 +183,15 @@ class ActivityService {
         });
         await notificationService.addNotification(
           {
-            assign_by: user.reference_id,
-            assigned_by_name: user.first_name + " " + user.last_name,
+            assign_by: user?.reference_id,
+            assigned_by_name: user?.first_name + " " + user?.last_name,
             client_name: client_data
               ? client_data.first_name + " " + client_data.last_name
               : "",
             assigned_to_name:
-              getTask[0].assigned_to_first_name +
+              getTask[0]?.assigned_to_first_name +
               " " +
-              getTask[0].assigned_to_last_name,
+              getTask[0]?.assigned_to_last_name,
             ...payload,
             module_name: "task",
             activity_type_action: "createTask",
@@ -987,7 +987,7 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$client_Data",
+          $unwind: { path: "$client_Data", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
@@ -1010,7 +1010,7 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$team_Data",
+          $unwind: { path: "$team_Data", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
@@ -1033,9 +1033,8 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$assign_by",
+          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
         },
-
         {
           $lookup: {
             from: "authentications",
@@ -1063,7 +1062,7 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$status",
+          $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
@@ -1074,7 +1073,9 @@ class ActivityService {
             pipeline: [{ $project: { name: 1 } }],
           },
         },
-        { $unwind: "$activity_type" },
+        {
+          $unwind: { path: "$activity_type", preserveNullAndEmptyArrays: true },
+        },
         {
           $match: {
             _id: new mongoose.Types.ObjectId(id),
@@ -1652,10 +1653,7 @@ class ActivityService {
         let taskAction = "update";
         // For Complete
 
-        console.log(typeof mark_as_done);
         if (mark_as_done === "true") taskAction = "completed";
-        console.log(mark_as_done);
-        console.log(taskAction);
         await notificationService.addNotification(
           {
             ...payload,
@@ -2202,7 +2200,7 @@ class ActivityService {
 
       validateRequestFields(payload, [
         "title",
-        "client_id",
+        // "client_id",
         "due_date",
         "assign_to",
         "activity_type",
@@ -2434,7 +2432,9 @@ class ActivityService {
           ...payload,
           status: mark_as_done ? "completed" : "pending",
           assigned_by_name: user.first_name + " " + user.last_name,
-          client_name: client_data.first_name + " " + client_data.last_name,
+          client_name: client_data
+            ? client_data.first_name + " " + client_data.last_name
+            : "",
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
         });
@@ -2460,7 +2460,9 @@ class ActivityService {
               ...payload,
               status: mark_as_done ? "completed" : "pending",
               assigned_by_name: user.first_name + " " + user.last_name,
-              client_name: client_data.first_name + " " + client_data.last_name,
+              client_name: client_data
+                ? client_data.first_name + " " + client_data.last_name
+                : "",
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
             });
@@ -2506,7 +2508,9 @@ class ActivityService {
           ...payload,
           status: mark_as_done ? "completed" : "pending",
           assigned_by_name: user.first_name + " " + user.last_name,
-          client_name: client_data.first_name + " " + client_data.last_name,
+          client_name: client_data
+            ? client_data.first_name + " " + client_data.last_name
+            : "",
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
         });
@@ -2532,7 +2536,9 @@ class ActivityService {
               ...payload,
               status: mark_as_done ? "completed" : "pending",
               assigned_by_name: user.first_name + " " + user.last_name,
-              client_name: client_data.first_name + " " + client_data.last_name,
+              client_name: client_data
+                ? client_data.first_name + " " + client_data.last_name
+                : "",
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
             });
@@ -2604,8 +2610,9 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$client_Data",
+          $unwind: { path: "$client_Data", preserveNullAndEmptyArrays: true },
         },
+
         {
           $lookup: {
             from: "activity_type_masters",
@@ -2615,7 +2622,9 @@ class ActivityService {
             pipeline: [{ $project: { name: 1 } }],
           },
         },
-        { $unwind: "$activity_type" },
+        {
+          $unwind: { path: "$activity_type", preserveNullAndEmptyArrays: true },
+        },
         {
           $lookup: {
             from: "authentications",
@@ -2637,8 +2646,9 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$team_Data",
+          $unwind: { path: "$team_Data", preserveNullAndEmptyArrays: true },
         },
+
         {
           $lookup: {
             from: "authentications",
@@ -2660,8 +2670,9 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$assign_by",
+          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
         },
+
         {
           $lookup: {
             from: "activity_status_masters",
@@ -2672,8 +2683,9 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$status",
+          $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
         },
+
         {
           $match: {
             _id: new mongoose.Types.ObjectId(activity_id),
@@ -2749,7 +2761,7 @@ class ActivityService {
       }
       validateRequestFields(payload, [
         "title",
-        "client_id",
+        // "client_id",
         "meeting_start_time",
         "meeting_end_time",
         "due_date",
@@ -2969,7 +2981,9 @@ class ActivityService {
           ...payload,
           status: payload.mark_as_done ? "completed" : "pending",
           assigned_by_name: user.first_name + " " + user.last_name,
-          client_name: client_data.first_name + " " + client_data.last_name,
+          client_name: client_data
+            ? client_data.first_name + " " + client_data.last_name
+            : "",
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
         });
@@ -2993,7 +3007,9 @@ class ActivityService {
               ...payload,
               status: payload.mark_as_done ? "completed" : "pending",
               assigned_by_name: user.first_name + " " + user.last_name,
-              client_name: client_data.first_name + " " + client_data.last_name,
+              client_name: client_data
+                ? client_data.first_name + " " + client_data.last_name
+                : "",
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
             });
@@ -3049,7 +3065,9 @@ class ActivityService {
           ...payload,
           status: payload.mark_as_done ? "completed" : "pending",
           assigned_by_name: user.first_name + " " + user.last_name,
-          client_name: client_data.first_name + " " + client_data.last_name,
+          client_name: client_data
+            ? client_data.first_name + " " + client_data.last_name
+            : "",
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
         });
@@ -3073,7 +3091,9 @@ class ActivityService {
               ...payload,
               status: payload.mark_as_done ? "completed" : "pending",
               assigned_by_name: user.first_name + " " + user.last_name,
-              client_name: client_data.first_name + " " + client_data.last_name,
+              client_name: client_data
+                ? client_data.first_name + " " + client_data.last_name
+                : "",
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
             });
@@ -3431,7 +3451,9 @@ class ActivityService {
             ],
           },
         },
-        { $unwind: "$assign_to" },
+        {
+          $unwind: { path: "$assign_to", preserveNullAndEmptyArrays: true },
+        },
         {
           $lookup: {
             from: "authentications",
@@ -3452,7 +3474,9 @@ class ActivityService {
             ],
           },
         },
-        { $unwind: "$assign_by" },
+        {
+          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
+        },
         {
           $lookup: {
             from: "authentications",
@@ -3474,7 +3498,9 @@ class ActivityService {
             ],
           },
         },
-        { $unwind: "$client_id" },
+        {
+          $unwind: { path: "$client_id", preserveNullAndEmptyArrays: true },
+        },
         {
           $lookup: {
             from: "activity_status_masters",
@@ -3484,7 +3510,12 @@ class ActivityService {
             pipeline: [{ $project: { name: 1 } }],
           },
         },
-        { $unwind: "$activity_status" },
+        {
+          $unwind: {
+            path: "$activity_status",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
         {
           $lookup: {
             from: "activity_type_masters",
@@ -3494,7 +3525,9 @@ class ActivityService {
             pipeline: [{ $project: { name: 1 } }],
           },
         },
-        { $unwind: "$activity_type" },
+        {
+          $unwind: { path: "$activity_type", preserveNullAndEmptyArrays: true },
+        },
       ];
 
       let activity, total_activity;
