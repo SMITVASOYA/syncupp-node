@@ -85,11 +85,13 @@ class NotificationService {
               message_type,
               "assignByMessage"
             );
-            await createAndEmitNotification(
-              payload.client_id,
-              message_type,
-              "clientMessage"
-            );
+            if (payload.client_id) {
+              await createAndEmitNotification(
+                payload.client_id,
+                message_type,
+                "clientMessage"
+              );
+            }
           }
           if (activity_type_action === "update") {
             await createAndEmitNotification(
@@ -97,11 +99,13 @@ class NotificationService {
               message_type,
               "assignByMessage"
             );
-            await createAndEmitNotification(
-              payload.client_id,
-              message_type,
-              "clientMessage"
-            );
+            if (payload.client_id) {
+              await createAndEmitNotification(
+                payload.client_id,
+                message_type,
+                "clientMessage"
+              );
+            }
           }
 
           if (
@@ -121,11 +125,14 @@ class NotificationService {
           }
         } else if (activity_type_action === "meetingAlert") {
           console.log("first");
-          await createAndEmitNotification(
-            payload.client_id,
-            message_type,
-            "alertMessage"
-          );
+          if (payload.client_id) {
+            await createAndEmitNotification(
+              payload.client_id,
+              message_type,
+              "alertMessage"
+            );
+          }
+
           await createAndEmitNotification(
             payload.assign_by,
             message_type,
@@ -229,12 +236,13 @@ class NotificationService {
               message_type,
               "assignToMessage"
             );
-
-            await createAndEmitNotification(
-              payload.client_id,
-              message_type,
-              "clientMessage"
-            );
+            if (payload.client_id) {
+              await createAndEmitNotification(
+                payload.client_id,
+                message_type,
+                "clientMessage"
+              );
+            }
           }
 
           if (activity_type_action === "update") {
@@ -243,12 +251,13 @@ class NotificationService {
               message_type,
               "assignByMessage"
             );
-
-            await createAndEmitNotification(
-              payload.client_id,
-              message_type,
-              "clientMessage"
-            );
+            if (payload.client_id) {
+              await createAndEmitNotification(
+                payload.client_id,
+                message_type,
+                "clientMessage"
+              );
+            }
           } else {
             await createAndEmitNotification(
               client_id,

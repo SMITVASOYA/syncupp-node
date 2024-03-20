@@ -185,7 +185,9 @@ class ActivityService {
           {
             assign_by: user.reference_id,
             assigned_by_name: user.first_name + " " + user.last_name,
-            client_name: client_data.first_name + " " + client_data.last_name,
+            client_name: client_data
+              ? client_data.first_name + " " + client_data.last_name
+              : "",
             assigned_to_name:
               getTask[0].assigned_to_first_name +
               " " +
@@ -221,7 +223,9 @@ class ActivityService {
             agency_name: agencyData?.first_name + " " + agencyData?.last_name,
             agency_id: agencyData?.reference_id,
             assigned_by_name: user.first_name + " " + user.last_name,
-            client_name: client_data.first_name + " " + client_data.last_name,
+            client_name: client_data
+              ? client_data.first_name + " " + client_data.last_name
+              : "",
             assigned_to_name:
               getTask[0].assigned_to_first_name +
               " " +
@@ -1622,7 +1626,9 @@ class ActivityService {
             activity_type: "task",
             agenda: agenda,
             title: title,
-            client_name: client_data.first_name + " " + client_data.last_name,
+            client_name: client_data
+              ? client_data.first_name + " " + client_data.last_name
+              : "",
             assigned_to_name: getTask[0]?.assigned_to_name,
             due_time: new Date(due_date).toTimeString().split(" ")[0],
             due_date: new Date(due_date).toLocaleDateString("en-GB"),
@@ -1658,7 +1664,9 @@ class ActivityService {
             activity_type: "task",
             agenda: agenda,
             title: title,
-            client_name: client_data.first_name + " " + client_data.last_name,
+            client_name: client_data
+              ? client_data.first_name + " " + client_data.last_name
+              : "",
             agency_name: agencyData.first_name + " " + agencyData.last_name,
             agency_id: getTask[0]?.agency_id,
             assigned_to_name: getTask[0]?.assigned_to_name,
@@ -1999,7 +2007,9 @@ class ActivityService {
 
           await notificationService.addNotification(
             {
-              client_name: client_data.first_name + " " + client_data.last_name,
+              client_name: client_data
+                ? client_data.first_name + " " + client_data.last_name
+                : "",
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
               ...getTask[0],
@@ -2027,7 +2037,9 @@ class ActivityService {
           //   ----------    Notifications start ----------
           await notificationService.addNotification(
             {
-              client_name: client_data.first_name + " " + client_data.last_name,
+              client_name: client_data
+                ? client_data.first_name + " " + client_data.last_name
+                : "",
               agency_name: agencyData.first_name + " " + agencyData.last_name,
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
@@ -2066,11 +2078,13 @@ class ActivityService {
             status: payload.status,
             client_name: client_data.first_name + " " + client_data.last_name,
           });
-          await sendEmail({
-            email: client_data?.email,
-            subject: returnMessage("emailTemplate", emailTempKey),
-            message: activity_email_template,
-          });
+          client_data &&
+            sendEmail({
+              email: client_data?.email,
+              subject: returnMessage("emailTemplate", emailTempKey),
+              message: activity_email_template,
+            });
+
           sendEmail({
             email: assign_to_data?.email,
             subject: returnMessage("emailTemplate", emailTempKey),
@@ -2081,7 +2095,9 @@ class ActivityService {
 
           await notificationService.addNotification(
             {
-              client_name: client_data.first_name + " " + client_data.last_name,
+              client_name: client_data
+                ? client_data.first_name + " " + client_data.last_name
+                : "",
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
               ...getTask[0],
@@ -2126,11 +2142,12 @@ class ActivityService {
             status: payload.status,
             client_name: client_data.first_name + " " + client_data.last_name,
           });
-          await sendEmail({
-            email: client_data?.email,
-            subject: returnMessage("emailTemplate", emailTempKey),
-            message: activity_email_template,
-          });
+          client_data &&
+            sendEmail({
+              email: client_data?.email,
+              subject: returnMessage("emailTemplate", emailTempKey),
+              message: activity_email_template,
+            });
           sendEmail({
             email: assign_to_data?.email,
             subject: returnMessage("emailTemplate", emailTempKey),
@@ -2141,7 +2158,9 @@ class ActivityService {
 
           await notificationService.addNotification(
             {
-              client_name: client_data.first_name + " " + client_data.last_name,
+              client_name: client_data
+                ? client_data.first_name + " " + client_data.last_name
+                : "",
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
               ...getTask[0],
@@ -2420,12 +2439,13 @@ class ActivityService {
             assign_to_data.first_name + " " + assign_to_data.last_name,
         });
 
-        sendEmail({
-          email: client_data?.email,
-          subject: returnMessage("emailTemplate", "newActivityMeeting"),
-          message: activity_email_template,
-          icsContent: file,
-        });
+        client_data &&
+          sendEmail({
+            email: client_data?.email,
+            subject: returnMessage("emailTemplate", "newActivityMeeting"),
+            message: activity_email_template,
+            icsContent: file,
+          });
         sendEmail({
           email: assign_to_data?.email,
           subject: returnMessage("emailTemplate", "newActivityMeeting"),
@@ -2457,7 +2477,9 @@ class ActivityService {
           {
             assign_by: user.reference_id,
             assigned_by_name: user.first_name + " " + user.last_name,
-            client_name: client_data.first_name + " " + client_data.last_name,
+            client_name: client_data
+              ? client_data.first_name + " " + client_data.last_name
+              : "",
             assigned_to_name:
               assign_to_data.first_name + " " + assign_to_data.last_name,
             ...payload,
@@ -2489,12 +2511,13 @@ class ActivityService {
             assign_to_data.first_name + " " + assign_to_data.last_name,
         });
 
-        sendEmail({
-          email: client_data?.email,
-          subject: returnMessage("emailTemplate", "newActivityMeeting"),
-          message: activity_email_template,
-          icsContent: file,
-        });
+        client_data &&
+          sendEmail({
+            email: client_data?.email,
+            subject: returnMessage("emailTemplate", "newActivityMeeting"),
+            message: activity_email_template,
+            icsContent: file,
+          });
         sendEmail({
           email: assign_to_data?.email,
           subject: returnMessage("emailTemplate", "newActivityMeeting"),
@@ -2532,7 +2555,9 @@ class ActivityService {
             agency_id: agencyData?.reference_id,
             assign_by: user.reference_id,
             assigned_by_name: user.first_name + " " + user.last_name,
-            client_name: client_data.first_name + " " + client_data.last_name,
+            client_name: client_data
+              ? client_data.first_name + " " + client_data.last_name
+              : "",
             assigned_to_name:
               assign_to_data.first_name + " " + assign_to_data.last_name,
             ...payload,
@@ -2949,11 +2974,12 @@ class ActivityService {
             assign_to_data.first_name + " " + assign_to_data.last_name,
         });
 
-        sendEmail({
-          email: client_data?.email,
-          subject: returnMessage("emailTemplate", emailTempKey),
-          message: activity_email_template,
-        });
+        client_data &&
+          sendEmail({
+            email: client_data?.email,
+            subject: returnMessage("emailTemplate", emailTempKey),
+            message: activity_email_template,
+          });
         sendEmail({
           email: assign_to_data?.email,
           subject: returnMessage("emailTemplate", emailTempKey),
@@ -2983,7 +3009,9 @@ class ActivityService {
           {
             assign_by: user.reference_id,
             assigned_by_name: user.first_name + " " + user.last_name,
-            client_name: client_data.first_name + " " + client_data.last_name,
+            client_name: client_data
+              ? client_data.first_name + " " + client_data.last_name
+              : "",
             assigned_to_name:
               assign_to_data.first_name + " " + assign_to_data.last_name,
             ...payload,
@@ -3026,11 +3054,12 @@ class ActivityService {
             assign_to_data.first_name + " " + assign_to_data.last_name,
         });
 
-        sendEmail({
-          email: client_data?.email,
-          subject: returnMessage("emailTemplate", emailTempKey),
-          message: activity_email_template,
-        });
+        client_data &&
+          sendEmail({
+            email: client_data?.email,
+            subject: returnMessage("emailTemplate", emailTempKey),
+            message: activity_email_template,
+          });
         sendEmail({
           email: assign_to_data?.email,
           subject: returnMessage("emailTemplate", emailTempKey),
@@ -3060,7 +3089,9 @@ class ActivityService {
           {
             assign_by: user.reference_id,
             assigned_by_name: user.first_name + " " + user.last_name,
-            client_name: client_data.first_name + " " + client_data.last_name,
+            client_name: client_data
+              ? client_data.first_name + " " + client_data.last_name
+              : "",
             assigned_to_name:
               assign_to_data.first_name + " " + assign_to_data.last_name,
             ...payload,
