@@ -109,8 +109,8 @@ class PaymentService {
       )
         return throwError(returnMessage("payment", "alreadyPaid"));
       const [plan, configuration] = await Promise.all([
-        // SubscriptionPlan.findOne({ active: true }).lean(),
-        SubscriptionPlan.findOne({ _id: "65efe3bbb934aafea0ece22a" }).lean(),
+        SubscriptionPlan.findOne({ active: true }).lean(),
+        // SubscriptionPlan.findOne({ _id: "65efe3bbb934aafea0ece22a" }).lean(),
         Configuration.findOne().lean(),
       ]);
 
@@ -270,7 +270,7 @@ class PaymentService {
           await Affiliate_Referral.findOneAndUpdate(
             {
               referred_to: agency_details?.reference_id,
-              $eq: { status: "inactive" },
+              status: "inactive",
             },
             {
               status: "active",
