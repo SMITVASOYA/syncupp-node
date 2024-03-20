@@ -9,11 +9,7 @@ invoiceRoute.get("/currency", invoiceController.currencyList);
 
 invoiceRoute.use(protect);
 
-invoiceRoute.get(
-  "/get-clients",
-  authorizeRole("agency"),
-  invoiceController.getClients
-);
+invoiceRoute.get("/get-clients", invoiceController.getClients);
 invoiceRoute.post("/get-invoice-data", invoiceController.getInvoiceInformation);
 invoiceRoute.post(
   "/create-invoice",

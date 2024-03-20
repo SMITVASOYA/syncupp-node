@@ -3,6 +3,9 @@ const { returnMessage } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const AgreementService = require("../services/agreementService");
 const { sendResponse } = require("../utils/sendResponse");
+const Team_Agency = require("../models/teamAgencySchema");
+const Team_Role_Master = require("../models/masters/teamRoleSchema");
+const Authentication = require("../models/authenticationSchema");
 const agreementService = new AgreementService();
 
 // -------------------   Agency API   ------------------------
@@ -27,10 +30,20 @@ exports.addAgreement = catchAsyncError(async (req, res, next) => {
 
 exports.getAllAgreement = catchAsyncError(async (req, res, next) => {
   let agreements;
+  const memberRoleId = await Team_Agency.findById(req?.user?.reference_id);
+  const memberRoleType = await Team_Role_Master.findById(memberRoleId?.role);
+  const agencyData = await Authentication.findOne({
+    reference_id: memberRoleId?.agency_id,
+  });
   if (req.user.role.name === "agency") {
     agreements = await agreementService.getAllAgreement(
       req.body,
       req?.user?._id
+    );
+  } else if (memberRoleType.name === "admin") {
+    agreements = await agreementService.getAllAgreement(
+      req.body,
+      agencyData._id
     );
   } else if (req.user.role.name === "client") {
     agreements = await agreementService.getAllClientAgreement(

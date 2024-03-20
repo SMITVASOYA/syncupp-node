@@ -20,6 +20,7 @@ const Currency = require("../models/masters/currencyListSchema");
 class InvoiceService {
   // Get Client list  ------   AGENCY API
   getClients = async (user) => {
+    console.log(user);
     const { reference_id } = user;
     try {
       const pipeline = [

@@ -3,12 +3,26 @@ const { returnMessage } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const InvoiceService = require("../services/invoiceService");
 const { sendResponse } = require("../utils/sendResponse");
+const Team_Agency = require("../models/teamAgencySchema");
+const Team_Role_Master = require("../models/masters/teamRoleSchema");
 const invoiceService = new InvoiceService();
 
 // Add Clients ------   AGENCY API
 
 exports.getClients = catchAsyncError(async (req, res, next) => {
-  const getClients = await invoiceService.getClients(req?.user);
+  let getClients;
+
+  console.log(req?.user);
+  const memberRoleId = await Team_Agency.findById(req?.user?.reference_id);
+  const memberRoleType = await Team_Role_Master.findById(memberRoleId?.role);
+  console.log(memberRoleType);
+  if (req.user.role.name === "agency") {
+    getClients = await invoiceService.getClients(req?.user);
+  } else if (memberRoleType?.name === "admin") {
+    getClients = await invoiceService.getClients({
+      reference_id: memberRoleId.agency_id,
+    });
+  }
   sendResponse(
     res,
     true,
@@ -51,6 +65,9 @@ exports.addInvoice = catchAsyncError(async (req, res, next) => {
 
 exports.getAllInvoice = catchAsyncError(async (req, res, next) => {
   let invoicesList;
+
+  const memberRoleId = await Team_Agency.findById(req?.user?.reference_id);
+  const memberRoleType = await Team_Role_Master.findById(memberRoleId?.role);
   if (req.user.role.name === "agency") {
     invoicesList = await invoiceService.getAllInvoice(
       req.body,
@@ -60,6 +77,11 @@ exports.getAllInvoice = catchAsyncError(async (req, res, next) => {
     invoicesList = await invoiceService.getClientInvoice(
       req.body,
       req?.user?.reference_id
+    );
+  } else if (memberRoleType?.name === "admin") {
+    invoicesList = await invoiceService.getAllInvoice(
+      req.body,
+      memberRoleId?.agency_id
     );
   }
 
@@ -128,7 +150,7 @@ exports.updateStatusInvoice = catchAsyncError(async (req, res, next) => {
 // Send Invoice By mail------   Agency API
 
 exports.sendInvoice = catchAsyncError(async (req, res, next) => {
-  await invoiceService.sendInvoice(req.body);
+  await invoiceService.sendInvoice(req.body, "", req?.user);
   sendResponse(
     res,
     true,
@@ -141,7 +163,13 @@ exports.sendInvoice = catchAsyncError(async (req, res, next) => {
 // Download PDF
 
 exports.downloadPdf = catchAsyncError(async (req, res, next) => {
-  if (req.user?.role?.name === "agency" || req.user?.role?.name === "client") {
+  const memberRoleId = await Team_Agency.findById(req?.user?.reference_id);
+  const memberRoleType = await Team_Role_Master.findById(memberRoleId?.role);
+  if (
+    req.user?.role?.name === "agency" ||
+    req.user?.role?.name === "client" ||
+    memberRoleType?.name === "admin"
+  ) {
     var downloadPdf = await invoiceService.downloadPdf(req?.params, res);
   }
 
