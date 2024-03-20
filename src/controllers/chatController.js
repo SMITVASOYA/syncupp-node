@@ -41,7 +41,7 @@ exports.createGroup = catchAsyncError(async (req, res, next) => {
 });
 
 exports.groups = catchAsyncError(async (req, res, next) => {
-  const groups = await groupChatService.groupsList(req.user);
+  const groups = await groupChatService.groupsList(req.user, req.body);
   sendResponse(res, true, undefined, groups, 200);
 });
 
