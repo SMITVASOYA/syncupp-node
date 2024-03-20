@@ -377,7 +377,14 @@ class TeamMemberService {
             { $set: { "agency_ids.$.status": "confirmed" } },
             { new: true }
           );
+
           const welcome_mail = welcomeMail(client_team_member?.name);
+
+          await sendEmail({
+            email: client_team_member?.email,
+            subject: returnMessage("emailTemplate", "welcomeMailSubject"),
+            message: welcome_mail,
+          });
 
           // ------------------  Notifications ----------------
           const clientData = await Authentication.findOne({
@@ -386,18 +393,12 @@ class TeamMemberService {
 
           await notificationService.addNotification({
             module_name: "general",
-            action_name: "teamClientPaymentDone",
+            action_name: "teamClientPasswordSet",
             member_name: client_team_member?.name,
             client_name: clientData?.first_name + " " + clientData?.last_name,
             receiver_id: agency_id,
           });
           // ------------------  Notifications ----------------
-
-          await sendEmail({
-            email: client_team_member?.email,
-            subject: returnMessage("emailTemplate", "welcomeMailSubject"),
-            message: welcome_mail,
-          });
           return authService.tokenGenerator(client_team_member);
         }
       }

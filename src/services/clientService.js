@@ -27,6 +27,8 @@ const moment = require("moment");
 const Invoice = require("../models/invoiceSchema");
 const mongoose = require("mongoose");
 const Agreement = require("../models/agreementSchema");
+const NotificationService = require("./notificationService");
+const notificationService = new NotificationService();
 
 class ClientService {
   // create client for the agency
@@ -297,6 +299,31 @@ class ClientService {
           subject: returnMessage("emailTemplate", "welcomeMailSubject"),
           message: welcome_mail,
         });
+
+        // ------------------  Notifications ----------------
+        await notificationService.addNotification({
+          module_name: "general",
+          action_name: "clientPasswordSet",
+          client_name: client_auth?.first_name + " " + client_auth?.last_name,
+          receiver_id: agency_id,
+        });
+
+        const agencyData = await Authentication.findOne({
+          reference_id: agency_id,
+        });
+
+        const clientJoined = clientMemberAdded({
+          ...client_auth,
+          client_name: client_auth?.first_name + " " + client_auth?.last_name,
+        });
+
+        sendEmail({
+          email: agencyData?.email,
+          subject: returnMessage("emailTemplate", "clientJoined"),
+          message: clientJoined,
+        });
+
+        // ------------------  Notifications ----------------
         return;
         // return authService.tokenGenerator(client_exist);
       }

@@ -98,6 +98,7 @@
   "general": {
     "clientTeamMemberAdded": "Client member request received from client ${client_name}",
     "clientTeamJoined": "Team member ${member_name} joined.",
+    "clientJoined": "Client ${client_name} joined.",
     "clientTeamPaymentDone": "Team member ${member_name} payment done.",
     "clientTeamPaymentFail": "Team member ${member_name} payment fail.",
     "memberDeletedClient": "Team member ${member_name} has been deleted by ${client_name}.",

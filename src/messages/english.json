@@ -181,7 +181,8 @@
     "memberDeleted": "Team member deleted",
     "memberAdded": "Team member added",
     "seatRemoved": "Seat removed by agency",
-    "meetingAlert": "Call meeting alert"
+    "meetingAlert": "Call meeting alert",
+    "clientJoined": "New client joined"
   },
 
   "client": {

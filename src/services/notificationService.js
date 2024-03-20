@@ -383,10 +383,21 @@ class NotificationService {
         }
         // client Team member password set by agency
 
-        if (action_name === "teamClientPaymentDone") {
+        if (action_name === "teamClientPasswordSet") {
           await createAndEmitNotification(
             payload.receiver_id,
             "clientTeamJoined",
+            "general",
+            "general"
+          );
+        }
+
+        // client  password set by agency
+
+        if (action_name === "clientPasswordSet") {
+          await createAndEmitNotification(
+            payload.receiver_id,
+            "clientJoined",
             "general",
             "general"
           );
