@@ -988,7 +988,7 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$client_Data",
+          $unwind: { path: "$client_Data", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
@@ -1011,7 +1011,7 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$team_Data",
+          $unwind: { path: "$team_Data", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
@@ -1034,9 +1034,8 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$assign_by",
+          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
         },
-
         {
           $lookup: {
             from: "authentications",
@@ -1064,7 +1063,7 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$status",
+          $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
@@ -1075,7 +1074,9 @@ class ActivityService {
             pipeline: [{ $project: { name: 1 } }],
           },
         },
-        { $unwind: "$activity_type" },
+        {
+          $unwind: { path: "$activity_type", preserveNullAndEmptyArrays: true },
+        },
         {
           $match: {
             _id: new mongoose.Types.ObjectId(id),
@@ -1653,10 +1654,7 @@ class ActivityService {
         let taskAction = "update";
         // For Complete
 
-        console.log(typeof mark_as_done);
         if (mark_as_done === "true") taskAction = "completed";
-        console.log(mark_as_done);
-        console.log(taskAction);
         await notificationService.addNotification(
           {
             ...payload,
@@ -2203,7 +2201,7 @@ class ActivityService {
 
       validateRequestFields(payload, [
         "title",
-        "client_id",
+        // "client_id",
         "due_date",
         "assign_to",
         "activity_type",
@@ -2435,7 +2433,9 @@ class ActivityService {
           ...payload,
           status: mark_as_done ? "completed" : "pending",
           assigned_by_name: user.first_name + " " + user.last_name,
-          client_name: client_data.first_name + " " + client_data.last_name,
+          client_name: client_data
+            ? client_data.first_name + " " + client_data.last_name
+            : "",
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
         });
@@ -2461,7 +2461,9 @@ class ActivityService {
               ...payload,
               status: mark_as_done ? "completed" : "pending",
               assigned_by_name: user.first_name + " " + user.last_name,
-              client_name: client_data.first_name + " " + client_data.last_name,
+              client_name: client_data
+                ? client_data.first_name + " " + client_data.last_name
+                : "",
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
             });
@@ -2507,7 +2509,9 @@ class ActivityService {
           ...payload,
           status: mark_as_done ? "completed" : "pending",
           assigned_by_name: user.first_name + " " + user.last_name,
-          client_name: client_data.first_name + " " + client_data.last_name,
+          client_name: client_data
+            ? client_data.first_name + " " + client_data.last_name
+            : "",
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
         });
@@ -2533,7 +2537,9 @@ class ActivityService {
               ...payload,
               status: mark_as_done ? "completed" : "pending",
               assigned_by_name: user.first_name + " " + user.last_name,
-              client_name: client_data.first_name + " " + client_data.last_name,
+              client_name: client_data
+                ? client_data.first_name + " " + client_data.last_name
+                : "",
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
             });
@@ -2605,8 +2611,9 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$client_Data",
+          $unwind: { path: "$client_Data", preserveNullAndEmptyArrays: true },
         },
+
         {
           $lookup: {
             from: "activity_type_masters",
@@ -2616,7 +2623,9 @@ class ActivityService {
             pipeline: [{ $project: { name: 1 } }],
           },
         },
-        { $unwind: "$activity_type" },
+        {
+          $unwind: { path: "$activity_type", preserveNullAndEmptyArrays: true },
+        },
         {
           $lookup: {
             from: "authentications",
@@ -2638,8 +2647,9 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$team_Data",
+          $unwind: { path: "$team_Data", preserveNullAndEmptyArrays: true },
         },
+
         {
           $lookup: {
             from: "authentications",
@@ -2661,8 +2671,9 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$assign_by",
+          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
         },
+
         {
           $lookup: {
             from: "activity_status_masters",
@@ -2673,8 +2684,9 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$status",
+          $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
         },
+
         {
           $match: {
             _id: new mongoose.Types.ObjectId(activity_id),
@@ -2750,7 +2762,7 @@ class ActivityService {
       }
       validateRequestFields(payload, [
         "title",
-        "client_id",
+        // "client_id",
         "meeting_start_time",
         "meeting_end_time",
         "due_date",
@@ -2970,7 +2982,9 @@ class ActivityService {
           ...payload,
           status: payload.mark_as_done ? "completed" : "pending",
           assigned_by_name: user.first_name + " " + user.last_name,
-          client_name: client_data.first_name + " " + client_data.last_name,
+          client_name: client_data
+            ? client_data.first_name + " " + client_data.last_name
+            : "",
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
         });
@@ -2994,7 +3008,9 @@ class ActivityService {
               ...payload,
               status: payload.mark_as_done ? "completed" : "pending",
               assigned_by_name: user.first_name + " " + user.last_name,
-              client_name: client_data.first_name + " " + client_data.last_name,
+              client_name: client_data
+                ? client_data.first_name + " " + client_data.last_name
+                : "",
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
             });
@@ -3050,7 +3066,9 @@ class ActivityService {
           ...payload,
           status: payload.mark_as_done ? "completed" : "pending",
           assigned_by_name: user.first_name + " " + user.last_name,
-          client_name: client_data.first_name + " " + client_data.last_name,
+          client_name: client_data
+            ? client_data.first_name + " " + client_data.last_name
+            : "",
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
         });
@@ -3074,7 +3092,9 @@ class ActivityService {
               ...payload,
               status: payload.mark_as_done ? "completed" : "pending",
               assigned_by_name: user.first_name + " " + user.last_name,
-              client_name: client_data.first_name + " " + client_data.last_name,
+              client_name: client_data
+                ? client_data.first_name + " " + client_data.last_name
+                : "",
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
             });
@@ -3118,8 +3138,8 @@ class ActivityService {
   // this function is used for to get the activity with date and user based filter
   getActivities = async (payload, user) => {
     try {
-      const match_obj = {};
-
+      const match_obj = { $match: {} };
+      const assign_obj = {};
       if (payload?.given_date) {
         match_obj["$match"] = {
           due_date: {
@@ -3274,7 +3294,7 @@ class ActivityService {
 
       const pagination = paginationObject(payload);
       if (user?.role?.name === "agency") {
-        match_obj["$match"] = {
+        assign_obj["$match"] = {
           is_deleted: false,
           $or: [
             { agency_id: user?.reference_id }, // this is removed because agency can also assign the activity
@@ -3282,42 +3302,42 @@ class ActivityService {
           ],
         };
         if (payload?.client_id) {
-          match_obj["$match"] = {
-            ...match_obj["$match"],
+          assign_obj["$match"] = {
+            ...assign_obj["$match"],
             client_id: new mongoose.Types.ObjectId(payload?.client_id),
           };
         }
         if (payload?.client_team_id) {
-          match_obj["$match"] = {
-            ...match_obj["$match"],
+          assign_obj["$match"] = {
+            ...assign_obj["$match"],
             client_id: new mongoose.Types.ObjectId(payload?.client_team_id),
           };
         }
         if (payload?.team_id) {
-          match_obj["$match"] = {
-            ...match_obj["$match"],
+          assign_obj["$match"] = {
+            ...assign_obj["$match"],
             assign_to: new mongoose.Types.ObjectId(payload?.team_id),
           };
         }
       } else if (user?.role?.name === "team_agency") {
-        match_obj["$match"] = {
+        assign_obj["$match"] = {
           is_deleted: false,
           assign_to: user?.reference_id,
         };
       } else if (user?.role?.name === "client") {
-        match_obj["$match"] = {
+        assign_obj["$match"] = {
           is_deleted: false,
           client_id: user?.reference_id,
           agency_id: new mongoose.Types.ObjectId(payload?.agency_id),
         };
         if (payload?.client_team_id) {
-          match_obj["$match"] = {
-            ...match_obj["$match"],
+          assign_obj["$match"] = {
+            ...assign_obj["$match"],
             client_id: new mongoose.Types.ObjectId(payload?.client_team_id),
           };
         }
       } else if (user?.role?.name === "team_client") {
-        match_obj["$match"] = {
+        assign_obj["$match"] = {
           is_deleted: false,
           client_id: user?.reference_id,
           agency_id: new mongoose.Types.ObjectId(payload?.agency_id),
@@ -3408,6 +3428,7 @@ class ActivityService {
       }
 
       let aggragate = [
+        assign_obj,
         match_obj,
         filter,
         {
@@ -3431,7 +3452,9 @@ class ActivityService {
             ],
           },
         },
-        { $unwind: "$assign_to" },
+        {
+          $unwind: { path: "$assign_to", preserveNullAndEmptyArrays: true },
+        },
         {
           $lookup: {
             from: "authentications",
@@ -3452,7 +3475,9 @@ class ActivityService {
             ],
           },
         },
-        { $unwind: "$assign_by" },
+        {
+          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
+        },
         {
           $lookup: {
             from: "authentications",
@@ -3474,7 +3499,9 @@ class ActivityService {
             ],
           },
         },
-        { $unwind: "$client_id" },
+        {
+          $unwind: { path: "$client_id", preserveNullAndEmptyArrays: true },
+        },
         {
           $lookup: {
             from: "activity_status_masters",
@@ -3484,7 +3511,12 @@ class ActivityService {
             pipeline: [{ $project: { name: 1 } }],
           },
         },
-        { $unwind: "$activity_status" },
+        {
+          $unwind: {
+            path: "$activity_status",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
         {
           $lookup: {
             from: "activity_type_masters",
@@ -3494,7 +3526,9 @@ class ActivityService {
             pipeline: [{ $project: { name: 1 } }],
           },
         },
-        { $unwind: "$activity_type" },
+        {
+          $unwind: { path: "$activity_type", preserveNullAndEmptyArrays: true },
+        },
       ];
 
       let activity, total_activity;

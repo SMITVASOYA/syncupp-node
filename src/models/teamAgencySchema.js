@@ -23,6 +23,7 @@ const teamAgencySchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
       },
     ],
+    created_by: { type: mongoose.Schema.Types.ObjectId },
   },
   { timestamps: true }
 );
