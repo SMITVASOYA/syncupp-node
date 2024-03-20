@@ -98,7 +98,7 @@ class ChatService {
 
         ids = [...team_agency_id];
       }
-      return await this.fetchChatusers(user, ids);
+      return await this.fetchChatusers(user, ids, payload);
 
       // commented because of the duplicate code
       // const [unread_messages, users] = await Promise.all([
@@ -166,7 +166,7 @@ class ChatService {
 
         ids = [...team_client_ids];
       }
-      return await this.fetchChatusers(user, ids);
+      return await this.fetchChatusers(user, ids, payload);
     } catch (error) {
       logger.error(
         `Error while fetching users list for the Client only: ${error}`
@@ -202,7 +202,7 @@ class ChatService {
 
         ids = [...clients_id, ...team_clients_id];
       }
-      return await this.fetchChatusers(user, ids);
+      return await this.fetchChatusers(user, ids, payload);
     } catch (error) {
       logger.error(
         `Error while fetching users list for the team agency only: ${error}`
@@ -236,7 +236,7 @@ class ChatService {
 
         ids = [...agency_ids, ...team_agency_ids];
       }
-      return await this.fetchChatusers(user, ids);
+      return await this.fetchChatusers(user, ids, payload);
     } catch (error) {
       logger.error(
         `Error while fetching users list for the Team client only: ${error}`
@@ -246,7 +246,7 @@ class ChatService {
   };
 
   // below function is used for the fetch the all users list based on the last message and notification of unread messages
-  fetchChatusers = async (user, ids) => {
+  fetchChatusers = async (user, ids, payload) => {
     try {
       const chats = await Chat.find({
         $or: [
@@ -293,7 +293,33 @@ class ChatService {
       chat_users_ids = chat_users_ids.map(
         (id) => new mongoose.Types.ObjectId(id)
       );
-
+      let queryObj = {};
+      if (payload?.search && payload?.search !== "") {
+        queryObj = {
+          $or: [
+            {
+              name: {
+                $regex: payload.search.toLowerCase(),
+                $options: "i",
+              },
+            },
+            {
+              first_name: {
+                $regex: payload.search.toLowerCase(),
+                $options: "i",
+              },
+            },
+            {
+              last_name: {
+                $elemMatch: {
+                  $regex: payload.search.toLowerCase(),
+                  $options: "i",
+                },
+              },
+            },
+          ],
+        };
+      }
       const [unread_messages, users] = await Promise.all([
         Notification.find({
           user_id: user?.reference_id,
@@ -304,6 +330,7 @@ class ChatService {
         Authentication.find({
           reference_id: { $in: chat_users_ids },
           status: "confirmed",
+          ...queryObj,
         })
           .select(
             "name first_name last_name email reference_id image_url is_online"

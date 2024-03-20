@@ -152,11 +152,25 @@ class GroupChatService {
     return ids.map((id) => id.toString());
   };
 
-  groupsList = async (user) => {
+  groupsList = async (user, payload) => {
     try {
+      let queryObj = {};
+      if (payload?.search && payload?.search !== "") {
+        queryObj = {
+          $or: [
+            {
+              group_name: {
+                $regex: payload.search.toLowerCase(),
+                $options: "i",
+              },
+            },
+          ],
+        };
+      }
       const group_ids = await Group_Chat.find({
         members: { $in: [user?.reference_id] },
         is_deleted: false,
+        ...queryObj,
       }).sort({ createdAt: -1 });
 
       const unique_groups_ids = group_ids.map((group_id) =>

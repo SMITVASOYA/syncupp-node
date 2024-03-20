@@ -39,7 +39,9 @@ class ClientService {
           .populate("role", "name")
           .lean();
         if (team_agency_detail?.role?.name === "admin") {
-          agency = await Authentication.findById(team_agency_detail?.agency_id)
+          agency = await Authentication.findOne({
+            reference_id: team_agency_detail?.agency_id,
+          })
             .populate("role", "role")
             .lean();
           agency.created_by = team_agency_detail?._id;

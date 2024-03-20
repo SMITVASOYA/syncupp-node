@@ -38,7 +38,7 @@ class TeamMemberService {
     try {
       validateRequestFields(payload, ["email", "first_name", "last_name"]);
 
-      if (user?.role?.name == "agency") {
+      if (user?.role?.name == "agency" || user?.role?.name == "team_agency") {
         return await this.addAgencyTeam(payload, user);
       } else if (user?.role?.name == "client") {
         return await this.addClientTeam(payload, user);
@@ -68,6 +68,13 @@ class TeamMemberService {
       const { email, first_name, last_name, contact_number, role } = payload;
       if (!role || role === "")
         return throwError(returnMessage("teamMember", "roleRequired"));
+      let check_agency = await Team_Agency.findById(user?.reference_id)
+        .populate("role", "name")
+        .lean();
+
+      // return throwError(
+      //   returnMessage("teamMember", "insufficientPermission")
+      // );
 
       const [team_member_exist, team_role, role_for_auth] = await Promise.all([
         Authentication.findOne({
@@ -77,6 +84,17 @@ class TeamMemberService {
         Team_Role_Master.findOne({ name: role }).select("_id").lean(),
         Role_Master.findOne({ name: "team_agency" }).lean(),
       ]);
+
+      let team_member_create_query = {
+        agency_id: user?.reference_id,
+        role: team_role?._id,
+      };
+      if (check_agency?.role?.name === "admin") {
+        team_member_create_query = {
+          ...team_member_create_query,
+          created_by: check_agency?.agency_id,
+        };
+      }
 
       if (team_member_exist)
         return throwError(returnMessage("teamMember", "emailExist"));
@@ -90,10 +108,7 @@ class TeamMemberService {
       //   email
       // )}&token=${invitation_token}&redirect=false`;
 
-      const team_agency = await Team_Agency.create({
-        agency_id: user?.reference_id,
-        role: team_role?._id,
-      });
+      const team_agency = await Team_Agency.create(team_member_create_query);
 
       // removed because of the payment
       // invitation_token = crypto
@@ -480,6 +495,10 @@ class TeamMemberService {
       ) {
         memberOf = "client_id";
         teamMemberSchemaName = "team_clients";
+      }
+      if (teamMemberInfo.role.name === "team_agency") {
+        memberOf = "agency_id";
+        teamMemberSchemaName = "team_agencies";
       }
 
       const pipeLine = [
@@ -988,8 +1007,14 @@ class TeamMemberService {
               Math.ceil(total_teams / pagination.result_per_page) || 0,
           };
         }
+        // const team_agency_ids = await Team_Agency.distinct("_id", {
+        //   agency_id: user?.reference_id
+        // });
         const team_agency_ids = await Team_Agency.distinct("_id", {
-          agency_id: user?.reference_id,
+          $or: [
+            { agency_id: user?.reference_id },
+            { created_by: user?.reference_id },
+          ],
         });
         const [teams, total_teams] = await Promise.all([
           Authentication.find({
