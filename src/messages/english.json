@@ -180,7 +180,8 @@
     "agencyCreated": "A new agency registered",
     "memberDeleted": "Team member deleted",
     "memberAdded": "Team member added",
-    "seatRemoved": "Seat removed by agency"
+    "seatRemoved": "Seat removed by agency",
+    "meetingAlert": "Call meeting alert"
   },
 
   "client": {

@@ -276,6 +276,7 @@ class AgencyService {
         totalAmountInvoices,
         invoiceOverdueCount,
         planDetailForSubscription,
+        invoiceSentCount,
       ] = await Promise.all([
         Client.aggregate([
           {
@@ -677,6 +678,35 @@ class AgencyService {
           },
         ]),
         paymentService.planDetails(subscription.plan_id),
+
+        Invoice.aggregate([
+          {
+            $lookup: {
+              from: "invoice_status_masters",
+              localField: "status",
+              foreignField: "_id",
+              as: "invoiceStatus",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$invoiceStatus",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
+          {
+            $match: {
+              agency_id: new mongoose.Types.ObjectId(user.reference_id),
+              "invoiceStatus.name": { $eq: "sent" },
+              is_deleted: false,
+            },
+          },
+          {
+            $count: "invoiceSentCount",
+          },
+        ]),
       ]);
       return {
         client_count: clientCount[0]?.clientCount ?? 0,
@@ -692,7 +722,8 @@ class AgencyService {
         invoice_overdue_count: invoiceOverdueCount[0]?.invoiceOverdueCount ?? 0,
         Next_billing_amount:
           subscription?.quantity *
-            (planDetailForSubscription?.item.amount / 100) ?? null,
+            (planDetailForSubscription?.item.amount / 100) ?? 0,
+        invoice_sent_count: invoiceSentCount[0]?.invoiceSentCount ?? 0,
       };
     } catch (error) {
       logger.error(`Error while fetch dashboard data for agency: ${error}`);

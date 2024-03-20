@@ -75,7 +75,6 @@ class NotificationService {
             userId
           );
         };
-        console.log(payload);
 
         if (payload?.log_user === "member") {
           if (activity_type_action === "create_call_meeting") {
@@ -124,7 +123,6 @@ class NotificationService {
             );
           }
         } else if (activity_type_action === "meetingAlert") {
-          console.log("first");
           if (payload.client_id) {
             await createAndEmitNotification(
               payload.client_id,
@@ -165,16 +163,17 @@ class NotificationService {
             "assignToMessage"
           );
         }
-
-        attendees &&
-          attendees[0] &&
-          attendees.map(async (item) => {
-            await createAndEmitNotification(
-              item,
-              message_type,
-              "attendeesMessage"
-            );
-          });
+        if (activity_type_action !== "meetingAlert") {
+          attendees &&
+            attendees[0] &&
+            attendees.map(async (item) => {
+              await createAndEmitNotification(
+                item,
+                message_type,
+                "attendeesMessage"
+              );
+            });
+        }
       }
 
       // Task

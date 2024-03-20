@@ -7116,7 +7116,7 @@ border-collapse: collapse;">Client name :</td>
 border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
-white-space: nowrap;">${data?.client_name ?? `&nbsp;`}</td>
+white-space: nowrap;">${data?.client_name ? data.client_name : "-"}</td>
                                     </tr>
 
                                       <tr>
