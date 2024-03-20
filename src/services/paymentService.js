@@ -269,7 +269,7 @@ class PaymentService {
           await Affiliate_Referral.findOneAndUpdate(
             {
               referred_to: agency_details?.reference_id,
-              $eq: { status: "inactive" },
+              status: "inactive",
             },
             {
               status: "active",
