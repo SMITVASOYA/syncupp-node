@@ -12,7 +12,7 @@ const activitySchema = new mongoose.Schema(
     agenda: { type: String },
     due_date: { type: Date },
     due_time: { type: String },
-    client_id: { type: mongoose.Types.ObjectId, ref: "client", required: true },
+    client_id: { type: mongoose.Types.ObjectId, ref: "client" },
     internal_info: { type: String },
     assign_to: { type: mongoose.Types.ObjectId },
     assign_by: { type: mongoose.Types.ObjectId },

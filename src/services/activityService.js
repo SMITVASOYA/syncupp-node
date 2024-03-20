@@ -3086,8 +3086,8 @@ class ActivityService {
   // this function is used for to get the activity with date and user based filter
   getActivities = async (payload, user) => {
     try {
-      const match_obj = {};
-
+      const match_obj = { $match: {} };
+      const assign_obj = {};
       if (payload?.given_date) {
         match_obj["$match"] = {
           due_date: {
@@ -3242,7 +3242,7 @@ class ActivityService {
 
       const pagination = paginationObject(payload);
       if (user?.role?.name === "agency") {
-        match_obj["$match"] = {
+        assign_obj["$match"] = {
           is_deleted: false,
           $or: [
             { agency_id: user?.reference_id }, // this is removed because agency can also assign the activity
@@ -3250,42 +3250,42 @@ class ActivityService {
           ],
         };
         if (payload?.client_id) {
-          match_obj["$match"] = {
-            ...match_obj["$match"],
+          assign_obj["$match"] = {
+            ...assign_obj["$match"],
             client_id: new mongoose.Types.ObjectId(payload?.client_id),
           };
         }
         if (payload?.client_team_id) {
-          match_obj["$match"] = {
-            ...match_obj["$match"],
+          assign_obj["$match"] = {
+            ...assign_obj["$match"],
             client_id: new mongoose.Types.ObjectId(payload?.client_team_id),
           };
         }
         if (payload?.team_id) {
-          match_obj["$match"] = {
-            ...match_obj["$match"],
+          assign_obj["$match"] = {
+            ...assign_obj["$match"],
             assign_to: new mongoose.Types.ObjectId(payload?.team_id),
           };
         }
       } else if (user?.role?.name === "team_agency") {
-        match_obj["$match"] = {
+        assign_obj["$match"] = {
           is_deleted: false,
           assign_to: user?.reference_id,
         };
       } else if (user?.role?.name === "client") {
-        match_obj["$match"] = {
+        assign_obj["$match"] = {
           is_deleted: false,
           client_id: user?.reference_id,
           agency_id: new mongoose.Types.ObjectId(payload?.agency_id),
         };
         if (payload?.client_team_id) {
-          match_obj["$match"] = {
-            ...match_obj["$match"],
+          assign_obj["$match"] = {
+            ...assign_obj["$match"],
             client_id: new mongoose.Types.ObjectId(payload?.client_team_id),
           };
         }
       } else if (user?.role?.name === "team_client") {
-        match_obj["$match"] = {
+        assign_obj["$match"] = {
           is_deleted: false,
           client_id: user?.reference_id,
           agency_id: new mongoose.Types.ObjectId(payload?.agency_id),
@@ -3376,6 +3376,7 @@ class ActivityService {
       }
 
       let aggragate = [
+        assign_obj,
         match_obj,
         filter,
         {
