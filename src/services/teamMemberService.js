@@ -647,70 +647,6 @@ class TeamMemberService {
           });
         }
       } else if (agency?.role?.name === "agency" && payload?.client_team) {
-        // ------------------------------- Notification------------------------
-
-        // const client_data = await Authentication.findOne({
-        //   reference_id: payload?.client_id,
-        // });
-        // if (Array.isArray(teamMemberIds)) {
-        //   teamMemberIds &&
-        //     teamMemberIds.map(async (item) => {
-        //       var memberData = await Authentication.findOne({
-        //         reference_id: item,
-        //       });
-        //       await notificationService.addNotification({
-        //         module_name: "general",
-        //         action_name: "memberDeletedAgency",
-        //         receiver_id: payload?.client_id,
-        //         agency_name: agency?.first_name + " " + agency?.last_name,
-        //         member_name:
-        //           memberData?.first_name + " " + memberData?.last_name,
-        //       });
-
-        //       const deleteMember = memberDeletedTemplate({
-        //         deleted_by: agency?.first_name + " " + agency?.last_name,
-        //         member_name:
-        //           memberData?.first_name + " " + memberData?.last_name,
-        //         email: memberData?.email,
-        //         contact_number: memberData?.contact_number,
-        //         member_id: item,
-        //       });
-
-        //       sendEmail({
-        //         email: client_data?.email,
-        //         subject: returnMessage("emailTemplate", "memberDeleted"),
-        //         message: deleteMember,
-        //       });
-        //     });
-        // } else {
-        //   const memberData = await Authentication.findOne({
-        //     reference_id: teamMemberIds,
-        //   });
-        //   await notificationService.addNotification({
-        //     module_name: "general",
-        //     action_name: "memberDeletedAgency",
-        //     receiver_id: payload?.client_id,
-        //     agency_name: agency?.first_name + " " + agency?.last_name,
-        //     member_name: memberData?.first_name + " " + memberData?.last_name,
-        //   });
-
-        //   const deleteMember = memberDeletedTemplate({
-        //     deleted_by: agency?.first_name + " " + agency?.last_name,
-        //     member_name: memberData?.first_name + " " + memberData?.last_name,
-        //     email: memberData?.email,
-        //     contact_number: memberData?.contact_number,
-        //     member_id: teamMemberIds,
-        //   });
-
-        //   sendEmail({
-        //     email: client_data?.email,
-        //     subject: returnMessage("emailTemplate", "memberDeleted"),
-        //     message: deleteMember,
-        //   });
-        // }
-
-        // ------------------------------- Notification------------------------
-
         // check for the clients are assined to any activity that are in pending state
 
         const activity_assigned = await Activity.findOne({
@@ -752,6 +688,76 @@ class TeamMemberService {
             occupied_sheets: available_sheets,
           });
         }
+
+        // ------------------------------- Notification------------------------
+
+        // Function to handle member deletion for client
+        const handleMemberDeletionForClient = async (
+          memberData,
+          clientData,
+          agencyData,
+          teamMemberIds
+        ) => {
+          await notificationService.addNotification({
+            module_name: "general",
+            action_name: "memberDeletedAgency",
+            receiver_id: payload?.client_id,
+            agency_name: `${agency?.first_name} ${agency?.last_name}`,
+            member_name: `${memberData?.first_name} ${memberData?.last_name}`,
+          });
+
+          const deleteMember = memberDeletedTemplate({
+            deleted_by: `${agency?.first_name} ${agency?.last_name}`,
+            member_name: `${memberData?.first_name} ${memberData?.last_name}`,
+            email: memberData?.email,
+            contact_number: memberData?.contact_number,
+            member_id: teamMemberIds,
+          });
+
+          sendEmail({
+            email: clientData?.email,
+            subject: returnMessage("emailTemplate", "memberDeleted"),
+            message: deleteMember,
+          });
+        };
+
+        // Main logic
+        const clientData = await Authentication.findOne({
+          reference_id: payload?.client_id,
+        });
+
+        const agencyData = await Authentication.findOne({
+          reference_id: payload?.agency_id,
+        });
+
+        if (Array.isArray(teamMemberIds)) {
+          const memberDataPromises = teamMemberIds.map(async (item) => {
+            return Authentication.findOne({ reference_id: item });
+          });
+          const memberDataList = await Promise.all(memberDataPromises);
+
+          memberDataList.forEach(async (memberData, index) => {
+            await handleMemberDeletionForClient(
+              memberData,
+              clientData,
+              agencyData,
+              teamMemberIds[index]
+            );
+          });
+        } else {
+          const memberData = await Authentication.findOne({
+            reference_id: teamMemberIds,
+          });
+
+          await handleMemberDeletionForClient(
+            memberData,
+            clientData,
+            agencyData,
+            teamMemberIds
+          );
+        }
+
+        // ------------------------------- Notification------------------------
       } else if (agency?.role?.name === "client" && payload?.agency_id) {
         // check for the clients are assined to any activity that are in pending state
 
@@ -796,68 +802,62 @@ class TeamMemberService {
         }
 
         // ------------------------------- Notification------------------------
+        // Function to handle member deletion
+        const handleMemberDeletion = async (
+          memberData,
+          agencyData,
+          teamMemberIds
+        ) => {
+          console.log(memberData);
+          await notificationService.addNotification({
+            module_name: "general",
+            action_name: "memberDeleted",
+            receiver_id: payload?.agency_id,
+            client_name: `${agency?.first_name} ${agency?.last_name}`,
+            member_name: `${memberData?.first_name} ${memberData?.last_name}`,
+          });
+          console.log(agency);
+          const deleteMember = memberDeletedClient({
+            deleted_by: `${agency?.first_name} ${agency?.last_name}`,
+            member_name: `${memberData?.first_name} ${memberData?.last_name}`,
+            email: memberData?.email,
+            contact_number: memberData?.contact_number,
+            member_id: teamMemberIds,
+          });
 
-        // const agencyData = await Authentication.findOne({
-        //   reference_id: payload?.agency_id,
-        // });
+          sendEmail({
+            email: agencyData?.email,
+            subject: returnMessage("emailTemplate", "memberDeleted"),
+            message: deleteMember,
+          });
+        };
 
-        // if (Array.isArray(teamMemberIds)) {
-        //   teamMemberIds &&
-        //     teamMemberIds.map(async (item) => {
-        //       var memberData = await Authentication.findOne({
-        //         reference_id: item,
-        //       });
+        const agencyData = await Authentication.findOne({
+          reference_id: payload?.agency_id,
+        }).lean();
 
-        //       await notificationService.addNotification({
-        //         module_name: "general",
-        //         action_name: "memberDeleted",
-        //         receiver_id: payload?.agency_id,
-        //         client_name: agency?.first_name + " " + agency?.last_name,
-        //         member_name:
-        //           memberData?.first_name + " " + memberData?.last_name,
-        //       });
+        console.log(agencyData);
 
-        //       const deleteMember = memberDeletedClient({
-        //         deleted_by: agency?.first_name + " " + agency?.last_name,
-        //         member_name:
-        //           memberData?.first_name + " " + memberData?.last_name,
-        //         email: memberData?.email,
-        //         contact_number: memberData?.contact_number,
-        //         member_id: item,
-        //       });
+        if (Array.isArray(teamMemberIds)) {
+          const memberDataPromises = teamMemberIds.map(async (item) => {
+            return Authentication.findOne({ reference_id: item }).lean();
+          });
+          const memberDataList = await Promise.all(memberDataPromises);
 
-        //       sendEmail({
-        //         email: agencyData?.email,
-        //         subject: returnMessage("emailTemplate", "memberDeleted"),
-        //         message: deleteMember,
-        //       });
-        //     });
-        // } else {
-        //   const memberData = await Authentication.findOne({
-        //     reference_id: teamMemberIds,
-        //   });
-        //   await notificationService.addNotification({
-        //     module_name: "general",
-        //     action_name: "memberDeleted",
-        //     receiver_id: payload?.agency_id,
-        //     client_name: agency.first_name + " " + agency.last_name,
-        //     member_name: memberData.first_name + " " + memberData.last_name,
-        //   });
-
-        //   const deleteMember = memberDeletedClient({
-        //     deleted_by: agency?.first_name + " " + agency?.last_name,
-        //     member_name: memberData?.first_name + " " + memberData?.last_name,
-        //     email: memberData?.email,
-        //     contact_number: memberData?.contact_number,
-        //     member_id: teamMemberIds,
-        //   });
-
-        //   sendEmail({
-        //     email: agencyData?.email,
-        //     subject: returnMessage("emailTemplate", "memberDeleted"),
-        //     message: deleteMember,
-        //   });
-        // }
+          memberDataList.forEach(async (memberData, index) => {
+            await handleMemberDeletion(
+              memberData,
+              agencyData,
+              teamMemberIds[index]
+            );
+          });
+        } else {
+          const memberData = await Authentication.findOne({
+            reference_id: teamMemberIds,
+          }).lean();
+          console.log(memberData);
+          await handleMemberDeletion(memberData, agencyData, teamMemberIds);
+        }
 
         // ------------------------------- Notification------------------------
       }

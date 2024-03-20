@@ -11190,7 +11190,7 @@ white-space: nowrap;">${data?.contact_number ?? `&nbsp;`}</td>
                                   </table>
                                   <a target="_blank" href="${
                                     process.env.REACT_APP_URL
-                                  }/team/details/${data.member_id}"style="
+                                  }/team"style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
