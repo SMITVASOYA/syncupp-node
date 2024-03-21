@@ -11,6 +11,7 @@ const {
   passwordValidation,
   welcomeMail,
   capitalizeFirstLetter,
+  clientMemberAdded,
 } = require("../utils/utils");
 const Authentication = require("../models/authenticationSchema");
 const sendEmail = require("../helpers/sendEmail");
