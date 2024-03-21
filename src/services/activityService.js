@@ -62,7 +62,7 @@ class ActivityService {
         const agencies = await Team_Agency.findById(user?.reference_id).lean();
         agency_id = agencies.agency_id;
       }
-      const dueDateObject = moment(due_date).startOf("day");
+      const dueDateObject = moment(due_date);
       const duetimeObject = moment(due_date);
 
       const timeOnly = duetimeObject.format("HH:mm:ss");
@@ -1307,7 +1307,7 @@ class ActivityService {
       if (status_check?.activity_status?.name === "completed") {
         return throwError(returnMessage("activity", "CannotUpdate"));
       }
-      const dueDateObject = moment(due_date).startOf("day");
+      const dueDateObject = moment(due_date);
       const duetimeObject = moment(due_date);
 
       const timeOnly = duetimeObject.format("HH:mm:ss");
@@ -2009,7 +2009,7 @@ class ActivityService {
           await notificationService.addNotification(
             {
               client_name: client_data
-                ? client_data.first_name + " " + client_data.last_name
+                ? client_data?.first_name + " " + client_data?.last_name
                 : "",
               assigned_to_name:
                 assign_to_data?.first_name + " " + assign_to_data?.last_name,
@@ -2079,11 +2079,13 @@ class ActivityService {
               .tz("Asia/Kolkata")
               .format("HH:mm"),
             recurring_end_date: getTask[0]?.recurring_end_date
-              ? moment(getTask[0].recurring_end_date).format("DD-MM-YYYY")
+              ? moment(getTask[0]?.recurring_end_date).format("DD-MM-YYYY")
               : null,
-            due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
-            status: payload.status,
-            client_name: client_data.first_name + " " + client_data.last_name,
+            due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
+            status: payload?.status,
+            client_name: client_data
+              ? client_data?.first_name + " " + client_data?.last_name
+              : "",
           });
           client_data &&
             sendEmail({
@@ -2103,7 +2105,7 @@ class ActivityService {
           await notificationService.addNotification(
             {
               client_name: client_data
-                ? client_data.first_name + " " + client_data.last_name
+                ? client_data?.first_name + " " + client_data?.last_name
                 : "",
               assigned_to_name:
                 assign_to_data?.first_name + " " + assign_to_data?.last_name,
@@ -2143,11 +2145,13 @@ class ActivityService {
               "HH:mm"
             ),
             recurring_end_date: getTask[0]?.recurring_end_date
-              ? moment(getTask[0].recurring_end_date).format("DD-MM-YYYY")
+              ? moment(getTask[0]?.recurring_end_date).format("DD-MM-YYYY")
               : null,
             due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
-            status: payload.status,
-            client_name: client_data.first_name + " " + client_data.last_name,
+            status: payload?.status,
+            client_name: client_data
+              ? client_data?.first_name + " " + client_data?.last_name
+              : "",
           });
           client_data &&
             sendEmail({
@@ -2166,7 +2170,7 @@ class ActivityService {
           await notificationService.addNotification(
             {
               client_name: client_data
-                ? client_data.first_name + " " + client_data.last_name
+                ? client_data?.first_name + " " + client_data?.last_name
                 : "",
               assigned_to_name:
                 assign_to_data?.first_name + " " + assign_to_data?.last_name,
@@ -3423,10 +3427,23 @@ class ActivityService {
           };
         }
       } else if (user?.role?.name === "team_agency") {
-        assign_obj["$match"] = {
-          is_deleted: false,
-          assign_to: user?.reference_id,
-        };
+        // assign_obj["$match"] = {
+        //   is_deleted: false,
+        //   assign_to: user?.reference_id,
+        // };
+        const teamRole = await Team_Agency.findOne({
+          _id: user.reference_id,
+        }).populate("role");
+        if (teamRole?.role?.name === "admin") {
+          assign_obj["$match"] = {
+            $or: [
+              { assign_by: user.reference_id },
+              { assign_to: user.reference_id },
+            ],
+            is_deleted: false,
+            // activity_type: new mongoose.Types.ObjectId(type._id),
+          };
+        }
       } else if (user?.role?.name === "client") {
         assign_obj["$match"] = {
           is_deleted: false,

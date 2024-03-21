@@ -43,6 +43,15 @@ exports.getAllAgency = catchAsyncError(async (req, res, next) => {
 
 exports.updateAgency = catchAsyncError(async (req, res, next) => {
   await agencyService.updateAgencyStatus(req.body);
+  if (req.body.delete) {
+    sendResponse(
+      res,
+      true,
+      returnMessage("agency", "agencyDeletedMessage"),
+      {},
+      statusCode.success
+    );
+  }
   sendResponse(
     res,
     true,
