@@ -34,6 +34,7 @@ const fs = require("fs");
 // import { createEvent } from "ics";
 const { ObjectId } = require("mongodb");
 const Activity_Type_Master = require("../models/masters/activityTypeMasterSchema");
+const momentTimezone = require("moment-timezone");
 
 class ActivityService {
   createTask = async (payload, user, files) => {
@@ -1944,6 +1945,7 @@ class ActivityService {
             title: 1,
             activity_type: "$activity_type.name",
             meeting_start_time: 1,
+            meeting_end_time: 1,
             recurring_end_date: 1,
             assign_to: 1,
             assign_by: 1,
@@ -2064,12 +2066,18 @@ class ActivityService {
           const activity_email_template = activityTemplate({
             ...getTask[0],
             activity_type: getTask[0].activity_type,
-            meeting_end_time: moment(getTask[0].meeting_end_time).format(
+            meeting_start_time: momentTimezone(
+              getTask[0]?.meeting_start_time,
               "HH:mm"
-            ),
-            meeting_start_time: moment(getTask[0].meeting_start_time).format(
+            )
+              .tz("Asia/Kolkata")
+              .format("HH:mm"),
+            meeting_end_time: momentTimezone(
+              getTask[0]?.meeting_end_time,
               "HH:mm"
-            ),
+            )
+              .tz("Asia/Kolkata")
+              .format("HH:mm"),
             recurring_end_date: getTask[0]?.recurring_end_date
               ? moment(getTask[0].recurring_end_date).format("DD-MM-YYYY")
               : null,
@@ -2127,11 +2135,11 @@ class ActivityService {
 
           const activity_email_template = activityTemplate({
             ...getTask[0],
-            activity_type: getTask[0].activity_type,
-            meeting_end_time: moment(getTask[0].meeting_end_time).format(
+            activity_type: getTask[0]?.activity_type,
+            meeting_end_time: moment(getTask[0]?.meeting_end_time).format(
               "HH:mm"
             ),
-            meeting_start_time: moment(getTask[0].meeting_start_time).format(
+            meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
               "HH:mm"
             ),
             recurring_end_date: getTask[0]?.recurring_end_date
@@ -2438,6 +2446,15 @@ class ActivityService {
             : "",
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
+          meeting_start_time: momentTimezone
+            .utc(meeting_start_time, "HH:mm")
+            .tz("Asia/Kolkata")
+            .format("HH:mm"),
+
+          meeting_end_time: momentTimezone
+            .utc(meeting_end_time, "HH:mm")
+            .tz("Asia/Kolkata")
+            .format("HH:mm"),
         });
 
         client_data &&
@@ -2475,7 +2492,6 @@ class ActivityService {
               icsContent: file,
             });
           });
-
         await notificationService.addNotification(
           {
             assign_by: user?.reference_id,
@@ -2490,6 +2506,14 @@ class ActivityService {
             activity_type_action: "create_call_meeting",
             activity_type:
               activity_type === "others" ? "activity" : "call meeting",
+            meeting_start_time: momentTimezone
+              .utc(meeting_start_time, "HH:mm")
+              .tz("Asia/Kolkata")
+              .format("HH:mm"),
+            meeting_end_time: momentTimezone
+              .utc(meeting_end_time, "HH:mm")
+              .tz("Asia/Kolkata")
+              .format("HH:mm"),
           },
           newActivity?._id
         );
@@ -2514,6 +2538,15 @@ class ActivityService {
             : "",
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
+          meeting_start_time: momentTimezone
+            .utc(meeting_start_time, "HH:mm")
+            .tz("Asia/Kolkata")
+            .format("HH:mm"),
+
+          meeting_end_time: momentTimezone
+            .utc(meeting_end_time, "HH:mm")
+            .tz("Asia/Kolkata")
+            .format("HH:mm"),
         });
 
         client_data &&
@@ -2542,6 +2575,16 @@ class ActivityService {
                 : "",
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
+
+              meeting_start_time: momentTimezone
+                .utc(meeting_start_time, "HH:mm")
+                .tz("Asia/Kolkata")
+                .format("HH:mm"),
+
+              meeting_end_time: momentTimezone
+                .utc(meeting_end_time, "HH:mm")
+                .tz("Asia/Kolkata")
+                .format("HH:mm"),
             });
 
             sendEmail({
@@ -2573,6 +2616,14 @@ class ActivityService {
             activity_type:
               activity_type === "others" ? "activity" : "call meeting",
             log_user: "member",
+            meeting_start_time: momentTimezone
+              .utc(meeting_start_time, "HH:mm")
+              .tz("Asia/Kolkata")
+              .format("HH:mm"),
+            meeting_end_time: momentTimezone
+              .utc(meeting_end_time, "HH:mm")
+              .tz("Asia/Kolkata")
+              .format("HH:mm"),
           },
           newActivity?._id
         );
@@ -2987,6 +3038,15 @@ class ActivityService {
             : "",
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
+          meeting_start_time: momentTimezone
+            .utc(meeting_start_time, "HH:mm")
+            .tz("Asia/Kolkata")
+            .format("HH:mm"),
+
+          meeting_end_time: momentTimezone
+            .utc(meeting_end_time, "HH:mm")
+            .tz("Asia/Kolkata")
+            .format("HH:mm"),
         });
 
         client_data &&
@@ -3013,6 +3073,15 @@ class ActivityService {
                 : "",
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
+              meeting_start_time: momentTimezone
+                .utc(meeting_start_time, "HH:mm")
+                .tz("Asia/Kolkata")
+                .format("HH:mm"),
+
+              meeting_end_time: momentTimezone
+                .utc(meeting_end_time, "HH:mm")
+                .tz("Asia/Kolkata")
+                .format("HH:mm"),
             });
 
             sendEmail({
@@ -3036,6 +3105,14 @@ class ActivityService {
             activity_type_action: task_status,
             activity_type:
               activity_type === "others" ? "activity" : "call meeting",
+            meeting_start_time: momentTimezone
+              .utc(meeting_start_time, "HH:mm")
+              .tz("Asia/Kolkata")
+              .format("HH:mm"),
+            meeting_end_time: momentTimezone
+              .utc(meeting_end_time, "HH:mm")
+              .tz("Asia/Kolkata")
+              .format("HH:mm"),
           },
           activity_id
         );
@@ -3071,6 +3148,15 @@ class ActivityService {
             : "",
           assigned_to_name:
             assign_to_data.first_name + " " + assign_to_data.last_name,
+          meeting_start_time: momentTimezone
+            .utc(meeting_start_time, "HH:mm")
+            .tz("Asia/Kolkata")
+            .format("HH:mm"),
+
+          meeting_end_time: momentTimezone
+            .utc(meeting_end_time, "HH:mm")
+            .tz("Asia/Kolkata")
+            .format("HH:mm"),
         });
 
         client_data &&
@@ -3097,6 +3183,15 @@ class ActivityService {
                 : "",
               assigned_to_name:
                 assign_to_data.first_name + " " + assign_to_data.last_name,
+              meeting_start_time: momentTimezone
+                .utc(meeting_start_time, "HH:mm")
+                .tz("Asia/Kolkata")
+                .format("HH:mm"),
+
+              meeting_end_time: momentTimezone
+                .utc(meeting_end_time, "HH:mm")
+                .tz("Asia/Kolkata")
+                .format("HH:mm"),
             });
 
             sendEmail({
@@ -3123,6 +3218,14 @@ class ActivityService {
             agency_id: user?.agency_id ? user?.agency_id : user?.reference_id,
             agency_name: agencyData?.first_name + " " + agencyData?.last_name,
             log_user: "member",
+            meeting_start_time: momentTimezone
+              .utc(meeting_start_time, "HH:mm")
+              .tz("Asia/Kolkata")
+              .format("HH:mm"),
+            meeting_end_time: momentTimezone
+              .utc(meeting_end_time, "HH:mm")
+              .tz("Asia/Kolkata")
+              .format("HH:mm"),
           },
           activity_id
         );
