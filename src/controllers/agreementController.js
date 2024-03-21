@@ -35,19 +35,19 @@ exports.getAllAgreement = catchAsyncError(async (req, res, next) => {
   const agencyData = await Authentication.findOne({
     reference_id: memberRoleId?.agency_id,
   });
-  if (req.user.role.name === "agency") {
+  if (req?.user?.role?.name === "agency") {
     agreements = await agreementService.getAllAgreement(
-      req.body,
+      req?.body,
       req?.user?._id
     );
-  } else if (memberRoleType.name === "admin") {
+  } else if (memberRoleType?.name === "admin") {
     agreements = await agreementService.getAllAgreement(
-      req.body,
-      agencyData._id
+      req?.body,
+      agencyData?._id
     );
-  } else if (req.user.role.name === "client") {
+  } else if (req?.user?.role?.name === "client") {
     agreements = await agreementService.getAllClientAgreement(
-      req.body,
+      req?.body,
       req?.user?._id
     );
   }
