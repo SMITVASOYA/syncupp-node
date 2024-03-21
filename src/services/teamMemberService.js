@@ -874,7 +874,13 @@ class TeamMemberService {
         .where("is_deleted")
         .ne(true)
         .lean();
-      if (user?.role?.name === "agency") {
+      let check_agency = await Team_Agency.findById(user?.reference_id)
+        .populate("role", "name")
+        .lean();
+      if (
+        user?.role?.name === "agency" ||
+        (user.role.name === "team_agency" && check_agency.role.name === "admin")
+      ) {
         if (
           !team_member_exist ||
           team_member_exist?.role?.name !== "team_agency"
@@ -883,6 +889,7 @@ class TeamMemberService {
             returnMessage("teamMember", "userNotFound"),
             statusCode.notFound
           );
+
         let role;
         if (payload?.role && payload?.role !== "")
           role = await Team_Role_Master.findOne({ name: payload?.role })
