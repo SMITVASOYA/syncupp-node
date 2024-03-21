@@ -293,6 +293,10 @@ class ChatService {
       chat_users_ids = chat_users_ids.map(
         (id) => new mongoose.Types.ObjectId(id)
       );
+      let agencyObj = {
+        reference_id: { $in: chat_users_ids },
+        status: "confirmed",
+      };
       let queryObj = {};
       if (payload?.search && payload?.search !== "") {
         queryObj = {
@@ -320,6 +324,27 @@ class ChatService {
           ],
         };
       }
+      const chatPipeline = [
+        {
+          $match: agencyObj,
+        },
+        {
+          $match: queryObj,
+        },
+
+        {
+          $project: {
+            first_name: 1,
+            last_name: 1,
+            image_url: 1,
+            name: 1,
+            email: 1,
+            is_online: 1,
+            created_by: 1,
+            reference_id: 1,
+          },
+        },
+      ];
       const [unread_messages, users] = await Promise.all([
         Notification.find({
           user_id: user?.reference_id,
@@ -327,15 +352,7 @@ class ChatService {
           type: "chat",
           is_read: false,
         }).lean(),
-        Authentication.find({
-          reference_id: { $in: chat_users_ids },
-          status: "confirmed",
-          ...queryObj,
-        })
-          .select(
-            "name first_name last_name email reference_id image_url is_online"
-          )
-          .lean(),
+        Authentication.aggregate(chatPipeline),
       ]);
 
       // it will used to get is there any messages that are un-seen
