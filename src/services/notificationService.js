@@ -136,11 +136,13 @@ class NotificationService {
             message_type,
             "alertMessage"
           );
-          await createAndEmitNotification(
-            payload.assign_to,
-            message_type,
-            "alertMessage"
-          );
+          if (String(payload.assign_to) !== String(payload.assign_by)) {
+            await createAndEmitNotification(
+              payload.assign_to,
+              message_type,
+              "alertMessage"
+            );
+          }
 
           attendees &&
             attendees[0] &&
