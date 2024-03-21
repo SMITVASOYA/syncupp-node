@@ -1262,11 +1262,37 @@ class TeamMemberService {
   // reject the client team member
   rejectTeamMember = async (payload, agency) => {
     try {
-      const team_member_exist = await Team_Client.findOne({
+      let team_member_exist;
+      team_member_exist = await Team_Client.findOne({
         _id: payload?.id,
         "agency_ids.agency_id": agency?.reference_id,
         "agency_ids.status": "requested",
       }).lean();
+      let check_agency = await Team_Agency.findById(agency?.reference_id)
+        .populate("role", "name")
+        .lean();
+      if (
+        agency.role.name === "team_agency" &&
+        check_agency.role.name === "admin"
+      ) {
+        team_member_exist = await Team_Client.findOne({
+          _id: payload?.id,
+          "agency_ids.agency_id": check_agency?.agency_id,
+          "agency_ids.status": "requested",
+        }).lean();
+
+        if (!team_member_exist)
+          return throwError(
+            returnMessage("teamMember", "teamMemberNotFound"),
+            statusCode?.notFound
+          );
+
+        await Team_Client.updateOne(
+          { _id: payload?.id, "agency_ids.agency_id": check_agency?.agency_id },
+          { $set: { "agency_ids.$.status": "rejected" } },
+          { new: true }
+        );
+      }
 
       if (!team_member_exist)
         return throwError(
