@@ -9,6 +9,10 @@ const paymentService = new PaymentService();
 const Activity_Type_Master = require("../models/masters/activityTypeMasterSchema");
 const Activity = require("../models/activitySchema");
 const moment = require("moment");
+const PaymentHistory = require("../models/paymentHistorySchema");
+const Authentication = require("../models/authenticationSchema");
+const NotificationService = require("../services/notificationService");
+const notificationService = new NotificationService();
 
 exports.setupNightlyCronJob = async () => {
   const config = await Configuration.findOne({});
@@ -34,7 +38,6 @@ exports.setupNightlyCronJob = async () => {
   cron.schedule(payment_cron_schedule, () => {
     console.log("Running the nightly cron job to expire the subscription...");
     paymentService.cronForSubscription();
-    // Crone job for 15 minutes start
   });
 
   // Crone job for 15 minutes start
@@ -42,7 +45,7 @@ exports.setupNightlyCronJob = async () => {
   const call_meeting_alert_check_rate =
     config?.cron_job.call_meeting_alert_check_rate;
   cron.schedule(call_meeting_alert_check_rate, async () => {
-    const currentUtcDate = moment().utc(); // Get current UTC time
+    const currentUtcDate = moment().utc();
     const callMeeting = await Activity_Type_Master.findOne({
       name: "call_meeting",
     });
@@ -50,12 +53,38 @@ exports.setupNightlyCronJob = async () => {
       activity_type: callMeeting._id,
       is_deleted: false,
       meeting_start_time: {
-        $gte: currentUtcDate.toDate(), // Meetings starting today
+        $gte: currentUtcDate.toDate(),
         $lte: moment(currentUtcDate).add(callMeetingCron, "minutes").toDate(),
       },
     }).lean();
     meetings.forEach((meeting) => {
-      activityService.meetingAlertCronJob(meeting); // Pass meeting details to the cron job function
+      activityService.meetingAlertCronJob(meeting);
     });
   });
+
+  // After Expire alert
+  // const afterExpireAlert = config?.cron_job.after_expire_alert_time;
+  // cron.schedule(afterExpireAlert, async () => {
+  //   const twentyFourHoursAgo = moment().subtract(24, "hours").toDate();
+  //   const fortyEightHoursAgo = moment().subtract(48, "hours").toDate();
+
+  //   const expiredAccounts = await Authentication.find({
+  //     subscription_halted: {
+  //       $gte: fortyEightHoursAgo,
+  //       $lt: twentyFourHoursAgo,
+  //     },
+  //   })
+  //     .populate("role")
+  //     .lean();
+
+  //   expiredAccounts.forEach(async (item) => {
+  //     await notificationService.addNotification({
+  //       module_name: "payment",
+  //       action_name: "packageExpiredAlert",
+  //       receiver_id: item.reference_id,
+  //       user_name: item.first_name + " " + item.last_name,
+  //       role_name: item?.role?.name,
+  //     });
+  //   });
+  // });
 };

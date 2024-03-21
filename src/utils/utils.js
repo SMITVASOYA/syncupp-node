@@ -7096,7 +7096,7 @@ border-collapse: collapse;">Agenda :</td>
 border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
-white-space: nowrap;">${data?.agenda ?? `&nbsp;`}</td>
+white-space: nowrap;">${data?.agenda ? data?.agenda : "-"}</td>
                                         </tr>
 
 

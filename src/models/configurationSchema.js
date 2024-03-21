@@ -19,6 +19,7 @@ const configurationSchema = new mongoose.Schema(
       call_meeting_alert: { type: Number, default: 15 },
       call_meeting_alert_check_rate: { type: String, default: "*/15 * * * *" },
       payment: { type: String, default: "0 0 * * *" },
+      after_expire_alert_time: { type: String, default: "0 0 * * *" },
     },
     payment: {
       subscription_halt_days: { type: Number, default: 15 },

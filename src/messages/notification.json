@@ -110,7 +110,10 @@
     "teamClientSeatRemoved": "Team client member ${removed_user} seat removed by  ${agency_name}",
     "teamAgencySeatRemoved": "Member ${removed_user} seat removed by  ${agency_name}",
     "agencyCreated": "A new agency named ${agency_name} has been registered",
-    "clientTeamPaymentFail": "Team member ${member_name} payment fail."
+    "clientTeamPaymentFail": "Team member ${member_name} payment fail.",
+    "memberPayment": "Team member ${user_name} payment ${currency} ${amount}  done by ${agency_name}.",
+    "agencyPayment": "Agency ${user_name} payment ${currency} ${amount} done.",
+    "clientPayment": "Client ${user_name} payment ${currency} ${amount} done by ${agency_name}."
   },
 
   "chat": {
@@ -119,7 +122,11 @@
     "newGroupMessage": "You received new message from {{group_name}}."
   },
   "payment": {
-    "nextSubscriptionStart": "Your next subscription will start in {{no_days}} days"
+    "nextSubscriptionStart": "Your next subscription will start in {{no_days}} days",
+    "memberPayment": "Team member ${user_name} payment ${currency} ${amount}  done by you.",
+    "agencyPayment": "Your payment ${currency} ${amount} done.",
+    "clientPayment": "Client ${user_name} payment ${currency} ${amount} done by you.",
+    "packageExpireAlert": ""
   },
   "referral": {
     "signUp": "New user ${referred_to} joined ${points} Points added.",

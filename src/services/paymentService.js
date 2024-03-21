@@ -473,14 +473,42 @@ class PaymentService {
         // if (!status_change.success) return { success: false };
 
         // ---------------------- Notification ----------------------
+        // let userData;
+        // if (payload?.user_id) {
+        //   userData = await Authentication.findOne({
+        //     reference_id: payload?.user_id,
+        //   })
+        //     .populate("role")
+        //     .lean();
+        // }
 
-        // await notificationService.addNotification({
-        //   receiver_id: payload?.agency_id,
-        //   team_member_name:
-        //     memberData?.first_name + " " + memberData?.last_name,
-        //   module_name: "general",
-        //   action_name: "memberPaymentDone",
-        // });
+        // console.log(userData);
+        // const agencyData = await Authentication.findOne({
+        //   reference_id: payload?.agency_id,
+        // })
+        //   .populate("role")
+        //   .lean();
+
+        // if (userData && payload.agency_id) {
+        //   await notificationService.addNotification({
+        //     receiver_id: payload?.agency_id,
+        //     agency_name: agencyData?.first_name + " " + agencyData?.last_name,
+        //     module_name: "payment",
+        //     action_name: userData.role.name,
+        //     user_name: userData?.first_name + " " + userData?.last_name,
+        //     amount: payload?.amount,
+        //     currency: payload?.currency,
+        //   });
+        //   await notificationService.addAdminNotification({
+        //     receiver_id: payload?.agency_id,
+        //     agency_name: agencyData?.first_name + " " + agencyData?.last_name,
+        //     module_name: "payment",
+        //     action_name: userData.role.name,
+        //     user_name: userData?.first_name + " " + userData?.last_name,
+        //     amount: payload?.amount,
+        //     currency: payload?.currency,
+        //   });
+        // }
 
         // ---------------------- Notification ----------------------
 
@@ -490,17 +518,6 @@ class PaymentService {
           data: status_change?.data,
         };
       }
-
-      // ---------------------- Notification ----------------------
-
-      // await notificationService.addNotification({
-      //   receiver_id: payload?.agency_id,
-      //   team_member_name: memberData?.first_name + " " + memberData?.last_name,
-      //   module_name: "general",
-      //   action_name: "memberPaymentFail",
-      // });
-
-      // ---------------------- Notification ----------------------
 
       // await this.deleteUsers(payload);
       return { success: false };

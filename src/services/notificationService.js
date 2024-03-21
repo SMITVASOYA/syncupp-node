@@ -34,20 +34,21 @@ class NotificationService {
         let message_type;
         if (activity_type_action === "create_call_meeting")
           message_type = "createCallMeeting";
-        if (activity_type_action === "update") message_type = "activityUpdated";
-        if (activity_type_action === "cancel")
+        else if (activity_type_action === "update")
+          message_type = "activityUpdated";
+        else if (activity_type_action === "cancel")
           message_type = "activityCancelled";
-        if (activity_type_action === "inProgress")
+        else if (activity_type_action === "inProgress")
           message_type = "activityInProgress";
-        if (activity_type_action === "completed")
+        else if (activity_type_action === "completed")
           message_type = "activityCompleted";
-        if (activity_type_action === "pending")
+        else if (activity_type_action === "pending")
           message_type = "activityPending";
-        if (activity_type_action === "overdue")
+        else if (activity_type_action === "overdue")
           message_type = "activityOverdue";
-        if (activity_type_action === "dueDateAlert")
+        else if (activity_type_action === "dueDateAlert")
           message_type = "activityDueDate";
-        if (activity_type_action === "meetingAlert")
+        else if (activity_type_action === "meetingAlert")
           message_type = "meetingAlert";
 
         const createAndEmitNotification = async (
@@ -181,21 +182,22 @@ class NotificationService {
         let type = "task";
         let message_type;
         if (activity_type_action === "createTask") message_type = "createTask";
-        if (activity_type_action === "completed")
+        else if (activity_type_action === "completed")
           message_type = "taskCompleted";
-        if (activity_type_action === "update") message_type = "taskUpdated";
-        if (activity_type_action === "deleted") {
+        else if (activity_type_action === "update")
+          message_type = "taskUpdated";
+        else if (activity_type_action === "deleted") {
           message_type = "taskDeleted";
           type = "deleted";
-        }
-        if (activity_type_action === "pending") message_type = "taskPending";
-
-        if (activity_type_action === "cancel") message_type = "taskCancelled";
-        if (activity_type_action === "inProgress")
+        } else if (activity_type_action === "pending")
+          message_type = "taskPending";
+        else if (activity_type_action === "cancel")
+          message_type = "taskCancelled";
+        else if (activity_type_action === "inProgress")
           message_type = "taskInProgress";
-        if (activity_type_action === "overdue") message_type = "taskOverdue";
-
-        if (activity_type_action === "dueDateAlert")
+        else if (activity_type_action === "overdue")
+          message_type = "taskOverdue";
+        else if (activity_type_action === "dueDateAlert")
           message_type = "taskDueDate";
         const createAndEmitNotification = async (
           userId,
@@ -242,7 +244,6 @@ class NotificationService {
               );
             }
           }
-
           if (activity_type_action === "update") {
             await createAndEmitNotification(
               payload.agency_id,
@@ -288,7 +289,7 @@ class NotificationService {
         const { action_type, receiver_id, sender_id } = payload;
         let message_type;
         if (action_type === "create") message_type = "create";
-        if (action_type === "statusUpdate") message_type = "statusUpdate";
+        else if (action_type === "statusUpdate") message_type = "statusUpdate";
 
         const createAndEmitNotification = async (userId, messageType) => {
           const message = replaceFields(
@@ -320,9 +321,10 @@ class NotificationService {
         const { action_type, receiver_id, sender_id } = payload;
         let message_type;
         if (action_type === "create") message_type = "create";
-        if (action_type === "updateStatusUnpaid") message_type = "create";
-        if (action_type === "overdue") message_type = "invoiceDue";
-        if (action_type === "updateStatusPaid") message_type = "invoicePaid";
+        else if (action_type === "updateStatusUnpaid") message_type = "create";
+        else if (action_type === "overdue") message_type = "invoiceDue";
+        else if (action_type === "updateStatusPaid")
+          message_type = "invoicePaid";
 
         const createAndEmitNotification = async (userId, messageType) => {
           const message = replaceFields(
@@ -345,6 +347,7 @@ class NotificationService {
         await createAndEmitNotification(receiver_id, message_type);
       }
 
+      // Common function for single notification
       const createAndEmitNotification = async (
         userId,
         messageType,
@@ -482,6 +485,47 @@ class NotificationService {
         }
       }
 
+      // Payment
+
+      if (payload?.module_name === "payment") {
+        if (
+          payload?.action_name === "team_agency" ||
+          payload?.action_name === "team_client"
+        ) {
+          await createAndEmitNotification(
+            payload?.receiver_id,
+            "memberPayment",
+            "payment",
+            "deleted"
+          );
+        } else if (payload?.action_name === "client") {
+          await createAndEmitNotification(
+            payload?.receiver_id,
+            "clientPayment",
+            "payment",
+            "deleted"
+          );
+        } else if (payload?.action_name === "agency") {
+          await createAndEmitNotification(
+            payload.receiver_id,
+            "agencyPayment",
+            "payment",
+            "deleted"
+          );
+        }
+
+        if (payload.action_name === "packageExpiredAlert") {
+          let messageName;
+          if (payload.role_name === "client") messageName = "cli";
+          await createAndEmitNotification(
+            payload.receiver_id,
+            "packageExpireAlert",
+            "payment",
+            "deleted"
+          );
+        }
+      }
+
       return;
     } catch (error) {
       logger.error(`Error while fetching agencies: ${error}`);
@@ -559,6 +603,42 @@ class NotificationService {
           await createAndEmitNotification(
             admin._id,
             "teamClientSeatRemoved",
+            "admin",
+            "deleted"
+          );
+        }
+      }
+
+      // Payment
+
+      if (payload.module_name === "payment") {
+        console.log(payload);
+        if (
+          payload.action_name === "team_agency" ||
+          payload.action_name === "team_client"
+        ) {
+          await createAndEmitNotification(
+            admin._id,
+            "memberPayment",
+            "admin",
+            "deleted"
+          );
+        }
+
+        if (payload.action_name === "client") {
+          console.log("client");
+          await createAndEmitNotification(
+            admin._id,
+            "clientPayment",
+            "admin",
+            "deleted"
+          );
+        }
+
+        if (payload.action_name === "agency") {
+          await createAndEmitNotification(
+            admin._id,
+            "agencyPayment",
             "admin",
             "deleted"
           );
