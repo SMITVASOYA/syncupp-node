@@ -122,7 +122,8 @@
     "dashboardDataFetched": "Dashboard data fetched successfully.",
     "todaysTask": "Todays fetched successfully.",
     "overdueTask": "Overdue task fetched successfully.",
-    "affiliateDetailFetched": "Affiliate details fetched successfully."
+    "affiliateDetailFetched": "Affiliate details fetched successfully.",
+    "agencyDeletedMessage": "Agency deleted successfully."
   },
 
   "agreement": {
