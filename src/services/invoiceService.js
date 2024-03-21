@@ -20,7 +20,6 @@ const Currency = require("../models/masters/currencyListSchema");
 class InvoiceService {
   // Get Client list  ------   AGENCY API
   getClients = async (user) => {
-    console.log(user);
     const { reference_id } = user;
     try {
       const pipeline = [
@@ -1275,8 +1274,6 @@ class InvoiceService {
       }
 
       await this.sendInvoice(overDueIds, "overdue");
-
-      console.log("Updated overdue statuses successfully");
     } catch (error) {
       logger.error(`Error while Overdue crone Job PDF, ${error}`);
       throwError(error?.message, error?.statusCode);

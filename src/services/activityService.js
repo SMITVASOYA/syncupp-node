@@ -3768,8 +3768,6 @@ class ActivityService {
           });
         }
       });
-
-      console.log("Updated overdue statuses successfully");
     } catch (error) {
       logger.error(`Error while Overdue crone Job PDF, ${error}`);
       throwError(error?.message, error?.statusCode);
@@ -3818,8 +3816,6 @@ class ActivityService {
           });
         }
       });
-
-      console.log("Updated overdue statuses successfully");
     } catch (error) {
       logger.error(`Error while Overdue crone Job PDF, ${error}`);
       throwError(error?.message, error?.statusCode);

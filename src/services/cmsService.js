@@ -58,8 +58,6 @@ class cmsService {
 
       const policy = await Privacy_Policy.findOne({});
 
-      console.log(policy);
-
       await Privacy_Policy.findOneAndUpdate(
         {
           _id: policy._id,

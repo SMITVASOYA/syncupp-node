@@ -12,10 +12,8 @@ const invoiceService = new InvoiceService();
 exports.getClients = catchAsyncError(async (req, res, next) => {
   let getClients;
 
-  console.log(req?.user);
   const memberRoleId = await Team_Agency.findById(req?.user?.reference_id);
   const memberRoleType = await Team_Role_Master.findById(memberRoleId?.role);
-  console.log(memberRoleType);
   if (req.user.role.name === "agency") {
     getClients = await invoiceService.getClients(req?.user);
   } else if (memberRoleType?.name === "admin") {
