@@ -56,14 +56,13 @@ exports.socket_connection = (http_server) => {
         members: { $in: [obj.id] },
       });
       group_ids.forEach((group_id) => socket.join(group_id.toString()));
-      console.log(group_ids, 47);
       // for the Online status
-      socket.broadcast.emit("USER_ONLINE", { user_id: obj.id });
       await Authentication.findOneAndUpdate(
         { reference_id: obj?.id },
         { is_online: true },
         { new: true }
       );
+      socket.broadcast.emit("USER_ONLINE", { user_id: obj.id });
     });
 
     socket.on("USER_DISCONNECTED", async (payload) => {
