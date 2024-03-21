@@ -34,13 +34,7 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
 
     // Get the current date in UTC format using Moment.js
     const currentDateUTC = moment.utc().startOf("day");
-    console.log(
-      currentDateUTC,
-      lastLoginDateUTC,
-      currentDateUTC.isAfter(lastLoginDateUTC),
-      user.last_login_date,
-      currentDateUTC.isAfter(lastLoginDateUTC) || !user.last_login_date
-    );
+
     // Check if last login date is the same as current date
     if (currentDateUTC.isAfter(lastLoginDateUTC) || !user.last_login_date) {
       // If the condition is true, execute the following code

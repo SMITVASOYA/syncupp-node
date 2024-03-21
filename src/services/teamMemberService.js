@@ -809,7 +809,6 @@ class TeamMemberService {
           agencyData,
           teamMemberIds
         ) => {
-          console.log(memberData);
           await notificationService.addNotification({
             module_name: "general",
             action_name: "memberDeleted",
@@ -817,7 +816,6 @@ class TeamMemberService {
             client_name: `${agency?.first_name} ${agency?.last_name}`,
             member_name: `${memberData?.first_name} ${memberData?.last_name}`,
           });
-          console.log(agency);
           const deleteMember = memberDeletedClient({
             deleted_by: `${agency?.first_name} ${agency?.last_name}`,
             member_name: `${memberData?.first_name} ${memberData?.last_name}`,
@@ -837,8 +835,6 @@ class TeamMemberService {
           reference_id: payload?.agency_id,
         }).lean();
 
-        console.log(agencyData);
-
         if (Array.isArray(teamMemberIds)) {
           const memberDataPromises = teamMemberIds.map(async (item) => {
             return Authentication.findOne({ reference_id: item }).lean();
@@ -856,7 +852,6 @@ class TeamMemberService {
           const memberData = await Authentication.findOne({
             reference_id: teamMemberIds,
           }).lean();
-          console.log(memberData);
           await handleMemberDeletion(memberData, agencyData, teamMemberIds);
         }
 

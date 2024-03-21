@@ -38,24 +38,24 @@ exports.setupNightlyCronJob = async () => {
   });
 
   // Crone job for 15 minutes start
-  // const callMeetingCron = config?.cron_job.call_meeting_alert;
-  // const call_meeting_alert_check_rate =
-  //   config?.cron_job.call_meeting_alert_check_rate;
-  // cron.schedule(call_meeting_alert_check_rate, async () => {
-  //   const currentUtcDate = moment().utc(); // Get current UTC time
-  //   const callMeeting = await Activity_Type_Master.findOne({
-  //     name: "call_meeting",
-  //   });
-  //   const meetings = await Activity.find({
-  //     activity_type: callMeeting._id,
-  //     is_deleted: false,
-  //     meeting_start_time: {
-  //       $gte: currentUtcDate.toDate(), // Meetings starting today
-  //       $lte: moment(currentUtcDate).add(callMeetingCron, "minutes").toDate(),
-  //     },
-  //   }).lean();
-  //   meetings.forEach((meeting) => {
-  //     activityService.meetingAlertCronJob(meeting); // Pass meeting details to the cron job function
-  //   });
-  // });
+  const callMeetingCron = config?.cron_job.call_meeting_alert;
+  const call_meeting_alert_check_rate =
+    config?.cron_job.call_meeting_alert_check_rate;
+  cron.schedule(call_meeting_alert_check_rate, async () => {
+    const currentUtcDate = moment().utc(); // Get current UTC time
+    const callMeeting = await Activity_Type_Master.findOne({
+      name: "call_meeting",
+    });
+    const meetings = await Activity.find({
+      activity_type: callMeeting._id,
+      is_deleted: false,
+      meeting_start_time: {
+        $gte: currentUtcDate.toDate(), // Meetings starting today
+        $lte: moment(currentUtcDate).add(callMeetingCron, "minutes").toDate(),
+      },
+    }).lean();
+    meetings.forEach((meeting) => {
+      activityService.meetingAlertCronJob(meeting); // Pass meeting details to the cron job function
+    });
+  });
 };

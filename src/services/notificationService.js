@@ -55,8 +55,6 @@ class NotificationService {
           messageType,
           receiver
         ) => {
-          console.log(userId, messageType, receiver);
-
           const message = replaceFields(
             returnNotification("activity", messageType, receiver),
             { ...payload }
@@ -78,7 +76,6 @@ class NotificationService {
 
         if (payload?.log_user === "member") {
           if (activity_type_action === "create_call_meeting") {
-            console.log("1");
             await createAndEmitNotification(
               payload.agency_id,
               message_type,
@@ -453,8 +450,6 @@ class NotificationService {
       // referral Points
 
       if (module_name === "referral") {
-        console.log(payload.action_type, "fsgg");
-        console.log(payload, "gegege");
         if (payload.action_type === "login") {
           await createAndEmitNotification(
             payload.receiver_id,
@@ -478,7 +473,6 @@ class NotificationService {
           payload.action_type === "taskDeduct" ||
           payload.action_type === "taskAdded"
         ) {
-          console.log("first");
           await createAndEmitNotification(
             payload.receiver_id,
             message_type,
@@ -497,7 +491,6 @@ class NotificationService {
 
   // Admin Notification
   addAdminNotification = async (payload, id) => {
-    console.log(payload);
     try {
       const with_unread_count = async (notification_data, user_id) => {
         const un_read_count = await Notification.countDocuments({
@@ -548,7 +541,6 @@ class NotificationService {
 
       //  seat remover
       if (action_name === "seatRemoved") {
-        console.log(payload);
         if (payload.user_type === "client") {
           await createAndEmitNotification(
             admin._id,
