@@ -2007,7 +2007,7 @@ class ActivityService {
           await notificationService.addNotification(
             {
               client_name: client_data
-                ? client_data.first_name + " " + client_data.last_name
+                ? client_data?.first_name + " " + client_data?.last_name
                 : "",
               assigned_to_name:
                 assign_to_data?.first_name + " " + assign_to_data?.last_name,
@@ -2063,19 +2063,21 @@ class ActivityService {
         if (user.role.name === "agency") {
           const activity_email_template = activityTemplate({
             ...getTask[0],
-            activity_type: getTask[0].activity_type,
-            meeting_end_time: moment(getTask[0].meeting_end_time).format(
+            activity_type: getTask[0]?.activity_type,
+            meeting_end_time: moment(getTask[0]?.meeting_end_time).format(
               "HH:mm"
             ),
-            meeting_start_time: moment(getTask[0].meeting_start_time).format(
+            meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
               "HH:mm"
             ),
             recurring_end_date: getTask[0]?.recurring_end_date
-              ? moment(getTask[0].recurring_end_date).format("DD-MM-YYYY")
+              ? moment(getTask[0]?.recurring_end_date).format("DD-MM-YYYY")
               : null,
-            due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
-            status: payload.status,
-            client_name: client_data.first_name + " " + client_data.last_name,
+            due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
+            status: payload?.status,
+            client_name: client_data
+              ? client_data?.first_name + " " + client_data?.last_name
+              : "",
           });
           client_data &&
             sendEmail({
@@ -2095,7 +2097,7 @@ class ActivityService {
           await notificationService.addNotification(
             {
               client_name: client_data
-                ? client_data.first_name + " " + client_data.last_name
+                ? client_data?.first_name + " " + client_data?.last_name
                 : "",
               assigned_to_name:
                 assign_to_data?.first_name + " " + assign_to_data?.last_name,
@@ -2127,19 +2129,21 @@ class ActivityService {
 
           const activity_email_template = activityTemplate({
             ...getTask[0],
-            activity_type: getTask[0].activity_type,
-            meeting_end_time: moment(getTask[0].meeting_end_time).format(
+            activity_type: getTask[0]?.activity_type,
+            meeting_end_time: moment(getTask[0]?.meeting_end_time).format(
               "HH:mm"
             ),
-            meeting_start_time: moment(getTask[0].meeting_start_time).format(
+            meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
               "HH:mm"
             ),
             recurring_end_date: getTask[0]?.recurring_end_date
-              ? moment(getTask[0].recurring_end_date).format("DD-MM-YYYY")
+              ? moment(getTask[0]?.recurring_end_date).format("DD-MM-YYYY")
               : null,
             due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
-            status: payload.status,
-            client_name: client_data.first_name + " " + client_data.last_name,
+            status: payload?.status,
+            client_name: client_data
+              ? client_data?.first_name + " " + client_data?.last_name
+              : "",
           });
           client_data &&
             sendEmail({
@@ -2158,7 +2162,7 @@ class ActivityService {
           await notificationService.addNotification(
             {
               client_name: client_data
-                ? client_data.first_name + " " + client_data.last_name
+                ? client_data?.first_name + " " + client_data?.last_name
                 : "",
               assigned_to_name:
                 assign_to_data?.first_name + " " + assign_to_data?.last_name,
