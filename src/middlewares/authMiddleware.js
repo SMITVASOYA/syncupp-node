@@ -63,7 +63,6 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
                 total_referral_point:
                   referral_data?.competition?.successful_login,
               },
-              last_login_date: moment.utc().startOf("day"),
             },
             { new: true }
           );
@@ -77,11 +76,16 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
                 total_referral_point:
                   referral_data?.competition?.successful_login,
               },
-              last_login_date: moment.utc().startOf("day"),
             },
             { new: true }
           );
         }
+
+        await Authentication.findByIdAndUpdate(
+          user?._id,
+          { last_login_date: lastLoginDateUTC },
+          { new: true }
+        );
       }
     }
 
