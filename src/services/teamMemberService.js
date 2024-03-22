@@ -10,6 +10,7 @@ const {
   memberDeletedTemplate,
   memberDeletedClient,
   clientMemberAdded,
+  teamMemberPasswordSet,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const bcrypt = require("bcryptjs");
@@ -404,7 +405,14 @@ class TeamMemberService {
           // ------------------  Notifications ----------------
           const clientData = await Authentication.findOne({
             reference_id: client_id,
-          });
+          }).lean();
+
+          const agencyData = await Authentication.findOne({
+            reference_id: agency_id,
+          }).lean();
+          const memberData = await Authentication.findOne({
+            _id: client_team_member?._id,
+          }).lean();
 
           await notificationService.addNotification({
             module_name: "general",
@@ -413,6 +421,17 @@ class TeamMemberService {
             client_name: clientData?.first_name + " " + clientData?.last_name,
             receiver_id: agency_id,
           });
+
+          const teamMemberJoinedTemp = teamMemberPasswordSet({
+            ...memberData,
+            member_name: memberData.first_name + " " + memberData.last_name,
+          });
+          sendEmail({
+            email: agencyData?.email,
+            subject: returnMessage("emailTemplate", "teamMemberPasswordSet"),
+            message: teamMemberJoinedTemp,
+          });
+
           // ------------------  Notifications ----------------
           return authService.tokenGenerator(client_team_member);
         }

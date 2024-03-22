@@ -307,16 +307,30 @@ class InvoiceService {
         queryObj.$and = [
           {
             $or: [
-              { invoice_date: { $gte: new Date(searchObj.start_date) } },
-              { due_date: { $gte: new Date(searchObj.start_date) } },
+              {
+                invoice_date: {
+                  $gte: new Date(searchObj.start_date),
+                  $lte: new Date(searchObj.end_date),
+                },
+              },
+              {
+                due_date: {
+                  $gte: new Date(searchObj.start_date),
+                  $lte: new Date(searchObj.end_date),
+                },
+              },
             ],
           },
-          {
-            $or: [
-              { invoice_date: { $lte: new Date(searchObj.end_date) } },
-              { due_date: { $lte: new Date(searchObj.end_date) } },
-            ],
-          },
+        ];
+      } else if (searchObj.start_date) {
+        queryObj.$or = [
+          { invoice_date: { $gte: new Date(searchObj.start_date) } },
+          { due_date: { $gte: new Date(searchObj.start_date) } },
+        ];
+      } else if (searchObj.end_date) {
+        queryObj.$or = [
+          { invoice_date: { $lte: new Date(searchObj.end_date) } },
+          { due_date: { $lte: new Date(searchObj.end_date) } },
         ];
       }
 
@@ -967,16 +981,30 @@ class InvoiceService {
         queryObj.$and = [
           {
             $or: [
-              { invoice_date: { $gte: new Date(searchObj.start_date) } },
-              { due_date: { $gte: new Date(searchObj.start_date) } },
+              {
+                invoice_date: {
+                  $gte: new Date(searchObj.start_date),
+                  $lte: new Date(searchObj.end_date),
+                },
+              },
+              {
+                due_date: {
+                  $gte: new Date(searchObj.start_date),
+                  $lte: new Date(searchObj.end_date),
+                },
+              },
             ],
           },
-          {
-            $or: [
-              { invoice_date: { $lte: new Date(searchObj.end_date) } },
-              { due_date: { $lte: new Date(searchObj.end_date) } },
-            ],
-          },
+        ];
+      } else if (searchObj.start_date) {
+        queryObj.$or = [
+          { invoice_date: { $gte: new Date(searchObj.start_date) } },
+          { due_date: { $gte: new Date(searchObj.start_date) } },
+        ];
+      } else if (searchObj.end_date) {
+        queryObj.$or = [
+          { invoice_date: { $lte: new Date(searchObj.end_date) } },
+          { due_date: { $lte: new Date(searchObj.end_date) } },
         ];
       }
 

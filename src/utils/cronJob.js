@@ -12,6 +12,8 @@ const moment = require("moment");
 const PaymentHistory = require("../models/paymentHistorySchema");
 const Authentication = require("../models/authenticationSchema");
 const NotificationService = require("../services/notificationService");
+const { paymentExpireAlert, returnMessage } = require("./utils");
+const sendEmail = require("../helpers/sendEmail");
 const notificationService = new NotificationService();
 
 exports.setupNightlyCronJob = async () => {
@@ -63,28 +65,38 @@ exports.setupNightlyCronJob = async () => {
   });
 
   // After Expire alert
-  // const afterExpireAlert = config?.cron_job.after_expire_alert_time;
-  // cron.schedule(afterExpireAlert, async () => {
-  //   const twentyFourHoursAgo = moment().subtract(24, "hours").toDate();
-  //   const fortyEightHoursAgo = moment().subtract(48, "hours").toDate();
+  const afterExpireAlert = config?.cron_job.after_expire_alert_time;
+  cron.schedule(afterExpireAlert, async () => {
+    const twentyFourHoursAgo = moment().subtract(24, "hours").toDate();
+    const fortyEightHoursAgo = moment().subtract(48, "hours").toDate();
 
-  //   const expiredAccounts = await Authentication.find({
-  //     subscription_halted: {
-  //       $gte: fortyEightHoursAgo,
-  //       $lt: twentyFourHoursAgo,
-  //     },
-  //   })
-  //     .populate("role")
-  //     .lean();
+    const expiredAccounts = await Authentication.find({
+      subscription_halted: {
+        $gt: fortyEightHoursAgo,
+        $lte: twentyFourHoursAgo,
+      },
+    })
+      .populate("role")
+      .lean();
+    expiredAccounts.forEach(async (item) => {
+      console.log(item);
+      await notificationService.addNotification({
+        module_name: "payment",
+        action_name: "packageExpiredAlert",
+        receiver_id: item.reference_id,
+        user_name: item.first_name + " " + item.last_name,
+        role_name: item?.role?.name,
+      });
 
-  //   expiredAccounts.forEach(async (item) => {
-  //     await notificationService.addNotification({
-  //       module_name: "payment",
-  //       action_name: "packageExpiredAlert",
-  //       receiver_id: item.reference_id,
-  //       user_name: item.first_name + " " + item.last_name,
-  //       role_name: item?.role?.name,
-  //     });
-  //   });
-  // });
+      const paymentAlertTemplate = paymentExpireAlert({
+        user_name: item?.first_name + " " + item?.last_name,
+      });
+
+      sendEmail({
+        email: item?.email,
+        subject: returnMessage("emailTemplate", "planExpired"),
+        message: paymentAlertTemplate,
+      });
+    });
+  });
 };

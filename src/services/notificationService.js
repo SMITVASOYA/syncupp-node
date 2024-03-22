@@ -515,11 +515,9 @@ class NotificationService {
         }
 
         if (payload.action_name === "packageExpiredAlert") {
-          let messageName;
-          if (payload.role_name === "client") messageName = "cli";
           await createAndEmitNotification(
             payload.receiver_id,
-            "packageExpireAlert",
+            "agencyPackageExpired",
             "payment",
             "deleted"
           );

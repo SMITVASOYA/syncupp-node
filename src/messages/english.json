@@ -184,7 +184,9 @@
     "memberAdded": "Team member added",
     "seatRemoved": "Seat removed by agency",
     "meetingAlert": "Call meeting alert",
-    "clientJoined": "New client joined"
+    "clientPasswordSet": "Client password set",
+    "teamMemberPasswordSet": "Team member password set.",
+    "planExpired": "Your plane has expired."
   },
 
   "client": {

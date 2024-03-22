@@ -11,7 +11,7 @@ const {
   passwordValidation,
   welcomeMail,
   capitalizeFirstLetter,
-  clientMemberAdded,
+  clientPasswordSet,
 } = require("../utils/utils");
 const Authentication = require("../models/authenticationSchema");
 const sendEmail = require("../helpers/sendEmail");
@@ -304,27 +304,27 @@ class ClientService {
         });
 
         // ------------------  Notifications ----------------
-        // await notificationService.addNotification({
-        //   module_name: "general",
-        //   action_name: "clientPasswordSet",
-        //   client_name: client_auth?.first_name + " " + client_auth?.last_name,
-        //   receiver_id: agency_id,
-        // });
+        await notificationService.addNotification({
+          module_name: "general",
+          action_name: "clientPasswordSet",
+          client_name: client_auth?.first_name + " " + client_auth?.last_name,
+          receiver_id: agency_id,
+        });
 
-        // const agencyData = await Authentication.findOne({
-        //   reference_id: agency_id,
-        // });
+        const agencyData = await Authentication.findOne({
+          reference_id: agency_id,
+        }).lean();
 
-        // const clientJoined = clientMemberAdded({
-        //   ...client_auth,
-        //   client_name: client_auth?.first_name + " " + client_auth?.last_name,
-        // });
+        const clientPasswordSetTemp = clientPasswordSet({
+          ...client_auth,
+          client_name: client_auth?.first_name + " " + client_auth?.last_name,
+        });
 
-        // sendEmail({
-        //   email: agencyData?.email,
-        //   subject: returnMessage("emailTemplate", "clientJoined"),
-        //   message: clientJoined,
-        // });
+        sendEmail({
+          email: agencyData?.email,
+          subject: returnMessage("emailTemplate", "clientPasswordSet"),
+          message: clientPasswordSetTemp,
+        });
 
         // ------------------  Notifications ----------------
         return;
