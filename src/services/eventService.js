@@ -118,8 +118,8 @@ class ScheduleEvent {
             EventName: title,
             created_by: user.first_name + " " + user.last_name,
             start_date: moment(due_date)?.format("DD/MM/YYYY"),
-            startTime: moment.utc(start_time).local().format("HH:mm:ss"),
-            endTime: moment.utc(end_time).local().format("HH:mm:ss"),
+            startTime: moment.utc(start_time)?.local()?.format("HH:mm:ss"),
+            endTime: moment.utc(end_time)?.local()?.format("HH:mm:ss"),
             agenda: agenda,
             recurring_end_date: payload?.recurring_end_date,
             action_type: "Created By",
@@ -160,8 +160,8 @@ class ScheduleEvent {
           EventName: title,
           created_by: user.first_name + " " + user.last_name,
           start_date: due_date,
-          startTime: moment.utc(start_time).local().format("HH:mm:ss"),
-          endTime: moment.utc(end_time).local().format("HH:mm:ss"),
+          startTime: moment.utc(start_time)?.local()?.format("HH:mm:ss"),
+          endTime: moment.utc(end_time)?.local()?.format("HH:mm:ss"),
           agenda: agenda,
           recurring_end_date: payload?.recurring_end_date,
           action_type: "Created By",
@@ -715,8 +715,8 @@ class ScheduleEvent {
             EventName: getEvent?.title,
             created_by: user.first_name + " " + user.last_name,
             start_date: moment(getEvent?.due_date)?.format("DD/MM/YYYY"),
-            startTime: moment.utc(start_time).local().format("HH:mm:ss"),
-            endTime: moment.utc(end_time).local().format("HH:mm:ss"),
+            startTime: moment.utc(start_time)?.local()?.format("HH:mm:ss"),
+            endTime: moment.utc(end_time)?.local()?.format("HH:mm:ss"),
             agenda: getEvent?.agenda,
             recurring_end_date: moment(getEvent?.recurring_end_date)?.format(
               "DD/MM/YYYY"
@@ -759,8 +759,8 @@ class ScheduleEvent {
           EventName: getEvent?.title,
           created_by: user.first_name + " " + user.last_name,
           start_date: moment(getEvent?.due_date)?.format("DD/MM/YYYY"),
-          startTime: moment.utc(start_time).local().format("HH:mm:ss"),
-          endTime: moment.utc(end_time).local().format("HH:mm:ss"),
+          startTime: moment.utc(start_time)?.local()?.format("HH:mm:ss"),
+          endTime: moment.utc(end_time)?.local()?.format("HH:mm:ss"),
           agenda: getEvent?.agenda,
           recurring_end_date: moment(getEvent?.recurring_end_date)?.format(
             "DD/MM/YYYY"
