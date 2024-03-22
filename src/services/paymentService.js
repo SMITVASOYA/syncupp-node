@@ -800,6 +800,12 @@ class PaymentService {
           data: { user: updated_agency_detail },
         };
       } else if (payload?.agency_id && payload?.user_id) {
+        const user_details = await Authentication.findOne({
+          reference_id: user_id,
+        })
+          .populate("role", "name")
+          .lean();
+
         await PaymentHistory.create({
           agency_id,
           user_id: user_details?.reference_id,
