@@ -184,7 +184,8 @@
     "memberAdded": "Team member added",
     "seatRemoved": "Seat removed by agency",
     "meetingAlert": "Call meeting alert",
-    "clientJoined": "New client joined"
+    "clientJoined": "New client joined",
+    "freeTrialEndMail": "Urgent: trial ends tomorrow!"
   },
 
   "client": {
