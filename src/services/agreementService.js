@@ -1015,7 +1015,7 @@ class AgreementService {
       const template = Handlebars.compile(htmlTemplate);
       var data = {
         title: agreement[0]?.title,
-        dueDate: moment(agreement[0]?.due_date)?.format("DD/MM/YYYY"),
+        dueDate: moment.utc(agreement[0]?.due_date)?.format("DD/MM/YYYY"),
         receiverName: agreement[0]?.receiver_fullName,
         senderName: agreement[0]?.sender_fullName,
         Status: agreement[0]?.status,
@@ -1043,8 +1043,9 @@ class AgreementService {
       // res.writeHead(200, {
       //   "Content-Type": "application/pdf",
       // });
-      return pdfBuffer;
-      // res.send(pdfBuffer);
+      res.set({ "Content-Type": "application/pdf" });
+      // return pdfBuffer;
+      res.send(pdfBuffer);
     } catch (error) {
       console.error("Error while generating PDF:", error);
       throw error;
