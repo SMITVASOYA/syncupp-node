@@ -1043,9 +1043,9 @@ class AgreementService {
       // res.writeHead(200, {
       //   "Content-Type": "application/pdf",
       // });
-      res.set({ "Content-Type": "application/pdf" });
-      // return pdfBuffer;
-      res.send(pdfBuffer);
+      // res.set({ "Content-Type": "application/pdf" });
+      return pdfBuffer;
+      // res.send(pdfBuffer);
     } catch (error) {
       console.error("Error while generating PDF:", error);
       throw error;
