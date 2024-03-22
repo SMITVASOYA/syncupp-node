@@ -18,6 +18,7 @@ const paymentHistorySchema = new mongoose.Schema(
     payment_id: { type: String },
     first_time: { type: Boolean, default: false },
     plan_id: { type: String },
+    quantity: { type: Number, default: 1 },
   },
   { timestamps: true }
 );

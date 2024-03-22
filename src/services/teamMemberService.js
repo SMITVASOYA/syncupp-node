@@ -32,6 +32,7 @@ const NotificationService = require("./notificationService");
 const notificationService = new NotificationService();
 const moment = require("moment");
 const Client = require("../models/clientSchema");
+const Configuration = require("../models/configurationSchema");
 
 class TeamMemberService {
   // Add Team Member by agency or client
