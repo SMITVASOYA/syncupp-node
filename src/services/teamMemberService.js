@@ -317,7 +317,18 @@ class TeamMemberService {
         teamMember.affiliate_referral_code = affiliate_referral_code;
 
         await teamMember.save();
-        const welcome_mail = welcomeMail(teamMember?.name);
+        const company_urls = await Configuration.find().lean();
+        let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+        let facebook = company_urls[0]?.urls?.facebook;
+
+        let instagram = company_urls[0]?.urls?.instagram;
+        const welcome_mail = welcomeMail(
+          teamMember?.name,
+          privacy_policy,
+          instagram,
+          facebook
+        );
 
         await sendEmail({
           email: teamMember?.email,
@@ -392,8 +403,18 @@ class TeamMemberService {
             { $set: { "agency_ids.$.status": "confirmed" } },
             { new: true }
           );
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 
-          const welcome_mail = welcomeMail(client_team_member?.name);
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
+          const welcome_mail = welcomeMail(
+            client_team_member?.name,
+            privacy_policy,
+            instagram,
+            facebook
+          );
 
           await sendEmail({
             email: client_team_member?.email,

@@ -1009,7 +1009,7 @@ class AgreementService {
         "{{web_url}}",
         `${process.env.REACT_APP_URL}`
       );
-
+      const company_urls = await Configuration.find().lean();
       // Compile the HTML template with Handlebars
       const template = Handlebars.compile(htmlTemplate);
       var data = {
@@ -1022,6 +1022,9 @@ class AgreementService {
         receiverNumber: agreement[0]?.receiver_number,
         senderEmail: agreement[0]?.sender_email,
         receiverEmail: agreement[0]?.receiver_email,
+        privacy_policy: company_urls[0]?.urls?.privacy_policy,
+        facebook: company_urls[0]?.urls?.facebook,
+        instagram: company_urls[0]?.urls?.instagram,
       };
       // Render the template with data
       const renderedHtml = template(data);

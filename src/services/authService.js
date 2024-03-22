@@ -913,9 +913,19 @@ class AuthService {
       const { token, hash_token } = this.resetPasswordTokenGenerator();
       const encode = encodeURIComponent(email);
       const link = `${process.env.RESET_PASSWORD_URL}?token=${token}&email=${encode}`;
+      const company_urls = await Configuration.find().lean();
+      let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+      let facebook = company_urls[0]?.urls?.facebook;
+
+      let instagram = company_urls[0]?.urls?.instagram;
       const forgot_email_template = forgotPasswordEmailTemplate(
         link,
-        data_exist?.first_name + " " + data_exist?.last_name || data_exist?.name
+        data_exist?.first_name + " " + data_exist?.last_name ||
+          data_exist?.name,
+        privacy_policy,
+        facebook,
+        instagram
       );
 
       await sendEmail({
@@ -1210,11 +1220,19 @@ class AuthService {
       const email_exist = await Authentication.findOne({ email }).lean();
       if (email_exist) return throwError(returnMessage("auth", "emailExist"));
       const link = `${process.env.REACT_APP_URL}/signup?referral=${user?.referral_code}`;
+      const company_urls = await Configuration.find().lean();
+      let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 
+      let facebook = company_urls[0]?.urls?.facebook;
+
+      let instagram = company_urls[0]?.urls?.instagram;
       const refferralEmail = invitationEmailTemplate({
         link: link,
         user: `${user?.first_name} ${user?.last_name} `,
         email,
+        privacy_policy,
+        facebook,
+        instagram,
       });
 
       await sendEmail({
