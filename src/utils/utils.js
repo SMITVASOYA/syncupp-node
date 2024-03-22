@@ -2044,30 +2044,18 @@ exports.invitationEmail = (link, username, invitation_text) => {
                                             padding-right: 5px;
                                           "
                                         >
-                                          <a
-                                            target="_blank"
-                                            href="#"
-                                            style="
-                                              -webkit-text-size-adjust: none;
-                                              -ms-text-size-adjust: none;
-                                              mso-line-height-rule: exactly;
-                                              text-decoration: underline;
-                                              color: #2d3142;
-                                              font-size: 14px;
-                                            "
-                                            ><img
-                                              src="${process.env.SERVER_URL}/template/linkedin.png"
-                                              alt="In"
-                                              title="Linkedin"
-                                              height="24"
-                                              style="
-                                                display: block;
-                                                border: 0;
-                                                outline: none;
-                                                text-decoration: none;
-                                                -ms-interpolation-mode: bicubic;
-                                              "
-                                          /></a>
+                                   
+                                        </td>
+                                        <td
+                                          align="center"
+                                          valign="top"
+                                          style="
+                                            padding: 0;
+                                            margin: 0;
+                                            padding-right: 5px;
+                                          "
+                                        >
+                                       
                                         </td>
                                         <td
                                           align="center"
@@ -2080,41 +2068,7 @@ exports.invitationEmail = (link, username, invitation_text) => {
                                         >
                                           <a
                                             target="_blank"
-                                            href="#"
-                                            style="
-                                              -webkit-text-size-adjust: none;
-                                              -ms-text-size-adjust: none;
-                                              mso-line-height-rule: exactly;
-                                              text-decoration: underline;
-                                              color: #2d3142;
-                                              font-size: 14px;
-                                            "
-                                            ><img
-                                              src="${process.env.SERVER_URL}/template/twitter.png"
-                                              alt="Tw"
-                                              title="Twitter"
-                                              height="24"
-                                              style="
-                                                display: block;
-                                                border: 0;
-                                                outline: none;
-                                                text-decoration: none;
-                                                -ms-interpolation-mode: bicubic;
-                                              "
-                                          /></a>
-                                        </td>
-                                        <td
-                                          align="center"
-                                          valign="top"
-                                          style="
-                                            padding: 0;
-                                            margin: 0;
-                                            padding-right: 5px;
-                                          "
-                                        >
-                                          <a
-                                            target="_blank"
-                                            href="#"
+                                            href="${instagram}"
                                             style="
                                               -webkit-text-size-adjust: none;
                                               -ms-text-size-adjust: none;
@@ -2146,30 +2100,7 @@ exports.invitationEmail = (link, username, invitation_text) => {
                                             padding-right: 5px;
                                           "
                                         >
-                                          <a
-                                            target="_blank"
-                                            href="#"
-                                            style="
-                                              -webkit-text-size-adjust: none;
-                                              -ms-text-size-adjust: none;
-                                              mso-line-height-rule: exactly;
-                                              text-decoration: underline;
-                                              color: #2d3142;
-                                              font-size: 14px;
-                                            "
-                                            ><img
-                                              src="${process.env.SERVER_URL}/template/yoututbe.png"
-                                              alt="Yt"
-                                              title="Youtube"
-                                              height="24"
-                                              style="
-                                                display: block;
-                                                border: 0;
-                                                outline: none;
-                                                text-decoration: none;
-                                                -ms-interpolation-mode: bicubic;
-                                              "
-                                          /></a>
+                                          
                                         </td>
                                         <td
                                           align="center"
@@ -2178,7 +2109,7 @@ exports.invitationEmail = (link, username, invitation_text) => {
                                         >
                                           <a
                                             target="_blank"
-                                            href="#"
+                                            href="${facebook}"
                                             style="
                                               -webkit-text-size-adjust: none;
                                               -ms-text-size-adjust: none;
@@ -2244,7 +2175,7 @@ exports.invitationEmail = (link, username, invitation_text) => {
                                           color: #2d3142;
                                           font-size: 13px;
                                         "
-                                        href="#"
+                                        href="${privacy_policy}"
                                         >Privacy Policy</a
                                       >
                                     </p>
@@ -5315,56 +5246,16 @@ exports.invoiceTemplate = (invoiceData) => {
                                         border-spacing: 0px;
                                       ">
                                     <tr>
+                                      
+                                      
                                       <td align="center" valign="top" style="
                                             padding: 0;
                                             margin: 0;
                                             padding-right: 5px;
                                           ">
-                                        <a target="_blank" href="#" style="
-                                              -webkit-text-size-adjust: none;
-                                              -ms-text-size-adjust: none;
-                                              mso-line-height-rule: exactly;
-                                              text-decoration: underline;
-                                              color: #2d3142;
-                                              font-size: 14px;
-                                            "><img src="${
-                                              process.env.SERVER_URL
-                                            }/template/linkedin.png" alt="In" title="Linkedin" height="24" style="
-                                                display: block;
-                                                border: 0;
-                                                outline: none;
-                                                text-decoration: none;
-                                                -ms-interpolation-mode: bicubic;
-                                              " /></a>
-                                      </td>
-                                      <td align="center" valign="top" style="
-                                            padding: 0;
-                                            margin: 0;
-                                            padding-right: 5px;
-                                          ">
-                                        <a target="_blank" href="#" style="
-                                              -webkit-text-size-adjust: none;
-                                              -ms-text-size-adjust: none;
-                                              mso-line-height-rule: exactly;
-                                              text-decoration: underline;
-                                              color: #2d3142;
-                                              font-size: 14px;
-                                            "><img src="${
-                                              process.env.SERVER_URL
-                                            }/template/twitter.png" alt="Tw" title="Twitter" height="24" style="
-                                                display: block;
-                                                border: 0;
-                                                outline: none;
-                                                text-decoration: none;
-                                                -ms-interpolation-mode: bicubic;
-                                              " /></a>
-                                      </td>
-                                      <td align="center" valign="top" style="
-                                            padding: 0;
-                                            margin: 0;
-                                            padding-right: 5px;
-                                          ">
-                                        <a target="_blank" href="#" style="
+                                         <a target="_blank" href="${
+                                           invoiceData.instagram
+                                         }" style="
                                               -webkit-text-size-adjust: none;
                                               -ms-text-size-adjust: none;
                                               mso-line-height-rule: exactly;
@@ -5381,33 +5272,11 @@ exports.invoiceTemplate = (invoiceData) => {
                                                 -ms-interpolation-mode: bicubic;
                                               " /></a>
                                       </td>
-                                      <td align="center" valign="top" style="
-                                            padding: 0;
-                                            margin: 0;
-                                            padding-right: 5px;
-                                          ">
-                                        <a target="_blank" href="#" style="
-                                              -webkit-text-size-adjust: none;
-                                              -ms-text-size-adjust: none;
-                                              mso-line-height-rule: exactly;
-                                              text-decoration: underline;
-                                              color: #2d3142;
-                                              font-size: 14px;
-                                            "><img src="${
-                                              process.env.SERVER_URL
-                                            }/template/yoututbe.png" alt="Yt" title="Youtube" height="24" style="
-
-
-                        
-                                                display: block;
-                                                border: 0;
-                                                outline: none;
-                                                text-decoration: none;
-                                                -ms-interpolation-mode: bicubic;
-                                              " /></a>
-                                      </td>
+                                     
                                       <td align="center" valign="top" style="padding: 0; margin: 0">
-                                        <a target="_blank" href="#" style="
+                                        <a target="_blank" href="${
+                                          invoiceData?.facebook
+                                        }" style="
                                               -webkit-text-size-adjust: none;
                                               -ms-text-size-adjust: none;
                                               mso-line-height-rule: exactly;
@@ -5447,14 +5316,18 @@ exports.invoiceTemplate = (invoiceData) => {
                                           text-decoration: none;
                                           color: #2d3142;
                                           font-size: 14px;
-                                        " href=""></a><a target="_blank" style="
+                                         href="${
+                                           invoiceData?.privacy_policy
+                                         }"></a><a target="_blank" style="
                                           -webkit-text-size-adjust: none;
                                           -ms-text-size-adjust: none;
                                           mso-line-height-rule: exactly;
                                           text-decoration: none;
                                           color: #2d3142;
                                           font-size: 13px;
-                                        " href="#">Privacy Policy</a>
+                                        " href="${
+                                          invoiceData?.privacy_policy
+                                        }">Privacy Policy</a>
                                   </p>
                                 </td>
                               </tr>
@@ -8105,52 +7978,14 @@ exports.invitationEmailTemplate = (data) => {
                                         border-spacing: 0px;
                                       ">
                                     <tr>
+                                     
+                                     
                                       <td align="center" valign="top" style="
                                             padding: 0;
                                             margin: 0;
                                             padding-right: 5px;
                                           ">
-                                        <a target="_blank" href="#" style="
-                                              -webkit-text-size-adjust: none;
-                                              -ms-text-size-adjust: none;
-                                              mso-line-height-rule: exactly;
-                                              text-decoration: underline;
-                                              color: #2d3142;
-                                              font-size: 14px;
-                                            "><img src="linkedin.png" alt="In" title="Linkedin" height="24" style="
-                                                display: block;
-                                                border: 0;
-                                                outline: none;
-                                                text-decoration: none;
-                                                -ms-interpolation-mode: bicubic;
-                                              " /></a>
-                                      </td>
-                                      <td align="center" valign="top" style="
-                                            padding: 0;
-                                            margin: 0;
-                                            padding-right: 5px;
-                                          ">
-                                        <a target="_blank" href="#" style="
-                                              -webkit-text-size-adjust: none;
-                                              -ms-text-size-adjust: none;
-                                              mso-line-height-rule: exactly;
-                                              text-decoration: underline;
-                                              color: #2d3142;
-                                              font-size: 14px;
-                                            "><img src="twitter.png" alt="Tw" title="Twitter" height="24" style="
-                                                display: block;
-                                                border: 0;
-                                                outline: none;
-                                                text-decoration: none;
-                                                -ms-interpolation-mode: bicubic;
-                                              " /></a>
-                                      </td>
-                                      <td align="center" valign="top" style="
-                                            padding: 0;
-                                            margin: 0;
-                                            padding-right: 5px;
-                                          ">
-                                        <a target="_blank" href="#" style="
+                                        <a target="_blank" href="${instagram}" style="
                                               -webkit-text-size-adjust: none;
                                               -ms-text-size-adjust: none;
                                               mso-line-height-rule: exactly;
@@ -8165,28 +8000,9 @@ exports.invitationEmailTemplate = (data) => {
                                                 -ms-interpolation-mode: bicubic;
                                               " /></a>
                                       </td>
-                                      <td align="center" valign="top" style="
-                                            padding: 0;
-                                            margin: 0;
-                                            padding-right: 5px;
-                                          ">
-                                        <a target="_blank" href="#" style="
-                                              -webkit-text-size-adjust: none;
-                                              -ms-text-size-adjust: none;
-                                              mso-line-height-rule: exactly;
-                                              text-decoration: underline;
-                                              color: #2d3142;
-                                              font-size: 14px;
-                                            "><img src="yoututbe.png" alt="Yt" title="Youtube" height="24" style="
-                                                display: block;
-                                                border: 0;
-                                                outline: none;
-                                                text-decoration: none;
-                                                -ms-interpolation-mode: bicubic;
-                                              " /></a>
-                                      </td>
+                                      
                                       <td align="center" valign="top" style="padding: 0; margin: 0">
-                                        <a target="_blank" href="#" style="
+                                        <a target="_blank" href="${facebook}" style="
                                               -webkit-text-size-adjust: none;
                                               -ms-text-size-adjust: none;
                                               mso-line-height-rule: exactly;
@@ -8224,7 +8040,7 @@ exports.invitationEmailTemplate = (data) => {
                                           text-decoration: none;
                                           color: #2d3142;
                                           font-size: 14px;
-                                        " href=""></a><a target="_blank" style="
+                                        " href="${privacy_policy}"></a><a target="_blank" style="
                                           -webkit-text-size-adjust: none;
                                           -ms-text-size-adjust: none;
                                           mso-line-height-rule: exactly;

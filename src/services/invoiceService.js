@@ -16,6 +16,7 @@ const NotificationService = require("./notificationService");
 const notificationService = new NotificationService();
 const moment = require("moment");
 const Currency = require("../models/masters/currencyListSchema");
+const Configuration = require("../models/configurationSchema");
 
 class InvoiceService {
   // Get Client list  ------   AGENCY API
@@ -1126,13 +1127,16 @@ class InvoiceService {
         const clientDetails = await Authentication.findOne({
           reference_id: invoice.client_id,
         });
-
+        const company_urls = await Configuration.find().lean();
         // Use a template or format the invoice message accordingly
         const formattedInquiryEmail = invoiceTemplate({
           ...invoiceData[0],
           invoice_date: moment(invoiceData[0]?.invoice_date).format(
             "DD-MM-YYYY"
           ),
+          privacy_policy: company_urls[0]?.urls?.privacy_policy,
+          facebook: company_urls[0]?.urls?.facebook,
+          instagram: company_urls[0]?.urls?.instagram,
         });
         let invoiceSubject = "invoiceSubject";
         if (type === "updateStatusPaid") invoiceSubject = "invoicePaid";
@@ -1191,11 +1195,14 @@ class InvoiceService {
           const clientDetails = await Authentication.findOne({
             reference_id: invoice[0]?.to?._id,
           });
-
+          const company_urls = await Configuration.find().lean();
           // Use a template or format the invoice message accordingly
           const formattedInquiryEmail = invoiceTemplate({
             ...invoice[0],
             invoice_date: moment(invoice[0]?.invoice_date).format("DD-MM-YYYY"),
+            privacy_policy: company_urls[0]?.urls?.privacy_policy,
+            facebook: company_urls[0]?.urls?.facebook,
+            instagram: company_urls[0]?.urls?.instagram,
           });
 
           await sendEmail({
@@ -1222,9 +1229,14 @@ class InvoiceService {
     try {
       const { invoice_id } = payload;
       const invoice = await this.getInvoice(invoice_id);
+      const company_urls = await Configuration.find().lean();
+
       const renderedHtml = invoiceTemplate({
         ...invoice[0],
         invoice_date: moment(invoice[0]?.invoice_date).format("DD-MM-YYYY"),
+        privacy_policy: company_urls[0]?.urls?.privacy_policy,
+        facebook: company_urls[0]?.urls?.facebook,
+        instagram: company_urls[0]?.urls?.instagram,
       });
       const pdfOptions = {};
       // Convert the PDF to a buffer using html-pdf
