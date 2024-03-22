@@ -17,6 +17,7 @@ const pdf = require("html-pdf");
 const moment = require("moment");
 const { ObjectId } = require("mongodb");
 const NotificationService = require("./notificationService");
+const Configuration = require("../models/configurationSchema");
 const notificationService = new NotificationService();
 
 class AgreementService {

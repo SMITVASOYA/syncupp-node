@@ -22,6 +22,7 @@ const Authentication = require("../models/authenticationSchema");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
 const paymentService = new PaymentService();
 const moment = require("moment");
+const Configuration = require("../models/configurationSchema");
 
 class AdminService {
   tokenGenerator = (payload) => {
