@@ -114,9 +114,18 @@ class AdminService {
       const reset_password_token = crypto.randomBytes(32).toString("hex");
       const encode = encodeURIComponent(email);
       const link = `${process.env.REACT_APP_URL}/admin/reset-password?token=${reset_password_token}&email=${encode}`;
+      const company_urls = await Configuration.find().lean();
+      let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+      let facebook = company_urls[0]?.urls?.facebook;
+
+      let instagram = company_urls[0]?.urls?.instagram;
       const forgot_email_template = forgotPasswordEmailTemplate(
         link,
-        admin?.first_name + " " + admin?.last_name
+        admin?.first_name + " " + admin?.last_name,
+        privacy_policy,
+        facebook,
+        instagram
       );
 
       await sendEmail({

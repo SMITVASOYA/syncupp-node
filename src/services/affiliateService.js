@@ -174,9 +174,18 @@ class AffiliateService {
       const reset_password_token = crypto.randomBytes(32).toString("hex");
       const encode = encodeURIComponent(email);
       const link = `${process.env.REACT_APP_URL}/affiliate/reset-password?token=${reset_password_token}&email=${encode}`;
+      const company_urls = await Configuration.find().lean();
+      let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+      let facebook = company_urls[0]?.urls?.facebook;
+
+      let instagram = company_urls[0]?.urls?.instagram;
       const forgot_email_template = forgotPasswordEmailTemplate(
         link,
-        user?.first_name + " " + user?.last_name
+        user?.first_name + " " + user?.last_name,
+        privacy_policy,
+        facebook,
+        instagram
       );
 
       await sendEmail({

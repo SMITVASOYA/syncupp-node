@@ -840,12 +840,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_mail = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            privacy_policy,
+            facebook,
+            instagram
           );
 
           await sendEmail({
@@ -872,12 +881,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_template = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            privacy_policy,
+            instagram,
+            facebook
           );
 
           await Authentication.findByIdAndUpdate(user_details?._id, {
@@ -906,11 +924,19 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_template = invitationEmail(
             link,
             user_details?.first_name + " " + user_details?.last_name,
-            invitation_text
+            invitation_text,
+            privacy_policy,
+            facebook,
+            instagram
           );
 
           await sendEmail({
@@ -1631,12 +1657,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_mail = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            privacy_policy,
+            instagram,
+            facebook
           );
 
           await sendEmail({
@@ -1666,12 +1701,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_template = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            instagram,
+            facebook,
+            privacy_policy
           );
 
           await sendEmail({
@@ -1696,13 +1740,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_template = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            privacy_policy,
+            instagram,
+            facebook
           );
 
           await sendEmail({
@@ -1859,12 +1911,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_mail = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            privacy_policy,
+            facebook,
+            instagram
           );
 
           await sendEmail({
@@ -1894,12 +1955,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_template = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            facebook,
+            instagram,
+            privacy_policy
           );
 
           await Authentication.findByIdAndUpdate(
@@ -1930,13 +2000,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_template = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            privacy_policy,
+            instagram,
+            facebook
           );
 
           await sendEmail({
