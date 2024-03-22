@@ -29,6 +29,7 @@ const Invoice = require("../models/invoiceSchema");
 const mongoose = require("mongoose");
 const Agreement = require("../models/agreementSchema");
 const NotificationService = require("./notificationService");
+const Configuration = require("../models/configurationSchema");
 const notificationService = new NotificationService();
 
 class ClientService {

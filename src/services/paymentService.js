@@ -226,7 +226,6 @@ class PaymentService {
             plan_id,
             payment_mode: "free_trial",
           });
-          console.log(pp, 219);
           return;
         } else if (body?.event === "subscription.charged") {
           const subscription_id = payload?.subscription?.entity?.id;
@@ -234,6 +233,7 @@ class PaymentService {
           const currency = payload?.payment?.entity?.currency;
           const amount = payload?.payment?.entity?.amount;
           const plan_id = payload?.subscription?.entity?.plan_id;
+          const quantity = payload?.subscription?.entity?.quantity;
 
           const [agency_details, payment_history] = await Promise.all([
             Authentication.findOne({ subscription_id }).lean(),
@@ -251,6 +251,7 @@ class PaymentService {
             payment_id,
             first_time,
             plan_id,
+            quantity,
           });
 
           return;

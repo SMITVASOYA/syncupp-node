@@ -81,12 +81,20 @@ class ChatService {
       if (payload?.for === "client") {
         const [clients_id, team_clients_id] = await Promise.all([
           Client.distinct("_id", {
-            "agency_ids.agency_id": user?.reference_id,
-            "agency_ids.status": { $ne: "pending" },
+            agency_ids: {
+              $elemMatch: {
+                agency_id: user?.reference_id,
+                status: "active",
+              },
+            },
           }).lean(),
           Team_Client.distinct("_id", {
-            "agency_ids.agency_id": user?.reference_id,
-            "agency_ids.status": { $ne: "pending" },
+            agency_ids: {
+              $elemMatch: {
+                agency_id: user?.reference_id,
+                status: "confirmed",
+              },
+            },
           }).lean(),
         ]);
         // combined the client and team client ids to get the email and name
@@ -191,12 +199,20 @@ class ChatService {
       } else if (payload?.for === "client") {
         const [clients_id, team_clients_id] = await Promise.all([
           Client.distinct("_id", {
-            "agency_ids.agency_id": team_agency_detail?.agency_id,
-            "agency_ids.status": { $ne: "pending" },
+            agency_ids: {
+              $elemMatch: {
+                agency_id: team_agency_detail?.agency_id,
+                status: "active",
+              },
+            },
           }).lean(),
           Team_Client.distinct("_id", {
-            "agency_ids.agency_id": team_agency_detail?.agency_id,
-            "agency_ids.status": { $ne: "pending" },
+            agency_ids: {
+              $elemMatch: {
+                agency_id: team_agency_detail?.agency_id,
+                status: "confirmed",
+              },
+            },
           }).lean(),
         ]);
 
