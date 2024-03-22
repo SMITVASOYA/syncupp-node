@@ -805,6 +805,8 @@ exports.agrementEmail = (data) => {
                                               text-overflow: ellipsis;
                                               vertical-align: top;
                                               padding: 0 10px;
+                                              border-collapse: collapse;
+                                              word-break: break-all;
                                             "
                                           >
                                             <p style="word-wrap: break-word">${data?.content}</p>
