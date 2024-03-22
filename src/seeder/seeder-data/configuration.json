@@ -39,5 +39,12 @@
     "chat": {
       "file_size": 200
     }
+  },
+  {
+    "urls": {
+      "privacy_policy": "https://www.syncupp.com/privacy-policy",
+      "facebook": "https://www.facebook.com/letssyncupp",
+      "instagram": "https://www.instagram.com/syncuppai/"
+    }
   }
 ]

@@ -894,8 +894,8 @@ class PaymentService {
               capitalizeFirstLetter(user_details?.last_name),
             invitation_text,
             privacy_policy,
-            instagram,
-            facebook
+            facebook,
+            instagram
           );
 
           await Authentication.findByIdAndUpdate(user_details?._id, {
@@ -1670,8 +1670,8 @@ class PaymentService {
               capitalizeFirstLetter(user_details?.last_name),
             invitation_text,
             privacy_policy,
-            instagram,
-            facebook
+            facebook,
+            instagram
           );
 
           await sendEmail({
@@ -1713,9 +1713,9 @@ class PaymentService {
               " " +
               capitalizeFirstLetter(user_details?.last_name),
             invitation_text,
-            instagram,
+            privacy_policy,
             facebook,
-            privacy_policy
+            instagram
           );
 
           await sendEmail({
@@ -1753,8 +1753,8 @@ class PaymentService {
               capitalizeFirstLetter(user_details?.last_name),
             invitation_text,
             privacy_policy,
-            instagram,
-            facebook
+            facebook,
+            instagram
           );
 
           await sendEmail({
@@ -1967,9 +1967,9 @@ class PaymentService {
               " " +
               capitalizeFirstLetter(user_details?.last_name),
             invitation_text,
+            privacy_policy,
             facebook,
-            instagram,
-            privacy_policy
+            instagram
           );
 
           await Authentication.findByIdAndUpdate(
@@ -2013,8 +2013,8 @@ class PaymentService {
               capitalizeFirstLetter(user_details?.last_name),
             invitation_text,
             privacy_policy,
-            instagram,
-            facebook
+            facebook,
+            instagram
           );
 
           await sendEmail({
