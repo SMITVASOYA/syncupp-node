@@ -629,42 +629,53 @@ class PaymentService {
         // if (!status_change.success) return { success: false };
 
         // ---------------------- Notification ----------------------
-        // let userData;
-        // if (payload?.user_id) {
-        //   userData = await Authentication.findOne({
-        //     reference_id: payload?.user_id,
-        //   })
-        //     .populate("role")
-        //     .lean();
-        // }
+        let userData;
+        if (payload?.user_id) {
+          userData = await Authentication.findOne({
+            reference_id: payload?.user_id,
+          })
+            .populate("role")
+            .lean();
+        }
 
-        // console.log(userData);
-        // const agencyData = await Authentication.findOne({
-        //   reference_id: payload?.agency_id,
-        // })
-        //   .populate("role")
-        //   .lean();
+        console.log(userData);
+        const agencyData = await Authentication.findOne({
+          reference_id: payload?.agency_id,
+        })
+          .populate("role")
+          .lean();
 
-        // if (userData && payload.agency_id) {
-        //   await notificationService.addNotification({
-        //     receiver_id: payload?.agency_id,
-        //     agency_name: agencyData?.first_name + " " + agencyData?.last_name,
-        //     module_name: "payment",
-        //     action_name: userData.role.name,
-        //     user_name: userData?.first_name + " " + userData?.last_name,
-        //     amount: payload?.amount,
-        //     currency: payload?.currency,
-        //   });
-        //   await notificationService.addAdminNotification({
-        //     receiver_id: payload?.agency_id,
-        //     agency_name: agencyData?.first_name + " " + agencyData?.last_name,
-        //     module_name: "payment",
-        //     action_name: userData.role.name,
-        //     user_name: userData?.first_name + " " + userData?.last_name,
-        //     amount: payload?.amount,
-        //     currency: payload?.currency,
-        //   });
-        // }
+        if (userData && payload.agency_id) {
+          await notificationService.addNotification({
+            receiver_id: payload?.agency_id,
+            agency_name: agencyData?.first_name + " " + agencyData?.last_name,
+            module_name: "payment",
+            action_name: userData.role.name,
+            user_name: userData?.first_name + " " + userData?.last_name,
+            amount: payload?.amount,
+            currency: payload?.currency,
+          });
+          await notificationService.addAdminNotification({
+            receiver_id: payload?.agency_id,
+            agency_name: agencyData?.first_name + " " + agencyData?.last_name,
+            module_name: "payment",
+            action_name: userData.role.name,
+            user_name: userData?.first_name + " " + userData?.last_name,
+            amount: payload?.amount,
+            currency: payload?.currency,
+          });
+        }
+
+        if (payload.agency_id) {
+          await notificationService.addAdminNotification({
+            receiver_id: payload?.agency_id,
+            action_name: "agency",
+            module_name: "payment",
+            amount: payload?.amount,
+            currency: payload?.currency,
+            user_name: agencyData?.first_name + " " + agencyData?.last_name,
+          });
+        }
 
         // ---------------------- Notification ----------------------
 

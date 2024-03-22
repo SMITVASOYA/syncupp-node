@@ -610,7 +610,6 @@ class NotificationService {
       // Payment
 
       if (payload.module_name === "payment") {
-        console.log(payload);
         if (
           payload.action_name === "team_agency" ||
           payload.action_name === "team_client"
@@ -621,19 +620,14 @@ class NotificationService {
             "admin",
             "deleted"
           );
-        }
-
-        if (payload.action_name === "client") {
-          console.log("client");
+        } else if (payload.action_name === "client") {
           await createAndEmitNotification(
             admin._id,
             "clientPayment",
             "admin",
             "deleted"
           );
-        }
-
-        if (payload.action_name === "agency") {
+        } else if (payload.action_name === "agency") {
           await createAndEmitNotification(
             admin._id,
             "agencyPayment",
