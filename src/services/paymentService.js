@@ -41,7 +41,7 @@ const { eventEmitter } = require("../socket");
 const NotificationService = require("./notificationService");
 const Admin = require("../models/adminSchema");
 const notificationService = new NotificationService();
-
+const fs = require("fs");
 class PaymentService {
   constructor() {
     this.razorpayApi = axios.create({
@@ -297,6 +297,161 @@ class PaymentService {
 
           return;
         }
+        //commented because it was not working properly
+        // if (body?.event === "order.paid") {
+        //   const order_id = payload?.payment?.entity?.order_id;
+        //   const payment_id = payload?.payment?.entity?.id;
+        //   const payment_history = await PaymentHistory.findOne({
+        //     payment_id,
+        //     order_id,
+        //   }).lean();
+        //   if (!payment_history)
+        //     return throwError("Payment history not found!", 400);
+
+        //   const agency_id = payment_history?.agency_id;
+        //   const user_id = payment_history?.user_id;
+        //   const [agency_details, user_details, sheets, sheets_allocated] =
+        //     await Promise.all([
+        //       Authentication.findOne({
+        //         reference_id: agency_id,
+        //       }).lean(),
+        //       Authentication.findOne({
+        //         reference_id: user_id,
+        //       })
+        //         .populate("role", "name")
+        //         .lean(),
+        //       SheetManagement.findOne({ agency_id }).lean(),
+        //       SheetManagement.findOne({
+        //         agency_id,
+        //         "occupied_sheets.user_id": user_id,
+        //       }).lean(),
+        //     ]);
+
+        //   if (!sheets || sheets_allocated) return;
+
+        //   if (user_details?.role?.name === "client") {
+        //     let link = `${
+        //       process.env.REACT_APP_URL
+        //     }/client/verify?name=${encodeURIComponent(
+        //       capitalizeFirstLetter(agency_details?.first_name) +
+        //         " " +
+        //         capitalizeFirstLetter(agency_details?.last_name)
+        //     )}&email=${encodeURIComponent(
+        //       user_details?.email
+        //     )}&agency=${encodeURIComponent(agency_details?.reference_id)}`;
+
+        //     const invitation_text = `${capitalizeFirstLetter(
+        //       agency_details?.first_name
+        //     )} ${capitalizeFirstLetter(
+        //       agency_details?.last_name
+        //     )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+        //     const invitation_mail = invitationEmail(
+        //       link,
+        //       capitalizeFirstLetter(user_details?.first_name) +
+        //         " " +
+        //         capitalizeFirstLetter(user_details?.last_name),
+        //       invitation_text
+        //     );
+
+        //     await sendEmail({
+        //       email: user_details?.email,
+        //       subject: returnMessage("emailTemplate", "invitation"),
+        //       message: invitation_mail,
+        //     });
+        //     await Client.updateOne(
+        //       { _id: user_id, "agency_ids.agency_id": agency_id },
+        //       { $set: { "agency_ids.$.status": "pending" } },
+        //       { new: true }
+        //     );
+        //   } else if (user_details?.role?.name === "team_agency") {
+        //     const link = `${process.env.REACT_APP_URL}/team/verify?agency=${
+        //       capitalizeFirstLetter(agency_details?.first_name) +
+        //       " " +
+        //       capitalizeFirstLetter(agency_details?.last_name)
+        //     }&agencyId=${
+        //       agency_details?.reference_id
+        //     }&email=${encodeURIComponent(user_details?.email)}&token=${
+        //       user_details?.invitation_token
+        //     }&redirect=false`;
+
+        //     const invitation_text = `${capitalizeFirstLetter(
+        //       agency_details?.first_name
+        //     )} ${capitalizeFirstLetter(
+        //       agency_details?.last_name
+        //     )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+        //     const invitation_template = invitationEmail(
+        //       link,
+        //       capitalizeFirstLetter(user_details?.first_name) +
+        //         " " +
+        //         capitalizeFirstLetter(user_details?.last_name),
+        //       invitation_text
+        //     );
+
+        //     await sendEmail({
+        //       email: user_details?.email,
+        //       subject: returnMessage("emailTemplate", "invitation"),
+        //       message: invitation_template,
+        //     });
+
+        //     await Authentication.findByIdAndUpdate(user_details?._id, {
+        //       status: "confirm_pending",
+        //     });
+        //   } else if (user_details?.role?.name === "team_client") {
+        //     const team_client_detail = await Team_Client.findById(
+        //       user_details.reference_id
+        //     ).lean();
+
+        //     const link = `${process.env.REACT_APP_URL}/team/verify?agency=${
+        //       capitalizeFirstLetter(agency_details?.first_name) +
+        //       " " +
+        //       capitalizeFirstLetter(agency_details?.last_name)
+        //     }&agencyId=${
+        //       agency_details?.reference_id
+        //     }&email=${encodeURIComponent(user_details?.email)}&clientId=${
+        //       team_client_detail.client_id
+        //     }`;
+        //     const invitation_text = `${capitalizeFirstLetter(
+        //       agency_details?.first_name
+        //     )} ${capitalizeFirstLetter(
+        //       agency_details?.last_name
+        //     )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+
+        //     const invitation_template = invitationEmail(
+        //       link,
+        //       user_details?.first_name + " " + user_details?.last_name,
+        //       invitation_text
+        //     );
+
+        //     await sendEmail({
+        //       email: user_details?.email,
+        //       subject: returnMessage("emailTemplate", "invitation"),
+        //       message: invitation_template,
+        //     });
+
+        //     await Team_Client.updateOne(
+        //       { _id: user_id, "agency_ids.agency_id": agency_id },
+        //       { $set: { "agency_ids.$.status": "pending" } },
+        //       { new: true }
+        //     );
+        //   }
+
+        //   const occupied_sheets = [
+        //     ...sheets.occupied_sheets,
+        //     {
+        //       user_id,
+        //       role: user_details?.role?.name,
+        //     },
+        //   ];
+
+        //   const sheet_obj = {
+        //     total_sheets: sheets?.total_sheets + 1,
+        //     occupied_sheets,
+        //   };
+        //   await SheetManagement.findByIdAndUpdate(sheets._id, sheet_obj);
+
+        //   await this.updateSubscription(agency_id, sheet_obj.total_sheets);
+        //   return;
+        // }
       }
 
       return;
@@ -685,12 +840,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_mail = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            privacy_policy,
+            facebook,
+            instagram
           );
 
           await sendEmail({
@@ -717,12 +881,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_template = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            privacy_policy,
+            instagram,
+            facebook
           );
 
           await Authentication.findByIdAndUpdate(user_details?._id, {
@@ -751,11 +924,19 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_template = invitationEmail(
             link,
             user_details?.first_name + " " + user_details?.last_name,
-            invitation_text
+            invitation_text,
+            privacy_policy,
+            facebook,
+            instagram
           );
 
           await sendEmail({
@@ -794,11 +975,7 @@ class PaymentService {
           occupied_sheets,
         };
         await SheetManagement.findByIdAndUpdate(sheets._id, sheet_obj);
-        // await Team_Client.updateOne(
-        //   { _id: user_id, "agency_ids.agency_id": agency_id },
-        //   { $set: { "agency_ids.$.status": "confirmed" } },
-        //   { new: true }
-        // );
+
         await this.updateSubscription(agency_id, sheet_obj.total_sheets);
 
         let message;
@@ -1480,12 +1657,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_mail = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            privacy_policy,
+            instagram,
+            facebook
           );
 
           await sendEmail({
@@ -1515,12 +1701,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_template = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            instagram,
+            facebook,
+            privacy_policy
           );
 
           await sendEmail({
@@ -1545,13 +1740,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_template = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            privacy_policy,
+            instagram,
+            facebook
           );
 
           await sendEmail({
@@ -1708,12 +1911,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_mail = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            privacy_policy,
+            facebook,
+            instagram
           );
 
           await sendEmail({
@@ -1743,12 +1955,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_template = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            facebook,
+            instagram,
+            privacy_policy
           );
 
           await Authentication.findByIdAndUpdate(
@@ -1779,13 +2000,21 @@ class PaymentService {
           )} ${capitalizeFirstLetter(
             agency_details?.last_name
           )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+          const company_urls = await Configuration.find().lean();
+          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 
+          let facebook = company_urls[0]?.urls?.facebook;
+
+          let instagram = company_urls[0]?.urls?.instagram;
           const invitation_template = invitationEmail(
             link,
             capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text
+            invitation_text,
+            privacy_policy,
+            instagram,
+            facebook
           );
 
           await sendEmail({
@@ -2037,6 +2266,14 @@ class PaymentService {
 
   cronForSubscription = async () => {
     try {
+      const test_subscription = [
+        "sub_Nney65aXuztTyh",
+        "sub_No3VnlWavkrKWl",
+        "sub_No837ufiB4Nx6f",
+        "sub_No7bZmb3v1bzYH",
+        "sub_No7doVXUkh4gsX",
+        "sub_No7qax1tjaAbHv",
+      ];
       const [agencies, configuration] = await Promise.all([
         Authentication.find({
           subscription_id: { $exists: true },
@@ -2046,6 +2283,8 @@ class PaymentService {
       ]);
 
       for (let i = 0; i < agencies.length; i++) {
+        if (test_subscription?.includes(agencies[i].subscription_id)) {
+        }
         const subscription_detail = await this.subscripionDetail(
           agencies[i].subscription_id
         );
@@ -2106,6 +2345,61 @@ class PaymentService {
             },
             agencies[i].reference_id
           );
+        } else if (subscription_detail?.status === "authenticated") {
+          const renew_date = moment.unix(subscription_detail?.charge_at);
+          const today = moment.utc();
+          const days_diff = Math.abs(today.diff(renew_date, "days"));
+
+          if (days_diff < 1) {
+            let notification_message = returnNotification(
+              "payment",
+              "trialPeriodEnd"
+            );
+            notification_message = notification_message.replaceAll(
+              "{{no_days}}",
+              1
+            );
+
+            const notification = await Notification.create({
+              type: "payment",
+              user_id: agencies[i].reference_id,
+              message: notification_message,
+            });
+
+            const pending_notification = await Notification.countDocuments({
+              user_id: agencies[i].reference_id,
+              is_read: false,
+            });
+
+            eventEmitter(
+              "NOTIFICATION",
+              {
+                notification,
+                un_read_count: pending_notification,
+              },
+              agencies[i].reference_id
+            );
+
+            let template = fs.readFileSync(
+              `src/utils/freeTrialEnd.html`,
+              "utf-8"
+            );
+
+            template = template.replaceAll(
+              "{{server_url}}",
+              process.env.SERVER_URL
+            );
+            template = template.replaceAll(
+              "{{user_name}}",
+              agencies[i].first_name + " " + agencies[i].last_name
+            );
+
+            await sendEmail({
+              email: agencies[i]?.email,
+              subject: returnMessage("emailTemplate", "freeTrialEndMail"),
+              message: template,
+            });
+          }
         }
       }
     } catch (error) {

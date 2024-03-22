@@ -186,7 +186,9 @@
     "meetingAlert": "Call meeting alert",
     "clientPasswordSet": "Client password set",
     "teamMemberPasswordSet": "Team member password set.",
-    "planExpired": "Your plane has expired."
+    "planExpired": "Your plane has expired.",
+    "clientJoined": "New client joined",
+    "freeTrialEndMail": "Urgent: trial ends tomorrow!"
   },
 
   "client": {

@@ -294,8 +294,18 @@ class ClientService {
           },
           { new: true }
         );
+        const company_urls = await Configuration.find().lean();
+        let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 
-        const welcome_mail = welcomeMail(client_auth?.name);
+        let facebook = company_urls[0]?.urls?.facebook;
+
+        let instagram = company_urls[0]?.urls?.instagram;
+        const welcome_mail = welcomeMail(
+          client_auth?.name,
+          privacy_policy,
+          instagram,
+          facebook
+        );
 
         await sendEmail({
           email: client_auth?.email,

@@ -34,6 +34,11 @@ const configurationSchema = new mongoose.Schema(
     coupon: {
       reedem_coupon: { type: Number, default: 50 },
     },
+    urls: {
+      privacy_policy: { type: String },
+      facebook: { type: String },
+      instagram: { type: String },
+    },
   },
   { timestamps: true }
 );

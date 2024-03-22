@@ -126,7 +126,9 @@
     "memberPayment": "Team member ${user_name} payment ${currency} ${amount}  done by you.",
     "agencyPayment": "Your payment ${currency} ${amount} done.",
     "clientPayment": "Client ${user_name} payment ${currency} ${amount} done by you.",
-    "agencyPackageExpired": "Your pack has been expired please renew it."
+    "agencyPackageExpired": "Your pack has been expired please renew it.",
+    "packageExpireAlert": "",
+    "trialPeriodEnd": "Your free trial period will end in {{no_days}} day."
   },
   "referral": {
     "signUp": "New user ${referred_to} joined ${points} Points added.",
