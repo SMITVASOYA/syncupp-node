@@ -807,8 +807,8 @@ exports.agrementEmail = (data) => {
                                               padding: 0 10px;
                                             "
                                           >
-                                            <p style="word-wrap: break-word">${data?.content}</p>
-                                            <!-- <p>
+                                          <p style="word-wrap: break-word">${data?.content}</p>
+                                                                                  <!-- <p>
                                               Lorem ipsum dolor sit, amet
                                               consectetur adipisicing elit. Quia
                                               incidunt sit in laborum error
@@ -4810,10 +4810,10 @@ exports.invoiceTemplate = (invoiceData) => {
     border-collapse: collapse;">
     ${item.item}
                                         </td>
-                                        <td align="left" style=" padding-top: 10px; font-weight: 400; font-size: 12px; text-overflow: ellipsis;  vertical-align: top; border-bottom: 1px solid black; padding-bottom:5px;
-    border-collapse: collapse;">
-                                          ${item.description}
-                                        </td>
+                                        <td align="left" style="padding-top: 10px; font-weight: 400; font-size: 12px; text-overflow: ellipsis; vertical-align: top; border-bottom: 1px solid black; padding-bottom:5px; border-collapse: collapse; word-break: break-all;">
+                                        ${item.description}
+                                      </td>
+                                      
                                         <td align="left" style=" padding-top: 10px; font-weight: 400; font-size: 12px; text-overflow: ellipsis;  vertical-align: top; border-bottom: 1px solid black; padding-bottom:5px;
     border-collapse: collapse;">
     ${item.qty}
