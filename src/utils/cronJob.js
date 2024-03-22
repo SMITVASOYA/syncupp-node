@@ -18,6 +18,10 @@ const notificationService = new NotificationService();
 
 exports.setupNightlyCronJob = async () => {
   const config = await Configuration.findOne({});
+
+  let privacy_policy = config?.urls?.privacy_policy;
+  let facebook = config?.urls?.facebook;
+  let instagram = config?.urls?.instagram;
   const invoiceCronSchedule = config?.cron_job.invoice_overdue;
   cron.schedule(invoiceCronSchedule, () => {
     console.log("Running the nightly cron job for invoice...");
@@ -88,9 +92,12 @@ exports.setupNightlyCronJob = async () => {
         role_name: item?.role?.name,
       });
 
-      const paymentAlertTemplate = paymentExpireAlert({
-        user_name: item?.first_name + " " + item?.last_name,
-      });
+      const paymentAlertTemplate = paymentExpireAlert(
+        item?.first_name + " " + item?.last_name,
+        privacy_policy,
+        instagram,
+        facebook
+      );
 
       sendEmail({
         email: item?.email,

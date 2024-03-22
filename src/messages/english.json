@@ -187,6 +187,7 @@
     "clientPasswordSet": "Client password set",
     "teamMemberPasswordSet": "Team member password set.",
     "planExpired": "Your plane has expired.",
+    "planIsAboutExpired": "Your plane has is about to expire.",
     "clientJoined": "New client joined",
     "freeTrialEndMail": "Urgent: trial ends tomorrow!"
   },

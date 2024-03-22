@@ -18,6 +18,7 @@ const {
   getKeywordType,
   returnNotification,
   seatRemoved,
+  paymentAboutToExpire,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const crypto = require("crypto");
@@ -2282,6 +2283,10 @@ class PaymentService {
         Configuration.findOne({}).lean(),
       ]);
 
+      let privacy_policy = configuration?.urls?.privacy_policy;
+      let facebook = configuration?.urls?.facebook;
+      let instagram = configuration?.urls?.instagram;
+
       for (let i = 0; i < agencies.length; i++) {
         if (test_subscription?.includes(agencies[i].subscription_id)) {
         }
@@ -2314,16 +2319,36 @@ class PaymentService {
             "nextSubscriptionStart"
           );
 
+          let dayDifference = false;
           if (days_diff == 3) {
             notification_message = notification_message.replaceAll(
               "{{no_days}}",
               3
             );
+
+            dayDifference = 3;
           } else if (days_diff === 1) {
             notification_message = notification_message.replaceAll(
               "{{no_days}}",
               1
             );
+            dayDifference = 1;
+          }
+
+          if (dayDifference) {
+            const paymentAboutToExpireTemp = paymentAboutToExpire(
+              agencies[i].first_name + " " + agencies[i].last_name,
+              dayDifference,
+              privacy_policy,
+              instagram,
+              facebook
+            );
+
+            sendEmail({
+              email: agencies[i]?.email,
+              subject: returnMessage("emailTemplate", "planIsAboutExpired"),
+              message: paymentAboutToExpireTemp,
+            });
           }
 
           const notification = await Notification.create({
