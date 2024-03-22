@@ -807,7 +807,7 @@ exports.agrementEmail = (data) => {
                                               padding: 0 10px;
                                             "
                                           >
-                                            <p>${data?.content}</p>
+                                            <p style="word-wrap: break-word">${data?.content}</p>
                                             <!-- <p>
                                               Lorem ipsum dolor sit, amet
                                               consectetur adipisicing elit. Quia
