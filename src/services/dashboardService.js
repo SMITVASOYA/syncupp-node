@@ -18,7 +18,7 @@ class dashboardService {
       let search_id;
       let admin_id;
 
-      if (user.role.name === "agency") search_id = "agency_id";
+      if (user.role.name === "agency") search_id = "assign_to";
       if (user.role.name === "client") search_id = "client_id";
       if (user.role.name === "team_client") {
         const memberRole = await Team_Client.findOne({
@@ -35,14 +35,13 @@ class dashboardService {
           search_id = "assign_to";
         }
         if (memberRole.role.name === "admin") {
-          search_id = "agency_id";
+          search_id = "assign_to";
           admin_id = memberRole.agency_id;
         }
       }
 
-      const currentDate = moment();
-      const startOfToday = moment(currentDate).startOf("day");
-      const endOfToday = moment(currentDate).endOf("day");
+      const startOfToday = moment.utc().startOf("day");
+      const endOfToday = moment.utc().endOf("day");
 
       const [todaysTasks] = await Promise.all([
         Activity.aggregate([
@@ -130,7 +129,7 @@ class dashboardService {
           },
           {
             $match: {
-              [search_id]: admin_id ? admin_id : user.reference_id,
+              [search_id]: user.reference_id,
               "statusName.name": { $ne: "cancel" }, // Fix: Change $nq to $ne
               "activity_type.name": "task", // Fix: Change $nq to $ne
               is_deleted: false,
@@ -170,7 +169,7 @@ class dashboardService {
     try {
       let search_id;
       let admin_id;
-      if (user.role.name === "agency") search_id = "agency_id";
+      if (user.role.name === "agency") search_id = "assign_to";
       if (user.role.name === "client") search_id = "client_id";
       if (user.role.name === "team_client") {
         const memberRole = await Team_Client.findOne({
@@ -187,7 +186,7 @@ class dashboardService {
           search_id = "assign_to";
         }
         if (memberRole.role.name === "admin") {
-          search_id = "agency_id";
+          search_id = "assign_to";
           admin_id = memberRole.agency_id;
         }
       }
@@ -278,7 +277,7 @@ class dashboardService {
           },
           {
             $match: {
-              [search_id]: admin_id ? admin_id : user.reference_id,
+              [search_id]: user.reference_id,
               "statusName.name": { $eq: "overdue" },
               "activity_type.name": "task",
               is_deleted: false,
