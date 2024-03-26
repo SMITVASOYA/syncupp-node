@@ -147,6 +147,7 @@ class PaymentService {
         "/subscriptions",
         subscription_obj
       );
+      console.log(data, 150);
       const subscription = data;
 
       await Authentication.findByIdAndUpdate(
