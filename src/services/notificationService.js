@@ -109,11 +109,14 @@ class NotificationService {
             activity_type_action !== "update" &&
             activity_type_action !== "create_call_meeting"
           ) {
-            await createAndEmitNotification(
-              client_id,
-              message_type,
-              "clientMessage"
-            );
+            if (payload.client_id) {
+              await createAndEmitNotification(
+                client_id,
+                message_type,
+                "clientMessage"
+              );
+            }
+
             await createAndEmitNotification(
               payload.assign_by,
               message_type,
@@ -152,11 +155,14 @@ class NotificationService {
               );
             });
         } else {
-          await createAndEmitNotification(
-            client_id,
-            message_type,
-            "clientMessage"
-          );
+          if (payload.client_id) {
+            await createAndEmitNotification(
+              client_id,
+              message_type,
+              "clientMessage"
+            );
+          }
+
           await createAndEmitNotification(
             assign_to,
             message_type,
@@ -258,11 +264,14 @@ class NotificationService {
               );
             }
           } else {
-            await createAndEmitNotification(
-              client_id,
-              message_type,
-              "clientMessage"
-            );
+            if (payload.client_id) {
+              await createAndEmitNotification(
+                client_id,
+                message_type,
+                "clientMessage"
+              );
+            }
+
             await createAndEmitNotification(
               payload.assign_by,
               message_type,
@@ -270,11 +279,14 @@ class NotificationService {
             );
           }
         } else {
-          await createAndEmitNotification(
-            client_id,
-            message_type,
-            "clientMessage"
-          );
+          if (payload.client_id) {
+            await createAndEmitNotification(
+              client_id,
+              message_type,
+              "clientMessage"
+            );
+          }
+
           await createAndEmitNotification(
             assign_to,
             message_type,

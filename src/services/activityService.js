@@ -1957,10 +1957,12 @@ class ActivityService {
       ];
 
       const getTask = await Activity.aggregate(pipeline);
-
-      const [assign_to_data, client_data] = await Promise.all([
-        Authentication.findOne({ reference_id: getTask[0].assign_to }),
-        Authentication.findOne({ reference_id: getTask[0].client_id }),
+      const [assign_to_data, client_data, attendees_data] = await Promise.all([
+        Authentication.findOne({ reference_id: getTask[0]?.assign_to }),
+        Authentication.findOne({ reference_id: getTask[0]?.client_id }),
+        Authentication.find({
+          reference_id: { $in: getTask[0]?.attendees },
+        }).lean(),
       ]);
 
       let task_status;
@@ -2005,7 +2007,6 @@ class ActivityService {
 
         if (user.role.name === "agency") {
           //   ----------    Notifications start ----------
-
           await notificationService.addNotification(
             {
               client_name: client_data
@@ -2065,7 +2066,7 @@ class ActivityService {
         if (user.role.name === "agency") {
           const activity_email_template = activityTemplate({
             ...getTask[0],
-            activity_type: getTask[0].activity_type,
+            activity_type: getTask[0]?.activity_type,
             meeting_start_time: momentTimezone(
               getTask[0]?.meeting_start_time,
               "HH:mm"
@@ -2099,6 +2100,16 @@ class ActivityService {
             subject: returnMessage("emailTemplate", emailTempKey),
             message: activity_email_template,
           });
+
+          attendees_data &&
+            attendees_data[0] &&
+            attendees_data.map((item) => {
+              sendEmail({
+                email: item?.email,
+                subject: returnMessage("emailTemplate", emailTempKey),
+                message: activity_email_template,
+              });
+            });
 
           //   ----------    Notifications start ----------
 
@@ -2164,6 +2175,16 @@ class ActivityService {
             subject: returnMessage("emailTemplate", emailTempKey),
             message: activity_email_template,
           });
+
+          attendees_data &&
+            attendees_data[0] &&
+            attendees_data.map((item) => {
+              sendEmail({
+                email: item?.email,
+                subject: returnMessage("emailTemplate", emailTempKey),
+                message: activity_email_template,
+              });
+            });
 
           //   ----------    Notifications start ----------
 

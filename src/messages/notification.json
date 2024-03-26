@@ -15,25 +15,30 @@
     "activityCancelled": {
       "clientMessage": "Hi ${client_name}! The ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. ",
       "assignToMessage": "Hi ${assigned_to_name}! The ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. ",
-      "assignByMessage": "Hi ${assigned_by_name}! The ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. "
+      "assignByMessage": "Hi ${assigned_by_name}! The ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. ",
+      "attendeesMessage": "The ${activity_type} titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled."
     },
     "activityCompleted": {
       "clientMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is completed.",
       "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is completed.",
-      "assignByMessage": "Hey ${assigned_by_name}! The ${activity_type} '${title}' is completed by ${assigned_to_name}."
+      "assignByMessage": "Hey ${assigned_by_name}! The ${activity_type} '${title}' is completed by ${assigned_to_name}.",
+      "attendeesMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is completed."
     },
     "activityInProgress": {
       "clientMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is in progress.",
-      "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is in progress."
+      "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is in progress.",
+      "attendeesMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is in progress."
     },
     "activityPending": {
       "clientMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is in pending.",
       "assignToMessage": "Hey ${assigned_to_name}! The ${activity_type} '${title}' assigned to you is pending.",
-      "assignByMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is in pending."
+      "assignByMessage": "Hi ${client_name}! Your ${activity_type} '${title}' is in pending.",
+      "attendeesMessage": "The ${activity_type} '${title}' is in pending."
     },
     "activityOverdue": {
       "clientMessage": "Your ${activity_type} '${title}' has been overdue.",
-      "assignToMessage": "The ${activity_type} '${title}' assigned to you has been overdue."
+      "assignToMessage": "The ${activity_type} '${title}' assigned to you has been overdue.",
+      "attendeesMessage": "The ${activity_type} '${title}' has been overdue."
     },
     "activityDueDate": {
       "clientMessage": "Today is the due date for ${activity_type} '${title}'.",

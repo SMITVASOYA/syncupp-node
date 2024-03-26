@@ -432,9 +432,6 @@ class TeamMemberService {
           const agencyData = await Authentication.findOne({
             reference_id: agency_id,
           }).lean();
-          const memberData = await Authentication.findOne({
-            _id: client_team_member?._id,
-          }).lean();
 
           await notificationService.addNotification({
             module_name: "general",
@@ -445,8 +442,12 @@ class TeamMemberService {
           });
 
           const teamMemberJoinedTemp = teamMemberPasswordSet({
-            ...memberData,
-            member_name: memberData.first_name + " " + memberData.last_name,
+            ...client_team_member,
+            member_name:
+              client_team_member.first_name +
+              " " +
+              client_team_member.last_name,
+            client_name: clientData?.first_name + " " + clientData?.last_name,
           });
           sendEmail({
             email: agencyData?.email,

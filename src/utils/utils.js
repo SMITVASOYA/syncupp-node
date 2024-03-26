@@ -6874,7 +6874,7 @@ border-collapse: collapse;">Status :</td>
 border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
-white-space: nowrap;">${data?.status}</td>
+white-space: nowrap; text-transform: capitalize;">${data?.status}</td>
                               </tr>
                                   
                                         
@@ -13914,6 +13914,19 @@ border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
 white-space: nowrap;">${data?.contact_number ?? `&nbsp;`}</td>
+
+<tr>
+  ${
+    data.client_name &&
+    `<td style=" border-top-left-radius: 5px;
+  border-collapse: collapse;">Client name :</td>
+                                          <td style="
+  border-collapse: collapse; font-weight: 600; max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;">${data?.client_name ?? `&nbsp;`}</td>`
+  }
+</tr>
                                       </tr>    
              </table>
                                       </td>
@@ -14673,7 +14686,7 @@ border-collapse: collapse;">Member contact number :</td>
 border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
-white-space: nowrap;">${data?.contact_number ?? `&nbsp;`}</td>
+white-space: nowrap;">${data?.contact_number ? data?.contact_number : "-"}</td>
                                       </tr>    
              </table>
                                       </td>
