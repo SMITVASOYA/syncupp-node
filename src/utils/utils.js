@@ -14647,7 +14647,7 @@ exports.clientPasswordSet = (data) => {
                                         margin-bottom: 30px;
                                       ">
                                     
-                                    <span style="font-weight: 600;">Client Joined</span>
+                                    <span style="font-weight: 600;">Team Member Joined</span>
 
                                   </p>
                                   <table cellpadding="0" cellspacing="0" width="70%" style="
@@ -14672,7 +14672,7 @@ exports.clientPasswordSet = (data) => {
                                                                                                     ">
                                                                                                     <tr>
                                             <td style=" border-top-left-radius: 5px;
-  border-collapse: collapse;">Client name :</td>
+  border-collapse: collapse;">Member name :</td>
                                             <td style="
   border-collapse: collapse; font-weight: 600; max-width: 100px;
  overflow: hidden;
