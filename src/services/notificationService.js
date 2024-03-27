@@ -249,8 +249,7 @@ class NotificationService {
                 "clientMessage"
               );
             }
-          }
-          if (activity_type_action === "update") {
+          } else if (activity_type_action === "update") {
             await createAndEmitNotification(
               payload.agency_id,
               message_type,
@@ -395,7 +394,7 @@ class NotificationService {
             "general"
           );
         }
-        // client Team member password set by agency
+        // client Team member password set
 
         if (action_name === "teamClientPasswordSet") {
           await createAndEmitNotification(
@@ -404,9 +403,15 @@ class NotificationService {
             "general",
             "general"
           );
+          await createAndEmitNotification(
+            payload.client_id,
+            "clientTeamJoined",
+            "general",
+            "general"
+          );
         }
 
-        // client  password set by agency
+        // client  password set
 
         if (action_name === "clientPasswordSet") {
           await createAndEmitNotification(

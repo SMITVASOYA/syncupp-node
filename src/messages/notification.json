@@ -52,7 +52,7 @@
     "taskCompleted": {
       "clientMessage": "Hi ${client_name}! Your task '${title}' is completed.",
       "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is completed. Great job!",
-      "assignByMessage": "Hi ${agency_name}! The task '${title}' is completed by ${assigned_to_name}."
+      "assignByMessage": "Hi ${agency_name}! The task '${title}' is completed."
     },
     "taskPending": {
       "clientMessage": "Hi ${client_name}! Your task '${title}' is pending.",

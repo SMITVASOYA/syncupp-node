@@ -1245,10 +1245,17 @@ class ActivityService {
           assignName: task?.assigned_to_name,
         };
         const taskMessage = taskTemplate(data);
-
+        const clientData = await Authentication.findOne({
+          reference_id: task?.client_id,
+        }).lean();
         await sendEmail({
           email: task?.assign_email,
-          subject: returnMessage("activity", "UpdateSubject"),
+          subject: returnMessage("activity", "taskDeleted"),
+          message: taskMessage,
+        });
+        await sendEmail({
+          email: clientData?.email,
+          subject: returnMessage("activity", "taskDeleted"),
           message: taskMessage,
         });
         await notificationService.addNotification(
@@ -1611,7 +1618,6 @@ class ActivityService {
         subject: returnMessage("activity", "UpdateSubject"),
         message: taskMessage,
       });
-
       if (logInUser?.role?.name === "agency") {
         // -------------- Socket notification start --------------------
 
@@ -1640,9 +1646,7 @@ class ActivityService {
         );
 
         // -------------- Socket notification end --------------------
-      }
-
-      if (logInUser?.role?.name === "team_agency") {
+      } else if (logInUser?.role?.name === "team_agency") {
         // -------------- Socket notification start --------------------
 
         const client_data = await Authentication.findOne({

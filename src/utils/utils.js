@@ -768,6 +768,18 @@ exports.agrementEmail = (data) => {
                                             ${data?.dueDate}
                                           </td>
                                         </tr>
+                                        <tr>
+                                        <td
+                                          align="left"
+                                          style="
+                                            padding-top: 10px;
+                                            font-weight: 600;
+                                            font-size: 14px;
+                                          "
+                                        >
+                                          ${data?.status}
+                                        </td>
+                                      </tr>
                                       </table>
                                       <table
                                         cellpadding="0"
@@ -10815,7 +10827,7 @@ border-collapse: collapse;">Member contact number :</td>
 border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
-white-space: nowrap;">${data?.contact_number ?? `&nbsp;`}</td>
+white-space: nowrap;">${data?.contact_number ? data?.contact_number : "-"}</td>
                                       </tr>    
              </table>
                                       </td>
@@ -11590,7 +11602,7 @@ border-collapse: collapse;">Member contact number :</td>
 border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
-white-space: nowrap;">${data?.contact_number ?? `&nbsp;`}</td>
+white-space: nowrap;">${data?.contact_number ? data?.contact_number : "-"}</td>
                                       </tr>    
              </table>
                                       </td>
@@ -13151,7 +13163,7 @@ border-collapse: collapse;">Member contact number :</td>
 border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
-white-space: nowrap;">${data?.contact_number ?? `&nbsp;`}</td>
+white-space: nowrap;">${data?.contact_number ? data?.contact_number : "-"}</td>
                                       </tr>    
              </table>
                                       </td>
@@ -13913,7 +13925,7 @@ border-collapse: collapse;">Member contact number :</td>
 border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
-white-space: nowrap;">${data?.contact_number ?? `&nbsp;`}</td>
+white-space: nowrap;">${data?.contact_number ? data?.contact_number : "-"}</td>
 
 <tr>
   ${

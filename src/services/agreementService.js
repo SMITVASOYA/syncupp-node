@@ -146,7 +146,7 @@ class AgreementService {
         const ageremantMessage = agrementEmail(data);
         await sendEmail({
           email: clientDetails?.email,
-          subject: "Updated agreement",
+          subject: returnMessage("emailTemplate", "agreementReceived"),
           message: ageremantMessage,
         });
         await Agreement.findOneAndUpdate(
@@ -514,7 +514,7 @@ class AgreementService {
         const ageremantMessage = agrementEmail(data);
         await sendEmail({
           email: clientDetails?.email,
-          subject: "Updated agreement",
+          subject: returnMessage("emailTemplate", "agreementUpdated"),
           message: ageremantMessage,
         });
         payload.status = "sent";
@@ -644,7 +644,7 @@ class AgreementService {
       const ageremantMessage = agrementEmail(data);
       await sendEmail({
         email: clientDetails?.email,
-        subject: "Updated agreement",
+        subject: returnMessage("emailTemplate", "agreementUpdated"),
         message: ageremantMessage,
       });
 
@@ -782,7 +782,7 @@ class AgreementService {
           },
         ];
         agreement = await Agreement.aggregate(aggregationPipeline);
-        if (status === "sent") {
+        if (status === "sent" || status === "agreed") {
           var data = {
             title: agreement[0].title,
             dueDate: moment(agreement[0].due_date).format("DD/MM/YYYY"),
@@ -796,9 +796,18 @@ class AgreementService {
             receiverEmail: agreement[0].receiver_email,
           };
           const ageremantMessage = agrementEmail(data);
+          let templateName;
+          let receiverName;
+          if (status === "agreed") {
+            templateName = "agreementAgreed";
+            receiverName = agreement[0]?.sender_email;
+          } else {
+            templateName = "agreementUpdated";
+            receiverName = clientDetails?.email;
+          }
           await sendEmail({
-            email: clientDetails?.email,
-            subject: "Updated agreement",
+            email: receiverName,
+            subject: returnMessage("emailTemplate", templateName),
             message: ageremantMessage,
           });
         }

@@ -439,6 +439,7 @@ class TeamMemberService {
             member_name: client_team_member?.name,
             client_name: clientData?.first_name + " " + clientData?.last_name,
             receiver_id: agency_id,
+            client_id: client_id,
           });
 
           const teamMemberJoinedTemp = teamMemberPasswordSet({

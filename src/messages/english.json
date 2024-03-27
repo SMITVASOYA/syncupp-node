@@ -189,7 +189,10 @@
     "planExpired": "Your plane has expired.",
     "planIsAboutExpired": "Your plane has is about to expire.",
     "clientJoined": "New client joined",
-    "freeTrialEndMail": "Urgent: trial ends tomorrow!"
+    "freeTrialEndMail": "Urgent: trial ends tomorrow!",
+    "agreementReceived": "New agreement received.",
+    "agreementUpdated": "Agreement updated.",
+    "agreementAgreed": "Agreement agreed."
   },
 
   "client": {
@@ -225,6 +228,7 @@
     "invalidDate": "End date should be greater than start date.",
     "createSubject": "New task created.",
     "UpdateSubject": "Updated Task.",
+    "taskDeleted": "Task deleted Task.",
     "ActivityCannotUpdate": "Activity cannot be updated.",
     "tagsList": "Tags list fetch successfully.",
     "completionHistory": "Points history fetched successfully."
