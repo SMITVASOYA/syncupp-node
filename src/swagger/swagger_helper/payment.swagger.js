@@ -251,6 +251,64 @@ const deactivateAccount = {
   },
 };
 
+const getPlan = {
+  tags: ["Payment - CRM Panel"],
+  description: "",
+  summary: "Get plan",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+
+  parameters: [
+    {
+      name: "planId",
+      in: "path", // or "query" depending on your use case
+      description: "ID of the Plan",
+      required: true,
+      schema: {
+        type: "string", // adjust the type accordingly
+      },
+    },
+  ],
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
+const getPlans = {
+  tags: ["Payment - CRM Panel"],
+  description: "",
+  summary: "Get plan list",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
 const paymentRoute = {
   "/api/v1/payment/history": {
     post: paymentHistory,
@@ -272,6 +330,12 @@ const paymentRoute = {
   },
   "/api/v1/payment/de-activated": {
     get: deactivateAccount,
+  },
+  "/api/v1/payment/plans": {
+    get: getPlans,
+  },
+  "/api/v1/payment/plan/{planId}": {
+    get: getPlan,
   },
 };
 

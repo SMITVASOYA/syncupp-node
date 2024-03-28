@@ -1,10 +1,22 @@
 const paymentRoute = require("express").Router();
 const paymentConrtoller = require("../controllers/paymentController");
 const { protect } = require("../middlewares/authMiddleware");
+const adminProtect = require("../middlewares/authAdminMiddleware");
 
-paymentRoute.post("/plan-create", paymentConrtoller.createPlan);
+paymentRoute.post(
+  "/plan-create",
+  adminProtect.protect,
+  paymentConrtoller.createPlan
+);
 paymentRoute.post("/webhook", paymentConrtoller.webHookHandler);
 paymentRoute.post("/verify-signature", paymentConrtoller.verifySignature);
+paymentRoute.get("/plans", paymentConrtoller.listPlan);
+
+paymentRoute.get(
+  "/plan/:planId",
+  adminProtect.protect,
+  paymentConrtoller.getPlan
+);
 
 paymentRoute.use(protect);
 paymentRoute.post("/order", paymentConrtoller.singleTimePayment);

@@ -255,7 +255,10 @@
     "canNotCancel": "Subscription can not be cancelled.",
     "couponpurchase": "Coupon purchased successfully.",
     "accountDeactivated": "Account de-activated successfully.",
-    "CouponNotExist": "Coupon does not exists."
+    "CouponNotExist": "Coupon does not exists.",
+    "planAdded": "Plan added successfully.",
+    "planFetched": "Plan fetched successfully.",
+    "plansFetched": "Plans fetched successfully."
   },
   "affiliate": {
     "registered": "User registered successfully.",

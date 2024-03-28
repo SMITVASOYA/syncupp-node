@@ -129,3 +129,17 @@ exports.deactivateAccount = catchAsyncError(async (req, res, next) => {
     200
   );
 });
+
+// Get plan
+
+exports.getPlan = catchAsyncError(async (req, res, next) => {
+  const plan = await paymentService.getPlan(req?.params);
+  sendResponse(res, true, returnMessage("payment", "planFetched"), plan, 200);
+});
+
+// List plan
+
+exports.listPlan = catchAsyncError(async (req, res, next) => {
+  const plans = await paymentService.listPlan(req.body);
+  sendResponse(res, true, returnMessage("payment", "plansFetched"), plans, 200);
+});

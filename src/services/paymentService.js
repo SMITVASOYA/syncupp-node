@@ -84,10 +84,11 @@ class PaymentService {
           plan_id: plan?.id,
           period: payload?.period,
           name: payload?.name,
-          active: true,
+          active: false,
+          symbol: payload?.symbol,
+          seat: payload?.seat,
         });
       }
-
       return;
     } catch (error) {
       console.log(JSON.stringify(error));
@@ -2458,6 +2459,29 @@ class PaymentService {
       logger.error(
         `Error while running the cron of the subscription expire cron: ${error}`
       );
+      console.log(error);
+    }
+  };
+
+  listPlan = async () => {
+    try {
+      const response = await SubscriptionPlan.find();
+      // const response = await this.razorpayApi.get("/plans");
+      console.log("first", response);
+      return response;
+    } catch (error) {
+      logger.error(`Error while running the list plan: ${error}`);
+      console.log(error);
+    }
+  };
+
+  getPlan = async (payload) => {
+    try {
+      const { planId } = payload;
+      const response = await SubscriptionPlan.findOne({ _id: planId });
+      return response;
+    } catch (error) {
+      logger.error(`Error while running the get plan: ${error}`);
       console.log(error);
     }
   };
