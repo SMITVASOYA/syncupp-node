@@ -11,6 +11,7 @@ const {
   memberDeletedClient,
   clientMemberAdded,
   teamMemberPasswordSet,
+  invitationEmail,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const bcrypt = require("bcryptjs");
@@ -40,7 +41,7 @@ class TeamMemberService {
     try {
       validateRequestFields(payload, ["email", "first_name", "last_name"]);
 
-      if (user?.role?.name == "agency" || user?.role?.name == "team_agency") {
+      if (user?.role?.name == "agency") {
         return await this.addAgencyTeam(payload, user);
       } else if (user?.role?.name == "client") {
         return await this.addClientTeam(payload, user);
@@ -70,13 +71,12 @@ class TeamMemberService {
       const { email, first_name, last_name, contact_number, role } = payload;
       if (!role || role === "")
         return throwError(returnMessage("teamMember", "roleRequired"));
-      let check_agency = await Team_Agency.findById(user?.reference_id)
-        .populate("role", "name")
-        .lean();
-
-      // return throwError(
-      //   returnMessage("teamMember", "insufficientPermission")
-      // );
+      let check_agency;
+      if (user?.role?.name === "team_agency") {
+        check_agency = await Team_Agency.findById(user?.reference_id)
+          .populate("role", "name")
+          .lean();
+      }
 
       const [team_member_exist, team_role, role_for_auth] = await Promise.all([
         Authentication.findOne({
@@ -103,20 +103,7 @@ class TeamMemberService {
 
       let invitation_token = crypto.randomBytes(32).toString("hex");
 
-      // removed because of the payment integrations
-      // const link = `${process.env.REACT_APP_URL}/team/verify?agency=${
-      //   user?.first_name + " " + user?.last_name
-      // }&agencyId=${user?.reference_id}&email=${encodeURIComponent(
-      //   email
-      // )}&token=${invitation_token}&redirect=false`;
-
       const team_agency = await Team_Agency.create(team_member_create_query);
-
-      // removed because of the payment
-      // invitation_token = crypto
-      //   .createHash("sha256")
-      //   .update(invitation_token)
-      //   .digest("hex");
 
       await Authentication.create({
         first_name,
@@ -133,13 +120,9 @@ class TeamMemberService {
         role: role_for_auth?._id,
       });
 
-      // const invitation_template = invitationEmail(link, name);
-
-      // await sendEmail({
-      //   email,
-      //   subject: returnMessage("emailTemplate", "invitation"),
-      //   message: invitation_template,
-      // });
+      if (user?.status === "free_trial") {
+        await this.freeTrialMemberAdd(user?.reference_id, team_agency?._id);
+      }
       return {
         reference_id: team_agency?._id,
         referral_points: 0, // this wil be change in future when the referral point will be integrate
@@ -1304,37 +1287,32 @@ class TeamMemberService {
   // reject the client team member
   rejectTeamMember = async (payload, agency) => {
     try {
-      let team_member_exist;
+      if (agency?.role?.name !== "agency")
+        return throwError(returnMessage("auth", "insufficientPermission"), 403);
+
+      let team_member_exist,
+        status = "rejected";
+
+      if (payload?.status === "accept") status = "confirmed";
+
+      if (agency?.role?.name === "team_agency") {
+        const team_agency_detail = await Team_Agency.findById(
+          agency?.reference_id
+        )
+          .populate("role", "name")
+          .lean();
+        if (team_agency_detail?.role?.name === "admin") {
+          agency = await Authentication.findOne({
+            reference_id: team_agency_detail.agency_id,
+          }).lean();
+        }
+      }
+
       team_member_exist = await Team_Client.findOne({
         _id: payload?.id,
         "agency_ids.agency_id": agency?.reference_id,
         "agency_ids.status": "requested",
       }).lean();
-      let check_agency = await Team_Agency.findById(agency?.reference_id)
-        .populate("role", "name")
-        .lean();
-      if (
-        agency.role.name === "team_agency" &&
-        check_agency.role.name === "admin"
-      ) {
-        team_member_exist = await Team_Client.findOne({
-          _id: payload?.id,
-          "agency_ids.agency_id": check_agency?.agency_id,
-          "agency_ids.status": "requested",
-        }).lean();
-
-        if (!team_member_exist)
-          return throwError(
-            returnMessage("teamMember", "teamMemberNotFound"),
-            statusCode?.notFound
-          );
-
-        await Team_Client.updateOne(
-          { _id: payload?.id, "agency_ids.agency_id": check_agency?.agency_id },
-          { $set: { "agency_ids.$.status": "rejected" } },
-          { new: true }
-        );
-      }
 
       if (!team_member_exist)
         return throwError(
@@ -1344,9 +1322,13 @@ class TeamMemberService {
 
       await Team_Client.updateOne(
         { _id: payload?.id, "agency_ids.agency_id": agency?.reference_id },
-        { $set: { "agency_ids.$.status": "rejected" } },
+        { $set: { "agency_ids.$.status": status } },
         { new: true }
       );
+
+      if (payload?.status === "accept") {
+        await this.freeTrialMemberAdd(agency?.reference_id, payload?.id);
+      }
 
       return;
     } catch (error) {
@@ -1388,7 +1370,7 @@ class TeamMemberService {
       }
       return;
     } catch (error) {
-      logger.error(`Error while Team member  delete, ${error}`);
+      logger.error(`Error while Team member delete, ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
@@ -1695,6 +1677,167 @@ class TeamMemberService {
       };
     } catch (error) {
       logger.error(`Error while fetch dashboard data for agency: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // this function is used for the agency is on free trial and need to take payment after the trial period is over
+  // it will only used for the agency only to send the verification mail and manage sheet
+  freeTrialMemberAdd = async (agency_id, user_id) => {
+    try {
+      const [agency_details, user_details, sheets] = await Promise.all([
+        Authentication.findOne({ reference_id: agency_id }).lean(),
+        Authentication.findOne({ reference_id: user_id })
+          .populate("role", "name")
+          .lean(),
+        SheetManagement.findOne({ agency_id }).lean(),
+      ]);
+
+      if (user_details?.role?.name === "client") {
+        let link = `${
+          process.env.REACT_APP_URL
+        }/client/verify?name=${encodeURIComponent(
+          capitalizeFirstLetter(agency_details?.first_name) +
+            " " +
+            capitalizeFirstLetter(agency_details?.last_name)
+        )}&email=${encodeURIComponent(
+          user_details?.email
+        )}&agency=${encodeURIComponent(agency_details?.reference_id)}`;
+
+        const invitation_text = `${capitalizeFirstLetter(
+          agency_details?.first_name
+        )} ${capitalizeFirstLetter(
+          agency_details?.last_name
+        )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+        const company_urls = await Configuration.find().lean();
+        let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+        let facebook = company_urls[0]?.urls?.facebook;
+
+        let instagram = company_urls[0]?.urls?.instagram;
+        const invitation_mail = invitationEmail(
+          link,
+          capitalizeFirstLetter(user_details?.first_name) +
+            " " +
+            capitalizeFirstLetter(user_details?.last_name),
+          invitation_text,
+          privacy_policy,
+          facebook,
+          instagram
+        );
+
+        await sendEmail({
+          email: user_details?.email,
+          subject: returnMessage("emailTemplate", "invitation"),
+          message: invitation_mail,
+        });
+        await Client.updateOne(
+          { _id: user_id, "agency_ids.agency_id": agency_id },
+          { $set: { "agency_ids.$.status": "pending" } },
+          { new: true }
+        );
+      } else if (user_details?.role?.name === "team_agency") {
+        const link = `${process.env.REACT_APP_URL}/team/verify?agency=${
+          capitalizeFirstLetter(agency_details?.first_name) +
+          " " +
+          capitalizeFirstLetter(agency_details?.last_name)
+        }&agencyId=${agency_details?.reference_id}&email=${encodeURIComponent(
+          user_details?.email
+        )}&token=${user_details?.invitation_token}&redirect=false`;
+
+        const invitation_text = `${capitalizeFirstLetter(
+          agency_details?.first_name
+        )} ${capitalizeFirstLetter(
+          agency_details?.last_name
+        )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+        const company_urls = await Configuration.find().lean();
+        let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+        let facebook = company_urls[0]?.urls?.facebook;
+
+        let instagram = company_urls[0]?.urls?.instagram;
+        const invitation_template = invitationEmail(
+          link,
+          capitalizeFirstLetter(user_details?.first_name) +
+            " " +
+            capitalizeFirstLetter(user_details?.last_name),
+          invitation_text,
+          privacy_policy,
+          facebook,
+          instagram
+        );
+
+        await Authentication.findByIdAndUpdate(user_details?._id, {
+          status: "confirm_pending",
+        });
+
+        await sendEmail({
+          email: user_details?.email,
+          subject: returnMessage("emailTemplate", "invitation"),
+          message: invitation_template,
+        });
+      } else if (user_details?.role?.name === "team_client") {
+        const team_client_detail = await Team_Client.findById(
+          user_details.reference_id
+        ).lean();
+
+        const link = `${process.env.REACT_APP_URL}/team/verify?agency=${
+          capitalizeFirstLetter(agency_details?.first_name) +
+          " " +
+          capitalizeFirstLetter(agency_details?.last_name)
+        }&agencyId=${agency_details?.reference_id}&email=${encodeURIComponent(
+          user_details?.email
+        )}&clientId=${team_client_detail.client_id}`;
+        const invitation_text = `${capitalizeFirstLetter(
+          agency_details?.first_name
+        )} ${capitalizeFirstLetter(
+          agency_details?.last_name
+        )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+        const company_urls = await Configuration.find().lean();
+        let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+        let facebook = company_urls[0]?.urls?.facebook;
+
+        let instagram = company_urls[0]?.urls?.instagram;
+        const invitation_template = invitationEmail(
+          link,
+          user_details?.first_name + " " + user_details?.last_name,
+          invitation_text,
+          privacy_policy,
+          facebook,
+          instagram
+        );
+
+        await sendEmail({
+          email: user_details?.email,
+          subject: returnMessage("emailTemplate", "invitation"),
+          message: invitation_template,
+        });
+
+        await Team_Client.updateOne(
+          { _id: user_id, "agency_ids.agency_id": agency_id },
+          { $set: { "agency_ids.$.status": "pending" } },
+          { new: true }
+        );
+      }
+
+      const occupied_sheets = [
+        ...sheets.occupied_sheets,
+        {
+          user_id,
+          role: user_details?.role?.name,
+        },
+      ];
+
+      const sheet_obj = {
+        total_sheets: sheets?.total_sheets + 1,
+        occupied_sheets,
+      };
+      await SheetManagement.findByIdAndUpdate(sheets._id, sheet_obj);
+
+      return;
+    } catch (error) {
+      logger.error(`Error while free trial member add: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };

@@ -28,6 +28,7 @@ const authenticationSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
+        "free_trial",
         "payment_pending",
         "payment_done",
         "confirmed",
@@ -37,6 +38,7 @@ const authenticationSchema = new mongoose.Schema(
         "subscription_halted",
         "subscription_cancelled",
       ],
+      default: "free_trial",
     },
     subscription_id: { type: String },
     subscribe_date: { typr: String },

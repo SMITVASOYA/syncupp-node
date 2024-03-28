@@ -1,6 +1,5 @@
 const catchAsyncError = require("../helpers/catchAsyncError");
 const { sendResponse } = require("../utils/sendResponse");
-const { throwError } = require("../helpers/errorUtil");
 const PaymentService = require("../services/paymentService");
 const { returnMessage } = require("../utils/utils");
 const paymentService = new PaymentService();

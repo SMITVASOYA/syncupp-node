@@ -31,26 +31,33 @@ const Agreement = require("../models/agreementSchema");
 const NotificationService = require("./notificationService");
 const Configuration = require("../models/configurationSchema");
 const notificationService = new NotificationService();
+const TeamMemberService = require("../services/teamMemberService");
+const teamMemberService = new TeamMemberService();
 
 class ClientService {
   // create client for the agency
   createClient = async (payload, agency) => {
     try {
-      if (agency?.role?.name === "team_agency") {
-        const team_agency_detail = await Team_Agency.findById(
-          agency?.reference_id
-        )
-          .populate("role", "name")
-          .lean();
-        if (team_agency_detail?.role?.name === "admin") {
-          agency = await Authentication.findOne({
-            reference_id: team_agency_detail?.agency_id,
-          })
-            .populate("role", "role")
-            .lean();
-          agency.created_by = team_agency_detail?._id;
-        }
-      }
+      // commented as only agency can create the client
+      // if (agency?.role?.name === "team_agency") {
+      //   const team_agency_detail = await Team_Agency.findById(
+      //     agency?.reference_id
+      //   )
+      //     .populate("role", "name")
+      //     .lean();
+      //   if (team_agency_detail?.role?.name === "admin") {
+      //     agency = await Authentication.findOne({
+      //       reference_id: team_agency_detail?.agency_id,
+      //     })
+      //       .populate("role", "role")
+      //       .lean();
+      //     agency.created_by = team_agency_detail?._id;
+      //   }
+      // }
+
+      if (agency?.role?.name !== "agency")
+        return throwError(returnMessage("auth", "insufficientPermission"), 403);
+
       const { first_name, last_name, email, company_name } = payload;
       validateRequestFields(payload, [
         "first_name",
@@ -167,6 +174,12 @@ class ClientService {
         .select("reference_id")
         .lean();
 
+      if (agency?.status === "free_trial") {
+        await teamMemberService.freeTrialMemberAdd(
+          agency?.reference_id,
+          client?.reference_id
+        );
+      }
       return {
         ...client,
         referral_points: 0, // this is set to 0 initially but it will update when the referral module imlement

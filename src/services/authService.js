@@ -35,6 +35,7 @@ const Agency = require("../models/agencySchema");
 const Client = require("../models/clientSchema");
 const NotificationService = require("./notificationService");
 const Admin = require("../models/adminSchema");
+const SheetManagement = require("../models/sheetManagementSchema");
 const notificationService = new NotificationService();
 class AuthService {
   tokenGenerator = (payload) => {
@@ -87,13 +88,6 @@ class AuthService {
         referral_code,
       } = payload;
 
-      const {
-        affiliate_referral_code,
-        affiliate_email,
-        affiliate_first_name,
-        affiliate_last_name,
-      } = payload;
-
       validateRequestFields(payload, [
         "first_name",
         "last_name",
@@ -108,21 +102,26 @@ class AuthService {
       if (!passwordValidation(password))
         return throwError(returnMessage("auth", "invalidPassword"));
 
-      // if (isNaN(contact_number))
-      //   return throwError(returnMessage("auth", "invalidContactNumber"));
-
-      const agency_exist = await Authentication.findOne({
-        email,
-        is_deleted: false,
-      });
+      const [agency_exist, configuration] = await Promise.all([
+        Authentication.findOne({
+          email,
+          is_deleted: false,
+        }).lean(),
+        Configuration.findOne({}).lean(),
+      ]);
 
       if (agency_exist)
         return throwError(returnMessage("agency", "agencyExist"));
 
-      let image_url;
+      let image_url,
+        status = "payment_pending";
 
       if (files && files.fieldname === "client_image") {
         image_url = "uploads/" + files?.filename;
+      }
+
+      if (configuration?.payment?.free_trial > 0) {
+        status = "free_trial";
       }
 
       const agency_object = {
@@ -155,7 +154,7 @@ class AuthService {
           reference_id: agency?._id,
           remember_me: payload?.remember_me,
           role: role?._id,
-          status: "payment_pending",
+          status,
           referral_code: payload.referral_code,
           affiliate_referral_code: affiliate_referral_code,
         });
@@ -205,6 +204,18 @@ class AuthService {
         });
         // -------------------- Notification --------------------------------
 
+        // this will used if we are adding the trial periods
+        if (configuration?.payment?.free_trial > 0) {
+          await SheetManagement.findOneAndUpdate(
+            { agency_id: agency_enroll?.reference_id },
+            {
+              agency_id: agency_enroll?.reference_id,
+              total_sheets: 1,
+              occupied_sheets: [],
+            },
+            { upsert: true }
+          );
+        }
         return this.tokenGenerator({
           ...agency_enroll,
           rememberMe: payload?.rememberMe,
@@ -226,7 +237,7 @@ class AuthService {
           reference_id: agency?._id,
           remember_me: payload?.remember_me,
           role: role?._id,
-          status: "payment_pending",
+          status,
           referral_code: new_referral_code,
           affiliate_referral_code: affiliate_referral_code,
         });
@@ -276,44 +287,6 @@ class AuthService {
           rememberMe: payload?.rememberMe,
         });
       }
-
-      // let agency_enroll = await Authentication.create({
-      //   first_name,
-      //   last_name,
-      //   email,
-      //   password: encrypted_password,
-      //   contact_number,
-      //   image_url,
-      //   reference_id: agency?._id,
-      //   remember_me: payload?.remember_me,
-      //   role: role?._id,
-      //   status: "payment_pending",
-      //   referral_code: payload.referral_code,
-      // });
-
-      // agency_enroll = agency_enroll.toObject();
-      // agency_enroll.role = role;
-
-      // if (payload?.referral_code) {
-      //   const referral_registered = await this.referralSignUp({
-      //     referral_code: payload?.referral_code,
-      //     referred_to: agency_enroll,
-      //   });
-
-      //   if (typeof referral_registered === "string") {
-      //     await Authentication.findByIdAndDelete(agency_enroll._id);
-      //     return referral_registered;
-      //   }
-      // }
-
-      // delete agency_enroll?.password;
-      // delete agency_enroll?.is_facebook_signup;
-      // delete agency_enroll?.is_google_signup;
-
-      // return this.tokenGenerator({
-      //   ...agency_enroll,
-      //   rememberMe: payload?.rememberMe,
-      // });
     } catch (error) {
       logger.error(`Error while agency signup: ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -329,13 +302,35 @@ class AuthService {
 
       const decoded = jwt.decode(signupId);
 
-      let existing_agency = await Authentication.findOne({
-        email: decoded.email,
-        is_deleted: false,
-      })
-        .populate("role", "name")
-        .lean();
+      let [existing_agency, referral_data] = await Promise.all([
+        Authentication.findOne({
+          email: decoded.email,
+          is_deleted: false,
+        })
+          .populate("role", "name")
+          .lean(),
+        Configuration.findOne({}).lean(),
+      ]);
 
+      if (existing_agency?.role?.name === "team_agency") {
+        const team_agency_detail = await Team_Agency.findById(
+          existing_agency?.reference_id
+        ).lean();
+        const agency_detail = await Authentication.findOne({
+          reference_id: team_agency_detail?.agency_id,
+        }).lean();
+
+        if (agency_detail?.status === "payment_pending")
+          return throwError(
+            returnMessage("payment", "paymentPendingForAgency")
+          );
+      }
+
+      let status = "payment_pending";
+
+      if (referral_data?.payment?.free_trial > 0) {
+        status = "free_trial";
+      }
       if (!existing_agency) {
         const [agency, role] = await Promise.all([
           agencyService.agencyRegistration({}),
@@ -357,7 +352,7 @@ class AuthService {
           email: decoded?.email,
           reference_id: agency?._id,
           role: role?._id,
-          status: "payment_pending",
+          status,
           is_google_signup: true,
           referral_code,
           affiliate_referral_code: affiliate_referral_code,
@@ -392,7 +387,6 @@ class AuthService {
           .startOf("day");
         const currentDateUTC = moment.utc().startOf("day");
 
-        const referral_data = await Configuration.findOne().lean();
         if (
           currentDateUTC.isAfter(lastLoginDateUTC) ||
           !agency_enroll.last_login_date
@@ -439,14 +433,24 @@ class AuthService {
           }
         }
 
+        // this will used if we are adding the trial periods
+        if (referral_data?.payment?.free_trial > 0) {
+          await SheetManagement.findOneAndUpdate(
+            { agency_id: agency_enroll?.reference_id },
+            {
+              agency_id: agency_enroll?.reference_id,
+              total_sheets: 1,
+              occupied_sheets: [],
+            },
+            { upsert: true }
+          );
+        }
         return this.tokenGenerator({
           ...agency_enroll,
           subscription_halt_days:
             referral_data?.payment?.subscription_halt_days,
         });
       } else {
-        const referral_data = await Configuration.findOne().lean();
-
         const lastLoginDateUTC = moment
           .utc(existing_agency?.last_login_date)
           .startOf("day");
@@ -479,17 +483,29 @@ class AuthService {
               receiver_id: existing_agency?.reference_id,
               points: referral_data?.competition?.successful_login?.toString(),
             });
-
-            await Agency.findOneAndUpdate(
-              { _id: existing_agency.reference_id },
-              {
-                $inc: {
-                  total_referral_point:
-                    referral_data?.competition?.successful_login,
+            if (existing_agency?.role?.name === "agency") {
+              await Agency.findOneAndUpdate(
+                { _id: existing_agency.reference_id },
+                {
+                  $inc: {
+                    total_referral_point:
+                      referral_data?.competition?.successful_login,
+                  },
                 },
-              },
-              { new: true }
-            );
+                { new: true }
+              );
+            } else if (existing_agency?.role?.name === "team_agency") {
+              await Team_Agency.findOneAndUpdate(
+                { _id: existing_agency.reference_id },
+                {
+                  $inc: {
+                    total_referral_point:
+                      referral_data?.competition?.successful_login,
+                  },
+                },
+                { new: true }
+              );
+            }
             await Authentication.findOneAndUpdate(
               { reference_id: existing_agency.reference_id },
               { last_login_date: moment.utc().startOf("day") },
@@ -524,12 +540,35 @@ class AuthService {
 
       if (!data?.email) return throwError(returnMessage("default", "default"));
 
-      let existing_agency = await Authentication.findOne({
-        email: data?.email,
-        is_deleted: false,
-      })
-        .populate("role", "name")
-        .lean();
+      let [existing_agency, referral_data] = await Promise.all([
+        Authentication.findOne({
+          email: data?.email,
+          is_deleted: false,
+        })
+          .populate("role", "name")
+          .lean(),
+        Configuration.findOne({}).lean(),
+      ]);
+
+      if (existing_agency?.role?.name === "team_agency") {
+        const team_agency_detail = await Team_Agency.findById(
+          existing_agency?.reference_id
+        ).lean();
+        const agency_detail = await Authentication.findOne({
+          reference_id: team_agency_detail?.agency_id,
+        }).lean();
+
+        if (agency_detail?.status === "payment_pending")
+          return throwError(
+            returnMessage("payment", "paymentPendingForAgency")
+          );
+      }
+
+      let status = "payment_pending";
+
+      if (referral_data?.payment?.free_trial > 0) {
+        status = "free_trial";
+      }
 
       if (!existing_agency) {
         const [agency, role] = await Promise.all([
@@ -552,7 +591,7 @@ class AuthService {
           email: data?.email,
           reference_id: agency?._id,
           role: role?._id,
-          status: "payment_pending",
+          status,
           is_facebook_signup: true,
           referral_code,
           affiliate_referral_code: affiliate_referral_code,
@@ -586,8 +625,6 @@ class AuthService {
           .utc(agency_enroll?.last_login_date)
           .startOf("day");
         const currentDateUTC = moment.utc().startOf("day");
-
-        const referral_data = await Configuration.findOne().lean();
 
         if (
           currentDateUTC.isAfter(lastLoginDateUTC) ||
@@ -634,14 +671,26 @@ class AuthService {
             );
           }
         }
+
+        // this will used if we are adding the trial periods
+        if (referral_data?.payment?.free_trial > 0) {
+          await SheetManagement.findOneAndUpdate(
+            { agency_id: agency_enroll?.reference_id },
+            {
+              agency_id: agency_enroll?.reference_id,
+              total_sheets: 1,
+              occupied_sheets: [],
+            },
+            { upsert: true }
+          );
+        }
+
         return this.tokenGenerator({
           ...agency_enroll,
           subscription_halt_days:
             referral_data?.payment?.subscription_halt_days,
         });
       } else {
-        const referral_data = await Configuration.findOne().lean();
-
         const lastLoginDateUTC = moment
           .utc(existing_agency?.last_login_date)
           .startOf("day");
@@ -675,16 +724,29 @@ class AuthService {
               points: referral_data?.competition?.successful_login?.toString(),
             });
 
-            await Agency.findOneAndUpdate(
-              { _id: existing_agency?.reference_id },
-              {
-                $inc: {
-                  total_referral_point:
-                    referral_data?.competition?.successful_login,
+            if (existing_agency?.role?.name === "agency") {
+              await Agency.findOneAndUpdate(
+                { _id: existing_agency.reference_id },
+                {
+                  $inc: {
+                    total_referral_point:
+                      referral_data?.competition?.successful_login,
+                  },
                 },
-              },
-              { new: true }
-            );
+                { new: true }
+              );
+            } else if (existing_agency?.role?.name === "team_agency") {
+              await Team_Agency.findOneAndUpdate(
+                { _id: existing_agency.reference_id },
+                {
+                  $inc: {
+                    total_referral_point:
+                      referral_data?.competition?.successful_login,
+                  },
+                },
+                { new: true }
+              );
+            }
             await Authentication.findOneAndUpdate(
               { reference_id: existing_agency?.reference_id },
               { last_login_date: moment.utc().startOf("day") },
@@ -700,7 +762,7 @@ class AuthService {
       }
     } catch (error) {
       logger.error(`Error while facebook signup:${error.message}`);
-      throwError(error?.message, error?.statusCode);
+      return throwError(error?.message, error?.statusCode);
     }
   };
 
@@ -740,14 +802,20 @@ class AuthService {
         return throwError(returnMessage("agency", "agencyInactive"));
 
       if (existing_Data?.role?.name === "team_agency") {
-        // if (existing_Data?.status == "team_agency_inactive")
-        //   return throwError(returnMessage("auth", "teamAgencyIsInactive"));
-
-        existing_Data.team_agency_detail = await Team_Agency.findById(
+        const team_agency_detail = await Team_Agency.findById(
           existing_Data?.reference_id
         )
           .populate("role", "name")
           .lean();
+        existing_Data.team_agency_detail = team_agency_detail;
+        const agency_detail = await Authentication.findOne({
+          reference_id: team_agency_detail?.agency_id,
+        }).lean();
+
+        if (agency_detail?.status === "payment_pending")
+          return throwError(
+            returnMessage("payment", "paymentPendingForAgency")
+          );
       }
       delete existing_Data?.is_facebook_signup;
       delete existing_Data?.is_google_signup;

@@ -109,6 +109,10 @@ class PaymentService {
         user?.status !== "payment_pending"
       )
         return throwError(returnMessage("payment", "alreadyPaid"));
+
+      if (user?.status === "free_trial")
+        return throwError(returnMessage("payment", "freeTrialOn"));
+
       const [plan, configuration] = await Promise.all([
         SubscriptionPlan.findOne({ active: true }).lean(),
         Configuration.findOne().lean(),
@@ -531,9 +535,13 @@ class PaymentService {
         let agency_data = await Authentication.findOne({
           reference_id: check_agency?.agency_id,
         }).lean();
-        user.subscribe_date = agency_data.subscribe_date;
-        user.subscription_id = agency_data.subscription_id;
+        user.status = agency_data?.status;
+        user.subscribe_date = agency_data?.subscribe_date;
+        user.subscription_id = agency_data?.subscription_id;
       }
+
+      if (user?.status === "free_trial")
+        return throwError(returnMessage("payment", "freeTrialOn"));
 
       if (
         user?.status === "payment_pending" ||
@@ -654,7 +662,6 @@ class PaymentService {
             .lean();
         }
 
-        console.log(userData);
         const agencyData = await Authentication.findOne({
           reference_id: payload?.agency_id,
         })
@@ -1459,9 +1466,11 @@ class PaymentService {
           );
         }
 
-        await SheetManagement.findByIdAndUpdate(sheets._id, {
-          occupied_sheets: updated_users,
-        });
+        const update_obj = { occupied_sheets: updated_users };
+        if (user?.status === "free_trial") {
+          update_obj.total_sheets = sheets?.total_sheets - 1;
+        }
+        await SheetManagement.findByIdAndUpdate(sheets._id, update_obj);
       }
       return;
     } catch (error) {
@@ -1495,9 +1504,15 @@ class PaymentService {
       //   })
       // );
 
-      await this.razorpayApi.patch(`/subscriptions/${user?.subscription_id}`, {
-        quantity: updated_sheet?.total_sheets,
-      });
+      if (user?.status !== "free_trial" && user?.subscription_id) {
+        await this.razorpayApi.patch(
+          `/subscriptions/${user?.subscription_id}`,
+          {
+            quantity: updated_sheet?.total_sheets,
+          }
+        );
+      }
+
       return;
     } catch (error) {
       console.log(JSON.stringify(error));
@@ -1508,15 +1523,18 @@ class PaymentService {
 
   getSubscription = async (agency) => {
     try {
-      const subscription = await this.subscripionDetail(
-        agency?.subscription_id
-      );
-      const [plan_details, sheets_detail, earned_total, agency_details] =
+      let subscription, plan_details, next_billing_date;
+      if (agency?.status !== "free_trial" && agency?.subscription_id) {
+        subscription = await this.subscripionDetail(agency?.subscription_id);
+        plan_details = await this.planDetails(subscription.plan_id);
+      }
+
+      const [sheets_detail, earned_total, agency_details, configuration] =
         await Promise.all([
-          this.planDetails(subscription.plan_id),
           SheetManagement.findOne({ agency_id: agency?.reference_id }).lean(),
           this.calculateTotalReferralPoints(agency),
           Agency.findById(agency?.reference_id).lean(),
+          Configuration.findOne({}).lean(),
         ]);
 
       if (agency?.subscription_halted) {
@@ -1524,11 +1542,21 @@ class PaymentService {
           subscription_halted_displayed: true,
         });
       }
+      if (agency?.status === "free_trial") {
+        const days = configuration?.payment?.free_trial;
+        next_billing_date = moment(agency?.createdAt)
+          .startOf("day")
+          .add(days, "days");
+
+        // this will change for the double plan
+        plan_details = await SubscriptionPlan.findOne({ active: true }).lean();
+      }
 
       return {
-        next_billing_date: subscription?.current_end,
+        next_billing_date: subscription?.current_end || next_billing_date,
         next_billing_price:
-          subscription?.quantity * (plan_details?.item.amount / 100),
+          subscription?.quantity * (plan_details?.item.amount / 100) ||
+          plan_details?.amount / 100,
         total_sheets: sheets_detail.total_sheets,
         available_sheets: Math.abs(
           sheets_detail.total_sheets - 1 - sheets_detail.occupied_sheets.length
@@ -2223,15 +2251,17 @@ class PaymentService {
 
   deactivateAgency = async (agency) => {
     try {
-      const { data } = await this.razorpayApi.post(
-        `/subscriptions/${agency?.subscription_id}/cancel`,
-        {
-          cancel_at_cycle_end: 0,
-        }
-      );
-      if (!data || data?.status !== "cancelled")
-        return throwError(returnMessage("default", "default"));
+      if (agency?.subscription_id && agency?.status !== "free_trial") {
+        const { data } = await this.razorpayApi.post(
+          `/subscriptions/${agency?.subscription_id}/cancel`,
+          {
+            cancel_at_cycle_end: 0,
+          }
+        );
 
+        if (!data || data?.status !== "cancelled")
+          return throwError(returnMessage("default", "default"));
+      }
       await this.deactivateAccount(agency);
     } catch (error) {
       logger.error(`Error while deactivating the agency: ${error}`);
@@ -2457,6 +2487,36 @@ class PaymentService {
     } catch (error) {
       logger.error(
         `Error while running the cron of the subscription expire cron: ${error}`
+      );
+      console.log(error);
+    }
+  };
+
+  cronForFreeTrialEnd = async () => {
+    try {
+      const [agencies, configuration] = await Promise.all([
+        Authentication.find({ status: "free_trial" }).lean(),
+        Configuration.findOne({}).lean(),
+      ]);
+      const today = moment.utc().startOf("day");
+
+      agencies.forEach(async (agency) => {
+        const created_at = moment.utc(agency.createdAt).startOf("day");
+        const days_diff = Math.abs(today.diff(created_at, "days"));
+
+        if (days_diff > configuration?.payment?.free_trial) {
+          await Authentication.findByIdAndUpdate(
+            agency?._id,
+            {
+              status: "payment_pending",
+            },
+            { new: true }
+          );
+        }
+      });
+    } catch (error) {
+      logger.error(
+        `Error while running cron for the free tial expire: ${error}`
       );
       console.log(error);
     }

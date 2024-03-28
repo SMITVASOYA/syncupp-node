@@ -251,7 +251,9 @@
     "canNotCancel": "Subscription can not be cancelled.",
     "couponpurchase": "Coupon purchased successfully.",
     "accountDeactivated": "Account de-activated successfully.",
-    "CouponNotExist": "Coupon does not exists."
+    "CouponNotExist": "Coupon does not exists.",
+    "freeTrialOn": "Your free trial is active.",
+    "paymentPendingForAgency": "Payment is pending for the agency."
   },
   "affiliate": {
     "registered": "User registered successfully.",
