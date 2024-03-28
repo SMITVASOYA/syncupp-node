@@ -1548,7 +1548,7 @@ class PaymentService {
         next_billing_date = moment(agency?.createdAt)
           .startOf("day")
           .add(days, "days");
-
+        next_billing_date = next_billing_date.unix();
         // this will change for the double plan
         plan_details = await SubscriptionPlan.findOne({ active: true }).lean();
       }
