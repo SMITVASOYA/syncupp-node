@@ -1556,7 +1556,7 @@ class PaymentService {
       return {
         next_billing_date: subscription?.current_end || next_billing_date,
         next_billing_price:
-          subscription?.quantity * (plan_details?.item.amount / 100) ||
+          subscription?.quantity * (plan_details?.item?.amount / 100) ||
           plan_details?.amount / 100,
         total_sheets: sheets_detail.total_sheets,
         available_sheets: Math.abs(
