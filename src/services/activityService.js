@@ -159,27 +159,37 @@ class ActivityService {
           },
         },
       ];
-
-      const getTask = await Activity.aggregate(pipeline);
-      let data = {
-        TaskTitle: "New Task Created",
-        taskName: title,
-        status: status?.name,
-        assign_by: user.first_name + " " + user.last_name,
-        dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
-        dueTime: timeOnly,
-        agginTo_email: getTask[0]?.assign_email,
-        assignName: getTask[0]?.assigned_to_name,
-      };
-      const taskMessage = taskTemplate(data);
-      await sendEmail({
-        email: getTask[0]?.assign_email,
-        subject: returnMessage("activity", "createSubject"),
-        message: taskMessage,
-      });
-
+      const clientData = await Authentication.findOne({
+        reference_id: client_id,
+      }).lean();
       if (user.role.name === "agency") {
         // ----------------------- Notification Start -----------------------
+        const getTask = await Activity.aggregate(pipeline);
+        let data = {
+          TaskTitle: "New Task Created",
+          taskName: title,
+          status: status?.name,
+          assign_by: user.first_name + " " + user.last_name,
+          dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
+          dueTime: timeOnly,
+          agginTo_email: getTask[0]?.assign_email,
+          assignName: getTask[0]?.assigned_to_name,
+        };
+        const taskMessage = taskTemplate(data);
+        sendEmail({
+          email: getTask[0]?.assign_email,
+          subject: returnMessage("activity", "createSubject"),
+          message: taskMessage,
+        });
+
+        if (clientData) {
+          sendEmail({
+            email: clientData?.email,
+            subject: returnMessage("activity", "createSubject"),
+            message: taskMessage,
+          });
+        }
+
         const client_data = await Authentication.findOne({
           reference_id: client_id,
         });
@@ -212,6 +222,32 @@ class ActivityService {
         user.role.name === "team_client"
       ) {
         // ----------------------- Notification Start -----------------------
+
+        const getTask = await Activity.aggregate(pipeline);
+        let data = {
+          TaskTitle: "New Task Created",
+          taskName: title,
+          status: status?.name,
+          assign_by: user.first_name + " " + user.last_name,
+          dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
+          dueTime: timeOnly,
+          agginTo_email: getTask[0]?.assign_email,
+          assignName: getTask[0]?.assigned_to_name,
+        };
+        const taskMessage = taskTemplate(data);
+        sendEmail({
+          email: getTask[0]?.assign_email,
+          subject: returnMessage("activity", "createSubject"),
+          message: taskMessage,
+        });
+
+        if (clientData) {
+          sendEmail({
+            email: clientData?.email,
+            subject: returnMessage("activity", "createSubject"),
+            message: taskMessage,
+          });
+        }
 
         const agencyData = await Authentication.findOne({
           reference_id: getTask[0]?.agency_id,
@@ -1245,10 +1281,17 @@ class ActivityService {
           assignName: task?.assigned_to_name,
         };
         const taskMessage = taskTemplate(data);
-
+        const clientData = await Authentication.findOne({
+          reference_id: task?.client_id,
+        }).lean();
         await sendEmail({
           email: task?.assign_email,
-          subject: returnMessage("activity", "UpdateSubject"),
+          subject: returnMessage("activity", "taskDeleted"),
+          message: taskMessage,
+        });
+        await sendEmail({
+          email: clientData?.email,
+          subject: returnMessage("activity", "taskDeleted"),
           message: taskMessage,
         });
         await notificationService.addNotification(
@@ -1571,6 +1614,18 @@ class ActivityService {
         {
           $unwind: "$assign_by",
         },
+
+        {
+          $lookup: {
+            from: "activity_status_masters",
+            localField: "activity_status",
+            foreignField: "_id",
+            as: "statusName",
+          },
+        },
+        {
+          $unwind: { path: "$statusName", preserveNullAndEmptyArrays: true },
+        },
         {
           $match: {
             _id: new mongoose.Types.ObjectId(id),
@@ -1590,27 +1645,39 @@ class ActivityService {
             column_id: "$status.name",
             assign_email: "$team_Data.email",
             agency_id: 1,
+            status_name: "$statusName.name",
           },
         },
       ];
-
       const getTask = await Activity.aggregate(pipeline);
       let data = {
         TaskTitle: "Updated Task ",
         taskName: title,
-        status: status?.name,
+        status: !payload?.mark_as_done ? getTask[0]?.status_name : "Completed",
         assign_by: getTask[0]?.assigned_by_name,
         dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
         dueTime: timeOnly,
         agginTo_email: getTask[0]?.assign_email,
         assignName: getTask[0]?.assigned_to_name,
       };
+      const client_Data = await Authentication.findOne({
+        reference_id: payload?.client_id,
+      });
+
       const taskMessage = taskTemplate(data);
-      await sendEmail({
+      sendEmail({
         email: getTask[0]?.assign_email,
         subject: returnMessage("activity", "UpdateSubject"),
         message: taskMessage,
       });
+
+      if (client_Data) {
+        sendEmail({
+          email: client_Data?.email,
+          subject: returnMessage("activity", "UpdateSubject"),
+          message: taskMessage,
+        });
+      }
 
       if (logInUser?.role?.name === "agency") {
         // -------------- Socket notification start --------------------
@@ -1640,9 +1707,7 @@ class ActivityService {
         );
 
         // -------------- Socket notification end --------------------
-      }
-
-      if (logInUser?.role?.name === "team_agency") {
+      } else if (logInUser?.role?.name === "team_agency") {
         // -------------- Socket notification start --------------------
 
         const client_data = await Authentication.findOne({
@@ -1999,13 +2064,21 @@ class ActivityService {
           assignName: getTask[0]?.assigned_to_name,
         };
         const taskMessage = taskTemplate(data);
-        await sendEmail({
+        sendEmail({
           email: getTask[0]?.assign_email,
           subject: returnMessage("activity", "UpdateSubject"),
           message: taskMessage,
         });
 
-        if (user.role.name === "agency") {
+        if (client_data) {
+          sendEmail({
+            email: client_data?.email,
+            subject: returnMessage("activity", "UpdateSubject"),
+            message: taskMessage,
+          });
+        }
+
+        if (user?.role?.name === "agency") {
           //   ----------    Notifications start ----------
           await notificationService.addNotification(
             {
