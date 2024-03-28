@@ -17,13 +17,12 @@ const { throwError } = require("../helpers/errorUtil");
 exports.agencySignUp = catchAsyncError(async (req, res, next) => {
   const files = req?.files || undefined;
   const agency = await authService.agencySignUp(req.body, files);
-  sendResponse(
-    res,
-    true,
-    returnMessage("agency", "agencyRegistered"),
-    agency,
-    statusCode.success
-  );
+
+  let message = returnMessage("agency", "agencyRegistered");
+  if (agency?.status === "free_trial") {
+    message = "Agency registred successfully.";
+  }
+  sendResponse(res, true, message, agency, statusCode.success);
 });
 
 exports.agencyGoogleSignUp = catchAsyncError(async (req, res, next) => {

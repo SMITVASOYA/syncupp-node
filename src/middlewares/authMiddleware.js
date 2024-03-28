@@ -31,7 +31,7 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
 
     if (user?.role?.name === "team_agency") {
       const team_agency_detail = await Team_Agency.findById(
-        existing_agency?.reference_id
+        user?.reference_id
       ).lean();
       const agency_detail = await Authentication.findOne({
         reference_id: team_agency_detail?.agency_id,
