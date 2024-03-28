@@ -33,6 +33,7 @@ const Configuration = require("../models/configurationSchema");
 const notificationService = new NotificationService();
 const TeamMemberService = require("../services/teamMemberService");
 const teamMemberService = new TeamMemberService();
+const fs = require("fs");
 
 class ClientService {
   // create client for the agency
@@ -726,7 +727,7 @@ class ClientService {
   };
 
   // Update Agency profile
-  updateClientProfile = async (payload, user_id, reference_id) => {
+  updateClientProfile = async (payload, user_id, reference_id, image) => {
     try {
       const {
         first_name,
@@ -742,6 +743,18 @@ class ClientService {
         country,
         pincode,
       } = payload;
+
+      let imagePath = false;
+      if (image) {
+        imagePath = "uploads/" + image.filename;
+        const existingImage = await Authentication.findById(user_id);
+        existingImage &&
+          fs.unlink(`./src/public/${existingImage.profile_image}`, (err) => {
+            if (err) {
+              logger.error(`Error while unlinking the documents: ${err}`);
+            }
+          });
+      }
 
       const authData = {
         first_name,
@@ -767,7 +780,10 @@ class ClientService {
       await Promise.all([
         Authentication.updateOne(
           { _id: user_id },
-          { $set: authData },
+          {
+            $set: authData,
+            ...(imagePath && { profile_image: imagePath }),
+          },
           { new: true }
         ),
         Client.updateOne(

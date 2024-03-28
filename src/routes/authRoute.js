@@ -1,6 +1,7 @@
 const authRoute = require("express").Router();
 const authController = require("../controllers/authController");
 const { protect } = require("../middlewares/authMiddleware");
+const { upload } = require("../helpers/multer");
 
 authRoute.post("/signup", authController.agencySignUp);
 
@@ -19,7 +20,11 @@ authRoute.post("/set-password", authController.passwordSetRequired);
 authRoute.use(protect);
 authRoute.post("/change-password", authController.changePassword);
 authRoute.get("/profile", authController.getProfile);
-authRoute.patch("/update-profile", authController.updateProfile);
+authRoute.patch(
+  "/update-profile",
+  upload.single("profile_image"),
+  authController.updateProfile
+);
 authRoute.post("/send-referral", authController.refferalEmail);
 authRoute.get("/subscription-halt", authController.checkSubscriptionHalt);
 module.exports = authRoute;

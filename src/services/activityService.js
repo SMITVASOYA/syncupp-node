@@ -4145,7 +4145,7 @@ class ActivityService {
           $sort: { totalPoints: -1 },
         },
         {
-          $limit: 3,
+          $limit: 5,
         },
         {
           $lookup: {

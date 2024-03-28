@@ -15,6 +15,7 @@ const authenticationSchema = new mongoose.Schema(
     invitation_token: { type: String },
     remember_me: { type: Boolean, default: false },
     is_deleted: { type: Boolean, default: false },
+    profile_image: { type: String },
     role: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "role_master",

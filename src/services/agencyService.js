@@ -13,7 +13,9 @@ const Invoice = require("../models/invoiceSchema");
 const mongoose = require("mongoose");
 const PaymentService = require("../services/paymentService");
 const SheetManagement = require("../models/sheetManagementSchema");
+const Agreement = require("../models/agreementSchema");
 const paymentService = new PaymentService();
+const fs = require("fs");
 // Register Agency
 class AgencyService {
   agencyRegistration = async (payload) => {
@@ -191,7 +193,7 @@ class AgencyService {
   };
 
   // Update Agency profile
-  updateAgencyProfile = async (payload, user_id, reference_id) => {
+  updateAgencyProfile = async (payload, user_id, reference_id, image) => {
     try {
       const {
         first_name,
@@ -207,7 +209,17 @@ class AgencyService {
         country,
         pincode,
       } = payload;
-
+      let imagePath = false;
+      if (image) {
+        imagePath = "uploads/" + image.filename;
+        const existingImage = await Authentication.findById(user_id);
+        existingImage &&
+          fs.unlink(`./src/public/${existingImage.profile_image}`, (err) => {
+            if (err) {
+              logger.error(`Error while unlinking the documents: ${err}`);
+            }
+          });
+      }
       const authData = {
         first_name,
         last_name,
@@ -232,12 +244,17 @@ class AgencyService {
       await Promise.all([
         Authentication.updateOne(
           { _id: user_id },
-          { $set: authData },
+          {
+            $set: authData,
+            ...(imagePath && { profile_image: imagePath }),
+          },
           { new: true }
         ),
         Agency.updateOne(
           { _id: reference_id },
-          { $set: agencyData },
+          {
+            $set: agencyData,
+          },
           { new: true }
         ),
       ]);
@@ -278,6 +295,7 @@ class AgencyService {
         totalAmountInvoices,
         invoiceOverdueCount,
         invoiceSentCount,
+        agreementPendingCount,
       ] = await Promise.all([
         Client.aggregate([
           {
@@ -706,6 +724,19 @@ class AgencyService {
             $count: "invoiceSentCount",
           },
         ]),
+
+        Agreement.aggregate([
+          {
+            $match: {
+              agency_id: new mongoose.Types.ObjectId(user?._id),
+              status: "sent",
+              is_deleted: false,
+            },
+          },
+          {
+            $count: "agreementPendingCount",
+          },
+        ]),
       ]);
 
       if (user?.status === "confirmed" && user?.subscription_id) {
@@ -737,6 +768,11 @@ class AgencyService {
         total_invoice_amount: totalAmountInvoices[0]?.totalPaidAmount ?? 0,
         invoice_overdue_count: invoiceOverdueCount[0]?.invoiceOverdueCount ?? 0,
         Next_billing_amount: Next_billing_amount || 0,
+        agreement_pending_count:
+          agreementPendingCount[0]?.agreementPendingCount ?? 0,
+        Next_billing_amount:
+          subscription?.quantity *
+            (planDetailForSubscription?.item.amount / 100) ?? 0,
         invoice_sent_count: invoiceSentCount[0]?.invoiceSentCount ?? 0,
       };
     } catch (error) {

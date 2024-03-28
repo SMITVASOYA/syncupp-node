@@ -34,6 +34,7 @@ const notificationService = new NotificationService();
 const moment = require("moment");
 const Client = require("../models/clientSchema");
 const Configuration = require("../models/configurationSchema");
+const fs = require("fs");
 
 class TeamMemberService {
   // Add Team Member by agency or client
@@ -1221,7 +1222,13 @@ class TeamMemberService {
   };
 
   // Update Team member profile
-  updateTeamMeberProfile = async (payload, user_id, reference_id, role) => {
+  updateTeamMeberProfile = async (
+    payload,
+    user_id,
+    reference_id,
+    role,
+    image
+  ) => {
     try {
       const {
         first_name,
@@ -1237,6 +1244,18 @@ class TeamMemberService {
         country,
         pincode,
       } = payload;
+
+      let imagePath = false;
+      if (image) {
+        imagePath = "uploads/" + image.filename;
+        const existingImage = await Authentication.findById(user_id);
+        existingImage &&
+          fs.unlink(`./src/public/${existingImage.profile_image}`, (err) => {
+            if (err) {
+              logger.error(`Error while unlinking the documents: ${err}`);
+            }
+          });
+      }
 
       const authData = {
         first_name,
@@ -1261,7 +1280,10 @@ class TeamMemberService {
 
       await Authentication.updateOne(
         { _id: user_id },
-        { $set: authData },
+        {
+          $set: authData,
+          ...(imagePath && { profile_image: imagePath }),
+        },
         { new: true }
       );
       if (role === "team_agency") {
