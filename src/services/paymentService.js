@@ -2465,7 +2465,9 @@ class PaymentService {
 
   listPlan = async () => {
     try {
-      const response = await SubscriptionPlan.find();
+      const response = await SubscriptionPlan.find({
+        _id: ["6605514b5790efa93c37e9fa", "660550d75790efa93c37e9f5"],
+      });
       // const response = await this.razorpayApi.get("/plans");
       console.log("first", response);
       return response;
