@@ -1352,7 +1352,6 @@ class ActivityService {
             });
           });
       }
-
       const status_check = await Activity.findById(id).populate(
         "activity_status"
       );
@@ -1362,12 +1361,15 @@ class ActivityService {
       const dueDateObject = moment(due_date);
       const duetimeObject = moment(due_date);
 
+      let updatedData = await Activity.findById(id).lean();
       const timeOnly = duetimeObject.format("HH:mm:ss");
 
       const currentDate = moment().startOf("day");
-
-      if (!dueDateObject.isSameOrAfter(currentDate)) {
-        return throwError(returnMessage("activity", "dateinvalid"));
+      let check_due_date = moment(updatedData.due_date);
+      if (!check_due_date.isSame(dueDateObject)) {
+        if (!dueDateObject.isSameOrAfter(currentDate)) {
+          return throwError(returnMessage("activity", "dateinvalid"));
+        }
       }
       let status;
       if (mark_as_done === true) {
@@ -1392,24 +1394,49 @@ class ActivityService {
       }
 
       const current_activity = await Activity.findById(id).lean();
+      let updateTasksPayload = {
+        title,
+        agenda,
+        due_date: dueDateObject.toDate(),
+        due_time: timeOnly,
+        assign_to,
+        activity_status: status?._id,
+        ...(newTags[0] && { tags: newTags }),
+        ...(typeof tags !== "string" && { tags: newTags }),
+        ...(!tags && { tags: [] }),
+        ...(attachments.length > 0 && { attachments }),
+      };
+
+      // Check if client_id is null, exclude it from the update payload
+      if (!client_id) {
+        updateTasksPayload.client_id = null;
+      } else {
+        updateTasksPayload.client_id = client_id;
+      }
+
       const updateTasks = await Activity.findByIdAndUpdate(
         id,
-        {
-          title,
-          agenda,
-          due_date: dueDateObject.toDate(),
-          due_time: timeOnly,
-          assign_to,
-          client_id,
-          activity_status: status?._id,
-          ...(newTags[0] && { tags: newTags }),
-          ...(typeof tags !== "string" && { tags: newTags }),
-          ...(!tags && { tags: [] }),
-
-          ...(attachments.length > 0 && { attachments }),
-        },
+        updateTasksPayload,
         { new: true, useFindAndModify: false }
       );
+      // const updateTasks = await Activity.findByIdAndUpdate(
+      //   id,
+      //   {
+      //     title,
+      //     agenda,
+      //     due_date: dueDateObject.toDate(),
+      //     due_time: timeOnly,
+      //     assign_to,
+      //     client_id,
+      //     activity_status: status?._id,
+      //     ...(newTags[0] && { tags: newTags }),
+      //     ...(typeof tags !== "string" && { tags: newTags }),
+      //     ...(!tags && { tags: [] }),
+
+      //     ...(attachments.length > 0 && { attachments }),
+      //   },
+      //   { new: true, useFindAndModify: false }
+      // );
       const current_status = current_activity?.activity_status;
 
       if (current_status?.toString() !== status?._id.toString()) {
