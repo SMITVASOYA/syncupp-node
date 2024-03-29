@@ -3356,7 +3356,7 @@ class ActivityService {
   getActivities = async (payload, user) => {
     try {
       const match_obj = { $match: {} };
-      const assign_obj = {};
+      const assign_obj = { $match: {} };
       if (payload?.given_date) {
         match_obj["$match"] = {
           due_date: {
@@ -3544,16 +3544,16 @@ class ActivityService {
         const teamRole = await Team_Agency.findOne({
           _id: user.reference_id,
         }).populate("role");
-        if (teamRole?.role?.name === "admin") {
-          assign_obj["$match"] = {
-            $or: [
-              { assign_by: user.reference_id },
-              { assign_to: user.reference_id },
-            ],
-            is_deleted: false,
-            // activity_type: new mongoose.Types.ObjectId(type._id),
-          };
-        }
+        // if (teamRole?.role?.name === "admin") {
+        assign_obj["$match"] = {
+          $or: [
+            { assign_by: user.reference_id },
+            { assign_to: user.reference_id },
+          ],
+          is_deleted: false,
+          // activity_type: new mongoose.Types.ObjectId(type._id),
+          // };
+        };
       } else if (user?.role?.name === "client") {
         assign_obj["$match"] = {
           is_deleted: false,

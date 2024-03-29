@@ -19,8 +19,8 @@ exports.agencySignUp = catchAsyncError(async (req, res, next) => {
   const agency = await authService.agencySignUp(req.body, files);
 
   let message = returnMessage("agency", "agencyRegistered");
-  if (agency?.status === "free_trial") {
-    message = "Agency registred successfully.";
+  if (agency?.user?.status === "free_trial") {
+    message = "Agency registered successfully.";
   }
   sendResponse(res, true, message, agency, statusCode.success);
 });
