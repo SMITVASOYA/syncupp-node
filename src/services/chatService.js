@@ -358,6 +358,7 @@ class ChatService {
             is_online: 1,
             created_by: 1,
             reference_id: 1,
+            profile_image: 1,
           },
         },
       ];

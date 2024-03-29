@@ -1,7 +1,7 @@
 const authRoute = require("express").Router();
 const authController = require("../controllers/authController");
 const { protect } = require("../middlewares/authMiddleware");
-const { upload } = require("../helpers/multer");
+const { upload, checkProfileSize } = require("../helpers/multer");
 
 authRoute.post("/signup", authController.agencySignUp);
 
@@ -22,6 +22,7 @@ authRoute.post("/change-password", authController.changePassword);
 authRoute.get("/profile", authController.getProfile);
 authRoute.patch(
   "/update-profile",
+  checkProfileSize,
   upload.single("profile_image"),
   authController.updateProfile
 );

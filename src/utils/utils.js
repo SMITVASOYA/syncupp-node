@@ -4819,12 +4819,12 @@ exports.invoiceTemplate = (invoiceData) => {
                                     ${invoiceData.invoice_content
                                       .map(
                                         (item) => `
-                                        <tr style="border-bottom: 1px solid #fafafa;">
+                                        <tr style="border-bottom: 1px solid #fafafa; ">
                                         <td align="left" style=" padding-top: 10px; font-weight: 400; font-size: 12px; text-overflow: ellipsis;  vertical-align: top; border-bottom: 1px solid black; padding-bottom:5px;
-    border-collapse: collapse;">
+    border-collapse: collapse;   word-break: break-all;  padding-right: 10px;">
     ${item.item}
                                         </td>
-                                        <td align="left" style="padding-top: 10px; font-weight: 400; font-size: 12px; text-overflow: ellipsis; vertical-align: top; border-bottom: 1px solid black; padding-bottom:5px; border-collapse: collapse; word-break: break-all;">
+                                        <td align="left" style="padding-top: 10px; font-weight: 400; font-size: 12px; text-overflow: ellipsis; vertical-align: top; border-bottom: 1px solid black; padding-bottom:5px; border-collapse: collapse; word-break: break-all;   padding-right: 10px;">
                                         ${item.description}
                                       </td>
                                       
@@ -6789,7 +6789,9 @@ exports.activityTemplate = (data) => {
   border-collapse: collapse; font-weight: 600; max-width: 100px;
  overflow: hidden;
  text-overflow: ellipsis;
- white-space: nowrap;">${data?.title ?? `&nbsp;`}</td>
+ white-space: nowrap; text-transform: capitalize;">${
+   data?.title ?? `&nbsp;`
+ }</td>
                                           </tr>
                                           <tr>
                                           <td style=" border-top-left-radius: 5px;
@@ -6798,7 +6800,9 @@ border-collapse: collapse;">Agenda :</td>
 border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
-white-space: nowrap;">${data?.agenda ? data?.agenda : "-"}</td>
+white-space: nowrap; text-transform: capitalize;">${
+    data?.agenda ? data?.agenda : "-"
+  }</td>
                                         </tr>
 
 
@@ -6875,7 +6879,7 @@ border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
 white-space: nowrap;">${
-    data?.activity_type === "call_meeting" ? "call meeting" : "other"
+    data?.activity_type === "call_meeting" ? "Call meeting" : "Other"
   }</td>
                                 </tr>
 
@@ -7869,7 +7873,7 @@ exports.invitationEmailTemplate = (data) => {
                                           text-decoration: none;
                                           color: #2d3142;
                                           font-size: 14px;
-                                        " href="${privacy_policy}"></a><a target="_blank" style="
+                                        " href="${data.privacy_policy}"></a><a target="_blank" style="
                                           -webkit-text-size-adjust: none;
                                           -ms-text-size-adjust: none;
                                           mso-line-height-rule: exactly;

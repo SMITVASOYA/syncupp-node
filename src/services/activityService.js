@@ -159,7 +159,8 @@ class ActivityService {
           },
         },
       ];
-      const clientData = await Authentication.findOne({
+
+      const client_data = await Authentication.findOne({
         reference_id: client_id,
       }).lean();
       if (user.role.name === "agency") {
@@ -182,17 +183,17 @@ class ActivityService {
           message: taskMessage,
         });
 
-        if (clientData) {
+        if (client_data) {
           sendEmail({
-            email: clientData?.email,
+            email: client_data?.email,
             subject: returnMessage("activity", "createSubject"),
-            message: taskMessage,
+            message: taskTemplate({
+              ...data,
+              assignName: client_data.first_name + " " + client_data.last_name,
+            }),
           });
         }
 
-        const client_data = await Authentication.findOne({
-          reference_id: client_id,
-        });
         await notificationService.addNotification(
           {
             assign_by: user?.reference_id,
@@ -241,11 +242,15 @@ class ActivityService {
           message: taskMessage,
         });
 
-        if (clientData) {
+        if (client_data) {
           sendEmail({
-            email: clientData?.email,
+            email: client_data?.email,
             subject: returnMessage("activity", "createSubject"),
-            message: taskMessage,
+
+            message: taskTemplate({
+              ...data,
+              assignName: client_data.first_name + " " + client_data.last_name,
+            }),
           });
         }
 
@@ -253,9 +258,6 @@ class ActivityService {
           reference_id: getTask[0]?.agency_id,
         });
 
-        const client_data = await Authentication.findOne({
-          reference_id: client_id,
-        }).lean();
         await notificationService.addNotification(
           {
             agency_name: agencyData?.first_name + " " + agencyData?.last_name,
@@ -1289,11 +1291,18 @@ class ActivityService {
           subject: returnMessage("activity", "taskDeleted"),
           message: taskMessage,
         });
-        await sendEmail({
-          email: clientData?.email,
-          subject: returnMessage("activity", "taskDeleted"),
-          message: taskMessage,
-        });
+
+        if (clientData) {
+          await sendEmail({
+            email: clientData?.email,
+            subject: returnMessage("activity", "taskDeleted"),
+            message: taskTemplate({
+              ...data,
+              assignName: clientData.first_name + " " + clientData.last_name,
+            }),
+          });
+        }
+
         await notificationService.addNotification(
           {
             title: task?.title,
@@ -1650,19 +1659,23 @@ class ActivityService {
         },
       ];
       const getTask = await Activity.aggregate(pipeline);
+
       let data = {
         TaskTitle: "Updated Task ",
         taskName: title,
-        status: !payload?.mark_as_done ? getTask[0]?.status_name : "Completed",
+        status:
+          payload?.mark_as_done === "true"
+            ? "Completed"
+            : getTask[0]?.status_name,
         assign_by: getTask[0]?.assigned_by_name,
         dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
         dueTime: timeOnly,
         agginTo_email: getTask[0]?.assign_email,
         assignName: getTask[0]?.assigned_to_name,
       };
-      const client_Data = await Authentication.findOne({
+      const client_data = await Authentication.findOne({
         reference_id: payload?.client_id,
-      });
+      }).lean();
 
       const taskMessage = taskTemplate(data);
       sendEmail({
@@ -1671,20 +1684,20 @@ class ActivityService {
         message: taskMessage,
       });
 
-      if (client_Data) {
+      if (client_data) {
         sendEmail({
-          email: client_Data?.email,
+          email: client_data?.email,
           subject: returnMessage("activity", "UpdateSubject"),
-          message: taskMessage,
+          message: taskTemplate({
+            ...data,
+            assignName: client_data.first_name + " " + client_data.last_name,
+          }),
         });
       }
 
       if (logInUser?.role?.name === "agency") {
         // -------------- Socket notification start --------------------
 
-        const client_data = await Authentication.findOne({
-          reference_id: client_id,
-        });
         let taskAction = "update";
         // For Complete
         if (mark_as_done === "true") taskAction = "completed";
@@ -2074,7 +2087,10 @@ class ActivityService {
           sendEmail({
             email: client_data?.email,
             subject: returnMessage("activity", "UpdateSubject"),
-            message: taskMessage,
+            message: taskTemplate({
+              ...data,
+              assignName: client_data.first_name + " " + client_data.last_name,
+            }),
           });
         }
 

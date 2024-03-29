@@ -27,6 +27,7 @@ const configurationSchema = new mongoose.Schema(
     },
     multer: {
       size: { type: Number, default: 200 },
+      profileSize: { type: Number, default: 1 },
     },
     chat: {
       file_size: { type: Number, default: 200 },
