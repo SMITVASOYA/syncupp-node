@@ -125,16 +125,11 @@ class PaymentService {
           statusCode.notFound
         );
 
-      const start_at = moment
-        .utc()
-        .add(configuration?.payment?.free_trial, "days")
-        .startOf("day");
       const subscription_obj = {
         plan_id: plan?.plan_id,
         quantity: 1,
         customer_notify: 1,
         total_count: 120,
-        start_at: start_at.unix(),
       };
       // commenting because to test the razorpay axios api call
       // const subscription = await razorpay.subscriptions.create(
