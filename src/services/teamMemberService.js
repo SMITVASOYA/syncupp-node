@@ -1248,14 +1248,17 @@ class TeamMemberService {
       let imagePath = false;
       if (image) {
         imagePath = "uploads/" + image.filename;
-        const existingImage = await Authentication.findById(user_id);
-        existingImage &&
-          fs.unlink(`./src/public/${existingImage.profile_image}`, (err) => {
-            if (err) {
-              logger.error(`Error while unlinking the documents: ${err}`);
-            }
-          });
+      } else if (image === undefined || image === "") {
+        imagePath = "";
       }
+
+      const existingImage = await Authentication.findById(user_id);
+      existingImage &&
+        fs.unlink(`./src/public/${existingImage.profile_image}`, (err) => {
+          if (err) {
+            logger.error(`Error while unlinking the documents: ${err}`);
+          }
+        });
 
       const authData = {
         first_name,
@@ -1282,7 +1285,7 @@ class TeamMemberService {
         { _id: user_id },
         {
           $set: authData,
-          ...(imagePath && { profile_image: imagePath }),
+          ...((imagePath || imagePath === "") && { profile_image: imagePath }),
         },
         { new: true }
       );

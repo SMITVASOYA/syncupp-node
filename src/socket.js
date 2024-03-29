@@ -148,7 +148,7 @@ exports.socket_connection = (http_server) => {
           const sender_detail = await Authentication.findOne({
             reference_id: payload?.from_user,
           })
-            .select("first_name last_name")
+            .select("first_name last_name profile_image")
             .lean();
           let notification_message = returnNotification("chat", "newMessage");
           notification_message = notification_message.replaceAll(
@@ -441,7 +441,7 @@ exports.socket_connection = (http_server) => {
             message,
           }),
           Authentication.findOne({ reference_id: from_user })
-            .select("first_name last_name reference_id")
+            .select("first_name last_name reference_id profile_image")
             .lean(),
           Group_Chat.findById(group_id).lean(),
         ]);
@@ -581,7 +581,7 @@ exports.socket_connection = (http_server) => {
           const user_detail = await Authentication.findOne({
             reference_id: from_user,
           })
-            .select("first_name last_name reference_id")
+            .select("first_name last_name reference_id profile_image")
             .lean();
 
           io.to(group_id).emit("GROUP_RECEIVED_IMAGE", {
@@ -656,7 +656,7 @@ exports.socket_connection = (http_server) => {
           const user_detail = await Authentication.findOne({
             reference_id: from_user,
           })
-            .select("first_name last_name reference_id")
+            .select("first_name last_name reference_id profile_image")
             .lean();
 
           io.to(group_id).emit("GROUP_RECEIVED_DOCUMENT", {

@@ -272,6 +272,7 @@ class GroupChatService {
                   first_name: 1,
                   last_name: 1,
                   reference_id: 1,
+                  profile_image: 1,
                   _id: 1,
                 },
               },

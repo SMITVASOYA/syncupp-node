@@ -48,6 +48,7 @@ class ChatService {
         { user_id: user?.reference_id, from_user: payload?.to_user },
         { $set: { is_read: true } }
       );
+
       return chats;
     } catch (error) {
       logger.error(`Erroe while fetching the chat history: ${error}`);
@@ -424,7 +425,7 @@ class ChatService {
         user_detail = await Authentication.findOne({
           reference_id: payload?.from_user,
         })
-          .select("first_name last_name reference_id")
+          .select("first_name last_name reference_id profile_image")
           .lean();
         event_name = "GROUP_RECEIVED_IMAGE";
         receivers = payload?.group_id;
@@ -467,7 +468,7 @@ class ChatService {
         user_detail = await Authentication.findOne({
           reference_id: payload?.from_user,
         })
-          .select("first_name last_name reference_id")
+          .select("first_name last_name reference_id profile_image")
           .lean();
         event_name = "GROUP_RECEIVED_DOCUMENT";
         receivers = payload?.group_id;
