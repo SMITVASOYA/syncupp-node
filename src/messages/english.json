@@ -34,7 +34,8 @@
     "teamAgencyIsInactive": "Your account has been deactivate by agency.",
     "sendRefferalEmail": "Referral email send successfully.",
     "invitationEmailSubject": "Inviation to the SyncUpp.",
-    "completeProfile": "Complete your profile first to access Syncupp."
+    "completeProfile": "Complete your profile first to access Syncupp.",
+    "facebookEmailNotFound": "Your email is not linked with facebook."
   },
 
   "admin": {
