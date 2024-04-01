@@ -532,7 +532,8 @@ class AuthService {
         )
         .then((res) => res.data);
 
-      if (!data?.email) return throwError(returnMessage("default", "default"));
+      if (!data?.email)
+        return throwError(returnMessage("auth", "facebookEmailNotFound"));
 
       let [existing_agency, referral_data] = await Promise.all([
         Authentication.findOne({

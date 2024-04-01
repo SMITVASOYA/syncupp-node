@@ -120,6 +120,7 @@ exports.couponPay = catchAsyncError(async (req, res, next) => {
 });
 
 exports.deactivateAccount = catchAsyncError(async (req, res, next) => {
+  await paymentService.deactivateAgency(req.user);
   sendResponse(
     res,
     true,
