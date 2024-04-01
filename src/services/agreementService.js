@@ -33,7 +33,7 @@ class AgreementService {
         receiver,
         send,
       } = payload;
-      const dueDate = new Date(due_date);
+      const dueDate = moment.utc(due_date, "DD-MM-YYYY").startOf("day");
 
       const auth = await Authentication.findById(receiver).populate("role");
       if (auth.role.name === "client") {
@@ -521,6 +521,7 @@ class AgreementService {
       }
 
       if (agreement.status === "draft") {
+        const dueDate = moment.utc(due_date, "DD-MM-YYYY").startOf("day");
         const updatedAgreement = await Agreement.findByIdAndUpdate(
           {
             _id: agreementId,
@@ -528,7 +529,7 @@ class AgreementService {
           {
             title,
             agreement_content,
-            due_date,
+            due_date: dueDate,
             status,
             receiver,
           },
