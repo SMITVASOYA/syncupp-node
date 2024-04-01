@@ -9,6 +9,8 @@ const {
 } = require("../utils/utils");
 const sendEmail = require("../helpers/sendEmail");
 const Admin = require("../models/adminSchema");
+const NotificationService = require("./notificationService");
+const notificationService = new NotificationService();
 
 class inquiryService {
   // Add   Inquiry
@@ -41,6 +43,10 @@ class inquiryService {
         email: process.env.CLIENT_EMAIL,
         subject: returnMessage("inquiry", "newInquiry"),
         message: formattedInquiryEmail,
+      });
+
+      await notificationService.addAdminNotification({
+        module_name: "inquiry",
       });
 
       return inquiry;

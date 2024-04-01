@@ -599,7 +599,7 @@ class NotificationService {
       }
 
       //  seat remover
-      if (action_name === "seatRemoved") {
+      else if (action_name === "seatRemoved") {
         if (payload.user_type === "client") {
           await createAndEmitNotification(
             admin._id,
@@ -625,8 +625,7 @@ class NotificationService {
       }
 
       // Payment
-
-      if (payload.module_name === "payment") {
+      else if (payload.module_name === "payment") {
         if (
           payload.action_name === "team_agency" ||
           payload.action_name === "team_client"
@@ -652,6 +651,16 @@ class NotificationService {
             "deleted"
           );
         }
+      }
+
+      // inquiry
+      else if (payload.module_name === "inquiry") {
+        await createAndEmitNotification(
+          admin._id,
+          "newInquiry",
+          "admin",
+          "deleted"
+        );
       }
 
       return;

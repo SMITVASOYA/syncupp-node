@@ -118,7 +118,8 @@
     "clientTeamPaymentFail": "Team member ${member_name} payment fail.",
     "memberPayment": "Team member ${user_name} payment ${currency} ${amount}  done by ${agency_name}.",
     "agencyPayment": "Agency ${user_name} payment ${currency} ${amount} done.",
-    "clientPayment": "Client ${user_name} payment ${currency} ${amount} done by ${agency_name}."
+    "clientPayment": "Client ${user_name} payment ${currency} ${amount} done by ${agency_name}.",
+    "newInquiry": "New inquiry received."
   },
 
   "chat": {
