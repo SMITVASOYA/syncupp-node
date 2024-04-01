@@ -747,7 +747,7 @@ class ClientService {
       let imagePath = false;
       if (image) {
         imagePath = "uploads/" + image.filename;
-      } else if (image === undefined || image === "") {
+      } else if (image === "") {
         imagePath = "";
       }
       const existingImage = await Authentication.findById(user_id);
