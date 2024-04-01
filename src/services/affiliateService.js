@@ -329,9 +329,9 @@ class AffiliateService {
         Affiliate.findOne({
           _id: user?._id,
         }),
-        Authentication.countDocuments({
-          reference_id: { $in: agencyIds },
-          status: "confirmed",
+        Affiliate_Referral.countDocuments({
+          referred_by: user?._id,
+          status: "active",
         }),
         PaymentHistory.aggregate([
           {

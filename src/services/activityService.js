@@ -165,6 +165,8 @@ class ActivityService {
       }).lean();
       if (user.role.name === "agency") {
         // ----------------------- Notification Start -----------------------
+        const indianTimeZone = dueDateObject.tz("Asia/Kolkata").format("HH:mm");
+
         const getTask = await Activity.aggregate(pipeline);
         let data = {
           TaskTitle: "New Task Created",
@@ -172,7 +174,7 @@ class ActivityService {
           status: status?.name,
           assign_by: user.first_name + " " + user.last_name,
           dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
-          dueTime: timeOnly,
+          dueTime: indianTimeZone,
           agginTo_email: getTask[0]?.assign_email,
           assignName: getTask[0]?.assigned_to_name,
         };
@@ -224,6 +226,8 @@ class ActivityService {
       ) {
         // ----------------------- Notification Start -----------------------
 
+        const indianTimeZone = dueDateObject.tz("Asia/Kolkata").format("HH:mm");
+
         const getTask = await Activity.aggregate(pipeline);
         let data = {
           TaskTitle: "New Task Created",
@@ -231,7 +235,7 @@ class ActivityService {
           status: status?.name,
           assign_by: user.first_name + " " + user.last_name,
           dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
-          dueTime: timeOnly,
+          dueTime: indianTimeZone,
           agginTo_email: getTask[0]?.assign_email,
           assignName: getTask[0]?.assigned_to_name,
         };
