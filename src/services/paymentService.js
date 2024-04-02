@@ -116,8 +116,8 @@ class PaymentService {
       if (user?.status === "free_trial")
         return throwError(returnMessage("payment", "freeTrialOn"));
 
-      const [plan, Sheets] = await Promise.all([
-        SubscriptionPlan.findById(payload?.product_id).lean(),
+      const [plan, sheets] = await Promise.all([
+        SubscriptionPlan.findOne({ active: true }).lean(),
         SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
       ]);
 
@@ -129,7 +129,7 @@ class PaymentService {
 
       const subscription_obj = {
         plan_id: plan?.plan_id,
-        quantity: 1,
+        quantity: sheets?.total_sheets || 1,
         customer_notify: 1,
         total_count: 120,
       };
@@ -145,21 +145,22 @@ class PaymentService {
         fail_existing: 0,
       });
 
-      const emails = [
-        "laksh@neuroidmedia.com",
-        "saurabh@growmedico.com",
-        "imshubham026@gmail.com",
-        "vijaysujanani@hotmail.com",
-        "tanjirouedits7@gmail.com",
-        "fullstacktridhya@gmail.com",
-      ];
-      if (emails.includes(user?.email)) {
-        const sheets = await SheetManagement.findOne({
-          agency_id: user?.reference_id,
-        }).lean();
-        subscription_obj.quantity = sheets.total_sheets;
-        subscription_obj.start_at = undefined;
-      }
+      // removed as this is no use now
+      // const emails = [
+      //   "laksh@neuroidmedia.com",
+      //   "saurabh@growmedico.com",
+      //   "imshubham026@gmail.com",
+      //   "vijaysujanani@hotmail.com",
+      //   "tanjirouedits7@gmail.com",
+      //   "fullstacktridhya@gmail.com",
+      // ];
+      // if (emails.includes(user?.email)) {
+      //   const sheets = await SheetManagement.findOne({
+      //     agency_id: user?.reference_id,
+      //   }).lean();
+      //   subscription_obj.quantity = sheets.total_sheets;
+      //   subscription_obj.start_at = undefined;
+      // }
 
       const { data } = await this.razorpayApi.post(
         "/subscriptions",
@@ -176,7 +177,7 @@ class PaymentService {
 
       return {
         payment_id: subscription?.id,
-        amount: plan?.amount,
+        amount: plan?.amount * sheets?.total_sheets || plan?.amount * 1,
         currency: plan?.currency,
         agency_id: user?.reference_id,
         email: user?.email,
