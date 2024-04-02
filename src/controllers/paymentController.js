@@ -10,7 +10,7 @@ exports.createPlan = catchAsyncError(async (req, res, next) => {
 });
 
 exports.createSubscription = catchAsyncError(async (req, res, next) => {
-  const subscription = await paymentService.subscription(req.user);
+  const subscription = await paymentService.subscription(req.body, req.user);
   sendResponse(
     res,
     true,

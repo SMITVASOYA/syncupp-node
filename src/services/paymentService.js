@@ -58,38 +58,40 @@ class PaymentService {
 
   createPlan = async (payload) => {
     try {
-      // const planExist = await SubscriptionPlan.findOne({
-      //   period: "monthly",
-      // }).lean();
-      // if (planExist) return throwError(returnMessage("payment", "planExist"));
-
-      const planData = {
-        period: payload?.period,
-        interval: 1, // Charge every month
-        item: {
-          name: payload?.name,
-          description: payload?.description,
-          amount: payload?.amount * 100, // Amount in paise (6000 INR)
-          currency: payload?.currency,
-        },
-      };
-      const plan = await Promise.resolve(razorpay.plans.create(planData));
-
-      if (plan) {
-        await SubscriptionPlan.updateMany({}, { active: false }, { new: true });
-        await SubscriptionPlan.create({
-          amount: payload?.amount * 100,
-          currency: payload?.currency,
-          description: payload?.description,
-          plan_id: plan?.id,
-          period: payload?.period,
-          name: payload?.name,
-          active: false,
-          symbol: payload?.symbol,
-          seat: payload?.seat,
-        });
+      if (payload?.products?.length > 0) {
+        await SubscriptionPlan.updateMany({}, { active: false });
       }
-      return;
+
+      // this will create the product from the Backend
+      payload?.products?.forEach(async (product) => {
+        const planData = {
+          period: product?.period,
+          interval: 1, // Charge every month
+          item: {
+            name: product?.name,
+            description: product?.description,
+            amount: product?.amount * 100, // Amount in paise (6000 INR)
+            currency: product?.currency,
+          },
+        };
+        const plan = await Promise.resolve(razorpay.plans.create(planData));
+
+        if (plan) {
+          await SubscriptionPlan.create({
+            amount: product?.amount * 100,
+            currency: product?.currency,
+            description: product?.description,
+            plan_id: plan?.id,
+            period: product?.period,
+            name: product?.name,
+            active: false,
+            symbol: product?.symbol,
+            seat: product?.seat,
+            sort_value: product?.sort_value,
+          });
+        }
+        return;
+      });
     } catch (error) {
       console.log(JSON.stringify(error));
       logger.error(`Error while creating the plan: ${error}`);
@@ -97,7 +99,7 @@ class PaymentService {
     }
   };
 
-  subscription = async (user) => {
+  subscription = async (payload, user) => {
     try {
       if (user?.role?.name !== "agency")
         return throwError(
@@ -114,12 +116,12 @@ class PaymentService {
       if (user?.status === "free_trial")
         return throwError(returnMessage("payment", "freeTrialOn"));
 
-      const [plan, configuration] = await Promise.all([
-        SubscriptionPlan.findOne({ active: true }).lean(),
-        Configuration.findOne().lean(),
+      const [plan, Sheets] = await Promise.all([
+        SubscriptionPlan.findById(payload?.product_id).lean(),
+        SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
       ]);
 
-      if (!plan)
+      if (!plan || !plan?.active)
         return throwError(
           returnMessage("payment", "planNotFound"),
           statusCode.notFound
@@ -2516,17 +2518,15 @@ class PaymentService {
       );
     }
   };
+
   listPlan = async () => {
     try {
-      const response = await SubscriptionPlan.find({
-        _id: ["6605514b5790efa93c37e9fa", "660550d75790efa93c37e9f5"],
-      });
-      // const response = await this.razorpayApi.get("/plans");
-      console.log("first", response);
-      return response;
+      return await SubscriptionPlan.find({ active: true })
+        .sort({ sort_value: 1 })
+        .lean();
     } catch (error) {
       logger.error(`Error while running the list plan: ${error}`);
-      console.log(error);
+      return throwError(error?.message, error?.statusCode);
     }
   };
 

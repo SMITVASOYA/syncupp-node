@@ -17,6 +17,7 @@ const subscriptionPlanSchema = new mongoose.Schema(
     active: { type: Boolean, default: false },
     symbol: { type: String },
     seat: { type: Number },
+    sort_value: { type: Number },
   },
   { timestamps: true }
 );
