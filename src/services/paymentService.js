@@ -2309,12 +2309,12 @@ class PaymentService {
           { is_deleted: true }
         ),
         Client.updateMany(
-          { "agency_ids.agency_id": agency?.reference_id },
-          { "agency_ids.status": "deleted" }
+          { agency_ids: { $elemMatch: { agency_id: agency?.reference_id } } },
+          { $set: { "agency_ids.$.status": "deleted" } }
         ),
         Team_Client.updateMany(
-          { "agency_ids.agency_id": agency?.reference_id },
-          { "agency_ids.status": "deleted" }
+          { agency_ids: { $elemMatch: { agency_id: agency?.reference_id } } },
+          { $set: { "agency_ids.$.status": "deleted" } }
         ),
         Authentication.updateMany(
           { reference_id: agency?.reference_id },
