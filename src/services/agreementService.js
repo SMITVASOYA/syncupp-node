@@ -33,7 +33,7 @@ class AgreementService {
         receiver,
         send,
       } = payload;
-      const dueDate = new Date(due_date);
+      const dueDate = moment.utc(due_date, "DD/MM/YYYY").utc();
 
       const auth = await Authentication.findById(receiver).populate("role");
       if (auth.role.name === "client") {
@@ -407,6 +407,11 @@ class AgreementService {
   updateAgreement = async (payload, agreementId) => {
     try {
       const { title, agreement_content, due_date, status, receiver } = payload;
+
+      if (payload.due_date) {
+        payload.due_date = moment.utc(payload.due_date, "DD/MM/YYYY").utc();
+      }
+
       const agreement = await Agreement.findOne({
         _id: agreementId,
         is_deleted: false,
@@ -528,7 +533,7 @@ class AgreementService {
           {
             title,
             agreement_content,
-            due_date,
+            due_date: payload.due_date,
             status,
             receiver,
           },
