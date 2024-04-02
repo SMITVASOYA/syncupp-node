@@ -114,9 +114,9 @@ class PaymentService {
       if (user?.status === "free_trial")
         return throwError(returnMessage("payment", "freeTrialOn"));
 
-      const [plan, configuration] = await Promise.all([
+      const [plan, sheets] = await Promise.all([
         SubscriptionPlan.findOne({ active: true }).lean(),
-        Configuration.findOne().lean(),
+        SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
       ]);
 
       if (!plan)
@@ -127,7 +127,7 @@ class PaymentService {
 
       const subscription_obj = {
         plan_id: plan?.plan_id,
-        quantity: 1,
+        quantity: sheets?.total_sheets || 1,
         customer_notify: 1,
         total_count: 120,
       };
@@ -174,7 +174,7 @@ class PaymentService {
 
       return {
         payment_id: subscription?.id,
-        amount: plan?.amount,
+        amount: plan?.amount * sheets?.total_sheets || plan?.amount * 1,
         currency: plan?.currency,
         agency_id: user?.reference_id,
         email: user?.email,
