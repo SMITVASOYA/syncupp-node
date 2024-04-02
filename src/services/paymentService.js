@@ -88,6 +88,7 @@ class PaymentService {
             symbol: product?.symbol,
             seat: product?.seat,
             sort_value: product?.sort_value,
+            plan_type: product?.plan_type,
           });
         }
         return;
@@ -117,7 +118,7 @@ class PaymentService {
         return throwError(returnMessage("payment", "freeTrialOn"));
 
       const [plan, sheets] = await Promise.all([
-        SubscriptionPlan.findOne({ active: true }).lean(),
+        SubscriptionPlan.findById(payload?.product_id).lean(),
         SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
       ]);
 
@@ -254,24 +255,40 @@ class PaymentService {
           const plan_id = payload?.subscription?.entity?.plan_id;
           const quantity = payload?.subscription?.entity?.quantity;
 
-          const [agency_details, payment_history] = await Promise.all([
+          const [agency_details, payment_history, plan] = await Promise.all([
             Authentication.findOne({ subscription_id }).lean(),
-            PaymentHistory.findOne({ subscription_id }),
+            PaymentHistory.findOne({ subscription_id }).lean(),
+            SubscriptionPlan.findOne({ plan_id }).lean(),
           ]);
+
           if (!agency_details) return;
           let first_time = false;
           if (!payment_history) first_time = true;
 
-          await PaymentHistory.create({
-            agency_id: agency_details?.reference_id,
-            amount,
-            subscription_id,
-            currency,
-            payment_id,
-            first_time,
-            plan_id,
-            quantity,
-          });
+          if (plan?.plan_type === "unlimited") {
+            await SheetManagement.findOneAndUpdate(
+              {
+                agency_id: agency_details?.reference_id,
+              },
+              { total_sheets: plan?.seat }
+            );
+          }
+
+          await Promise.all([
+            PaymentHistory.create({
+              agency_id: agency_details?.reference_id,
+              amount,
+              subscription_id,
+              currency,
+              payment_id,
+              first_time,
+              plan_id,
+              quantity,
+            }),
+            Authentication.findByIdAndUpdate(agency_details?._id, {
+              purchased_plan: plan?._id,
+            }),
+          ]);
 
           return;
         } else if (body?.event === "subscription.activated") {
