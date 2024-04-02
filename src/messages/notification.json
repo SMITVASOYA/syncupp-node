@@ -137,7 +137,7 @@
   },
   "referral": {
     "signUp": "New user ${referred_to} joined ${points} Points added.",
-    "login": "First login ${points} Points added.",
+    "login": "${points} Points added to your account for your first daily login.",
     "taskDeduct": "${points} points deducted of Task ${task_name}.",
     "taskAdded": "${points} points added of Task ${task_name}."
   }

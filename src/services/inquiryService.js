@@ -6,10 +6,12 @@ const {
   inquiryEmail,
   returnMessage,
   inquiryTemplate,
+  validateEmail,
 } = require("../utils/utils");
 const sendEmail = require("../helpers/sendEmail");
 const Admin = require("../models/adminSchema");
 const NotificationService = require("./notificationService");
+const Ticket = require("../models/ticketSchema");
 const notificationService = new NotificationService();
 
 class inquiryService {
@@ -164,6 +166,101 @@ class inquiryService {
       return true;
     } catch (error) {
       logger.error(`Error while Inquiry Delete, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // Add   Ticket
+  addTicket = async (payload) => {
+    try {
+      const { name, contact_number, email, ticket_detail } = payload;
+
+      if (!validateEmail(email)) {
+        return throwError(returnMessage("auth", "invalidEmail"));
+      }
+      const ticket = await Ticket.create({
+        name,
+        contact_number,
+        email,
+        ticket_detail,
+      });
+
+      return ticket;
+    } catch (error) {
+      logger.error(`Error while ticket create, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // GET All Tickets
+  getAllTicket = async (searchObj) => {
+    try {
+      const queryObj = { is_deleted: false };
+
+      if (searchObj.search && searchObj.search !== "") {
+        queryObj["$or"] = [
+          {
+            name: {
+              $regex: searchObj.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            email: {
+              $regex: searchObj.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            contact_number: {
+              $regex: searchObj.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            ticket_detail: {
+              $regex: searchObj.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+        ];
+      }
+
+      const pagination = paginationObject(searchObj);
+
+      const pipeLine = [
+        {
+          $match: queryObj,
+        },
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            email: 1,
+            contact_number: 1,
+            country: 1,
+            ticket_detail: 1,
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        },
+      ];
+
+      const [tickets, totalTicketCount] = await Promise.all([
+        Ticket.aggregate(pipeLine)
+          .sort(pagination.sort)
+          .skip(pagination.skip)
+          .limit(pagination.result_per_page),
+        Ticket.aggregate(pipeLine),
+      ]);
+
+      return {
+        tickets,
+        page_count:
+          Math.ceil(totalTicketCount.length / pagination.result_per_page) || 0,
+      };
+    } catch (error) {
+      logger.error(`Error while list Listing, ${error}`);
       throwError(error?.message, error?.statusCode);
     }
   };

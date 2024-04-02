@@ -166,7 +166,9 @@
     "inquirySent": "Inquiry sent successfully.",
     "inquiryList": "Inquiries fetched successfully.",
     "inquiryDelete": "Inquiry deleted successfully.",
-    "newInquiry": "New Inquiry Received"
+    "newInquiry": "New Inquiry Received",
+    "ticketCreated": "Ticket sent successfully",
+    "ticketList": "Ticket list fetched successfully"
   },
 
   "emailTemplate": {

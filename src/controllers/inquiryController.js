@@ -44,3 +44,30 @@ exports.deleteInquiry = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+// Add   Ticket
+
+exports.addTicket = catchAsyncError(async (req, res, next) => {
+  const ticket = await inquiryService.addTicket(req.body);
+
+  sendResponse(
+    res,
+    true,
+    returnMessage("inquiry", "ticketCreated"),
+    ticket,
+    statusCode.success
+  );
+});
+
+// Get All Tickets
+
+exports.getAllTicket = catchAsyncError(async (req, res, next) => {
+  const tickets = await inquiryService.getAllTicket(req.body);
+  sendResponse(
+    res,
+    true,
+    returnMessage("inquiry", "ticketList"),
+    tickets,
+    statusCode.success
+  );
+});

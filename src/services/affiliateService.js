@@ -314,15 +314,12 @@ class AffiliateService {
         .utc();
       const commissionPercentage = await Configuration.findOne({});
 
-      const agencyIds = await Affiliate_Referral.distinct("referred_to", {
-        referred_by: user?._id,
-      });
-
       const [
         totalReferralsCount,
         loggedInUser,
         total_agencies,
         lastMonthEarning,
+        totalEarning,
       ] = await Promise.all([
         Affiliate_Referral.find({
           referred_by: user?._id,
@@ -379,6 +376,46 @@ class AffiliateService {
             },
           },
         ]),
+        Affiliate_Referral.aggregate([
+          {
+            $match: {
+              referred_by: user?._id,
+              status: "active",
+            },
+          },
+          {
+            $lookup: {
+              from: "subscription_plans",
+              localField: "payment_id",
+              foreignField: "plan_id",
+              as: "planData",
+            },
+          },
+          {
+            $unwind: {
+              path: "$planData",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalAmount: { $sum: "$planData.amount" },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              totalAmount: 1,
+              total: {
+                $multiply: [
+                  "$totalAmount",
+                  commissionPercentage.referral.commission_percentage / 100,
+                ],
+              },
+            },
+          },
+        ]),
       ]);
 
       return {
@@ -386,6 +423,7 @@ class AffiliateService {
         customer_count: total_agencies ?? 0,
         click_count: loggedInUser?.click_count ?? 0,
         last_month_earning: lastMonthEarning[0]?.total ?? 0,
+        total_earning: totalEarning[0]?.total ?? 0,
         withdraw: 0,
         unpaid: 0,
       };

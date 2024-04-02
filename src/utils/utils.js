@@ -6813,7 +6813,9 @@ border-collapse: collapse;">Assign by :</td>
 border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
-white-space: nowrap;">${data?.assigned_by_name ?? `&nbsp;`}</td>
+white-space: nowrap; text-transform: capitalize; ">${
+    data?.assigned_by_name ?? `&nbsp;`
+  }</td>
                                       </tr>
                                       <tr>
                                       <td style=" border-top-left-radius: 5px;
@@ -6822,7 +6824,9 @@ border-collapse: collapse;">Client name :</td>
 border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
-white-space: nowrap;">${data?.client_name ? data.client_name : "-"}</td>
+white-space: nowrap; text-transform: capitalize; ">${
+    data?.client_name ? data.client_name : "-"
+  }</td>
                                     </tr>
 
                                       <tr>
@@ -6833,7 +6837,9 @@ border-collapse: collapse;">Assign to:</td>
 border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
-white-space: nowrap;">${data?.assigned_to_name ?? `&nbsp;`}</td>
+white-space: nowrap; text-transform: capitalize; ">${
+    data?.assigned_to_name ?? `&nbsp;`
+  }</td>
                                       </tr>
 
                                         <tr>
@@ -10039,7 +10045,9 @@ exports.agencyCreatedTemplate = (data) => {
   border-collapse: collapse; font-weight: 600; max-width: 100px;
  overflow: hidden;
  text-overflow: ellipsis;
- white-space: nowrap;">${data?.agency_name ?? `&nbsp;`}</td>
+ white-space: nowrap; text-transform: capitalize;">${
+   data?.agency_name ?? `&nbsp;`
+ }</td>
                                           </tr>
                                           <tr>
                                           <td style=" border-top-left-radius: 5px;
@@ -10065,7 +10073,9 @@ white-space: nowrap;">${data?.contact_number ?? `&nbsp;`}</td>
                                       </td>
                                     </tr>
                                   </table>
-                                  <a target="_blank" href="#" style="
+                                  <a target="_blank" href="${
+                                    process.env.REACT_APP_URL
+                                  }/admin" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
@@ -10798,7 +10808,7 @@ exports.memberDeletedTemplate = (data) => {
                                                           border-collapse: collapse; font-weight: 600; max-width: 100px;
                                                           overflow: hidden;
                                                           text-overflow: ellipsis;
-                                                          white-space: nowrap;">${
+                                                          white-space: nowrap; text-transform: capitalize;">${
                                                             data?.deleted_by ??
                                                             `&nbsp;`
                                                           }</td>
@@ -10810,7 +10820,9 @@ exports.memberDeletedTemplate = (data) => {
   border-collapse: collapse; font-weight: 600; max-width: 100px;
  overflow: hidden;
  text-overflow: ellipsis;
- white-space: nowrap;">${data?.member_name ?? `&nbsp;`}</td>
+ white-space: nowrap; text-transform: capitalize;">${
+   data?.member_name ?? `&nbsp;`
+ }</td>
                                           </tr>
                                    
                                           <tr>
@@ -11573,7 +11585,7 @@ exports.memberDeletedClient = (data) => {
                                                           border-collapse: collapse; font-weight: 600; max-width: 100px;
                                                           overflow: hidden;
                                                           text-overflow: ellipsis;
-                                                          white-space: nowrap;">${
+                                                          white-space: nowrap; text-transform: capitalize;">${
                                                             data?.deleted_by ??
                                                             `&nbsp;`
                                                           }</td>
@@ -11585,7 +11597,9 @@ exports.memberDeletedClient = (data) => {
   border-collapse: collapse; font-weight: 600; max-width: 100px;
  overflow: hidden;
  text-overflow: ellipsis;
- white-space: nowrap;">${data?.member_name ?? `&nbsp;`}</td>
+ white-space: nowrap; text-transform: capitalize;">${
+   data?.member_name ?? `&nbsp;`
+ }</td>
                                           </tr>
                                    
                                           <tr>
@@ -12350,7 +12364,7 @@ exports.seatRemoved = (data) => {
                                                           border-collapse: collapse; font-weight: 600; max-width: 100px;
                                                           overflow: hidden;
                                                           text-overflow: ellipsis;
-                                                          white-space: nowrap;">${
+                                                          white-space: nowrap;  text-transform: capitalize; ">${
                                                             data?.agency_name ??
                                                             `&nbsp;`
                                                           }</td>
@@ -12362,7 +12376,9 @@ exports.seatRemoved = (data) => {
   border-collapse: collapse; font-weight: 600; max-width: 100px;
  overflow: hidden;
  text-overflow: ellipsis;
- white-space: nowrap;">${data?.removed_user ?? `&nbsp;`}</td>
+ white-space: nowrap;  text-transform: capitalize; ">${
+   data?.removed_user ?? `&nbsp;`
+ }</td>
                                           </tr>
                                           <tr>
                                           <td style=" border-top-left-radius: 5px;
@@ -12371,7 +12387,9 @@ border-collapse: collapse;">Removed user type :</td>
 border-collapse: collapse; font-weight: 600; max-width: 100px;
 overflow: hidden;
 text-overflow: ellipsis;
-white-space: nowrap;">${data?.user_type ?? `&nbsp;`}</td>
+white-space: nowrap;   text-transform: capitalize;">${
+    data?.user_type ?? `&nbsp;`
+  }</td>
                                         </tr>
                                    
                                           <tr>
@@ -13146,7 +13164,9 @@ exports.clientMemberAdded = (data) => {
   border-collapse: collapse; font-weight: 600; max-width: 100px;
  overflow: hidden;
  text-overflow: ellipsis;
- white-space: nowrap;">${data?.member_name ?? `&nbsp;`}</td>
+ white-space: nowrap; text-transform: capitalize; ">${
+   data?.member_name ?? `&nbsp;`
+ }</td>
                                           </tr>
                                    
                                           <tr>
@@ -14681,7 +14701,9 @@ exports.clientPasswordSet = (data) => {
   border-collapse: collapse; font-weight: 600; max-width: 100px;
  overflow: hidden;
  text-overflow: ellipsis;
- white-space: nowrap;">${data?.client_name ?? `&nbsp;`}</td>
+ white-space: nowrap; text-transform: capitalize; ">${
+   data?.client_name ?? `&nbsp;`
+ }</td>
                                           </tr>
                                    
                                           <tr>
