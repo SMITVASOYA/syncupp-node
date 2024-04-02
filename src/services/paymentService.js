@@ -143,21 +143,22 @@ class PaymentService {
         fail_existing: 0,
       });
 
-      const emails = [
-        "laksh@neuroidmedia.com",
-        "saurabh@growmedico.com",
-        "imshubham026@gmail.com",
-        "vijaysujanani@hotmail.com",
-        "tanjirouedits7@gmail.com",
-        "fullstacktridhya@gmail.com",
-      ];
-      if (emails.includes(user?.email)) {
-        const sheets = await SheetManagement.findOne({
-          agency_id: user?.reference_id,
-        }).lean();
-        subscription_obj.quantity = sheets.total_sheets;
-        subscription_obj.start_at = undefined;
-      }
+      // removed as this is no use now
+      // const emails = [
+      //   "laksh@neuroidmedia.com",
+      //   "saurabh@growmedico.com",
+      //   "imshubham026@gmail.com",
+      //   "vijaysujanani@hotmail.com",
+      //   "tanjirouedits7@gmail.com",
+      //   "fullstacktridhya@gmail.com",
+      // ];
+      // if (emails.includes(user?.email)) {
+      //   const sheets = await SheetManagement.findOne({
+      //     agency_id: user?.reference_id,
+      //   }).lean();
+      //   subscription_obj.quantity = sheets.total_sheets;
+      //   subscription_obj.start_at = undefined;
+      // }
 
       const { data } = await this.razorpayApi.post(
         "/subscriptions",
