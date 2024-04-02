@@ -306,10 +306,12 @@ class AffiliateService {
       const currentDate = moment();
       const startOfPreviousMonth = moment(currentDate)
         .subtract(1, "months")
-        .startOf("month");
+        .startOf("month")
+        .utc();
       const endOfPreviousMonth = moment(currentDate)
         .subtract(1, "months")
-        .endOf("month");
+        .endOf("month")
+        .utc();
       const commissionPercentage = await Configuration.findOne({});
 
       const agencyIds = await Affiliate_Referral.distinct("referred_to", {
@@ -333,20 +335,35 @@ class AffiliateService {
           referred_by: user?._id,
           status: "active",
         }),
-        PaymentHistory.aggregate([
+        Affiliate_Referral.aggregate([
           {
             $match: {
-              agency_id: { $in: agencyIds },
-              createdAt: {
+              referred_by: user?._id,
+              status: "active",
+              updatedAt: {
                 $gte: startOfPreviousMonth.toDate(),
                 $lte: endOfPreviousMonth.toDate(),
               },
             },
           },
           {
+            $lookup: {
+              from: "subscription_plans",
+              localField: "payment_id",
+              foreignField: "plan_id",
+              as: "planData",
+            },
+          },
+          {
+            $unwind: {
+              path: "$planData",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
             $group: {
               _id: null,
-              totalAmount: { $sum: "$amount" },
+              totalAmount: { $sum: "$planData.amount" },
             },
           },
           {
