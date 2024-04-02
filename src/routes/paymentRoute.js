@@ -3,11 +3,7 @@ const paymentConrtoller = require("../controllers/paymentController");
 const { protect } = require("../middlewares/authMiddleware");
 const adminProtect = require("../middlewares/authAdminMiddleware");
 
-paymentRoute.post(
-  "/plan-create",
-  adminProtect.protect,
-  paymentConrtoller.createPlan
-);
+paymentRoute.post("/plan-create", paymentConrtoller.createPlan);
 paymentRoute.post("/webhook", paymentConrtoller.webHookHandler);
 paymentRoute.post("/verify-signature", paymentConrtoller.verifySignature);
 paymentRoute.get("/plans", paymentConrtoller.listPlan);
@@ -30,5 +26,9 @@ paymentRoute.get("/payment-scopes", paymentConrtoller.paymentScopes);
 paymentRoute.post("/referral-payout", paymentConrtoller.referralPay);
 paymentRoute.post("/coupon-payout", paymentConrtoller.couponPay);
 paymentRoute.get("/de-activated", paymentConrtoller.deactivateAccount);
+paymentRoute.patch(
+  "/update-subscription-plan",
+  paymentConrtoller.updateSubscriptionPlan
+);
 
 module.exports = paymentRoute;

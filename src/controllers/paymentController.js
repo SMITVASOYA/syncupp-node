@@ -140,6 +140,18 @@ exports.getPlan = catchAsyncError(async (req, res, next) => {
 // List plan
 
 exports.listPlan = catchAsyncError(async (req, res, next) => {
-  const plans = await paymentService.listPlan(req.body);
+  const plans = await paymentService.listPlan();
   sendResponse(res, true, returnMessage("payment", "plansFetched"), plans, 200);
+});
+
+// update the plan in the Subscription
+exports.updateSubscriptionPlan = catchAsyncError(async (req, res, next) => {
+  await paymentService.updateSubscriptionPlan(req.body, req.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("payment", "subscriptionPlanUpdate"),
+    {},
+    200
+  );
 });

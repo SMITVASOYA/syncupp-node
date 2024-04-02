@@ -261,7 +261,10 @@
     "paymentPendingForAgency": "Payment is pending for the agency.",
     "planAdded": "Plan added successfully.",
     "planFetched": "Plan fetched successfully.",
-    "plansFetched": "Plans fetched successfully."
+    "plansFetched": "Plans fetched successfully.",
+    "subscriptionPlanUpdate": "Subscription plan updated.",
+    "planNotFound": "Subscription plan does not exist.",
+    "alreadySubscribed": "Subscription plan should not be same."
   },
   "affiliate": {
     "registered": "User registered successfully.",
