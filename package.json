@@ -38,6 +38,7 @@
     "pdfkit": "^0.14.0",
     "razorpay": "^2.9.2",
     "socket.io": "^4.7.4",
+    "stripe": "^14.23.0",
     "swagger-ui-express": "^5.0.0",
     "winston": "^3.11.0"
   }

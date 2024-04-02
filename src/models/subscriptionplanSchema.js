@@ -16,7 +16,8 @@ const subscriptionPlanSchema = new mongoose.Schema(
     plan_id: { type: String, required: true },
     active: { type: Boolean, default: false },
     symbol: { type: String },
-    seat: { type: Number },
+    seat: { type: Number, default: 1 },
+    sort_value: { type: Number },
   },
   { timestamps: true }
 );

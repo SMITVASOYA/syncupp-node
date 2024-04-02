@@ -1,4 +1,5 @@
 const Razorpay = require("razorpay");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
@@ -2538,6 +2539,185 @@ class PaymentService {
     } catch (error) {
       logger.error(`Error while running the get plan: ${error}`);
       console.log(error);
+    }
+  };
+
+  createPlan = async (payload) => {
+    try {
+      if (payload?.products?.length > 0)
+        await SubscriptionPlan.updateMany({}, { active: false });
+
+      payload?.products?.forEach(async (product) => {
+        const stripe_obj = {
+          name: product?.name,
+          description: product?.description,
+        };
+        const stripe_product = await stripe.products.create(stripe_obj);
+        if (!stripe_product) return;
+
+        const stripe_plan = await stripe.plans.create({
+          currency: product?.currency,
+          amount: product?.price * 100,
+          interval: product?.interval,
+          product: stripe_product?.id,
+        });
+
+        if (!stripe_plan) return;
+
+        await SubscriptionPlan.create({
+          amount: product?.amount * 100,
+          currency: product?.currency,
+          description: product?.description,
+          plan_id: stripe_plan?.id,
+          period: product?.period,
+          name: product?.name,
+          active: true,
+          symbol: product?.symbol,
+          seat: product?.seat,
+        });
+      });
+    } catch (error) {
+      logger.error("Error while creating the plan", error);
+      return error.message;
+    }
+  };
+
+  getPlans = async () => {
+    try {
+      return await StripePlan.find({ active: true })
+        .sort({ sort_value: 1 })
+        .lean();
+    } catch (error) {
+      logger.error("error while get all of the products", error);
+      return error.message;
+    }
+  };
+
+  checkoutSession = async (payload, agency) => {
+    try {
+      const sheets = await SheetManagement.findOne({
+        agency_id: agency?.reference_id,
+      }).lean();
+      if (!sheets) return throwError(returnMessage("default", "default"));
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price: payload.plan_id,
+            quantity: sheets?.total_sheets,
+          },
+        ],
+        mode: "subscription",
+        success_url: payload?.success_url,
+        cancel_url: payload?.cancel_url,
+        metadata: {
+          agency_reference_id: agency?.reference_id?.toString(),
+          plan_id: payload?.plan_id,
+          user_id: agency?._id?.toString(),
+        },
+        subscription_data: {
+          trial_settings: {
+            end_behavior: {
+              missing_payment_method: "cancel",
+            },
+          },
+        },
+      });
+
+      await Authentication.findByIdAndUpdate(user._id, {
+        last_session: session?.id,
+      });
+
+      return { checkout_url: session?.url };
+    } catch (error) {
+      logger.error("error while creating the checkout link", error);
+      return error.message;
+    }
+  };
+
+  webhookHandle = async (payload) => {
+    try {
+      const secret = process.env.STRIPE_WEBHOOK_SECRET;
+      const payloadString = JSON.stringify(payload, null, 2);
+      const header = stripe.webhooks.generateTestHeaderString({
+        payload: payloadString,
+        secret,
+      });
+      // Verify the webhook signature
+      const event = stripe.webhooks.constructEvent(
+        payloadString,
+        header,
+        secret
+      );
+      logger.info("Events..", event.type);
+
+      if (event.type === "checkout.session.completed") {
+        console.log("checkout event start............");
+        const data = payload?.data?.object;
+        const [agency, plan] = await Promise.all([
+          Authentication.findById(data?.metadata?.user_id).lean(),
+          SubscriptionPlan.findOne({ plan_id: data?.metadata?.plan_id }).lean(),
+        ]);
+
+        const paymentObj = {
+          session_id: data?.id,
+          invoice_id: data?.invoice,
+          plan_id: data?.metadata?.plan_id,
+          agency_id: agency?.reference_id,
+          interval: plan?.interval,
+          subscription_id: data?.subscription,
+        };
+
+        await Promise.all([
+          PaymentHistory.create(paymentObj),
+          User.findByIdAndUpdate(data?.metadata?.user_id, {
+            subscription_id: data?.subscription,
+            plan_purchased_type: plan?.interval,
+            plan_purchased: true,
+            on_board: true,
+          }),
+        ]);
+
+        return true;
+      }
+      if (event.type === "invoice.created") {
+        console.log("invoice.created event start.....", event.type);
+
+        const data = payload?.data?.object;
+        console.log("data.................", data);
+
+        const fetchedInvoice = await Invoice.findOne({
+          subscription_id: data.subscription,
+        }).lean();
+        console.log("fetchedInvoice.......", fetchedInvoice);
+
+        if (!fetchedInvoice || fetchedInvoice === null) {
+          return true;
+        } else {
+          const fetchSubcription = await stripe.subscriptions.retrieve(
+            fetchedInvoice.subscription_id
+          );
+          console.log("fetchSubcription........", fetchSubcription);
+          const invoicetObj = {
+            session_id: fetchedInvoice?.session_id,
+            invoice_id: data?.id,
+            plan_id: fetchSubcription?.plan?.id,
+            user_id: fetchedInvoice?.user_id,
+            interval: fetchSubcription.plan?.interval,
+            subscription_id: data?.subscription,
+            amount: data?.total / 100,
+          };
+          const createdInvoice = await Invoice.create(invoicetObj);
+          console.log("createdInvoice.......", createdInvoice);
+
+          return true;
+        }
+      }
+      return true;
+    } catch (error) {
+      logger.error("error while handling webhook", error);
+      return false;
     }
   };
 }

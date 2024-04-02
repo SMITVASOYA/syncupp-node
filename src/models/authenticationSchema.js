@@ -51,6 +51,7 @@ const authenticationSchema = new mongoose.Schema(
     is_online: { type: Boolean, default: false },
     subscription_halted: { type: Date },
     subscription_halted_displayed: { type: Boolean, default: false },
+    last_session: { type: String },
   },
   { timestamps: true }
 );
