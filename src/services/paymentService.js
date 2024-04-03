@@ -114,9 +114,9 @@ class PaymentService {
       if (user?.status === "free_trial")
         return throwError(returnMessage("payment", "freeTrialOn"));
 
-      const [plan, configuration] = await Promise.all([
+      const [plan, sheets] = await Promise.all([
         SubscriptionPlan.findOne({ active: true }).lean(),
-        Configuration.findOne().lean(),
+        SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
       ]);
 
       if (!plan)
@@ -127,7 +127,7 @@ class PaymentService {
 
       const subscription_obj = {
         plan_id: plan?.plan_id,
-        quantity: 1,
+        quantity: sheets?.total_sheets || 1,
         customer_notify: 1,
         total_count: 120,
       };
@@ -143,21 +143,22 @@ class PaymentService {
         fail_existing: 0,
       });
 
-      const emails = [
-        "laksh@neuroidmedia.com",
-        "saurabh@growmedico.com",
-        "imshubham026@gmail.com",
-        "vijaysujanani@hotmail.com",
-        "tanjirouedits7@gmail.com",
-        "fullstacktridhya@gmail.com",
-      ];
-      if (emails.includes(user?.email)) {
-        const sheets = await SheetManagement.findOne({
-          agency_id: user?.reference_id,
-        }).lean();
-        subscription_obj.quantity = sheets.total_sheets;
-        subscription_obj.start_at = undefined;
-      }
+      // removed as this is no use now
+      // const emails = [
+      //   "laksh@neuroidmedia.com",
+      //   "saurabh@growmedico.com",
+      //   "imshubham026@gmail.com",
+      //   "vijaysujanani@hotmail.com",
+      //   "tanjirouedits7@gmail.com",
+      //   "fullstacktridhya@gmail.com",
+      // ];
+      // if (emails.includes(user?.email)) {
+      //   const sheets = await SheetManagement.findOne({
+      //     agency_id: user?.reference_id,
+      //   }).lean();
+      //   subscription_obj.quantity = sheets.total_sheets;
+      //   subscription_obj.start_at = undefined;
+      // }
 
       const { data } = await this.razorpayApi.post(
         "/subscriptions",
@@ -174,7 +175,7 @@ class PaymentService {
 
       return {
         payment_id: subscription?.id,
-        amount: plan?.amount,
+        amount: plan?.amount * sheets?.total_sheets || plan?.amount * 1,
         currency: plan?.currency,
         agency_id: user?.reference_id,
         email: user?.email,
@@ -219,31 +220,32 @@ class PaymentService {
 
       if (body) {
         const { payload } = body;
-        if (body?.event === "subscription.authenticated") {
-          const subscription_id = payload?.subscription?.entity?.id;
-          const plan_id = payload?.subscription?.entity?.plan_id;
+        // if (body?.event === "subscription.authenticated") {
+        //   const subscription_id = payload?.subscription?.entity?.id;
+        //   const plan_id = payload?.subscription?.entity?.plan_id;
 
-          const [agency_details, payment_history, configuration] =
-            await Promise.all([
-              Authentication.findOne({ subscription_id }).lean(),
-              PaymentHistory.findOne({ subscription_id }),
-              Configuration.findOne().lean(),
-            ]);
+        //   const [agency_details, payment_history, configuration] =
+        //     await Promise.all([
+        //       Authentication.findOne({ subscription_id }).lean(),
+        //       PaymentHistory.findOne({ subscription_id }),
+        //       Configuration.findOne().lean(),
+        //     ]);
 
-          if (!(configuration.payment.free_trial > 0)) return;
-          if (!agency_details) return;
-          let first_time = false;
-          if (!payment_history) first_time = true;
+        //   if (!(configuration.payment.free_trial > 0)) return;
+        //   if (!agency_details) return;
+        //   let first_time = false;
+        //   if (!payment_history) first_time = true;
 
-          const pp = await PaymentHistory.create({
-            agency_id: agency_details?.reference_id,
-            subscription_id,
-            first_time,
-            plan_id,
-            payment_mode: "free_trial",
-          });
-          return;
-        } else if (body?.event === "subscription.charged") {
+        //   const pp = await PaymentHistory.create({
+        //     agency_id: agency_details?.reference_id,
+        //     subscription_id,
+        //     first_time,
+        //     plan_id,
+        //     payment_mode: "free_trial",
+        //   });
+        //   return;
+        // }
+        if (body?.event === "subscription.charged") {
           const subscription_id = payload?.subscription?.entity?.id;
           const payment_id = payload?.payment?.entity?.id;
           const currency = payload?.payment?.entity?.currency;
@@ -2281,12 +2283,12 @@ class PaymentService {
           { is_deleted: true }
         ),
         Client.updateMany(
-          { "agency_ids.agency_id": agency?.reference_id },
-          { "agency_ids.status": "deleted" }
+          { agency_ids: { $elemMatch: { agency_id: agency?.reference_id } } },
+          { $set: { "agency_ids.$.status": "deleted" } }
         ),
         Team_Client.updateMany(
-          { "agency_ids.agency_id": agency?.reference_id },
-          { "agency_ids.status": "deleted" }
+          { agency_ids: { $elemMatch: { agency_id: agency?.reference_id } } },
+          { $set: { "agency_ids.$.status": "deleted" } }
         ),
         Authentication.updateMany(
           { reference_id: agency?.reference_id },
