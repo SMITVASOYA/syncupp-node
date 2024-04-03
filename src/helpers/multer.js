@@ -60,6 +60,8 @@ const storage = multer.diskStorage({
       )
     ) {
       cb(null, img_dir);
+    } else if (file.mimetype === "audio/webm") {
+      cb(null, img_dir);
     }
   },
 
@@ -71,6 +73,35 @@ const storage = multer.diskStorage({
   },
 });
 
+const storage2 = multer.memoryStorage({
+  destination: (req, file, cb) => {
+    const img_dir = "src/public/uploads";
+    if (!fs.existsSync(img_dir)) {
+      fs.mkdirSync(img_dir, { recursive: true });
+    }
+    if (file.mimetype === "audio/webm") {
+      cb(null, img_dir);
+    }
+  },
+
+  filename: (req, file, cb) => {
+    if (file.mimetype === "audio/webm") {
+      const fs = require("fs");
+
+      const blob = new Blob([new Uint8Array(file)]);
+      console.log(blob);
+      const buffer = Buffer.from(blob);
+
+      fs.writeFileSync("audio.wav", buffer);
+    } else {
+      const extension = file.originalname.split(".").pop() || undefined;
+      const fileName = Date.now() + "." + extension;
+      req.fileName = fileName;
+      cb(null, fileName);
+    }
+  },
+});
+
 // Multer config
 const upload = multer({
   storage: storage,
@@ -78,6 +109,9 @@ const upload = multer({
     fileSize: configure?.multer?.size || 200 * 1024 * 1024, // 200MB maximum file size
   },
   fileFilter: (req, file, cb) => {
+    if (file.mimetype === "audio/webm") {
+      return cb(null, true);
+    }
     const allowedExtensions = [
       ".jpg",
       ".jpeg",
@@ -107,6 +141,7 @@ const upload = multer({
       ".svg",
       ".gif",
     ];
+
     const fileExt = path.extname(file.originalname).toLowerCase();
     if (!allowedExtensions.includes(fileExt)) {
       const error = new Error(
@@ -120,6 +155,20 @@ const upload = multer({
     cb(null, true);
   },
 });
+
+// Multer for upload audio
+const audio_upload = multer({
+  storage: storage2,
+  limits: {
+    fileSize: configure?.multer?.size || 200 * 1024 * 1024, // 200MB maximum file size
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === "audio/webm") {
+      return cb(null, true);
+    }
+  },
+});
+
 // Middleware to check total file size before uploading
 const checkFileSize = async (req, res, next) => {
   const maxSize = await Configuration.findOne({}).lean();
@@ -132,4 +181,4 @@ const checkFileSize = async (req, res, next) => {
   next();
 };
 
-module.exports = { upload, checkFileSize };
+module.exports = { upload, checkFileSize, audio_upload };

@@ -332,7 +332,9 @@
     "insufficientPermission": "You don't have permission to create group.",
     "groupNameRequired": "Group name is required.",
     "groupCreated": "Group created successfully.",
-    "groupDoesNotExist": "The group does not exist."
+    "groupDoesNotExist": "The group does not exist.",
+    "MessageNotOFund": "Message not found.",
+    "latesthistoryFetched": "chat fetched successfully."
   },
 
   "default": { "default": "Something went wrong." }

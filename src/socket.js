@@ -13,6 +13,7 @@ const fs = require("fs");
 const Authentication = require("./models/authenticationSchema");
 const Group_Chat = require("./models/groupChatSchema");
 const Configuration = require("./models/configurationSchema");
+const { default: mongoose } = require("mongoose");
 
 exports.socket_connection = (http_server) => {
   io = new Server(http_server, {
@@ -732,6 +733,488 @@ exports.socket_connection = (http_server) => {
       } catch (error) {
         logger.error(`Error while deleting the message: ${error}`);
         return throwError(error?.message, error?.statusCode);
+      }
+    });
+
+    socket.on("REACTION_MESSAGE", async (payload) => {
+      try {
+        const { chat_id, reaction, from_user, to_user } = payload;
+
+        // Find the message by ID in one-to-one chat
+        const messages = await Chat.findById(chat_id);
+
+        if (!messages) {
+          // Handle error: Message not found
+          return returnMessage("chat", "MessageNotOFund");
+        }
+
+        const existingReactionIndex = messages?.reactions?.findIndex(
+          (reaction) => reaction.user.toString() === from_user.toString()
+        );
+        if (existingReactionIndex !== -1) {
+          // Update existing reaction
+          messages.reactions[existingReactionIndex].emoji = reaction;
+        } else {
+          // Add new reaction
+          messages.reactions.push({ user: from_user, emoji: reaction });
+        }
+
+        // Add reaction to the message
+        await messages.save();
+
+        // const message = await Chat.aggregate([
+        //   { $match: { _id: new mongoose.Types.ObjectId(chat_id) } },
+        //   {
+        //     $unwind:"$reactions",
+        //   },
+        //   {
+        //     $lookup: {
+        //       from: "authentications", // Collection name of your user model
+        //       localField: "reactions.user",
+        //       foreignField: "reference_id",
+        //       as: "reactions.user",
+        //       pipeline: [
+        //         {
+        //           $project: {
+        //             first_name: 1,
+        //             last_name: 1,
+        //             profile_image: 1,
+        //             reference_id: 1,
+        //             emoji: 1,
+        //           },
+        //         },
+        //       ],
+        //     },
+        //   },
+        //   {
+        //     $unwind: {
+        //       path: "$reactions.user",
+        //       preserveNullAndEmptyArrays: true,
+        //     },
+        //   },
+        //   {
+        //     $project: {
+        //       first_name: "$reactions.user.first_name",
+        //       last_name: "$reactions.user.last_name",
+        //       profile_image: "$reactions.user.profile_image",
+        //       message: 1,
+        //       reactions: 1,
+        //       createdAt: 1,
+        //       is_deleted: 1,
+        //       message_type: 1,
+        //       _id: 1,
+        //       to_user: 1,
+        //       from_user: 1,
+        //       emoji: "$reactions.user.emoji",
+        //     },
+        //   },
+        // ]);
+        const message = await Chat.aggregate([
+          { $match: { _id: new mongoose.Types.ObjectId(chat_id) } },
+          {
+            $unwind: {
+              path: "$reactions",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $lookup: {
+              from: "authentications", // Collection name of your user model
+              localField: "reactions.user",
+              foreignField: "reference_id",
+              as: "reactions.user",
+              pipeline: [
+                {
+                  $project: {
+                    first_name: 1,
+                    last_name: 1,
+                    profile_image: 1,
+                    reference_id: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $unwind: {
+              path: "$reactions.user",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $project: {
+              first_name: "$reactions.user.first_name",
+              last_name: "$reactions.user.last_name",
+              profile_image: "$reactions.user.profile_image",
+              message: 1,
+              image_url: 1,
+              document_url: 1,
+              reactions: 1,
+              audio_url: 1,
+              createdAt: 1,
+              is_deleted: 1,
+              message_type: 1,
+              _id: 1,
+              to_user: 1,
+              from_user: 1,
+            },
+          },
+
+          {
+            $group: {
+              _id: "$_id",
+              message: { $first: "$message" },
+              createdAt: { $first: "$createdAt" },
+              is_deleted: { $first: "$is_deleted" },
+              document_url: { $first: "$document_url" },
+              image_url: { $first: "$image_url" },
+              message_type: { $first: "$message_type" },
+              to_user: { $first: "$to_user" },
+              audio_url: { $first: "$audio_url" },
+              from_user: { $first: "$from_user" },
+              reactions: { $push: "$reactions" }, // Group reactions into an array
+            },
+          },
+        ]);
+
+        // Broadcast the new reaction to other users in the chat room
+        io.to(from_user).emit("RECEIVED_REACTION", {
+          message: message[0],
+        });
+
+        // Emit event to sender for real-time update
+        socket.to(to_user).emit("RECEIVED_REACTION", {
+          message: message[0],
+        });
+      } catch (error) {
+        // Handle error
+        console.error("Error while reacting to  message:", error);
+      }
+    });
+
+    socket.on("GROUP_REACTION_MESSAGE", async (payload) => {
+      try {
+        const { chat_id, reaction, group_id, from_user } = payload;
+
+        const [user_detail, group_detail] = await Promise.all([
+          Authentication.findOne({ reference_id: from_user })
+            .select("first_name last_name reference_id")
+            .lean(),
+          Group_Chat.findById(group_id).lean(),
+        ]);
+
+        // Find the message by ID in group chat
+        const messages = await Chat.findById(chat_id);
+
+        if (!messages) {
+          // Handle error: Message not found
+          return returnMessage("chat", "MessageNotOFund");
+        }
+
+        const existingReactionIndex = messages?.reactions?.findIndex(
+          (reaction) => reaction?.user?.toString() === from_user?.toString()
+        );
+        if (existingReactionIndex !== -1) {
+          // Update existing reaction
+          messages.reactions[existingReactionIndex].emoji = reaction;
+        } else {
+          // Add new reaction
+          messages.reactions.push({ user: from_user, emoji: reaction });
+        }
+
+        // Add reaction to the message
+        await messages.save();
+
+        let message_obj = await Chat.aggregate([
+          { $match: { _id: new mongoose.Types.ObjectId(chat_id) } },
+          {
+            $unwind: { path: "$reactions", preserveNullAndEmptyArrays: true },
+          },
+
+          {
+            $lookup: {
+              from: "authentications", // Collection name of your user model
+              localField: "reactions.user",
+              foreignField: "reference_id",
+              as: "reactions.user",
+              pipeline: [
+                {
+                  $project: {
+                    first_name: 1,
+                    last_name: 1,
+                    profile_image: 1,
+                    reference_id: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $unwind: {
+              path: "$reactions.user",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
+          {
+            $project: {
+              first_name: "$reactions.user.first_name",
+              last_name: "$reactions.user.last_name",
+              profile_image: "$reactions.user.profile_image",
+              message: 1,
+              group_id: 1,
+              reactions: 1,
+              createdAt: 1,
+              document_url: 1,
+              image_url: 1,
+              audio_url: 1,
+              is_deleted: 1,
+              message_type: 1,
+              _id: 1,
+              to_user: 1,
+              from_user: 1,
+            },
+          },
+          {
+            $group: {
+              _id: "$_id",
+              message: { $first: "$message" },
+              createdAt: { $first: "$createdAt" },
+              is_deleted: { $first: "$is_deleted" },
+              group_id: { $first: "$group_id" },
+              document_url: { $first: "$document_url" },
+              image_url: { $first: "$image_url" },
+              audio_url: { $first: "$audio_url" },
+              message_type: { $first: "$message_type" },
+              to_user: { $first: "$to_user" },
+              from_user: { $first: "$from_user" },
+              reactions: { $push: "$reactions" }, // Group reactions into an array
+            },
+          },
+        ]);
+
+        io.to(group_id).emit("GROUP_RECEIVED_REACTION", {
+          ...message_obj[0],
+          user_detail,
+        });
+      } catch (error) {
+        // Handle error
+        console.error("Error while reacting to group message:", error);
+      }
+    });
+
+    socket.on("REACTION_DELETE", async (payload) => {
+      try {
+        const { chat_id, reaction, from_user, to_user } = payload;
+
+        // Find the message by ID
+        const messages = await Chat.findById(chat_id);
+
+        if (!messages) {
+          // Handle error: Message not found
+          return returnMessage("chat", "MessageNotFound");
+        }
+
+        // Find the index of the reaction by the user ID
+        const existingReactionIndex = messages.reactions.findIndex(
+          (reaction) => reaction.user.toString() === from_user.toString()
+        );
+
+        if (existingReactionIndex !== -1) {
+          // Delete the reaction of the particular user
+          messages.reactions.splice(existingReactionIndex, 1);
+        }
+        // Save the updated message
+        await messages.save();
+        //pipleline to fetch user detail of reacted message
+        const message = await Chat.aggregate([
+          { $match: { _id: new mongoose.Types.ObjectId(chat_id) } },
+          {
+            $unwind: {
+              path: "$reactions",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $lookup: {
+              from: "authentications", // Collection name of your user model
+              localField: "reactions.user",
+              foreignField: "reference_id",
+              as: "reactions.user",
+              pipeline: [
+                {
+                  $project: {
+                    first_name: 1,
+                    last_name: 1,
+                    profile_image: 1,
+                    reference_id: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $unwind: {
+              path: "$reactions.user",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $project: {
+              first_name: "$reactions.user.first_name",
+              last_name: "$reactions.user.last_name",
+              profile_image: "$reactions.user.profile_image",
+              message: 1,
+              image_url: 1,
+              document_url: 1,
+              reactions: 1,
+              createdAt: 1,
+              is_deleted: 1,
+              audio_url: 1,
+              message_type: 1,
+              _id: 1,
+              to_user: 1,
+              from_user: 1,
+            },
+          },
+
+          {
+            $group: {
+              _id: "$_id",
+              message: { $first: "$message" },
+              createdAt: { $first: "$createdAt" },
+              is_deleted: { $first: "$is_deleted" },
+              document_url: { $first: "$document_url" },
+              image_url: { $first: "$image_url" },
+              audio_url: { $first: "$audio_url" },
+              message_type: { $first: "$message_type" },
+              to_user: { $first: "$to_user" },
+              from_user: { $first: "$from_user" },
+              reactions: { $push: "$reactions" }, // Group reactions into an array
+            },
+          },
+        ]);
+
+        // Broadcast the new reaction to other users in the chat room
+        io.to(from_user).emit("RECEIVED_REACTION", {
+          message: message[0],
+        });
+
+        // Emit event to sender for real-time update
+        socket.to(to_user).emit("RECEIVED_REACTION", {
+          message: message[0],
+        });
+      } catch (error) {
+        // Handle error
+        console.error("Error while reacting to message:", error);
+      }
+    });
+
+    socket.on("GROUP_REACTION_DELETE", async (payload) => {
+      try {
+        const { chat_id, from_user, group_id } = payload;
+
+        const [user_detail, group_detail] = await Promise.all([
+          Authentication.findOne({ reference_id: from_user })
+            .select("first_name last_name reference_id")
+            .lean(),
+          Group_Chat.findById(group_id).lean(),
+        ]);
+        // Find the message by ID
+        const messages = await Chat.findById(chat_id);
+
+        if (!messages) {
+          // Handle error: Message not found
+          return returnMessage("chat", "MessageNotFound");
+        }
+
+        // Find the index of the reaction by the user ID
+        const existingReactionIndex = messages.reactions.findIndex(
+          (reaction) => reaction.user.toString() === from_user.toString()
+        );
+
+        if (existingReactionIndex !== -1) {
+          // Delete the reaction of the particular user
+          messages?.reactions.splice(existingReactionIndex, 1);
+        }
+
+        // Save the updated message
+        await messages.save();
+        //pipleline to fetch user detail of reacted message
+        let message_obj = await Chat.aggregate([
+          { $match: { _id: new mongoose.Types.ObjectId(chat_id) } },
+          {
+            $unwind: { path: "$reactions", preserveNullAndEmptyArrays: true },
+          },
+
+          {
+            $lookup: {
+              from: "authentications", // Collection name of your user model
+              localField: "reactions.user",
+              foreignField: "reference_id",
+              as: "reactions.user",
+              pipeline: [
+                {
+                  $project: {
+                    first_name: 1,
+                    last_name: 1,
+                    profile_image: 1,
+                    reference_id: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $unwind: {
+              path: "$reactions.user",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
+          {
+            $project: {
+              first_name: "$reactions.user.first_name",
+              last_name: "$reactions.user.last_name",
+              profile_image: "$reactions.user.profile_image",
+              message: 1,
+              group_id: 1,
+              reactions: 1,
+              createdAt: 1,
+              document_url: 1,
+              audio_url: 1,
+              image_url: 1,
+              is_deleted: 1,
+              message_type: 1,
+              _id: 1,
+              to_user: 1,
+              from_user: 1,
+            },
+          },
+          {
+            $group: {
+              _id: "$_id",
+              message: { $first: "$message" },
+              createdAt: { $first: "$createdAt" },
+              is_deleted: { $first: "$is_deleted" },
+              group_id: { $first: "$group_id" },
+              document_url: { $first: "$document_url" },
+              image_url: { $first: "$image_url" },
+              message_type: { $first: "$message_type" },
+              audio_url: { $first: "$audio_url" },
+              to_user: { $first: "$to_user" },
+              from_user: { $first: "$from_user" },
+              reactions: { $push: "$reactions" }, // Group reactions into an array
+            },
+          },
+        ]);
+        io.to(group_id).emit("GROUP_RECEIVED_REACTION", {
+          ...message_obj[0],
+          user_detail,
+        });
+      } catch (error) {
+        // Handle error
+        console.error("Error while reacting to message:", error);
       }
     });
   });
