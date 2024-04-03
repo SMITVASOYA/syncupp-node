@@ -36,6 +36,13 @@ class AgencyService {
       const pagination = paginationObject(payload);
       const query_obj = { role: role?._id, is_deleted: false };
 
+      if (payload.status_name && payload.status_name !== "") {
+        query_obj["status"] = {
+          $regex: payload.status_name.toLowerCase(),
+          $options: "i",
+        };
+      }
+
       if (payload.search && payload.search !== "") {
         query_obj["$or"] = [
           {
