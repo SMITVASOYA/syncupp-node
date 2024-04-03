@@ -35,6 +35,7 @@ const moment = require("moment");
 const Client = require("../models/clientSchema");
 const Configuration = require("../models/configurationSchema");
 const fs = require("fs");
+const SubscriptionPlan = require("../models/subscriptionplanSchema");
 
 class TeamMemberService {
   // Add Team Member by agency or client
@@ -73,20 +74,32 @@ class TeamMemberService {
       if (!role || role === "")
         return throwError(returnMessage("teamMember", "roleRequired"));
       let check_agency;
-      if (user?.role?.name === "team_agency") {
-        check_agency = await Team_Agency.findById(user?.reference_id)
-          .populate("role", "name")
-          .lean();
-      }
+      // removed team member of admin role can add the team member
+      // if (user?.role?.name === "team_agency") {
+      //   check_agency = await Team_Agency.findById(user?.reference_id)
+      //     .populate("role", "name")
+      //     .lean();
+      // }
 
-      const [team_member_exist, team_role, role_for_auth] = await Promise.all([
-        Authentication.findOne({
-          email,
-          is_deleted: false,
-        }).lean(),
-        Team_Role_Master.findOne({ name: role }).select("_id").lean(),
-        Role_Master.findOne({ name: "team_agency" }).lean(),
-      ]);
+      const [team_member_exist, team_role, role_for_auth, plan] =
+        await Promise.all([
+          Authentication.findOne({
+            email,
+            is_deleted: false,
+          }).lean(),
+          Team_Role_Master.findOne({ name: role }).select("_id").lean(),
+          Role_Master.findOne({ name: "team_agency" }).lean(),
+          SubscriptionPlan.findById(user?.purchased_plan).lean(),
+        ]);
+
+      if (plan?.plan_type === "unlimited") {
+        const sheets = await SheetManagement.findOne({
+          agency_id: user?.reference_id,
+        }).lean();
+
+        if (sheets?.occupied_sheets?.length >= sheets?.total_sheets - 1)
+          return throwError(returnMessage("payment", "maxSheetsAllocated"));
+      }
 
       let team_member_create_query = {
         agency_id: user?.reference_id,
@@ -1321,18 +1334,18 @@ class TeamMemberService {
 
       if (payload?.status === "accept") status = "confirmed";
 
-      if (agency?.role?.name === "team_agency") {
-        const team_agency_detail = await Team_Agency.findById(
-          agency?.reference_id
-        )
-          .populate("role", "name")
-          .lean();
-        if (team_agency_detail?.role?.name === "admin") {
-          agency = await Authentication.findOne({
-            reference_id: team_agency_detail.agency_id,
-          }).lean();
-        }
-      }
+      // if (agency?.role?.name === "team_agency") {
+      //   const team_agency_detail = await Team_Agency.findById(
+      //     agency?.reference_id
+      //   )
+      //     .populate("role", "name")
+      //     .lean();
+      //   if (team_agency_detail?.role?.name === "admin") {
+      //     agency = await Authentication.findOne({
+      //       reference_id: team_agency_detail.agency_id,
+      //     }).lean();
+      //   }
+      // }
 
       team_member_exist = await Team_Client.findOne({
         _id: payload?.id,

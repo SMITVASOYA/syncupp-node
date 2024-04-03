@@ -17,6 +17,12 @@ const subscriptionPlanSchema = new mongoose.Schema(
     active: { type: Boolean, default: false },
     symbol: { type: String },
     seat: { type: Number },
+    sort_value: { type: Number },
+    plan_type: {
+      type: String,
+      enum: ["limited", "unlimited"],
+      default: "limited",
+    },
   },
   { timestamps: true }
 );

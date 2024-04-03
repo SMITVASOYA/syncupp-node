@@ -69,3 +69,21 @@ exports.uploadDocument = catchAsyncError(async (req, res, next) => {
   await chatService.uploadDocument(req.body, req.file);
   sendResponse(res, true, undefined, {}, 200);
 });
+exports.uploadAudio = catchAsyncError(async (req, res, next) => {
+  await chatService.uploadAudio(req.body, req.file);
+  sendResponse(res, true, undefined, {}, 200);
+});
+
+exports.fetchLatestChat = catchAsyncError(async (req, res, next) => {
+  const latest_chat_history = await chatService.FetchLatestChat(
+    req.body,
+    req.user
+  );
+  sendResponse(
+    res,
+    true,
+    returnMessage("chat", "latesthistoryFetched"),
+    latest_chat_history,
+    statusCode.success
+  );
+});

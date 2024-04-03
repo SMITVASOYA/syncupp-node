@@ -51,6 +51,10 @@ const authenticationSchema = new mongoose.Schema(
     is_online: { type: Boolean, default: false },
     subscription_halted: { type: Date },
     subscription_halted_displayed: { type: Boolean, default: false },
+    purchased_plan: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "subscription_plan",
+    },
   },
   { timestamps: true }
 );

@@ -1,7 +1,7 @@
 const chatRoute = require("express").Router();
 const { protect } = require("../middlewares/authMiddleware");
 const chatController = require("../controllers/chatController");
-const { upload } = require("../helpers/multer");
+const { upload, audio_upload } = require("../helpers/multer");
 
 chatRoute.use(protect);
 chatRoute.post("/users", chatController.fetchUsersList);
@@ -22,5 +22,12 @@ chatRoute.post(
   upload.single("document"),
   chatController.uploadDocument
 );
+chatRoute.post(
+  "/upload-audio",
+  audio_upload.single("audio_blob_data"),
+  chatController.uploadAudio
+);
+
+chatRoute.post("/lastest-history", chatController.fetchLatestChat);
 
 module.exports = chatRoute;

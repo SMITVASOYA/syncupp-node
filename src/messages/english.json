@@ -251,7 +251,7 @@
     "paymentFailed": "Payment failed.",
     "orderCreated": "Order created successfully.",
     "sheetsNotAvailable": "Sheets are not available for this agency.",
-    "canNotCancelSubscription": "You can not cancel the subscription for the agency.",
+    "canNotCancelSubscription": "You can not cancel the subscription.",
     "paymentHistoryFetched": "Payment history fetched successfully.",
     "sheetsFetched": "Sheets list fetch successfully.",
     "userRemoved": "User removed successfully.",
@@ -265,7 +265,11 @@
     "paymentPendingForAgency": "Payment is pending for the agency.",
     "planAdded": "Plan added successfully.",
     "planFetched": "Plan fetched successfully.",
-    "plansFetched": "Plans fetched successfully."
+    "plansFetched": "Plans fetched successfully.",
+    "subscriptionPlanUpdate": "Subscription plan updated.",
+    "planNotFound": "Subscription plan does not exist.",
+    "alreadySubscribed": "Subscription plan should not be same.",
+    "maxSheetsAllocated": "You have reached to the maximum sheet allocation."
   },
   "affiliate": {
     "registered": "User registered successfully.",
@@ -347,7 +351,9 @@
     "insufficientPermission": "You don't have permission to create group.",
     "groupNameRequired": "Group name is required.",
     "groupCreated": "Group created successfully.",
-    "groupDoesNotExist": "The group does not exist."
+    "groupDoesNotExist": "The group does not exist.",
+    "MessageNotOFund": "Message not found.",
+    "latesthistoryFetched": "chat fetched successfully."
   },
 
   "default": { "default": "Something went wrong." }
