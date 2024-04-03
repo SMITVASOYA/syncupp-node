@@ -162,7 +162,10 @@ class AgencyService {
   getAgencyProfile = async (agency) => {
     try {
       const [agency_detail, agency_reference, plan] = await Promise.all([
-        Authentication.findById(agency?._id).select("-password").lean(),
+        Authentication.findById(agency?._id)
+          .populate("purchased_plan", "plan_type")
+          .select("-password")
+          .lean(),
         Agency.findById(agency?.reference_id)
           .populate("city", "name")
           .populate("state", "name")
@@ -750,14 +753,16 @@ class AgencyService {
         Next_billing_amount =
           subscription?.quantity *
             (planDetailForSubscription?.item.amount / 100) ?? 0;
-      } else if (user?.status === "free_trial") {
-        const [sheets, plan_details] = await Promise.all([
-          SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
-          SubscriptionPlan.findOne({ active: true }).lean(),
-        ]);
-        Next_billing_amount =
-          sheets.total_sheets * (plan_details?.amount / 100);
       }
+      // commented because of the multiple plans
+      // if (user?.status === "free_trial") {
+      //   const [sheets, plan_details] = await Promise.all([
+      //     SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
+      //     SubscriptionPlan.findOne({ active: true }).lean(),
+      //   ]);
+      //   Next_billing_amount =
+      //     sheets.total_sheets * (plan_details?.amount / 100);
+      // }
 
       return {
         client_count: clientCount[0]?.clientCount ?? 0,

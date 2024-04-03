@@ -303,10 +303,7 @@ class AuthService {
       const decoded = jwt.decode(signupId);
 
       let [existing_agency, referral_data] = await Promise.all([
-        Authentication.findOne({
-          email: decoded.email,
-          is_deleted: false,
-        })
+        Authentication.findOne({ email: decoded.email, is_deleted: false })
           .populate("role", "name")
           .lean(),
         Configuration.findOne({}).lean(),

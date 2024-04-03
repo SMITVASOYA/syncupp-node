@@ -144,11 +144,11 @@ class PaymentService {
       // );
 
       // creating the customer to the razorpay
-      this.razorpayApi.post("/customers", {
-        name: user?.first_name + " " + user?.last_name,
-        email: user?.email,
-        fail_existing: 0,
-      });
+      // this.razorpayApi.post("/customers", {
+      //   name: user?.first_name + " " + user?.last_name,
+      //   email: user?.email,
+      //   fail_existing: 0,
+      // });
 
       // removed as this is no use now
       // const emails = [
@@ -185,15 +185,13 @@ class PaymentService {
         amount:
           plan?.plan_type === "unlimited"
             ? plan?.amount * 1
-            : plan?.amount * sheets?.total_sheets,
+            : plan?.amount * (sheets?.total_sheets || 1),
         currency: plan?.currency,
         agency_id: user?.reference_id,
         email: user?.email,
         contact_number: user?.contact_number,
       };
     } catch (error) {
-      console.log(error, 167);
-
       logger.error(`Error while creating subscription: ${error}`);
       return throwError(
         error?.message || error?.error?.description,
@@ -585,13 +583,23 @@ class PaymentService {
 
       if (!agency_exist) return throwError(returnMessage("default", "default"));
 
-      const plan = await SubscriptionPlan.findOne({ active: true }).lean();
+      const plan = await SubscriptionPlan.findById(user?.purchased_plan).lean();
 
       if (!plan)
         return throwError(
           returnMessage("payment", "planNotFound"),
           statusCode.notFound
         );
+
+      if (plan?.plan_type === "unlimited") {
+        const sheets = await SheetManagement.findOne({
+          agency_id: user?.reference_id,
+        }).lean();
+
+        // this is used if the users has selected unlimited plan wants to add the user even after the occupied
+        if (sheets.occupied_sheets + 1 + 1 > plan?.seat)
+          return throwError(returnMessage("payment", "maxSheetsAllocated"));
+      }
 
       const subscripion_detail = await this.subscripionDetail(
         user?.subscription_id
@@ -1506,11 +1514,12 @@ class PaymentService {
 
   cancelSubscription = async (user) => {
     try {
-      const sheets = await SheetManagement.findOne({
-        agency_id: user?.reference_id,
-      }).lean();
+      const [sheets, plan] = await Promise.all([
+        SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
+        SubscriptionPlan.findById(user?.purchased_plan).lean(),
+      ]);
 
-      if (sheets.total_sheets === 1)
+      if (sheets.total_sheets === 1 || plan?.plan_id === "unlimited")
         return throwError(returnMessage("payment", "canNotCancelSubscription"));
 
       if (!(sheets.occupied_sheets.length >= 0))
@@ -1567,15 +1576,16 @@ class PaymentService {
           subscription_halted_displayed: true,
         });
       }
-      if (agency?.status === "free_trial") {
-        const days = configuration?.payment?.free_trial;
-        next_billing_date = moment(agency?.createdAt)
-          .startOf("day")
-          .add(days, "days");
-        next_billing_date = next_billing_date.unix();
-        // this will change for the double plan
-        plan_details = await SubscriptionPlan.findOne({ active: true }).lean();
-      }
+      // commented because of the multiple plans
+      // if (agency?.status === "free_trial") {
+      //   const days = configuration?.payment?.free_trial;
+      //   next_billing_date = moment(agency?.createdAt)
+      //     .startOf("day")
+      //     .add(days, "days");
+      //   next_billing_date = next_billing_date.unix();
+      //   // this will change for the double plan
+      //   plan_details = await SubscriptionPlan.findOne({ active: true }).lean();
+      // }
 
       return {
         next_billing_date: subscription?.current_end || next_billing_date,
@@ -2571,14 +2581,11 @@ class PaymentService {
   updateSubscriptionPlan = async (payload, agency) => {
     try {
       const [plan_detail, sheets] = await Promise.all([
-        SubscriptionPlan.findOne({
-          plan_id: payload?.plan_id,
-          active: true,
-        }).lean(),
+        SubscriptionPlan.findById(payload?.plan_id).lean(),
         SheetManagement.findOne({ agency_id: agency?.reference_id }).lean(),
       ]);
 
-      if (!plan_detail)
+      if (!plan_detail || !plan_detail.active)
         return throwError(returnMessage("payment", "planNotFound"), 404);
 
       if (agency?.purchased_plan?.toString() === plan_detail?._id?.toString())
@@ -2586,7 +2593,7 @@ class PaymentService {
 
       const update_subscription_obj = {
         plan_id: plan_detail?.plan_id,
-        quantity: sheets?.total_sheets,
+        quantity: sheets?.occupied_sheets?.length + 1,
         schedule_change_at: "now",
         customer_notify: 1,
       };
@@ -2606,12 +2613,14 @@ class PaymentService {
       if (plan_detail?.plan_type === "unlimited") {
         sheet_obj.total_sheets = plan_detail?.seat;
       } else if (plan_detail?.plan_type === "limited") {
-        const total_sheet = sheets.occupied_sheets.length + 1;
-        sheet_obj.total_sheets = total_sheet;
+        sheet_obj.total_sheets = sheets.occupied_sheets.length + 1;
       }
-      await SheetManagement.findByIdAndUpdate(sheets._id, sheet_obj, {
-        new: true,
-      });
+      await Promise.all([
+        SheetManagement.findByIdAndUpdate(sheets._id, sheet_obj),
+        Authentication.findByIdAndUpdate(agency?._id, {
+          purchased_plan: plan_detail?._id,
+        }),
+      ]);
       return;
     } catch (error) {
       logger.error(`Error while updating the subscription plan: ${error}`);
