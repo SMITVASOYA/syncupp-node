@@ -84,10 +84,11 @@ class PaymentService {
           plan_id: plan?.id,
           period: payload?.period,
           name: payload?.name,
-          active: true,
+          active: false,
+          symbol: payload?.symbol,
+          seat: payload?.seat,
         });
       }
-
       return;
     } catch (error) {
       console.log(JSON.stringify(error));
@@ -109,9 +110,13 @@ class PaymentService {
         user?.status !== "payment_pending"
       )
         return throwError(returnMessage("payment", "alreadyPaid"));
-      const [plan, configuration] = await Promise.all([
+
+      if (user?.status === "free_trial")
+        return throwError(returnMessage("payment", "freeTrialOn"));
+
+      const [plan, sheets] = await Promise.all([
         SubscriptionPlan.findOne({ active: true }).lean(),
-        Configuration.findOne().lean(),
+        SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
       ]);
 
       if (!plan)
@@ -120,16 +125,11 @@ class PaymentService {
           statusCode.notFound
         );
 
-      const start_at = moment
-        .utc()
-        .add(configuration?.payment?.free_trial, "days")
-        .startOf("day");
       const subscription_obj = {
         plan_id: plan?.plan_id,
-        quantity: 1,
+        quantity: sheets?.total_sheets || 1,
         customer_notify: 1,
         total_count: 120,
-        start_at: start_at.unix(),
       };
       // commenting because to test the razorpay axios api call
       // const subscription = await razorpay.subscriptions.create(
@@ -143,21 +143,22 @@ class PaymentService {
         fail_existing: 0,
       });
 
-      const emails = [
-        "laksh@neuroidmedia.com",
-        "saurabh@growmedico.com",
-        "imshubham026@gmail.com",
-        "vijaysujanani@hotmail.com",
-        "tanjirouedits7@gmail.com",
-        "fullstacktridhya@gmail.com",
-      ];
-      if (emails.includes(user?.email)) {
-        const sheets = await SheetManagement.findOne({
-          agency_id: user?.reference_id,
-        }).lean();
-        subscription_obj.quantity = sheets.total_sheets;
-        subscription_obj.start_at = undefined;
-      }
+      // removed as this is no use now
+      // const emails = [
+      //   "laksh@neuroidmedia.com",
+      //   "saurabh@growmedico.com",
+      //   "imshubham026@gmail.com",
+      //   "vijaysujanani@hotmail.com",
+      //   "tanjirouedits7@gmail.com",
+      //   "fullstacktridhya@gmail.com",
+      // ];
+      // if (emails.includes(user?.email)) {
+      //   const sheets = await SheetManagement.findOne({
+      //     agency_id: user?.reference_id,
+      //   }).lean();
+      //   subscription_obj.quantity = sheets.total_sheets;
+      //   subscription_obj.start_at = undefined;
+      // }
 
       const { data } = await this.razorpayApi.post(
         "/subscriptions",
@@ -174,7 +175,7 @@ class PaymentService {
 
       return {
         payment_id: subscription?.id,
-        amount: plan?.amount,
+        amount: plan?.amount * sheets?.total_sheets || plan?.amount * 1,
         currency: plan?.currency,
         agency_id: user?.reference_id,
         email: user?.email,
@@ -219,31 +220,32 @@ class PaymentService {
 
       if (body) {
         const { payload } = body;
-        if (body?.event === "subscription.authenticated") {
-          const subscription_id = payload?.subscription?.entity?.id;
-          const plan_id = payload?.subscription?.entity?.plan_id;
+        // if (body?.event === "subscription.authenticated") {
+        //   const subscription_id = payload?.subscription?.entity?.id;
+        //   const plan_id = payload?.subscription?.entity?.plan_id;
 
-          const [agency_details, payment_history, configuration] =
-            await Promise.all([
-              Authentication.findOne({ subscription_id }).lean(),
-              PaymentHistory.findOne({ subscription_id }),
-              Configuration.findOne().lean(),
-            ]);
+        //   const [agency_details, payment_history, configuration] =
+        //     await Promise.all([
+        //       Authentication.findOne({ subscription_id }).lean(),
+        //       PaymentHistory.findOne({ subscription_id }),
+        //       Configuration.findOne().lean(),
+        //     ]);
 
-          if (!(configuration.payment.free_trial > 0)) return;
-          if (!agency_details) return;
-          let first_time = false;
-          if (!payment_history) first_time = true;
+        //   if (!(configuration.payment.free_trial > 0)) return;
+        //   if (!agency_details) return;
+        //   let first_time = false;
+        //   if (!payment_history) first_time = true;
 
-          const pp = await PaymentHistory.create({
-            agency_id: agency_details?.reference_id,
-            subscription_id,
-            first_time,
-            plan_id,
-            payment_mode: "free_trial",
-          });
-          return;
-        } else if (body?.event === "subscription.charged") {
+        //   const pp = await PaymentHistory.create({
+        //     agency_id: agency_details?.reference_id,
+        //     subscription_id,
+        //     first_time,
+        //     plan_id,
+        //     payment_mode: "free_trial",
+        //   });
+        //   return;
+        // }
+        if (body?.event === "subscription.charged") {
           const subscription_id = payload?.subscription?.entity?.id;
           const payment_id = payload?.payment?.entity?.id;
           const currency = payload?.payment?.entity?.currency;
@@ -531,9 +533,13 @@ class PaymentService {
         let agency_data = await Authentication.findOne({
           reference_id: check_agency?.agency_id,
         }).lean();
-        user.subscribe_date = agency_data.subscribe_date;
-        user.subscription_id = agency_data.subscription_id;
+        user.status = agency_data?.status;
+        user.subscribe_date = agency_data?.subscribe_date;
+        user.subscription_id = agency_data?.subscription_id;
       }
+
+      if (user?.status === "free_trial")
+        return throwError(returnMessage("payment", "freeTrialOn"));
 
       if (
         user?.status === "payment_pending" ||
@@ -654,7 +660,6 @@ class PaymentService {
             .lean();
         }
 
-        console.log(userData);
         const agencyData = await Authentication.findOne({
           reference_id: payload?.agency_id,
         })
@@ -1459,9 +1464,11 @@ class PaymentService {
           );
         }
 
-        await SheetManagement.findByIdAndUpdate(sheets._id, {
-          occupied_sheets: updated_users,
-        });
+        const update_obj = { occupied_sheets: updated_users };
+        if (user?.status === "free_trial") {
+          update_obj.total_sheets = sheets?.total_sheets - 1;
+        }
+        await SheetManagement.findByIdAndUpdate(sheets._id, update_obj);
       }
       return;
     } catch (error) {
@@ -1495,9 +1502,15 @@ class PaymentService {
       //   })
       // );
 
-      await this.razorpayApi.patch(`/subscriptions/${user?.subscription_id}`, {
-        quantity: updated_sheet?.total_sheets,
-      });
+      if (user?.status !== "free_trial" && user?.subscription_id) {
+        await this.razorpayApi.patch(
+          `/subscriptions/${user?.subscription_id}`,
+          {
+            quantity: updated_sheet?.total_sheets,
+          }
+        );
+      }
+
       return;
     } catch (error) {
       console.log(JSON.stringify(error));
@@ -1508,15 +1521,18 @@ class PaymentService {
 
   getSubscription = async (agency) => {
     try {
-      const subscription = await this.subscripionDetail(
-        agency?.subscription_id
-      );
-      const [plan_details, sheets_detail, earned_total, agency_details] =
+      let subscription, plan_details, next_billing_date;
+      if (agency?.status !== "free_trial" && agency?.subscription_id) {
+        subscription = await this.subscripionDetail(agency?.subscription_id);
+        plan_details = await this.planDetails(subscription.plan_id);
+      }
+
+      const [sheets_detail, earned_total, agency_details, configuration] =
         await Promise.all([
-          this.planDetails(subscription.plan_id),
           SheetManagement.findOne({ agency_id: agency?.reference_id }).lean(),
           this.calculateTotalReferralPoints(agency),
           Agency.findById(agency?.reference_id).lean(),
+          Configuration.findOne({}).lean(),
         ]);
 
       if (agency?.subscription_halted) {
@@ -1524,11 +1540,21 @@ class PaymentService {
           subscription_halted_displayed: true,
         });
       }
+      if (agency?.status === "free_trial") {
+        const days = configuration?.payment?.free_trial;
+        next_billing_date = moment(agency?.createdAt)
+          .startOf("day")
+          .add(days, "days");
+        next_billing_date = next_billing_date.unix();
+        // this will change for the double plan
+        plan_details = await SubscriptionPlan.findOne({ active: true }).lean();
+      }
 
       return {
-        next_billing_date: subscription?.current_end,
+        next_billing_date: subscription?.current_end || next_billing_date,
         next_billing_price:
-          subscription?.quantity * (plan_details?.item.amount / 100),
+          subscription?.quantity * (plan_details?.item?.amount / 100) ||
+          plan_details?.amount / 100,
         total_sheets: sheets_detail.total_sheets,
         available_sheets: Math.abs(
           sheets_detail.total_sheets - 1 - sheets_detail.occupied_sheets.length
@@ -2223,15 +2249,17 @@ class PaymentService {
 
   deactivateAgency = async (agency) => {
     try {
-      const { data } = await this.razorpayApi.post(
-        `/subscriptions/${agency?.subscription_id}/cancel`,
-        {
-          cancel_at_cycle_end: 0,
-        }
-      );
-      if (!data || data?.status !== "cancelled")
-        return throwError(returnMessage("default", "default"));
+      if (agency?.subscription_id && agency?.status !== "free_trial") {
+        const { data } = await this.razorpayApi.post(
+          `/subscriptions/${agency?.subscription_id}/cancel`,
+          {
+            cancel_at_cycle_end: 0,
+          }
+        );
 
+        if (!data || data?.status !== "cancelled")
+          return throwError(returnMessage("default", "default"));
+      }
       await this.deactivateAccount(agency);
     } catch (error) {
       logger.error(`Error while deactivating the agency: ${error}`);
@@ -2255,12 +2283,12 @@ class PaymentService {
           { is_deleted: true }
         ),
         Client.updateMany(
-          { "agency_ids.agency_id": agency?.reference_id },
-          { "agency_ids.status": "deleted" }
+          { agency_ids: { $elemMatch: { agency_id: agency?.reference_id } } },
+          { $set: { "agency_ids.$.status": "deleted" } }
         ),
         Team_Client.updateMany(
-          { "agency_ids.agency_id": agency?.reference_id },
-          { "agency_ids.status": "deleted" }
+          { agency_ids: { $elemMatch: { agency_id: agency?.reference_id } } },
+          { $set: { "agency_ids.$.status": "deleted" } }
         ),
         Authentication.updateMany(
           { reference_id: agency?.reference_id },
@@ -2458,6 +2486,59 @@ class PaymentService {
       logger.error(
         `Error while running the cron of the subscription expire cron: ${error}`
       );
+      console.log(error);
+    }
+  };
+
+  cronForFreeTrialEnd = async () => {
+    try {
+      const [agencies, configuration] = await Promise.all([
+        Authentication.find({ status: "free_trial" }).lean(),
+        Configuration.findOne({}).lean(),
+      ]);
+      const today = moment.utc().startOf("day");
+
+      agencies.forEach(async (agency) => {
+        const created_at = moment.utc(agency.createdAt).startOf("day");
+        const days_diff = Math.abs(today.diff(created_at, "days"));
+
+        if (days_diff > configuration?.payment?.free_trial) {
+          await Authentication.findByIdAndUpdate(
+            agency?._id,
+            {
+              status: "payment_pending",
+            },
+            { new: true }
+          );
+        }
+      });
+    } catch (error) {
+      logger.error(
+        `Error while running cron for the free tial expire: ${error}`
+      );
+    }
+  };
+  listPlan = async () => {
+    try {
+      const response = await SubscriptionPlan.find({
+        _id: ["6605514b5790efa93c37e9fa", "660550d75790efa93c37e9f5"],
+      });
+      // const response = await this.razorpayApi.get("/plans");
+      console.log("first", response);
+      return response;
+    } catch (error) {
+      logger.error(`Error while running the list plan: ${error}`);
+      console.log(error);
+    }
+  };
+
+  getPlan = async (payload) => {
+    try {
+      const { planId } = payload;
+      const response = await SubscriptionPlan.findOne({ _id: planId });
+      return response;
+    } catch (error) {
+      logger.error(`Error while running the get plan: ${error}`);
       console.log(error);
     }
   };

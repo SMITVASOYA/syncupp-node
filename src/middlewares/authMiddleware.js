@@ -29,6 +29,18 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
       .lean();
     if (!user) return throwError(returnMessage("auth", "unAuthorized"), 401);
 
+    if (user?.role?.name === "team_agency") {
+      const team_agency_detail = await Team_Agency.findById(
+        user?.reference_id
+      ).lean();
+      const agency_detail = await Authentication.findOne({
+        reference_id: team_agency_detail?.agency_id,
+      }).lean();
+
+      if (agency_detail?.status === "payment_pending")
+        return throwError(returnMessage("payment", "paymentPendingForAgency"));
+    }
+
     // Convert last_login_date to UTC format using Moment.js
     const lastLoginDateUTC = moment.utc(user.last_login_date).startOf("day");
 
@@ -83,7 +95,7 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
 
         await Authentication.findByIdAndUpdate(
           user?._id,
-          { last_login_date: lastLoginDateUTC },
+          { last_login_date: currentDateUTC },
           { new: true }
         );
       }
@@ -92,7 +104,7 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
     const req_paths = ["/create-subscription", "/order"];
     if (
       user?.role?.name === "agency" &&
-      user?.status !== "confirmed" &&
+      user?.status === "payment_pending" &&
       !req_paths.includes(req.path)
     )
       return throwError(returnMessage("payment", "agencyPaymentPending"), 422);

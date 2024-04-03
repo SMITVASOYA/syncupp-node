@@ -17,8 +17,8 @@ activityRoute.get("/get-task/:id", activityController.fetchTask);
 activityRoute.delete("/delete-task", activityController.deleteTask);
 activityRoute.put(
   "/update-task/:id",
-  upload.array("attachments"),
   checkFileSize,
+  upload.array("attachments"),
   activityController.updateTask
 );
 activityRoute.put("/update-status/:id", activityController.updateStatus);

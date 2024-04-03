@@ -5,16 +5,17 @@ const { paginationObject, capitalizeFirstLetter } = require("../utils/utils");
 const Role_Master = require("../models/masters/roleMasterSchema");
 const Authentication = require("../models/authenticationSchema");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
-const ReferralService = require("./referralService");
 const Client = require("../models/clientSchema");
 const Team_Agency = require("../models/teamAgencySchema");
 const Activity = require("../models/activitySchema");
-const referralService = new ReferralService();
 const moment = require("moment");
 const Invoice = require("../models/invoiceSchema");
 const mongoose = require("mongoose");
 const PaymentService = require("../services/paymentService");
+const SheetManagement = require("../models/sheetManagementSchema");
+const Agreement = require("../models/agreementSchema");
 const paymentService = new PaymentService();
+const fs = require("fs");
 // Register Agency
 class AgencyService {
   agencyRegistration = async (payload) => {
@@ -192,7 +193,7 @@ class AgencyService {
   };
 
   // Update Agency profile
-  updateAgencyProfile = async (payload, user_id, reference_id) => {
+  updateAgencyProfile = async (payload, user_id, reference_id, image) => {
     try {
       const {
         first_name,
@@ -208,7 +209,19 @@ class AgencyService {
         country,
         pincode,
       } = payload;
-
+      let imagePath = false;
+      if (image) {
+        imagePath = "uploads/" + image.filename;
+      } else if (image === "") {
+        imagePath = "";
+      }
+      const existingImage = await Authentication.findById(user_id);
+      existingImage &&
+        fs.unlink(`./src/public/${existingImage.profile_image}`, (err) => {
+          if (err) {
+            logger.error(`Error while unlinking the documents: ${err}`);
+          }
+        });
       const authData = {
         first_name,
         last_name,
@@ -233,12 +246,19 @@ class AgencyService {
       await Promise.all([
         Authentication.updateOne(
           { _id: user_id },
-          { $set: authData },
+          {
+            $set: authData,
+            ...((imagePath || imagePath === "") && {
+              profile_image: imagePath,
+            }),
+          },
           { new: true }
         ),
         Agency.updateOne(
           { _id: reference_id },
-          { $set: agencyData },
+          {
+            $set: agencyData,
+          },
           { new: true }
         ),
       ]);
@@ -259,9 +279,12 @@ class AgencyService {
       const startOfToday = moment(currentDate).startOf("day");
       const endOfToday = moment(currentDate).endOf("day");
 
-      const subscription = await paymentService.subscripionDetail(
-        user?.subscription_id
-      );
+      let subscription, planDetailForSubscription, Next_billing_amount;
+      if (user?.status !== "free_trial" && user?.subscription_id) {
+        subscription = await paymentService.subscripionDetail(
+          user?.subscription_id
+        );
+      }
 
       const [
         clientCount,
@@ -275,8 +298,8 @@ class AgencyService {
         todaysCallMeeting,
         totalAmountInvoices,
         invoiceOverdueCount,
-        planDetailForSubscription,
         invoiceSentCount,
+        agreementPendingCount,
       ] = await Promise.all([
         Client.aggregate([
           {
@@ -333,7 +356,6 @@ class AgencyService {
             $count: "teamMemberCount",
           },
         ]),
-
         Client.aggregate([
           {
             $lookup: {
@@ -677,7 +699,6 @@ class AgencyService {
             $count: "invoiceOverdueCount",
           },
         ]),
-        paymentService.planDetails(subscription.plan_id),
 
         Invoice.aggregate([
           {
@@ -707,7 +728,37 @@ class AgencyService {
             $count: "invoiceSentCount",
           },
         ]),
+
+        Agreement.aggregate([
+          {
+            $match: {
+              agency_id: new mongoose.Types.ObjectId(user?._id),
+              status: "sent",
+              is_deleted: false,
+            },
+          },
+          {
+            $count: "agreementPendingCount",
+          },
+        ]),
       ]);
+
+      if (user?.status === "confirmed" && user?.subscription_id) {
+        planDetailForSubscription = await paymentService.planDetails(
+          subscription?.plan_id
+        );
+        Next_billing_amount =
+          subscription?.quantity *
+            (planDetailForSubscription?.item.amount / 100) ?? 0;
+      } else if (user?.status === "free_trial") {
+        const [sheets, plan_details] = await Promise.all([
+          SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
+          SubscriptionPlan.findOne({ active: true }).lean(),
+        ]);
+        Next_billing_amount =
+          sheets.total_sheets * (plan_details?.amount / 100);
+      }
+
       return {
         client_count: clientCount[0]?.clientCount ?? 0,
         team_member_count: teamMemberCount[0]?.teamMemberCount ?? 0,
@@ -720,6 +771,9 @@ class AgencyService {
         todays_call_meeting: todaysCallMeeting[0]?.todaysCallMeeting ?? 0,
         total_invoice_amount: totalAmountInvoices[0]?.totalPaidAmount ?? 0,
         invoice_overdue_count: invoiceOverdueCount[0]?.invoiceOverdueCount ?? 0,
+        Next_billing_amount: Next_billing_amount || 0,
+        agreement_pending_count:
+          agreementPendingCount[0]?.agreementPendingCount ?? 0,
         Next_billing_amount:
           subscription?.quantity *
             (planDetailForSubscription?.item.amount / 100) ?? 0,

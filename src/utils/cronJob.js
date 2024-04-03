@@ -42,8 +42,11 @@ exports.setupNightlyCronJob = async () => {
 
   const payment_cron_schedule = config?.cron_job?.payment;
   cron.schedule(payment_cron_schedule, () => {
-    console.log("Running the nightly cron job to expire the subscription...");
+    console.log(
+      "Running the nightly cron job to expire the subscription and ..."
+    );
     paymentService.cronForSubscription();
+    paymentService.cronForFreeTrialEnd();
   });
 
   // Crone job for 15 minutes start

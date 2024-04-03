@@ -249,8 +249,7 @@ class NotificationService {
                 "clientMessage"
               );
             }
-          }
-          if (activity_type_action === "update") {
+          } else if (activity_type_action === "update") {
             await createAndEmitNotification(
               payload.agency_id,
               message_type,
@@ -395,7 +394,7 @@ class NotificationService {
             "general"
           );
         }
-        // client Team member password set by agency
+        // client Team member password set
 
         if (action_name === "teamClientPasswordSet") {
           await createAndEmitNotification(
@@ -404,9 +403,15 @@ class NotificationService {
             "general",
             "general"
           );
+          await createAndEmitNotification(
+            payload.client_id,
+            "clientTeamJoined",
+            "general",
+            "general"
+          );
         }
 
-        // client  password set by agency
+        // client  password set
 
         if (action_name === "clientPasswordSet") {
           await createAndEmitNotification(
@@ -594,7 +599,7 @@ class NotificationService {
       }
 
       //  seat remover
-      if (action_name === "seatRemoved") {
+      else if (action_name === "seatRemoved") {
         if (payload.user_type === "client") {
           await createAndEmitNotification(
             admin._id,
@@ -620,8 +625,7 @@ class NotificationService {
       }
 
       // Payment
-
-      if (payload.module_name === "payment") {
+      else if (payload.module_name === "payment") {
         if (
           payload.action_name === "team_agency" ||
           payload.action_name === "team_client"
@@ -647,6 +651,26 @@ class NotificationService {
             "deleted"
           );
         }
+      }
+
+      // inquiry
+      else if (payload.module_name === "inquiry") {
+        await createAndEmitNotification(
+          admin._id,
+          "newInquiry",
+          "admin",
+          "deleted"
+        );
+      }
+
+      // inquiry
+      else if (payload.module_name === "ticket") {
+        await createAndEmitNotification(
+          admin._id,
+          "newTicket",
+          "admin",
+          "deleted"
+        );
       }
 
       return;

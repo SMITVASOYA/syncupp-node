@@ -308,120 +308,120 @@ class dashboardService {
     }
   };
 
-  // Agency Affiliate statics
-  agencyAffiliate = async (user) => {
-    try {
-      const currentDate = moment();
-      const startOfPreviousMonth = moment(currentDate)
-        .subtract(1, "months")
-        .startOf("month");
-      const endOfPreviousMonth = moment(currentDate)
-        .subtract(1, "months")
-        .endOf("month");
+  // // Agency Affiliate statics
+  // agencyAffiliate = async (user) => {
+  //   try {
+  //     const currentDate = moment();
+  //     const startOfPreviousMonth = moment(currentDate)
+  //       .subtract(1, "months")
+  //       .startOf("month");
+  //     const endOfPreviousMonth = moment(currentDate)
+  //       .subtract(1, "months")
+  //       .endOf("month");
 
-      const commissionPercentage = await Configuration.findOne({});
-      const [
-        agencyAffiliate,
-        activeReferralCount,
-        agencyClickCount,
-        lastMonthEarning,
-      ] = await Promise.all([
-        ReferralHistory.countDocuments({ referred_by: user._id }),
+  //     const commissionPercentage = await Configuration.findOne({});
+  //     const [
+  //       agencyAffiliate,
+  //       activeReferralCount,
+  //       agencyClickCount,
+  //       lastMonthEarning,
+  //     ] = await Promise.all([
+  //       ReferralHistory.countDocuments({ referred_by: user._id }),
 
-        ReferralHistory.aggregate([
-          {
-            $lookup: {
-              from: "authentications",
-              localField: "referred_to",
-              foreignField: "_id",
-              as: "agencyData",
-              pipeline: [
-                {
-                  $project: {
-                    status: 1,
-                  },
-                },
-              ],
-            },
-          },
-          {
-            $unwind: {
-              path: "$agencyData",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $match: {
-              referred_by: user._id,
-              "agencyData.status": "confirmed",
-            },
-          },
+  //       ReferralHistory.aggregate([
+  //         {
+  //           $lookup: {
+  //             from: "authentications",
+  //             localField: "referred_to",
+  //             foreignField: "_id",
+  //             as: "agencyData",
+  //             pipeline: [
+  //               {
+  //                 $project: {
+  //                   status: 1,
+  //                 },
+  //               },
+  //             ],
+  //           },
+  //         },
+  //         {
+  //           $unwind: {
+  //             path: "$agencyData",
+  //             preserveNullAndEmptyArrays: true,
+  //           },
+  //         },
+  //         {
+  //           $match: {
+  //             referred_by: user._id,
+  //             "agencyData.status": "confirmed",
+  //           },
+  //         },
 
-          {
-            $count: "agencyAffiliate",
-          },
-        ]),
-        Authentication.findById(user._id).lean(),
-        ReferralHistory.aggregate([
-          {
-            $match: {
-              referred_by: user.reference_id,
-            },
-          },
+  //         {
+  //           $count: "agencyAffiliate",
+  //         },
+  //       ]),
+  //       Authentication.findById(user._id).lean(),
+  //       ReferralHistory.aggregate([
+  //         {
+  //           $match: {
+  //             referred_by: user.reference_id,
+  //           },
+  //         },
 
-          {
-            $lookup: {
-              from: "payment_histories",
-              localField: "referred_to",
-              foreignField: "agency_id",
-              as: "paymentData",
-            },
-          },
-          {
-            $unwind: {
-              path: "$paymentData",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $match: {
-              "paymentData.createdAt": {
-                $gte: startOfPreviousMonth.toDate(),
-                $lte: endOfPreviousMonth.toDate(),
-              },
-            },
-          },
-          {
-            $group: {
-              _id: null,
-              totalAmount: { $sum: "$paymentData.amount" },
-            },
-          },
-          {
-            $project: {
-              _id: 0,
-              totalAmount: 1,
-              total: {
-                $multiply: [
-                  "$totalAmount",
-                  commissionPercentage.referral.commission_percentage / 100,
-                ],
-              },
-            },
-          },
-        ]),
-      ]);
-      return {
-        referral_count: agencyAffiliate ?? 0,
-        active_referral_count: activeReferralCount[0]?.agencyAffiliate ?? 0,
-        agency_click_count: agencyClickCount?.click_count ?? 0,
-        last_month_earning: lastMonthEarning[0]?.total ?? 0,
-      };
-    } catch (error) {
-      logger.error(`Error while fetch Agency affiliate data task: ${error}`);
-      return throwError(error?.message, error?.statusCode);
-    }
-  };
+  //         {
+  //           $lookup: {
+  //             from: "payment_histories",
+  //             localField: "referred_to",
+  //             foreignField: "agency_id",
+  //             as: "paymentData",
+  //           },
+  //         },
+  //         {
+  //           $unwind: {
+  //             path: "$paymentData",
+  //             preserveNullAndEmptyArrays: true,
+  //           },
+  //         },
+  //         {
+  //           $match: {
+  //             "paymentData.createdAt": {
+  //               $gte: startOfPreviousMonth.toDate(),
+  //               $lte: endOfPreviousMonth.toDate(),
+  //             },
+  //           },
+  //         },
+  //         {
+  //           $group: {
+  //             _id: null,
+  //             totalAmount: { $sum: "$paymentData.amount" },
+  //           },
+  //         },
+  //         {
+  //           $project: {
+  //             _id: 0,
+  //             totalAmount: 1,
+  //             total: {
+  //               $multiply: [
+  //                 "$totalAmount",
+  //                 commissionPercentage.referral.commission_percentage / 100,
+  //               ],
+  //             },
+  //           },
+  //         },
+  //       ]),
+  //     ]);
+  //     return {
+  //       referral_count: agencyAffiliate ?? 0,
+  //       active_referral_count: activeReferralCount[0]?.agencyAffiliate ?? 0,
+  //       agency_click_count: agencyClickCount?.click_count ?? 0,
+  //       last_month_earning: lastMonthEarning[0]?.total ?? 0,
+  //     };
+  //   } catch (error) {
+  //     logger.error(`Error while fetch Agency affiliate data task: ${error}`);
+  //     return throwError(error?.message, error?.statusCode);
+  //   }
+  // };
 }
 
 module.exports = dashboardService;

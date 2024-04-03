@@ -31,26 +31,34 @@ const Agreement = require("../models/agreementSchema");
 const NotificationService = require("./notificationService");
 const Configuration = require("../models/configurationSchema");
 const notificationService = new NotificationService();
+const TeamMemberService = require("../services/teamMemberService");
+const teamMemberService = new TeamMemberService();
+const fs = require("fs");
 
 class ClientService {
   // create client for the agency
   createClient = async (payload, agency) => {
     try {
-      if (agency?.role?.name === "team_agency") {
-        const team_agency_detail = await Team_Agency.findById(
-          agency?.reference_id
-        )
-          .populate("role", "name")
-          .lean();
-        if (team_agency_detail?.role?.name === "admin") {
-          agency = await Authentication.findOne({
-            reference_id: team_agency_detail?.agency_id,
-          })
-            .populate("role", "role")
-            .lean();
-          agency.created_by = team_agency_detail?._id;
-        }
-      }
+      // commented as only agency can create the client
+      // if (agency?.role?.name === "team_agency") {
+      //   const team_agency_detail = await Team_Agency.findById(
+      //     agency?.reference_id
+      //   )
+      //     .populate("role", "name")
+      //     .lean();
+      //   if (team_agency_detail?.role?.name === "admin") {
+      //     agency = await Authentication.findOne({
+      //       reference_id: team_agency_detail?.agency_id,
+      //     })
+      //       .populate("role", "role")
+      //       .lean();
+      //     agency.created_by = team_agency_detail?._id;
+      //   }
+      // }
+
+      if (agency?.role?.name !== "agency")
+        return throwError(returnMessage("auth", "insufficientPermission"), 403);
+
       const { first_name, last_name, email, company_name } = payload;
       validateRequestFields(payload, [
         "first_name",
@@ -167,6 +175,12 @@ class ClientService {
         .select("reference_id")
         .lean();
 
+      if (agency?.status === "free_trial") {
+        await teamMemberService.freeTrialMemberAdd(
+          agency?.reference_id,
+          client?.reference_id
+        );
+      }
       return {
         ...client,
         referral_points: 0, // this is set to 0 initially but it will update when the referral module imlement
@@ -713,7 +727,7 @@ class ClientService {
   };
 
   // Update Agency profile
-  updateClientProfile = async (payload, user_id, reference_id) => {
+  updateClientProfile = async (payload, user_id, reference_id, image) => {
     try {
       const {
         first_name,
@@ -729,6 +743,20 @@ class ClientService {
         country,
         pincode,
       } = payload;
+
+      let imagePath = false;
+      if (image) {
+        imagePath = "uploads/" + image.filename;
+      } else if (image === "") {
+        imagePath = "";
+      }
+      const existingImage = await Authentication.findById(user_id);
+      existingImage &&
+        fs.unlink(`./src/public/${existingImage.profile_image}`, (err) => {
+          if (err) {
+            logger.error(`Error while unlinking the documents: ${err}`);
+          }
+        });
 
       const authData = {
         first_name,
@@ -754,7 +782,12 @@ class ClientService {
       await Promise.all([
         Authentication.updateOne(
           { _id: user_id },
-          { $set: authData },
+          {
+            $set: authData,
+            ...((imagePath || imagePath === "") && {
+              profile_image: imagePath,
+            }),
+          },
           { new: true }
         ),
         Client.updateOne(

@@ -105,9 +105,9 @@ const storage2 = multer.memoryStorage({
 // Multer config
 const upload = multer({
   storage: storage,
-  limits: {
-    fileSize: configure?.multer?.size || 200 * 1024 * 1024, // 200MB maximum file size
-  },
+  // limits: {
+  //   fileSize: configure?.multer?.size || 200 * 1024 * 1024, // 200MB maximum file size
+  // },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === "audio/webm") {
       return cb(null, true);
@@ -173,12 +173,33 @@ const audio_upload = multer({
 const checkFileSize = async (req, res, next) => {
   const maxSize = await Configuration.findOne({}).lean();
   const limit = parseInt(maxSize?.multer?.size) * 1024 * 1024;
-  if (req.files && getTotalSize(req.files) > limit) {
-    const error = new Error("Total file size exceeds 200MB limit");
+  if (
+    !req.headers["content-length"] ||
+    parseInt(req.headers["content-length"]) > limit
+  ) {
+    const error = Error(
+      `Profile file size exceeds ${maxSize?.multer?.size}MB limit or no file provided`
+    );
     error.status = 400;
     return next(error);
   }
   next();
 };
 
-module.exports = { upload, checkFileSize, audio_upload };
+// Middleware to check Profile file size before uploading
+const checkProfileSize = async (req, res, next) => {
+  const maxSize = await Configuration.findOne({}).lean();
+  const limit = parseInt(maxSize?.multer?.profileSize) * 1024 * 1024;
+  if (
+    !req.headers["content-length"] ||
+    parseInt(req.headers["content-length"]) > limit
+  ) {
+    const error = Error(
+      `Profile file size exceeds ${maxSize?.multer?.profileSize}MB limit or no file provided`
+    );
+    error.status = 400;
+    return next(error);
+  }
+  next();
+};
+module.exports = { upload, checkFileSize, audio_upload, checkProfileSize };

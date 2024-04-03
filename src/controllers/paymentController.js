@@ -1,6 +1,5 @@
 const catchAsyncError = require("../helpers/catchAsyncError");
 const { sendResponse } = require("../utils/sendResponse");
-const { throwError } = require("../helpers/errorUtil");
 const PaymentService = require("../services/paymentService");
 const { returnMessage } = require("../utils/utils");
 const paymentService = new PaymentService();
@@ -121,6 +120,7 @@ exports.couponPay = catchAsyncError(async (req, res, next) => {
 });
 
 exports.deactivateAccount = catchAsyncError(async (req, res, next) => {
+  await paymentService.deactivateAgency(req.user);
   sendResponse(
     res,
     true,
@@ -128,4 +128,18 @@ exports.deactivateAccount = catchAsyncError(async (req, res, next) => {
     {},
     200
   );
+});
+
+// Get plan
+
+exports.getPlan = catchAsyncError(async (req, res, next) => {
+  const plan = await paymentService.getPlan(req?.params);
+  sendResponse(res, true, returnMessage("payment", "planFetched"), plan, 200);
+});
+
+// List plan
+
+exports.listPlan = catchAsyncError(async (req, res, next) => {
+  const plans = await paymentService.listPlan(req.body);
+  sendResponse(res, true, returnMessage("payment", "plansFetched"), plans, 200);
 });

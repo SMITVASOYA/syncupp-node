@@ -303,6 +303,13 @@ class InvoiceService {
         agency_id: user_id,
         ...(client_id && { client_id: new ObjectId(client_id) }),
       };
+
+      if (searchObj?.start_date !== null && searchObj?.end_date !== null) {
+        const parsedEndDate = moment.utc(searchObj?.end_date, "DD/MM/YYYY");
+        const parsedStartDate = moment.utc(searchObj?.start_date, "DD/MM/YYYY");
+        searchObj.start_date = parsedStartDate.utc();
+        searchObj.end_date = parsedEndDate.utc();
+      }
       // Add date range conditions for invoice date and due date
       if (searchObj.start_date && searchObj.end_date) {
         queryObj.$and = [
@@ -976,7 +983,12 @@ class InvoiceService {
         client_id: user_id,
         agency_id: new ObjectId(agency_id),
       };
-
+      if (searchObj?.start_date !== null && searchObj?.end_date !== null) {
+        const parsedStartDate = moment.utc(searchObj?.start_date, "DD/MM/YYYY");
+        searchObj.start_date = parsedStartDate.utc();
+        const parsedEndDate = moment.utc(searchObj?.end_date, "DD/MM/YYYY");
+        searchObj.end_date = parsedEndDate.utc();
+      }
       // Add date range conditions for invoice date and due date
       if (searchObj.start_date && searchObj.end_date) {
         queryObj.$and = [

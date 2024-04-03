@@ -17,13 +17,12 @@ const { throwError } = require("../helpers/errorUtil");
 exports.agencySignUp = catchAsyncError(async (req, res, next) => {
   const files = req?.files || undefined;
   const agency = await authService.agencySignUp(req.body, files);
-  sendResponse(
-    res,
-    true,
-    returnMessage("agency", "agencyRegistered"),
-    agency,
-    statusCode.success
-  );
+
+  let message = returnMessage("agency", "agencyRegistered");
+  if (agency?.user?.status === "free_trial") {
+    message = "Agency registered successfully.";
+  }
+  sendResponse(res, true, message, agency, statusCode.success);
 });
 
 exports.agencyGoogleSignUp = catchAsyncError(async (req, res, next) => {
@@ -137,10 +136,21 @@ exports.updateProfile = catchAsyncError(async (req, res, next) => {
   const user_id = req?.user?._id;
   const reference_id = req?.user?.reference_id;
   const user = req.user;
+
   if (user?.role?.name === "agency") {
-    await agencyService.updateAgencyProfile(req.body, user_id, reference_id);
+    await agencyService.updateAgencyProfile(
+      req.body,
+      user_id,
+      reference_id,
+      req?.file
+    );
   } else if (user?.role?.name === "client") {
-    await clientService.updateClientProfile(req.body, user_id, reference_id);
+    await clientService.updateClientProfile(
+      req.body,
+      user_id,
+      reference_id,
+      req?.file
+    );
   } else if (
     user?.role?.name === "team_agency" ||
     user?.role?.name === "team_client"
@@ -149,7 +159,8 @@ exports.updateProfile = catchAsyncError(async (req, res, next) => {
       req.body,
       user_id,
       reference_id,
-      user?.role?.name
+      user?.role?.name,
+      req?.file
     );
   }
   sendResponse(

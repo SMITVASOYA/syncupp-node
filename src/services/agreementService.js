@@ -33,7 +33,7 @@ class AgreementService {
         receiver,
         send,
       } = payload;
-      const dueDate = moment.utc(due_date, "DD-MM-YYYY").startOf("day");
+      const dueDate = moment.utc(due_date, "DD/MM/YYYY").utc();
 
       const auth = await Authentication.findById(receiver).populate("role");
       if (auth.role.name === "client") {
@@ -137,7 +137,7 @@ class AgreementService {
           content: agreement[0].agreement_content,
           receiverName: agreement[0].receiver_fullName,
           senderName: agreement[0].sender_fullName,
-          Status: agreement[0].status,
+          status: agreement[0].status,
           senderNumber: agreement[0].sender_number,
           receiverNumber: agreement[0].receiver_number,
           senderEmail: agreement[0].sender_email,
@@ -146,7 +146,7 @@ class AgreementService {
         const ageremantMessage = agrementEmail(data);
         await sendEmail({
           email: clientDetails?.email,
-          subject: "Updated agreement",
+          subject: returnMessage("emailTemplate", "agreementReceived"),
           message: ageremantMessage,
         });
         await Agreement.findOneAndUpdate(
@@ -407,6 +407,11 @@ class AgreementService {
   updateAgreement = async (payload, agreementId) => {
     try {
       const { title, agreement_content, due_date, status, receiver } = payload;
+
+      if (payload.due_date) {
+        payload.due_date = moment.utc(payload.due_date, "DD/MM/YYYY").utc();
+      }
+
       const agreement = await Agreement.findOne({
         _id: agreementId,
         is_deleted: false,
@@ -505,7 +510,7 @@ class AgreementService {
           content: agreement[0].agreement_content,
           receiverName: agreement[0].receiver_fullName,
           senderName: agreement[0].sender_fullName,
-          Status: agreement[0].status,
+          status: agreement[0].status,
           senderNumber: agreement[0].sender_number,
           receiverNumber: agreement[0].receiver_number,
           senderEmail: agreement[0].sender_email,
@@ -514,7 +519,7 @@ class AgreementService {
         const ageremantMessage = agrementEmail(data);
         await sendEmail({
           email: clientDetails?.email,
-          subject: "Updated agreement",
+          subject: returnMessage("emailTemplate", "agreementUpdated"),
           message: ageremantMessage,
         });
         payload.status = "sent";
@@ -529,7 +534,7 @@ class AgreementService {
           {
             title,
             agreement_content,
-            due_date: dueDate,
+            due_date: payload.due_date,
             status,
             receiver,
           },
@@ -636,7 +641,7 @@ class AgreementService {
         content: agreement[0].agreement_content,
         receiverName: agreement[0].receiver_fullName,
         senderName: agreement[0].sender_fullName,
-        Status: agreement[0].status,
+        status: agreement[0].status,
         senderNumber: agreement[0].sender_number,
         receiverNumber: agreement[0].receiver_number,
         senderEmail: agreement[0].sender_email,
@@ -645,7 +650,7 @@ class AgreementService {
       const ageremantMessage = agrementEmail(data);
       await sendEmail({
         email: clientDetails?.email,
-        subject: "Updated agreement",
+        subject: returnMessage("emailTemplate", "agreementUpdated"),
         message: ageremantMessage,
       });
 
@@ -783,23 +788,32 @@ class AgreementService {
           },
         ];
         agreement = await Agreement.aggregate(aggregationPipeline);
-        if (status === "sent") {
+        if (status === "sent" || status === "agreed") {
           var data = {
             title: agreement[0].title,
             dueDate: moment(agreement[0].due_date).format("DD/MM/YYYY"),
             content: agreement[0].agreement_content,
             receiverName: agreement[0].receiver_fullName,
             senderName: agreement[0].sender_fullName,
-            Status: agreement[0].status,
+            status: status === "sent" ? "sent" : "agreed",
             senderNumber: agreement[0].sender_number,
             receiverNumber: agreement[0].receiver_number,
             senderEmail: agreement[0].sender_email,
             receiverEmail: agreement[0].receiver_email,
           };
           const ageremantMessage = agrementEmail(data);
+          let templateName;
+          let receiverName;
+          if (status === "agreed") {
+            templateName = "agreementAgreed";
+            receiverName = agreement[0]?.sender_email;
+          } else {
+            templateName = "agreementUpdated";
+            receiverName = clientDetails?.email;
+          }
           await sendEmail({
-            email: clientDetails?.email,
-            subject: "Updated agreement",
+            email: receiverName,
+            subject: returnMessage("emailTemplate", templateName),
             message: ageremantMessage,
           });
         }
@@ -1019,7 +1033,7 @@ class AgreementService {
         dueDate: moment(agreement[0]?.due_date)?.format("DD/MM/YYYY"),
         receiverName: agreement[0]?.receiver_fullName,
         senderName: agreement[0]?.sender_fullName,
-        Status: agreement[0]?.status,
+        status: agreement[0]?.status,
         senderNumber: agreement[0]?.sender_number,
         receiverNumber: agreement[0]?.receiver_number,
         senderEmail: agreement[0]?.sender_email,

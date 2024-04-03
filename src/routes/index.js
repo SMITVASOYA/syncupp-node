@@ -18,6 +18,7 @@ const dashboardRoute = require("./dashboardRoute");
 const chatRoute = require("./chatRoute");
 const eventRoute = require("./eventRoute");
 const couponRoute = require("./couponRoute");
+const ticketRoute = require("./ticketRoute");
 
 router.use("/activity", activityRoute);
 router.use("/auth", authRoute);
@@ -43,5 +44,6 @@ router.use("/dashboard", dashboardRoute);
 router.use("/chat", chatRoute);
 router.use("/event", eventRoute);
 router.use("/coupon", couponRoute);
+router.use("/ticket", ticketRoute);
 
 module.exports = router;

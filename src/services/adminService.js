@@ -469,7 +469,7 @@ class AdminService {
           {
             $match: {
               is_deleted: false,
-              $or: [{ status: "confirmed" }, { status: "agency_inactive" }],
+              status: "confirmed",
               "statusName.name": "client",
             },
           },
@@ -496,7 +496,10 @@ class AdminService {
           {
             $match: {
               is_deleted: false,
-              $or: [{ status: "confirmed" }, { status: "agency_inactive" }],
+              $or: [
+                { status: "confirmed" },
+                { status: "team_agency_inactive" },
+              ],
               "statusName.name": "team_agency",
             },
           },
@@ -523,7 +526,7 @@ class AdminService {
           {
             $match: {
               is_deleted: false,
-              $or: [{ status: "confirmed" }, { status: "agency_inactive" }],
+              status: "confirmed",
               "statusName.name": "team_client",
             },
           },

@@ -160,29 +160,42 @@ class ActivityService {
         },
       ];
 
-      const getTask = await Activity.aggregate(pipeline);
-      let data = {
-        TaskTitle: "New Task Created",
-        taskName: title,
-        status: status?.name,
-        assign_by: user.first_name + " " + user.last_name,
-        dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
-        dueTime: timeOnly,
-        agginTo_email: getTask[0]?.assign_email,
-        assignName: getTask[0]?.assigned_to_name,
-      };
-      const taskMessage = taskTemplate(data);
-      await sendEmail({
-        email: getTask[0]?.assign_email,
-        subject: returnMessage("activity", "createSubject"),
-        message: taskMessage,
-      });
-
+      const client_data = await Authentication.findOne({
+        reference_id: client_id,
+      }).lean();
       if (user.role.name === "agency") {
         // ----------------------- Notification Start -----------------------
-        const client_data = await Authentication.findOne({
-          reference_id: client_id,
+        const indianTimeZone = dueDateObject.tz("Asia/Kolkata").format("HH:mm");
+
+        const getTask = await Activity.aggregate(pipeline);
+        let data = {
+          TaskTitle: "New Task Created",
+          taskName: title,
+          status: status?.name,
+          assign_by: user.first_name + " " + user.last_name,
+          dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
+          dueTime: indianTimeZone,
+          agginTo_email: getTask[0]?.assign_email,
+          assignName: getTask[0]?.assigned_to_name,
+        };
+        const taskMessage = taskTemplate(data);
+        sendEmail({
+          email: getTask[0]?.assign_email,
+          subject: returnMessage("activity", "createSubject"),
+          message: taskMessage,
         });
+
+        if (client_data) {
+          sendEmail({
+            email: client_data?.email,
+            subject: returnMessage("activity", "createSubject"),
+            message: taskTemplate({
+              ...data,
+              assignName: client_data.first_name + " " + client_data.last_name,
+            }),
+          });
+        }
+
         await notificationService.addNotification(
           {
             assign_by: user?.reference_id,
@@ -213,13 +226,42 @@ class ActivityService {
       ) {
         // ----------------------- Notification Start -----------------------
 
+        const indianTimeZone = dueDateObject.tz("Asia/Kolkata").format("HH:mm");
+
+        const getTask = await Activity.aggregate(pipeline);
+        let data = {
+          TaskTitle: "New Task Created",
+          taskName: title,
+          status: status?.name,
+          assign_by: user.first_name + " " + user.last_name,
+          dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
+          dueTime: indianTimeZone,
+          agginTo_email: getTask[0]?.assign_email,
+          assignName: getTask[0]?.assigned_to_name,
+        };
+        const taskMessage = taskTemplate(data);
+        sendEmail({
+          email: getTask[0]?.assign_email,
+          subject: returnMessage("activity", "createSubject"),
+          message: taskMessage,
+        });
+
+        if (client_data) {
+          sendEmail({
+            email: client_data?.email,
+            subject: returnMessage("activity", "createSubject"),
+
+            message: taskTemplate({
+              ...data,
+              assignName: client_data.first_name + " " + client_data.last_name,
+            }),
+          });
+        }
+
         const agencyData = await Authentication.findOne({
           reference_id: getTask[0]?.agency_id,
         });
 
-        const client_data = await Authentication.findOne({
-          reference_id: client_id,
-        }).lean();
         await notificationService.addNotification(
           {
             agency_name: agencyData?.first_name + " " + agencyData?.last_name,
@@ -1245,12 +1287,26 @@ class ActivityService {
           assignName: task?.assigned_to_name,
         };
         const taskMessage = taskTemplate(data);
-
+        const clientData = await Authentication.findOne({
+          reference_id: task?.client_id,
+        }).lean();
         await sendEmail({
           email: task?.assign_email,
-          subject: returnMessage("activity", "UpdateSubject"),
+          subject: returnMessage("activity", "taskDeleted"),
           message: taskMessage,
         });
+
+        if (clientData) {
+          await sendEmail({
+            email: clientData?.email,
+            subject: returnMessage("activity", "taskDeleted"),
+            message: taskTemplate({
+              ...data,
+              assignName: clientData.first_name + " " + clientData.last_name,
+            }),
+          });
+        }
+
         await notificationService.addNotification(
           {
             title: task?.title,
@@ -1598,6 +1654,18 @@ class ActivityService {
         {
           $unwind: "$assign_by",
         },
+
+        {
+          $lookup: {
+            from: "activity_status_masters",
+            localField: "activity_status",
+            foreignField: "_id",
+            as: "statusName",
+          },
+        },
+        {
+          $unwind: { path: "$statusName", preserveNullAndEmptyArrays: true },
+        },
         {
           $match: {
             _id: new mongoose.Types.ObjectId(id),
@@ -1617,34 +1685,50 @@ class ActivityService {
             column_id: "$status.name",
             assign_email: "$team_Data.email",
             agency_id: 1,
+            status_name: "$statusName.name",
           },
         },
       ];
-
       const getTask = await Activity.aggregate(pipeline);
+
       let data = {
         TaskTitle: "Updated Task ",
         taskName: title,
-        status: status?.name,
+        status:
+          payload?.mark_as_done === "true"
+            ? "Completed"
+            : getTask[0]?.status_name,
         assign_by: getTask[0]?.assigned_by_name,
         dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
         dueTime: timeOnly,
         agginTo_email: getTask[0]?.assign_email,
         assignName: getTask[0]?.assigned_to_name,
       };
+      const client_data = await Authentication.findOne({
+        reference_id: payload?.client_id,
+      }).lean();
+
       const taskMessage = taskTemplate(data);
-      await sendEmail({
+      sendEmail({
         email: getTask[0]?.assign_email,
         subject: returnMessage("activity", "UpdateSubject"),
         message: taskMessage,
       });
 
+      if (client_data) {
+        sendEmail({
+          email: client_data?.email,
+          subject: returnMessage("activity", "UpdateSubject"),
+          message: taskTemplate({
+            ...data,
+            assignName: client_data.first_name + " " + client_data.last_name,
+          }),
+        });
+      }
+
       if (logInUser?.role?.name === "agency") {
         // -------------- Socket notification start --------------------
 
-        const client_data = await Authentication.findOne({
-          reference_id: client_id,
-        });
         let taskAction = "update";
         // For Complete
         if (mark_as_done === "true") taskAction = "completed";
@@ -1667,9 +1751,7 @@ class ActivityService {
         );
 
         // -------------- Socket notification end --------------------
-      }
-
-      if (logInUser?.role?.name === "team_agency") {
+      } else if (logInUser?.role?.name === "team_agency") {
         // -------------- Socket notification start --------------------
 
         const client_data = await Authentication.findOne({
@@ -2026,13 +2108,24 @@ class ActivityService {
           assignName: getTask[0]?.assigned_to_name,
         };
         const taskMessage = taskTemplate(data);
-        await sendEmail({
+        sendEmail({
           email: getTask[0]?.assign_email,
           subject: returnMessage("activity", "UpdateSubject"),
           message: taskMessage,
         });
 
-        if (user.role.name === "agency") {
+        if (client_data) {
+          sendEmail({
+            email: client_data?.email,
+            subject: returnMessage("activity", "UpdateSubject"),
+            message: taskTemplate({
+              ...data,
+              assignName: client_data.first_name + " " + client_data.last_name,
+            }),
+          });
+        }
+
+        if (user?.role?.name === "agency") {
           //   ----------    Notifications start ----------
           await notificationService.addNotification(
             {
@@ -3294,7 +3387,7 @@ class ActivityService {
   getActivities = async (payload, user) => {
     try {
       const match_obj = { $match: {} };
-      const assign_obj = {};
+      const assign_obj = { $match: {} };
       if (payload?.given_date) {
         match_obj["$match"] = {
           due_date: {
@@ -3482,16 +3575,16 @@ class ActivityService {
         const teamRole = await Team_Agency.findOne({
           _id: user.reference_id,
         }).populate("role");
-        if (teamRole?.role?.name === "admin") {
-          assign_obj["$match"] = {
-            $or: [
-              { assign_by: user.reference_id },
-              { assign_to: user.reference_id },
-            ],
-            is_deleted: false,
-            // activity_type: new mongoose.Types.ObjectId(type._id),
-          };
-        }
+        // if (teamRole?.role?.name === "admin") {
+        assign_obj["$match"] = {
+          $or: [
+            { assign_by: user.reference_id },
+            { assign_to: user.reference_id },
+          ],
+          is_deleted: false,
+          // activity_type: new mongoose.Types.ObjectId(type._id),
+          // };
+        };
       } else if (user?.role?.name === "client") {
         assign_obj["$match"] = {
           is_deleted: false,
@@ -4099,7 +4192,7 @@ class ActivityService {
           $sort: { totalPoints: -1 },
         },
         {
-          $limit: 3,
+          $limit: 5,
         },
         {
           $lookup: {

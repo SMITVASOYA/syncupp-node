@@ -34,7 +34,8 @@
     "teamAgencyIsInactive": "Your account has been deactivate by agency.",
     "sendRefferalEmail": "Referral email send successfully.",
     "invitationEmailSubject": "Inviation to the SyncUpp.",
-    "completeProfile": "Complete your profile first to access Syncupp."
+    "completeProfile": "Complete your profile first to access Syncupp.",
+    "facebookEmailNotFound": "Your email is not linked with facebook."
   },
 
   "admin": {
@@ -165,7 +166,9 @@
     "inquirySent": "Inquiry sent successfully.",
     "inquiryList": "Inquiries fetched successfully.",
     "inquiryDelete": "Inquiry deleted successfully.",
-    "newInquiry": "New Inquiry Received"
+    "newInquiry": "New Inquiry Received",
+    "ticketCreated": "Ticket sent successfully",
+    "ticketList": "Ticket list fetched successfully"
   },
 
   "emailTemplate": {
@@ -186,10 +189,15 @@
     "meetingAlert": "Call meeting alert",
     "clientPasswordSet": "Client password set",
     "teamMemberPasswordSet": "Team member password set.",
-    "planExpired": "Your plane has expired.",
-    "planIsAboutExpired": "Your plane has is about to expire.",
+    "planExpired": "Your plan has expired.",
+    "planIsAboutExpired": "Your plan has is about to expire.",
     "clientJoined": "New client joined",
-    "freeTrialEndMail": "Urgent: trial ends tomorrow!"
+    "freeTrialEndMail": "Urgent: trial ends tomorrow!",
+    "agreementReceived": "New agreement received.",
+    "agreementUpdated": "Agreement updated.",
+    "agreementAgreed": "Agreement agreed.",
+    "newTicketReceived": "New ticket received.",
+    "newTicketSent": "Ticket successfully raised."
   },
 
   "client": {
@@ -225,6 +233,7 @@
     "invalidDate": "End date should be greater than start date.",
     "createSubject": "New task created.",
     "UpdateSubject": "Updated Task.",
+    "taskDeleted": "Task deleted Task.",
     "ActivityCannotUpdate": "Activity cannot be updated.",
     "tagsList": "Tags list fetch successfully.",
     "completionHistory": "Points history fetched successfully."
@@ -251,13 +260,19 @@
     "canNotCancel": "Subscription can not be cancelled.",
     "couponpurchase": "Coupon purchased successfully.",
     "accountDeactivated": "Account de-activated successfully.",
-    "CouponNotExist": "Coupon does not exists."
+    "CouponNotExist": "Coupon does not exists.",
+    "freeTrialOn": "Your free trial is active.",
+    "paymentPendingForAgency": "Payment is pending for the agency.",
+    "planAdded": "Plan added successfully.",
+    "planFetched": "Plan fetched successfully.",
+    "plansFetched": "Plans fetched successfully."
   },
   "affiliate": {
     "registered": "User registered successfully.",
     "emailExist": "Email already registered.",
     "incorrectPassword": "Email or password is incorrect.",
     "dashboardDataFetched": "Dashboard data fetched successfully.",
+    "affiliateDataFetched": "Affiliate data fetched successfully.",
     "affiliateNotFound": "Account not found.",
     "countAdded": "Count added.",
     "getProfile": "Profile fetched successful.",

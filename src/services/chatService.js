@@ -436,6 +436,7 @@ class ChatService {
             is_online: 1,
             created_by: 1,
             reference_id: 1,
+            profile_image: 1,
           },
         },
       ];
@@ -501,7 +502,7 @@ class ChatService {
         user_detail = await Authentication.findOne({
           reference_id: payload?.from_user,
         })
-          .select("first_name last_name reference_id")
+          .select("first_name last_name reference_id profile_image")
           .lean();
         event_name = "GROUP_RECEIVED_IMAGE";
         receivers = payload?.group_id;
@@ -544,7 +545,7 @@ class ChatService {
         user_detail = await Authentication.findOne({
           reference_id: payload?.from_user,
         })
-          .select("first_name last_name reference_id")
+          .select("first_name last_name reference_id profile_image")
           .lean();
         event_name = "GROUP_RECEIVED_DOCUMENT";
         receivers = payload?.group_id;
