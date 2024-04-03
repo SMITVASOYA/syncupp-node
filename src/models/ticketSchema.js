@@ -9,10 +9,10 @@ const ticketSchema = new mongoose.Schema(
     },
     email: {
       type: String,
+      required: true,
     },
     contact_number: {
       type: String,
-      required: true,
     },
     ticket_detail: {
       type: String,
