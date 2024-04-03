@@ -17400,7 +17400,7 @@ exports.ticketTemplate = (data) => {
                                           text-align: center;
                                         "
                                       >
-                                        Hi <span>Admin</span>,&nbsp;
+                                        Hi <span>${data?.user}</span>,&nbsp;
                                       </h3>
                                       <p
                                         style="
@@ -17437,8 +17437,14 @@ exports.ticketTemplate = (data) => {
                                           margin-bottom: 30px;
                                         "
                                       >
-                                        We've received recent inquiry and below
-                                        are the deails.
+
+                                      ${
+                                        data.user === "Admin"
+                                          ? "We've received a recent ticket and below are the details."
+                                          : "You've successfully raised ticket and below are the details."
+                                      }
+
+                                        
                                       </p>
                                       <table
                                         cellpadding="0"
@@ -17486,7 +17492,7 @@ exports.ticketTemplate = (data) => {
                                                     border-collapse: collapse;
                                                   "
                                                 >
-                                                  First Name :
+                                                  Name :
                                                 </td>
                                                 <td
                                                   style="
@@ -17546,7 +17552,7 @@ exports.ticketTemplate = (data) => {
                                                     border-collapse: collapse;
                                                   "
                                                 >
-                                                  Comment :
+                                                  Ticket Details :
                                                 </td>
                                                 <td
                                                   style="

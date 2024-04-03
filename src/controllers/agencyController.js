@@ -6,6 +6,8 @@ const ClientService = require("../services/clientService");
 const { sendResponse } = require("../utils/sendResponse");
 const Authentication = require("../models/authenticationSchema");
 const { throwError } = require("../helpers/errorUtil");
+const AffiliateService = require("../services/affiliateService");
+const affiliateService = new AffiliateService();
 const agencyService = new AgencyService();
 const clientService = new ClientService();
 
@@ -101,6 +103,18 @@ exports.getClient = catchAsyncError(async (req, res, next) => {
     true,
     returnMessage("auth", "profileFetched"),
     client,
+    statusCode.success
+  );
+});
+
+// Affiliate Dashboard Data
+exports.getAffiliateData = catchAsyncError(async (req, res, next) => {
+  const dashboardData = await affiliateService.getDashboardData(req?.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("affiliate", "affiliateDataFetched"),
+    dashboardData,
     statusCode.success
   );
 });

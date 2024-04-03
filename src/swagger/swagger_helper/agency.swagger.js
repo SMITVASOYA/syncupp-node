@@ -503,7 +503,7 @@ const agenciesRoutes = {
   "/api/v1/dashboard/overdue-task": {
     get: overdueTaskDashboard,
   },
-  "/api/v1/dashboard/affiliate": {
+  "/api/v1/agency/affiliate-data": {
     get: affiliateDashboards,
   },
 };

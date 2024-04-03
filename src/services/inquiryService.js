@@ -185,16 +185,27 @@ class inquiryService {
         email,
         ticket_detail,
       });
-
       const admin = await Admin.findOne({});
 
       // Use a template or format the invoice message accordingly
-      const formattedInquiryEmail = ticketTemplate(ticket);
+      const formattedTicketEmail = ticketTemplate({
+        ...payload,
+        user: "Admin",
+      });
+      await sendEmail({
+        email: admin?.email,
+        subject: returnMessage("emailTemplate", "newTicketReceived"),
+        message: formattedTicketEmail,
+      });
+      const formattedTicketEmailUser = ticketTemplate({
+        user: name,
+        ...payload,
+      });
 
       await sendEmail({
-        email: process.env.CLIENT_EMAIL,
-        subject: returnMessage("emailTemplate", "newTicketReceived"),
-        message: formattedInquiryEmail,
+        email: email,
+        subject: returnMessage("emailTemplate", "newTicketSent"),
+        message: formattedTicketEmailUser,
       });
 
       await notificationService.addAdminNotification({

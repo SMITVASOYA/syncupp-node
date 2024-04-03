@@ -196,7 +196,8 @@
     "agreementReceived": "New agreement received.",
     "agreementUpdated": "Agreement updated.",
     "agreementAgreed": "Agreement agreed.",
-    "newTicketReceived": "New ticket received."
+    "newTicketReceived": "New ticket received.",
+    "newTicketSent": "Ticket successfully raised."
   },
 
   "client": {
@@ -271,6 +272,7 @@
     "emailExist": "Email already registered.",
     "incorrectPassword": "Email or password is incorrect.",
     "dashboardDataFetched": "Dashboard data fetched successfully.",
+    "affiliateDataFetched": "Affiliate data fetched successfully.",
     "affiliateNotFound": "Account not found.",
     "countAdded": "Count added.",
     "getProfile": "Profile fetched successful.",
