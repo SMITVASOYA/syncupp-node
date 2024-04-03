@@ -95,7 +95,7 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
 
         await Authentication.findByIdAndUpdate(
           user?._id,
-          { last_login_date: lastLoginDateUTC },
+          { last_login_date: currentDateUTC },
           { new: true }
         );
       }
