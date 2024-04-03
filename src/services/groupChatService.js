@@ -282,6 +282,72 @@ class GroupChatService {
         {
           $unwind: { path: "$user_detail", preserveNullAndEmptyArrays: true },
         },
+        {
+          $unwind: { path: "$reactions", preserveNullAndEmptyArrays: true },
+        },
+
+        {
+          $lookup: {
+            from: "authentications", // Collection name of your user model
+            localField: "reactions.user",
+            foreignField: "reference_id",
+            as: "reactions.user",
+            pipeline: [
+              {
+                $project: {
+                  first_name: 1,
+                  last_name: 1,
+                  profile_image: 1,
+                  reference_id: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: {
+            path: "$reactions.user",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+
+        {
+          $project: {
+            first_name: "$reactions.user.first_name",
+            last_name: "$reactions.user.last_name",
+            profile_image: "$reactions.user.profile_image",
+            message: 1,
+            group_id: 1,
+            reactions: 1,
+            createdAt: 1,
+            document_url: 1,
+            image_url: 1,
+            audio_url: 1,
+            is_deleted: 1,
+            message_type: 1,
+            _id: 1,
+            to_user: 1,
+            from_user: 1,
+            user_detail: 1,
+          },
+        },
+        {
+          $group: {
+            _id: "$_id",
+            message: { $first: "$message" },
+            createdAt: { $first: "$createdAt" },
+            is_deleted: { $first: "$is_deleted" },
+            group_id: { $first: "$group_id" },
+            document_url: { $first: "$document_url" },
+            image_url: { $first: "$image_url" },
+            message_type: { $first: "$message_type" },
+            audio_url: { $first: "$audio_url" },
+            to_user: { $first: "$to_user" },
+            from_user: { $first: "$from_user" },
+            user_detail: { $first: "$user_detail" },
+            reactions: { $push: "$reactions" }, // Group reactions into an array
+          },
+        },
       ]).sort({ createdAt: 1 });
     } catch (error) {
       logger.error(

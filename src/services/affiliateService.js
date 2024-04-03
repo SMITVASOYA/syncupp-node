@@ -313,32 +313,38 @@ class AffiliateService {
         .endOf("month")
         .utc();
       const commissionPercentage = await Configuration.findOne({});
-
-      const agencyIds = await Affiliate_Referral.distinct("referred_to", {
-        referred_by: user?._id,
-      });
+      let clickData;
+      let searchId;
+      if (user?.role?.name !== "agency") {
+        searchId = user?._id;
+        clickData = await Affiliate.findOne({
+          _id: user?._id,
+        });
+      } else {
+        searchId = user?.reference_id;
+        clickData = await Authentication.findOne({
+          _id: user?._id,
+        });
+      }
 
       const [
         totalReferralsCount,
-        loggedInUser,
         total_agencies,
         lastMonthEarning,
+        totalEarning,
       ] = await Promise.all([
         Affiliate_Referral.find({
-          referred_by: user?._id,
+          referred_by: searchId,
         }).count(),
 
-        Affiliate.findOne({
-          _id: user?._id,
-        }),
         Affiliate_Referral.countDocuments({
-          referred_by: user?._id,
+          referred_by: searchId,
           status: "active",
         }),
         Affiliate_Referral.aggregate([
           {
             $match: {
-              referred_by: user?._id,
+              referred_by: searchId,
               status: "active",
               updatedAt: {
                 $gte: startOfPreviousMonth.toDate(),
@@ -379,13 +385,54 @@ class AffiliateService {
             },
           },
         ]),
+        Affiliate_Referral.aggregate([
+          {
+            $match: {
+              referred_by: searchId,
+              status: "active",
+            },
+          },
+          {
+            $lookup: {
+              from: "subscription_plans",
+              localField: "payment_id",
+              foreignField: "plan_id",
+              as: "planData",
+            },
+          },
+          {
+            $unwind: {
+              path: "$planData",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalAmount: { $sum: "$planData.amount" },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              totalAmount: 1,
+              total: {
+                $multiply: [
+                  "$totalAmount",
+                  commissionPercentage.referral.commission_percentage / 100,
+                ],
+              },
+            },
+          },
+        ]),
       ]);
 
       return {
         referral_count: totalReferralsCount ?? 0,
         customer_count: total_agencies ?? 0,
-        click_count: loggedInUser?.click_count ?? 0,
+        click_count: clickData?.click_count ?? 0,
         last_month_earning: lastMonthEarning[0]?.total ?? 0,
+        total_earning: totalEarning[0]?.total ?? 0,
         withdraw: 0,
         unpaid: 0,
       };

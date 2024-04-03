@@ -663,6 +663,16 @@ class NotificationService {
         );
       }
 
+      // inquiry
+      else if (payload.module_name === "ticket") {
+        await createAndEmitNotification(
+          admin._id,
+          "newTicket",
+          "admin",
+          "deleted"
+        );
+      }
+
       return;
     } catch (error) {
       logger.error(`Error while fetching agencies: ${error}`);

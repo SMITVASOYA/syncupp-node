@@ -166,7 +166,9 @@
     "inquirySent": "Inquiry sent successfully.",
     "inquiryList": "Inquiries fetched successfully.",
     "inquiryDelete": "Inquiry deleted successfully.",
-    "newInquiry": "New Inquiry Received"
+    "newInquiry": "New Inquiry Received",
+    "ticketCreated": "Ticket sent successfully",
+    "ticketList": "Ticket list fetched successfully"
   },
 
   "emailTemplate": {
@@ -193,7 +195,9 @@
     "freeTrialEndMail": "Urgent: trial ends tomorrow!",
     "agreementReceived": "New agreement received.",
     "agreementUpdated": "Agreement updated.",
-    "agreementAgreed": "Agreement agreed."
+    "agreementAgreed": "Agreement agreed.",
+    "newTicketReceived": "New ticket received.",
+    "newTicketSent": "Ticket successfully raised."
   },
 
   "client": {
@@ -272,6 +276,7 @@
     "emailExist": "Email already registered.",
     "incorrectPassword": "Email or password is incorrect.",
     "dashboardDataFetched": "Dashboard data fetched successfully.",
+    "affiliateDataFetched": "Affiliate data fetched successfully.",
     "affiliateNotFound": "Account not found.",
     "countAdded": "Count added.",
     "getProfile": "Profile fetched successful.",
@@ -346,7 +351,9 @@
     "insufficientPermission": "You don't have permission to create group.",
     "groupNameRequired": "Group name is required.",
     "groupCreated": "Group created successfully.",
-    "groupDoesNotExist": "The group does not exist."
+    "groupDoesNotExist": "The group does not exist.",
+    "MessageNotOFund": "Message not found.",
+    "latesthistoryFetched": "chat fetched successfully."
   },
 
   "default": { "default": "Something went wrong." }

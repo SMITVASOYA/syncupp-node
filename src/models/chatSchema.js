@@ -12,9 +12,16 @@ const chat_schema = new mongoose.Schema(
     document_url: { type: String },
     message_type: {
       type: String,
-      enum: ["message", "image", "document"],
+      enum: ["message", "image", "document", "audio"],
       default: "message",
     },
+    audio_url: { type: String },
+    reactions: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, required: true },
+        emoji: { type: String, required: true },
+      },
+    ],
   },
   { timestamps: true }
 );

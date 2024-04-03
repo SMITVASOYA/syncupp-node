@@ -526,6 +526,7 @@ class AgreementService {
       }
 
       if (agreement.status === "draft") {
+        const dueDate = moment.utc(due_date, "DD-MM-YYYY").startOf("day");
         const updatedAgreement = await Agreement.findByIdAndUpdate(
           {
             _id: agreementId,

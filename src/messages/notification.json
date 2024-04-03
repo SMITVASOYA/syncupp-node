@@ -119,7 +119,8 @@
     "memberPayment": "Team member ${user_name} payment ${currency} ${amount}  done by ${agency_name}.",
     "agencyPayment": "Agency ${user_name} payment ${currency} ${amount} done.",
     "clientPayment": "Client ${user_name} payment ${currency} ${amount} done by ${agency_name}.",
-    "newInquiry": "New inquiry received."
+    "newInquiry": "New inquiry received.",
+    "newTicket": "New ticket received."
   },
 
   "chat": {
@@ -137,7 +138,7 @@
   },
   "referral": {
     "signUp": "New user ${referred_to} joined ${points} Points added.",
-    "login": "First login ${points} Points added.",
+    "login": "${points} Points added to your account for your first daily login.",
     "taskDeduct": "${points} points deducted of Task ${task_name}.",
     "taskAdded": "${points} points added of Task ${task_name}."
   }

@@ -62,16 +62,16 @@ exports.overdueTask = catchAsyncError(async (req, res, next) => {
   );
 });
 
-// Get
+// // Get
 
-exports.agencyAffiliate = catchAsyncError(async (req, res, next) => {
-  const agencyAffiliateData = await dashboardService.agencyAffiliate(req?.user);
+// exports.agencyAffiliate = catchAsyncError(async (req, res, next) => {
+//   const agencyAffiliateData = await dashboardService.agencyAffiliate(req?.user);
 
-  sendResponse(
-    res,
-    true,
-    returnMessage("agency", "affiliateDetailFetched"),
-    agencyAffiliateData,
-    statusCode.success
-  );
-});
+//   sendResponse(
+//     res,
+//     true,
+//     returnMessage("agency", "affiliateDetailFetched"),
+//     agencyAffiliateData,
+//     statusCode.success
+//   );
+// });
