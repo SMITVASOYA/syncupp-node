@@ -230,31 +230,32 @@ class PaymentService {
 
       if (body) {
         const { payload } = body;
-        if (body?.event === "subscription.authenticated") {
-          const subscription_id = payload?.subscription?.entity?.id;
-          const plan_id = payload?.subscription?.entity?.plan_id;
+        // if (body?.event === "subscription.authenticated") {
+        //   const subscription_id = payload?.subscription?.entity?.id;
+        //   const plan_id = payload?.subscription?.entity?.plan_id;
 
-          const [agency_details, payment_history, configuration] =
-            await Promise.all([
-              Authentication.findOne({ subscription_id }).lean(),
-              PaymentHistory.findOne({ subscription_id }),
-              Configuration.findOne().lean(),
-            ]);
+        //   const [agency_details, payment_history, configuration] =
+        //     await Promise.all([
+        //       Authentication.findOne({ subscription_id }).lean(),
+        //       PaymentHistory.findOne({ subscription_id }),
+        //       Configuration.findOne().lean(),
+        //     ]);
 
-          if (!(configuration.payment.free_trial > 0)) return;
-          if (!agency_details) return;
-          let first_time = false;
-          if (!payment_history) first_time = true;
+        //   if (!(configuration.payment.free_trial > 0)) return;
+        //   if (!agency_details) return;
+        //   let first_time = false;
+        //   if (!payment_history) first_time = true;
 
-          const pp = await PaymentHistory.create({
-            agency_id: agency_details?.reference_id,
-            subscription_id,
-            first_time,
-            plan_id,
-            payment_mode: "free_trial",
-          });
-          return;
-        } else if (body?.event === "subscription.charged") {
+        //   const pp = await PaymentHistory.create({
+        //     agency_id: agency_details?.reference_id,
+        //     subscription_id,
+        //     first_time,
+        //     plan_id,
+        //     payment_mode: "free_trial",
+        //   });
+        //   return;
+        // }
+        if (body?.event === "subscription.charged") {
           const subscription_id = payload?.subscription?.entity?.id;
           const payment_id = payload?.payment?.entity?.id;
           const currency = payload?.payment?.entity?.currency;
