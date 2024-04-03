@@ -7,6 +7,7 @@ const {
   returnMessage,
   inquiryTemplate,
   validateEmail,
+  ticketTemplate,
 } = require("../utils/utils");
 const sendEmail = require("../helpers/sendEmail");
 const Admin = require("../models/adminSchema");
@@ -183,6 +184,21 @@ class inquiryService {
         contact_number,
         email,
         ticket_detail,
+      });
+
+      const admin = await Admin.findOne({});
+
+      // Use a template or format the invoice message accordingly
+      const formattedInquiryEmail = ticketTemplate(ticket);
+
+      await sendEmail({
+        email: process.env.CLIENT_EMAIL,
+        subject: returnMessage("emailTemplate", "newTicketReceived"),
+        message: formattedInquiryEmail,
+      });
+
+      await notificationService.addAdminNotification({
+        module_name: "ticket",
       });
 
       return ticket;

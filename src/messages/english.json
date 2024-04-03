@@ -195,7 +195,8 @@
     "freeTrialEndMail": "Urgent: trial ends tomorrow!",
     "agreementReceived": "New agreement received.",
     "agreementUpdated": "Agreement updated.",
-    "agreementAgreed": "Agreement agreed."
+    "agreementAgreed": "Agreement agreed.",
+    "newTicketReceived": "New ticket received."
   },
 
   "client": {
