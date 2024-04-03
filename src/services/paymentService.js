@@ -118,7 +118,7 @@ class PaymentService {
         return throwError(returnMessage("payment", "freeTrialOn"));
 
       const [plan, sheets] = await Promise.all([
-        SubscriptionPlan.findById(payload?.product_id).lean(),
+        SubscriptionPlan.findById(payload?.plan_id).lean(),
         SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
       ]);
 
