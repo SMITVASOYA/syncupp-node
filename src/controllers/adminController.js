@@ -124,3 +124,16 @@ exports.dashboardData = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+// Dashboard
+exports.agencyDownload = catchAsyncError(async (req, res, next) => {
+  const agencyDownload = await adminService.agencyDownload(res);
+
+  sendResponse(
+    res,
+    true,
+    returnMessage("agency", "agencyDataDownload"),
+    agencyDownload,
+    statusCode.success
+  );
+});

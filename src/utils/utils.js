@@ -17571,33 +17571,6 @@ exports.ticketTemplate = (data) => {
                                           </td>
                                         </tr>
                                       </table>
-                                      <a
-                                        target="_blank"
-                                        href="${
-                                          process.env.REACT_APP_URL
-                                        }/admin"
-                                        style="
-                                          -webkit-text-size-adjust: none;
-                                          -ms-text-size-adjust: none;
-                                          mso-line-height-rule: exactly;
-                                          text-decoration: none;
-                                          background-color: #560082;
-                                          padding: 10px 20px;
-                                          width: 170px;
-                                          display: block;
-                                          font-weight: 600;
-                                          color: #fff;
-                                          font-size: 16px;
-                                          font-family: -apple-system,
-                                            blinkmacsystemfont, 'segoe ui', roboto,
-                                            helvetica, arial, sans-serif,
-                                            'apple color emoji', 'segoe ui emoji',
-                                            'segoe ui symbol';
-                                          margin-top: 30px;
-                                          margin-bottom: 30px;
-                                        "
-                                        >Review Now</a
-                                      >
                                       <p
                                         style="
                                           margin: 0;

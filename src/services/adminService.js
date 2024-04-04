@@ -23,6 +23,8 @@ const SubscriptionPlan = require("../models/subscriptionplanSchema");
 const paymentService = new PaymentService();
 const moment = require("moment");
 const Configuration = require("../models/configurationSchema");
+const Excel = require("exceljs");
+const fs = require("fs");
 
 class AdminService {
   tokenGenerator = (payload) => {
@@ -562,6 +564,138 @@ class AdminService {
     } catch (error) {
       logger.error(`Error while fetch dashboard data for agency: ${error}`);
       return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // Agency Download
+  agencyDownload = async (res) => {
+    try {
+      const pipeLine = [
+        {
+          $lookup: {
+            from: "role_masters",
+            localField: "role",
+            foreignField: "_id",
+            as: "statusName",
+            pipeline: [{ $project: { name: 1 } }],
+          },
+        },
+        {
+          $unwind: {
+            path: "$statusName",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $match: {
+            "statusName.name": "agency",
+          },
+        },
+        {
+          $lookup: {
+            from: "agencies",
+            localField: "reference_id",
+            foreignField: "_id",
+            as: "agencyData",
+          },
+        },
+        {
+          $unwind: { path: "$agencyData", preserveNullAndEmptyArrays: true },
+        },
+
+        {
+          $project: {
+            _id: 0,
+            name: {
+              $concat: ["$first_name", " ", "$last_name"],
+            },
+            contact_number: 1,
+            email: 1,
+            status: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ["$status", "confirmed"] }, then: "Active" },
+                  {
+                    case: { $eq: ["$status", "payment_pending"] },
+                    then: "Payment Pending",
+                  },
+                  {
+                    case: { $eq: ["$status", "agency_inactive"] },
+                    then: "Agency Inactive",
+                  },
+                  {
+                    case: { $eq: ["$status", "subscription_cancelled"] },
+                    then: "Subscription cancelled",
+                  },
+                  {
+                    case: { $eq: ["$status", "free_trial"] },
+                    then: "Free Trial",
+                  },
+                ],
+                default: "null",
+              },
+            },
+            company_name: "$agencyData.company_name",
+            company_website: "$agencyData.company_website",
+            industry: "$agencyData.industry",
+            no_of_people: "$agencyData.no_of_people",
+          },
+        },
+      ];
+      const agenciesData = await Authentication.aggregate(pipeLine);
+
+      const workbook = new Excel.Workbook();
+      const worksheet = workbook.addWorksheet("Data");
+      // Define headers
+      worksheet.columns = [
+        { header: "Name", key: "name" },
+        { header: "Contact Number", key: "contact_number" },
+        { header: "Email", key: "email" },
+        { header: "Status", key: "status" },
+        { header: "Company Name", key: "company_name" },
+        { header: "Company Website", key: "company_website" },
+        { header: "Industry", key: "industry" },
+        { header: "No of People", key: "no_of_people" },
+      ];
+
+      // Add headers from the first data object
+      // const headers = Object.keys(agenciesData[0]);
+      const headers = [
+        "name",
+        "contact_number",
+        "email",
+        "status",
+        "company_name",
+        "company_website",
+        "industry",
+        "no_of_people",
+      ];
+      worksheet.addRow();
+
+      // Add data rows
+      agenciesData.forEach((data) => {
+        const row = [];
+        headers.forEach((header) => {
+          row.push(data.hasOwnProperty(header) ? data[header] : "");
+        });
+        worksheet.addRow(row);
+      });
+
+      // const filePath = "data.xlsx";
+      // await workbook.xlsx.writeFile(filePath);
+
+      // Write to file
+      const buffer = await workbook.xlsx.writeBuffer();
+      // fs.writeFileSync(filePath, buffer);
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader("Content-Disposition", "attachment; filename=data.xlsx");
+      res.send(buffer);
+    } catch (error) {
+      logger.error(`Error while Admin update, ${error}`);
+      throwError(error?.message, error?.statusCode);
     }
   };
 }
