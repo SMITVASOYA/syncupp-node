@@ -258,6 +258,7 @@ class GroupChatService {
         {
           $match: {
             group_id: new mongoose.Types.ObjectId(payload?.group_id),
+            is_deleted: false,
           },
         },
         {

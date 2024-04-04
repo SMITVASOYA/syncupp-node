@@ -732,14 +732,14 @@ class ChatService {
       }
       const latest_chat = await Chat.aggregate([
         {
-          $match: { to_user: user.reference_id },
+          $match: { from_user: user.reference_id },
         },
         {
           $sort: { createdAt: -1 }, // Sort by createdAt descending
         },
         {
           $group: {
-            _id: "$from_user", // Group by from_user field
+            _id: "$to_user", // Group by from_user field
             doc: { $first: "$$ROOT" }, // Keep the first document for each group (latest message)
           },
         },
@@ -749,7 +749,7 @@ class ChatService {
         {
           $lookup: {
             from: "authentications",
-            localField: "from_user",
+            localField: "to_user",
             foreignField: "reference_id",
             as: "from_user",
             pipeline: [
@@ -802,6 +802,94 @@ class ChatService {
         { $sort: { createdAt: -1 } }, // Sort again by createdAt descending
       ]);
 
+      // const latest_chats = await Chat.aggregate([
+      //   {
+      //     $match: {
+      //       $or: [
+      //         { from_user: user.reference_id }, // Match messages sent by the user
+      //         { to_user: user.reference_id }, // Match messages received by the user
+      //       ],
+      //     },
+      //   },
+      //   {
+      //     $sort: { createdAt: -1 }, // Sort by createdAt descending
+      //   },
+      //   {
+      //     $group: {
+      //       _id: { from_user: "$from_user", to_user: "$to_user" }, // Group by both from_user and to_user fields
+      //       doc: { $first: "$$ROOT" }, // Keep the first document for each group (latest message)
+      //     },
+      //   },
+      //   {
+      //     $replaceRoot: { newRoot: "$doc" }, // Replace the root document with the latest message
+      //   },
+      //   {
+      //     $lookup: {
+      //       from: "authentications",
+      //       localField: "to_user",
+      //       foreignField: "reference_id",
+      //       as: "to_user_info",
+      //       pipeline: [
+      //         // Your pipeline to retrieve user information for to_user
+      //       ],
+      //     },
+      //   },
+      //   {
+      //     $lookup: {
+      //       from: "authentications",
+      //       localField: "from_user",
+      //       foreignField: "reference_id",
+      //       as: "from_user_info",
+      //       pipeline: [
+      //         // Your pipeline to retrieve user information for from_user
+      //       ],
+      //     },
+      //   },
+      //   {
+      //     $unwind: {
+      //       path: "$to_user_info",
+      //       preserveNullAndEmptyArrays: true,
+      //     },
+      //   },
+      //   {
+      //     $unwind: {
+      //       path: "$from_user_info",
+      //       preserveNullAndEmptyArrays: true,
+      //     },
+      //   },
+      //   {
+      //     $project: {
+      //       to_user_info: {
+      //         first_name: 1,
+      //         last_name: 1,
+      //         profile_image: 1,
+      //         reference_id: 1,
+      //         role: { $arrayElemAt: ["$to_user_info.user_role", 0] }, // Assuming user_role is an array
+      //       },
+      //       from_user_info: {
+      //         first_name: 1,
+      //         last_name: 1,
+      //         profile_image: 1,
+      //         reference_id: 1,
+      //         role: { $arrayElemAt: ["$from_user_info.user_role", 0] }, // Assuming user_role is an array
+      //       },
+      //       message: 1,
+      //       group_id: 1,
+      //       createdAt: 1,
+      //       document_url: 1,
+      //       image_url: 1,
+      //       audio_url: 1,
+      //       is_deleted: 1,
+      //       is_online: 1,
+      //       message_type: 1,
+      //       _id: 1,
+      //       to_user: 1,
+      //       from_user: 1,
+      //     },
+      //   },
+      //   { $sort: { createdAt: -1 } }, // Sort again by createdAt descending
+      // ]);
+
       let allChats = [...latestGroupChats, ...latest_chat]
         .filter((chat) => chat) // Filter out undefined values
         .sort((a, b) => b.createdAt - a.createdAt);
@@ -811,13 +899,21 @@ class ChatService {
       const uniqueChats = [];
       // Filter out duplicate chats based on their IDs
       for (const chat of final_chat) {
-        if (!uniqueChatIds.has(chat?._id.toString())) {
-          uniqueChatIds.add(chat?._id.toString());
+        if (!uniqueChatIds.has(chat?._id?.toString())) {
+          uniqueChatIds.add(chat?._id?.toString());
           uniqueChats.push(chat);
         }
       }
+      const duplicatechatid = new Set();
+      const duplicateChat = [];
+      for (const chat of uniqueChats) {
+        if (!duplicatechatid.has(chat?.group_id?.toString())) {
+          duplicatechatid.add(chat?.group_id?.toString());
+          duplicateChat.push(chat);
+        }
+      }
       // Limit the result to the specified limit
-      const finalChats = uniqueChats.slice(0, limit);
+      const finalChats = duplicateChat.slice(0, limit);
       // console.log(finalChats, "final");
       return finalChats;
     } catch (error) {
