@@ -1243,7 +1243,7 @@ class TeamMemberService {
     image
   ) => {
     try {
-      const {
+      let {
         first_name,
         last_name,
         contact_number,
@@ -1257,6 +1257,16 @@ class TeamMemberService {
         country,
         pincode,
       } = payload;
+
+      if (country == null || country == "null") country = null;
+      if (state == null || state == "null") state = null;
+      if (city == null || city == "null") city = null;
+      if (
+        company_website == null ||
+        company_website == "null" ||
+        company_website == "undefined"
+      )
+        company_website = null;
 
       let imagePath = false;
       if (image) {
