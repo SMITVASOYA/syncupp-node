@@ -1258,13 +1258,34 @@ class TeamMemberService {
         pincode,
       } = payload;
 
-      if (country == null || country == "null") country = null;
-      if (state == null || state == "null") state = null;
-      if (city == null || city == "null") city = null;
+      validateRequestFields(payload, ["contact_number"]);
+
+      if (
+        country == null ||
+        country == "null" ||
+        country == "undefined" ||
+        country == undefined
+      )
+        country = null;
+      if (
+        state == null ||
+        state == "null" ||
+        state == "undefined" ||
+        state == undefined
+      )
+        state = null;
+      if (
+        city == null ||
+        city == "null" ||
+        city == "undefined" ||
+        city == undefined
+      )
+        city = null;
       if (
         company_website == null ||
         company_website == "null" ||
-        company_website == "undefined"
+        company_website == "undefined" ||
+        company_website == undefined
       )
         company_website = null;
 

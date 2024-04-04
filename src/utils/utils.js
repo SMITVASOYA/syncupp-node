@@ -80,13 +80,13 @@ exports.capitalizeFirstLetter = (string) => {
 
 exports.validateRequestFields = (payload, fields) => {
   for (const field of fields) {
-    if (!payload[field]) {
+    if (!payload[field] || payload[field] == " ") {
       switch (field) {
         case "title":
           return throwError(`Title is required.`);
           break;
         case "agenda":
-          return throwError(`Agencda is required.`);
+          return throwError(`Agency is required.`);
           break;
         case "due_time":
           return throwError(`Due time is required.`);
