@@ -42,6 +42,7 @@ exports.socket_connection = (http_server) => {
       logger.info(`Socket ${socket.id} has disconnected.`);
     });
 
+    // this event is used to group join event
     socket.on("JOIN_ROOM", (payload) => {
       socket.join(payload?._id?.toString());
     });
