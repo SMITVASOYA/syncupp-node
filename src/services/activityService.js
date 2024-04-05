@@ -35,6 +35,7 @@ const fs = require("fs");
 const { ObjectId } = require("mongodb");
 const Activity_Type_Master = require("../models/masters/activityTypeMasterSchema");
 const momentTimezone = require("moment-timezone");
+const Team_Client = require("../models/teamClientSchema");
 
 class ActivityService {
   createTask = async (payload, user, files) => {
@@ -1860,19 +1861,45 @@ class ActivityService {
             },
             { new: true }
           );
-          await Agency.findOneAndUpdate(
-            { _id: current_activity.agency_id },
-            {
-              $inc: {
-                total_referral_point:
-                  -referral_data?.competition?.successful_task_competition,
-              },
-            },
-            { new: true }
-          );
+
           const assign_role = await Authentication.findOne({
             reference_id: current_activity.assign_to,
           }).populate("role", "name");
+
+          if (assign_role?.role?.name === "agency") {
+            await Agency.findOneAndUpdate(
+              { _id: current_activity.agency_id },
+              {
+                $inc: {
+                  total_referral_point:
+                    -referral_data?.competition?.successful_task_competition,
+                },
+              },
+              { new: true }
+            );
+          } else if (assign_role?.role?.name === "team_agency") {
+            await Team_Agency.findOneAndUpdate(
+              { _id: current_activity.assign_to },
+              {
+                $inc: {
+                  total_referral_point:
+                    -referral_data?.competition?.successful_task_competition,
+                },
+              },
+              { new: true }
+            );
+          } else if (assign_role?.role?.name === "team_client") {
+            await Team_Client.findOneAndUpdate(
+              { _id: current_activity.assign_to },
+              {
+                $inc: {
+                  total_referral_point:
+                    -referral_data?.competition?.successful_task_competition,
+                },
+              },
+              { new: true }
+            );
+          }
 
           await Competition_Point.create({
             user_id: current_activity.assign_to,
@@ -1926,19 +1953,44 @@ class ActivityService {
             },
             { new: true }
           );
-          await Agency.findOneAndUpdate(
-            { _id: current_activity.agency_id },
-            {
-              $inc: {
-                total_referral_point:
-                  referral_data?.competition?.successful_task_competition,
-              },
-            },
-            { new: true }
-          );
           const assign_role = await Authentication.findOne({
             reference_id: current_activity.assign_to,
           }).populate("role", "name");
+
+          if (assign_role?.role?.name === "agency") {
+            await Agency.findOneAndUpdate(
+              { _id: current_activity.agency_id },
+              {
+                $inc: {
+                  total_referral_point:
+                    referral_data?.competition?.successful_task_competition,
+                },
+              },
+              { new: true }
+            );
+          } else if (assign_role?.role?.name === "team_agency") {
+            await Team_Agency.findOneAndUpdate(
+              { _id: current_activity.assign_to },
+              {
+                $inc: {
+                  total_referral_point:
+                    referral_data?.competition?.successful_task_competition,
+                },
+              },
+              { new: true }
+            );
+          } else if (assign_role?.role?.name === "team_client") {
+            await Team_Client.findOneAndUpdate(
+              { _id: current_activity.assign_to },
+              {
+                $inc: {
+                  total_referral_point:
+                    referral_data?.competition?.successful_task_competition,
+                },
+              },
+              { new: true }
+            );
+          }
 
           await Competition_Point.create({
             user_id: current_activity.assign_to,
