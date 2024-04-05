@@ -49,7 +49,8 @@ class ActivityService {
         mark_as_done,
         tags,
       } = payload;
-      if (client_id === "null") client_id = null;
+      if (client_id == "null" || client_id == null) client_id = null;
+
       const attachments = [];
       if (files && files.length > 0) {
         files.forEach((file) => {
@@ -1341,7 +1342,7 @@ class ActivityService {
         tags,
       } = payload;
 
-      if (client_id === "null") client_id = null;
+      if (client_id == "null" || client_id == null) client_id = null;
 
       const attachments = [];
       if (files && files.length > 0) {
