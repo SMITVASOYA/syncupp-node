@@ -9,6 +9,7 @@ const {
   getAgency,
   transactionHistory,
   dashboardData,
+  agencyDownload,
 } = require("../controllers/adminController");
 const validatorFunc = require("../utils/validatorFunction.helper");
 const agencyController = require("../controllers/agencyController");
@@ -137,6 +138,7 @@ adminRoute.delete(
 adminRoute.post("/get-coupon-list", getCouponList);
 adminRoute.post("/transaction", transactionHistory);
 adminRoute.get("/dashboard", dashboardData);
+adminRoute.get("/agency-download", agencyDownload);
 
 // ------------------------ Notification ------------------------
 adminRoute.get("/notification", notificationController.getNotification);
@@ -144,6 +146,7 @@ adminRoute.post(
   "/notification/read-notification",
   notificationController.readNotification
 );
+
 // ------------------------ Notification ------------------------
 
 module.exports = adminRoute;

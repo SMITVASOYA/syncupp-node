@@ -12,6 +12,7 @@ const notificationService = new NotificationService();
 const Configuration = require("../models/configurationSchema");
 const Agency = require("../models/agencySchema");
 const Team_Agency = require("../models/teamAgencySchema");
+const { eventEmitter } = require("../socket");
 exports.protect = catchAsyncErrors(async (req, res, next) => {
   const token = req.headers.authorization || req.headers.token;
 
@@ -107,7 +108,11 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
       user?.status === "payment_pending" &&
       !req_paths.includes(req.path)
     )
-      return throwError(returnMessage("payment", "agencyPaymentPending"), 422);
+      return eventEmitter(
+        "PAYMENT_PENDING",
+        { status: "payment_pending" },
+        user?.reference_id?.toString()
+      );
 
     req.user = user;
     next();

@@ -65,7 +65,8 @@
     "clientReviewUpdated": "Client Review updated successfully.",
     "getClientReviewByID": "Fetch Review client successfully.",
     "agencyFetched": "Agency fetched successfully.",
-    "transactionFetched": "Transaction History fetched successfully."
+    "transactionFetched": "Transaction History fetched successfully.",
+    "agencyDataDownload": "Agencies data downloaded successfully."
   },
 
   "teamMember": {

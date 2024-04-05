@@ -1,7 +1,11 @@
 const Agency = require("../models/agencySchema");
 const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
-const { paginationObject, capitalizeFirstLetter } = require("../utils/utils");
+const {
+  paginationObject,
+  capitalizeFirstLetter,
+  validateRequestFields,
+} = require("../utils/utils");
 const Role_Master = require("../models/masters/roleMasterSchema");
 const Authentication = require("../models/authenticationSchema");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
@@ -205,7 +209,7 @@ class AgencyService {
   // Update Agency profile
   updateAgencyProfile = async (payload, user_id, reference_id, image) => {
     try {
-      const {
+      let {
         first_name,
         last_name,
         contact_number,
@@ -219,6 +223,38 @@ class AgencyService {
         country,
         pincode,
       } = payload;
+
+      validateRequestFields(payload, ["contact_number"]);
+
+      if (
+        country == null ||
+        country == "null" ||
+        country == "undefined" ||
+        country == undefined
+      )
+        country = null;
+      if (
+        state == null ||
+        state == "null" ||
+        state == "undefined" ||
+        state == undefined
+      )
+        state = null;
+      if (
+        city == null ||
+        city == "null" ||
+        city == "undefined" ||
+        city == undefined
+      )
+        city = null;
+      if (
+        company_website == null ||
+        company_website == "null" ||
+        company_website == "undefined" ||
+        company_website == undefined
+      )
+        company_website = null;
+
       let imagePath = false;
       if (image) {
         imagePath = "uploads/" + image.filename;

@@ -40,7 +40,7 @@ const Team_Client = require("../models/teamClientSchema");
 class ActivityService {
   createTask = async (payload, user, files) => {
     try {
-      const {
+      let {
         title,
         agenda,
         due_date,
@@ -49,7 +49,7 @@ class ActivityService {
         mark_as_done,
         tags,
       } = payload;
-
+      if (client_id === "null") client_id = null;
       const attachments = [];
       if (files && files.length > 0) {
         files.forEach((file) => {
@@ -1331,7 +1331,7 @@ class ActivityService {
 
   updateTask = async (payload, id, files, logInUser) => {
     try {
-      const {
+      let {
         title,
         agenda,
         due_date,
@@ -1340,6 +1340,8 @@ class ActivityService {
         mark_as_done,
         tags,
       } = payload;
+
+      if (client_id === "null") client_id = null;
 
       const attachments = [];
       if (files && files.length > 0) {
