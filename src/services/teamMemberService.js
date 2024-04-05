@@ -1188,7 +1188,7 @@ class TeamMemberService {
           $match: {
             reference_id: { $in: teams },
             is_deleted: false,
-            status: "confirmed",
+            status: { $in: ["confirmed", "free_trial"] },
           },
         },
         {

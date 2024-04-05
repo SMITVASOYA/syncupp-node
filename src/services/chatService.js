@@ -389,7 +389,7 @@ class ChatService {
       );
       let agencyObj = {
         reference_id: { $in: chat_users_ids },
-        status: "confirmed",
+        status: { $in: ["confirmed", "free_trial"] },
       };
       let queryObj = {};
       if (payload?.search && payload?.search !== "") {

@@ -444,7 +444,11 @@ class AdminService {
           {
             $match: {
               is_deleted: false,
-              $or: [{ status: "confirmed" }, { status: "agency_inactive" }],
+              $or: [
+                { status: "confirmed" },
+                { status: "agency_inactive" },
+                { status: "free_trial" },
+              ],
               "statusName.name": "agency",
             },
           },
@@ -615,6 +619,10 @@ class AdminService {
               $switch: {
                 branches: [
                   { case: { $eq: ["$status", "confirmed"] }, then: "Active" },
+                  {
+                    case: { $eq: ["$status", "free_trial"] },
+                    then: "Free Trial",
+                  },
                   {
                     case: { $eq: ["$status", "payment_pending"] },
                     then: "Payment Pending",

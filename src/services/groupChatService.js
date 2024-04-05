@@ -61,7 +61,7 @@ class GroupChatService {
       return await Authentication.find({
         reference_id: { $in: member_ids },
         is_deleted: false,
-        status: "confirmed",
+        status: { $in: ["confirmed", "free_trial"] },
       })
         .populate("role", "name")
         .select("first_name last_name email role reference_id")
