@@ -1611,7 +1611,7 @@ class PaymentService {
     try {
       const referral_data = await Configuration.findOne().lean();
       const total_earned_point = await CompetitionPoint.find({
-        agency_id: agency.reference_id,
+        user_id: agency.reference_id,
       });
       const total_earned_points_sum = total_earned_point.reduce((acc, curr) => {
         return acc + parseInt(curr.point);
