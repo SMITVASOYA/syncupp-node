@@ -96,7 +96,7 @@ class NotificationService {
               message_type,
               "assignByMessage"
             );
-            if (payload.client_id) {
+            if (payload.client_id && payload.client_id !== "null") {
               await createAndEmitNotification(
                 payload.client_id,
                 message_type,
@@ -155,7 +155,7 @@ class NotificationService {
               );
             });
         } else {
-          if (payload.client_id) {
+          if (payload.client_id && payload.client_id !== "null") {
             await createAndEmitNotification(
               client_id,
               message_type,
@@ -242,7 +242,7 @@ class NotificationService {
               message_type,
               "assignToMessage"
             );
-            if (payload.client_id) {
+            if (payload.client_id && payload.client_id !== "null") {
               await createAndEmitNotification(
                 payload.client_id,
                 message_type,
@@ -255,7 +255,7 @@ class NotificationService {
               message_type,
               "assignByMessage"
             );
-            if (payload.client_id) {
+            if (payload.client_id && payload.client_id !== "null") {
               await createAndEmitNotification(
                 payload.client_id,
                 message_type,
@@ -278,7 +278,7 @@ class NotificationService {
             );
           }
         } else {
-          if (payload.client_id) {
+          if (payload.client_id && payload.client_id !== "null") {
             await createAndEmitNotification(
               client_id,
               message_type,

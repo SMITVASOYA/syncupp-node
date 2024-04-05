@@ -1412,7 +1412,7 @@ class ActivityService {
       };
 
       // Check if client_id is null, exclude it from the update payload
-      if (!client_id) {
+      if (!client_id || client_id == "null") {
         updateTasksPayload.client_id = null;
       } else {
         updateTasksPayload.client_id = client_id;
@@ -1421,7 +1421,7 @@ class ActivityService {
       const updateTasks = await Activity.findByIdAndUpdate(
         id,
         updateTasksPayload,
-        { new: true, useFindAndModify: false }
+        { new: true }
       );
       // const updateTasks = await Activity.findByIdAndUpdate(
       //   id,
@@ -1704,28 +1704,30 @@ class ActivityService {
         agginTo_email: getTask[0]?.assign_email,
         assignName: getTask[0]?.assigned_to_name,
       };
-      const client_data = await Authentication.findOne({
-        reference_id: payload?.client_id,
-      }).lean();
+      let client_data;
+      if (client_id && client_id != "null") {
+        client_data = await Authentication.findOne({
+          reference_id: payload?.client_id,
+        }).lean();
 
-      const taskMessage = taskTemplate(data);
-      sendEmail({
-        email: getTask[0]?.assign_email,
-        subject: returnMessage("activity", "UpdateSubject"),
-        message: taskMessage,
-      });
-
-      if (client_data) {
+        const taskMessage = taskTemplate(data);
         sendEmail({
-          email: client_data?.email,
+          email: getTask[0]?.assign_email,
           subject: returnMessage("activity", "UpdateSubject"),
-          message: taskTemplate({
-            ...data,
-            assignName: client_data.first_name + " " + client_data.last_name,
-          }),
+          message: taskMessage,
         });
-      }
 
+        if (client_data) {
+          sendEmail({
+            email: client_data?.email,
+            subject: returnMessage("activity", "UpdateSubject"),
+            message: taskTemplate({
+              ...data,
+              assignName: client_data.first_name + " " + client_data.last_name,
+            }),
+          });
+        }
+      }
       if (logInUser?.role?.name === "agency") {
         // -------------- Socket notification start --------------------
 

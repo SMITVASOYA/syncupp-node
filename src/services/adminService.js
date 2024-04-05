@@ -589,6 +589,7 @@ class AdminService {
         {
           $match: {
             "statusName.name": "agency",
+            is_deleted: false,
           },
         },
         {

@@ -6917,7 +6917,7 @@ white-space: nowrap; text-transform: capitalize;">${data?.status}</td>
                                   </table>
                                   <a target="_blank" href="${
                                     process.env.REACT_APP_URL
-                                  }/calendar" style="
+                                  }/meetings" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
@@ -8505,7 +8505,7 @@ exports.taskTemplate = (data) => {
                                       </td>
                                     </tr>
                                   </table>
-                                  <a target="_blank" href="#" style="
+                                  <a target="_blank" href="${process.env.REACT_APP_URL}/tasks" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
