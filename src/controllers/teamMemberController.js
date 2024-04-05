@@ -105,11 +105,10 @@ exports.editMember = catchAsyncError(async (req, res, next) => {
 // reject client team member
 exports.rejectTeamMember = catchAsyncError(async (req, res, next) => {
   await teamMemberService.rejectTeamMember(req.body, req.user);
-  sendResponse(
-    res,
-    true,
-    returnMessage("teamMember", "teamMemberRejected"),
-    {},
-    statusCode.success
-  );
+  let message = returnMessage("teamMember", "teamMemberRejected");
+
+  if (req.body.status === "accept")
+    message = returnMessage("teamMember", "teamMemberCreated");
+
+  sendResponse(res, true, message, {}, statusCode.success);
 });
