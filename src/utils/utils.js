@@ -12418,7 +12418,7 @@ white-space: nowrap;">${data?.contact_number ?? "-"}</td>
                                   </table>
                                   <a target="_blank" href="${
                                     process.env.REACT_APP_URL
-                                  }"style="
+                                  }/admin"style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;

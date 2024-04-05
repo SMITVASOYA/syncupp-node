@@ -222,16 +222,17 @@ class AgencyService {
       let imagePath = false;
       if (image) {
         imagePath = "uploads/" + image.filename;
-      } else if (image === "") {
+      } else if (image === undefined && !payload?.profile_image) {
         imagePath = "";
+        const existingImage = await Authentication.findById(user_id);
+        existingImage &&
+          fs.unlink(`./src/public/${existingImage.profile_image}`, (err) => {
+            if (err) {
+              logger.error(`Error while unlinking the documents: ${err}`);
+            }
+          });
       }
-      const existingImage = await Authentication.findById(user_id);
-      existingImage &&
-        fs.unlink(`./src/public/${existingImage.profile_image}`, (err) => {
-          if (err) {
-            logger.error(`Error while unlinking the documents: ${err}`);
-          }
-        });
+
       const authData = {
         first_name,
         last_name,
