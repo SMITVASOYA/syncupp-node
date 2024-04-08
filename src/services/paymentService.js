@@ -2784,9 +2784,24 @@ class PaymentService {
 
   pendingpayout = async (payload) => {
     try {
-      let filterObj = {
-        payout_requested: true,
+      let filter = {
+        $match: {},
       };
+      let filterObj = {};
+      if (payload?.payout_requested) {
+        if (payload?.payout_requested === "unpaid") {
+          filter["$match"] = {
+            ...filter["$match"],
+            payout_requested: true,
+          };
+        } else if (payload?.payout_requested === "paid") {
+          filter["$match"] = {
+            ...filter["$match"],
+            payout_requested: false,
+          };
+        } else if (payload?.payout_requested === "All") {
+        }
+      }
 
       if (payload?.search && payload?.search !== "") {
         filterObj["$or"] = [
@@ -2814,17 +2829,18 @@ class PaymentService {
         if (keywordType === "number") {
           const numericKeyword = parseInt(payload.search);
 
-          queryObj["$or"].push({
+          filterObj["$or"].push({
             payout_amount: numericKeyword,
           });
         } else if (keywordType === "date") {
           const dateKeyword = new Date(payload.search);
-          queryObj["$or"].push({ createdAt: dateKeyword });
-          queryObj["$or"].push({ updatedAt: dateKeyword });
+          filterObj["$or"].push({ createdAt: dateKeyword });
+          filterObj["$or"].push({ updatedAt: dateKeyword });
         }
       }
       const pagination = paginationObject(payload);
       let pipeline = [
+        filter,
         { $match: filterObj },
         {
           $lookup: {
@@ -2907,7 +2923,7 @@ class PaymentService {
         .sort(pagination.sort)
         .skip(pagination.skip)
         .limit(pagination.result_per_page);
-      const totalpendingPayout = await Payout.find(filterObj);
+      const totalpendingPayout = await Payout.aggregate(pipeline);
       const pages = Math.ceil(
         totalpendingPayout.length / pagination.result_per_page
       );
