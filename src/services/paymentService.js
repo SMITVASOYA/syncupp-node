@@ -43,6 +43,9 @@ const NotificationService = require("./notificationService");
 const Admin = require("../models/adminSchema");
 const notificationService = new NotificationService();
 const fs = require("fs");
+const Role_Master = require("../models/masters/roleMasterSchema");
+const Affiliate = require("../models/affiliateSchema");
+const Payout = require("../models/payoutSchema");
 class PaymentService {
   constructor() {
     this.razorpayApi = axios.create({
@@ -321,6 +324,45 @@ class PaymentService {
             },
             { new: true }
           );
+          let affilate_detail = await Affiliate_Referral.findOne({
+            referred_to: agency_details?.reference_id,
+            status: "active",
+          }).lean();
+
+          const affiliateCheck = await Affiliate.findOne({
+            _id: affilate_detail.referred_by,
+          }).lean();
+
+          const crmAffiliate = await Authentication.findOne({
+            reference_id: affilate_detail.referred_by,
+          }).lean();
+
+          const referral_data = await Configuration.findOne().lean();
+
+          if (affiliateCheck) {
+            await Affiliate.findOneAndUpdate(
+              { _id: affiliateCheck._id },
+              {
+                $inc: {
+                  affiliate_point:
+                    referral_data?.referral?.successful_referral_point,
+                },
+              },
+              { new: true }
+            );
+          }
+          if (crmAffiliate) {
+            await Authentication.findOneAndUpdate(
+              { reference_id: crmAffiliate.reference_id },
+              {
+                $inc: {
+                  affiliate_point:
+                    referral_data?.referral?.successful_referral_point,
+                },
+              },
+              { new: true }
+            );
+          }
 
           return;
         } else if (
@@ -2563,7 +2605,6 @@ class PaymentService {
         .lean();
     } catch (error) {
       logger.error(`Error while running the list plan: ${error}`);
-      return throwError(error?.message, error?.statusCode);
     }
   };
 
@@ -2624,6 +2665,256 @@ class PaymentService {
       return;
     } catch (error) {
       logger.error(`Error while updating the subscription plan: ${error}`);
+    }
+  };
+
+  //create contact for payout
+  createContact = async (user) => {
+    try {
+      let { data } = await this.razorpayApi.post("/contacts", {
+        name: user.first_name + " " + user.last_name,
+        email: user?.email,
+        contact: user?.contact_number,
+        type: "Affiliate",
+        reference_id: user?._id?.toString(),
+      });
+
+      await Authentication.findByIdAndUpdate(
+        user?._id,
+        { contact_id: data?.id },
+        { new: true }
+      );
+
+      await Affiliate.findByIdAndUpdate(
+        user?._id,
+        { contact_id: data?.id },
+        { new: true }
+      );
+
+      return data;
+    } catch (error) {
+      console.log(JSON.stringify(error));
+      logger.error(`Error while creating the contact: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  creatFundAccount = async (payload, user) => {
+    try {
+      let fund_detail = {
+        contact_id: user.contact_id,
+        account_type: payload.account_type,
+        bank_account: {
+          name: payload.name,
+          ifsc: payload.ifsc,
+          account_number: payload.account_number,
+        },
+      };
+
+      let { data } = await this.razorpayApi.post("/fund_accounts", fund_detail);
+
+      await Authentication.findByIdAndUpdate(
+        user?._id,
+        { fund_id: data?.id },
+        { new: true }
+      );
+
+      await Affiliate.findByIdAndUpdate(
+        user?._id,
+        { fund_id: data?.id },
+        { new: true }
+      );
+
+      return data;
+    } catch (error) {
+      console.log(JSON.stringify(error));
+      logger.error(`Error while creating the fund account: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  requestforPayout = async (user, payload) => {
+    try {
+      const refer_data = await Configuration.findOne({}).lean();
+      if (user?.affiliate_point >= refer_data?.affiliate?.payout_points) {
+        let payoutRequest = await Payout.create({
+          contact_id: user.contact_id,
+          reference_id: user._id,
+          email: user.email,
+          contact: user?.contact_number,
+          name: user.first_name + " " + user.last_name,
+          fund_id: user?.fund_id,
+          payout_amount: payload?.payout_amount,
+          payout_requested: true,
+        });
+
+        await Affiliate.findOneAndUpdate(
+          { _id: user?._id },
+          {
+            $inc: {
+              affiliate_point: -payload?.payout_amount,
+            },
+          },
+          { new: true }
+        );
+        return payoutRequest;
+      } else {
+        return throwError(
+          returnMessage("payment", "insufficientReferralPoints")
+        );
+      }
+    } catch (error) {
+      console.log(JSON.stringify(error));
+      logger.error(`Error while creating the fund account: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  pendingpayout = async (payload) => {
+    try {
+      let filterObj = {
+        payout_requested: true,
+      };
+      const pagination = paginationObject(payload);
+      let pipeline = [
+        { $match: filterObj },
+        {
+          $lookup: {
+            from: "authentications",
+            let: { reference_id: { $toObjectId: "$reference_id" } },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ["$_id", "$$reference_id"] },
+                },
+              },
+              {
+                $project: {
+                  name: 1,
+                  first_name: 1,
+                  last_name: 1,
+                  agency_name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                },
+              },
+            ],
+            as: "agency_data",
+          },
+        },
+        {
+          $unwind: { path: "$agency_data", preserveNullAndEmptyArrays: true },
+        },
+        {
+          $lookup: {
+            from: "affiliates",
+            let: { reference_id: { $toObjectId: "$reference_id" } },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ["$_id", "$$reference_id"] },
+                },
+              },
+              {
+                $project: {
+                  name: 1,
+                  first_name: 1,
+                  last_name: 1,
+                  affiliate_name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                },
+              },
+            ],
+            as: "affiliates_data",
+          },
+        },
+        {
+          $unwind: {
+            path: "$affiliates_data",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            email: 1,
+            contact_id: 1,
+            payout_requested: 1,
+            payout_amount: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            _id: 1,
+            fullname: {
+              $cond: {
+                if: { $gt: ["$agency_data", null] },
+                then: "$agency_data.agency_name",
+                else: "$affiliates_data.affiliate_name",
+              },
+            },
+          },
+        },
+      ];
+
+      const pendingPayout = await Payout.aggregate(pipeline)
+        .sort(pagination.sort)
+        .skip(pagination.skip)
+        .limit(pagination.result_per_page);
+      const totalpendingPayout = await Payout.find(filterObj);
+      const pages = Math.ceil(
+        totalpendingPayout.length / pagination.result_per_page
+      );
+      return { pendingPayout, page_count: pages };
+    } catch (error) {
+      console.log(JSON.stringify(error));
+      logger.error(`Error while creating the listing payout: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  createPayouts = async (payload) => {
+    try {
+      let payout_details = await Payout.findById(payload?.id);
+
+      const { data } = await this.razorpayApi.post("/payouts", {
+        account_number: "2323230003384962",
+        fund_account_id: payout_details?.fund_id,
+        amount: payout_details?.payout_amount,
+        currency: "INR",
+        mode: "IMPS",
+        purpose: "payout",
+        reference_id: payout_details?.reference_id, // You can use a unique reference ID for each payout
+      });
+
+      if (data) {
+        await Payout.findByIdAndUpdate(
+          payload?.id,
+          {
+            payout_requested: false,
+          },
+          { new: true }
+        );
+      }
+
+      return data;
+    } catch (error) {
+      console.log(JSON.stringify(error?.response?.data));
+      logger.error(`Error while creating the payout: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  fetchAccountDetail = async (user) => {
+    try {
+      if (!user?.fund_id)
+        return throwError(returnMessage("payment", "accountnotfound"));
+      const { data } = await this.razorpayApi.get(
+        `/fund_accounts/${user?.fund_id}`
+      );
+
+      return data;
+    } catch (error) {
+      onsole.log(JSON.stringify(error?.response?.data));
+      logger.error(`Error while fetch account detail: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };

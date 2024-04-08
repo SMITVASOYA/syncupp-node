@@ -4,7 +4,8 @@ const statusCode = require("../messages/statusCodes.json");
 const AffiliateService = require("../services/affiliateService");
 const { sendResponse } = require("../utils/sendResponse");
 const affiliateService = new AffiliateService();
-
+const PaymentService = require("../services/paymentService");
+const paymentService = new PaymentService();
 // Affiliate Sign Up
 exports.signUp = catchAsyncError(async (req, res, next) => {
   const user = await affiliateService.signUp(req.body);
@@ -110,5 +111,41 @@ exports.clickCount = catchAsyncError(async (req, res, next) => {
     returnMessage("affiliate", "countAdded"),
     dashboardData,
     statusCode.success
+  );
+});
+
+exports.requestPayout = catchAsyncError(async (req, res, next) => {
+  const requestPayout = await paymentService.requestforPayout(
+    req.user,
+    req.body
+  );
+  sendResponse(
+    res,
+    true,
+    returnMessage("payment", "requestPayout"),
+    requestPayout,
+    200
+  );
+});
+
+exports.createFundAccount = catchAsyncError(async (req, res, next) => {
+  const fund_detail = await paymentService.creatFundAccount(req.body, req.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("payment", "createFundAccount"),
+    fund_detail,
+    200
+  );
+});
+
+exports.fetchaccount = catchAsyncError(async (req, res, next) => {
+  const fetchaccount = await paymentService.fetchAccountDetail(req.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("payment", "subscriptionFetched"),
+    fetchaccount,
+    200
   );
 });

@@ -17,7 +17,8 @@ const Authentication = require("../models/authenticationSchema");
 const PaymentHistory = require("../models/paymentHistorySchema");
 const moment = require("moment");
 const Configuration = require("../models/configurationSchema");
-
+const paymentService = require("../services/paymentService");
+const PaymentService = new paymentService();
 const { ObjectId } = require("mongodb");
 
 class AffiliateService {
@@ -74,6 +75,7 @@ class AffiliateService {
       newUser = newUser.toObject();
       delete newUser?.password;
       delete newUser?.is_deleted;
+      await PaymentService.createContact(newUser);
       return this.tokenGenerator({
         ...newUser,
       });

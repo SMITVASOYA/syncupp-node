@@ -32,6 +32,10 @@ affiliateRoute.post(
 affiliateRoute.post("/click-count", affiliateController.clickCount);
 
 affiliateRoute.use(protect);
+affiliateRoute.post("/fund-create", affiliateController.createFundAccount);
+
+affiliateRoute.post("/payout-request", affiliateController.requestPayout);
+affiliateRoute.get("/fetch-account", affiliateController.fetchaccount);
 affiliateRoute.post("/change-password", affiliateController.changePassword);
 affiliateRoute.get("/get-profile", affiliateController.getProfile);
 affiliateRoute.put("/update-profile", affiliateController.updateProfile);

@@ -34,6 +34,8 @@ const notificationService = new NotificationService();
 const TeamMemberService = require("../services/teamMemberService");
 const teamMemberService = new TeamMemberService();
 const fs = require("fs");
+const paymentService = require("../services/paymentService");
+const PaymentService = new paymentService();
 
 class ClientService {
   // create client for the agency
@@ -309,6 +311,9 @@ class ClientService {
           },
           { new: true }
         );
+        //craete contact id
+        await PaymentService.createContact(client_auth);
+
         const company_urls = await Configuration.find().lean();
         let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 

@@ -37,6 +37,8 @@ const NotificationService = require("./notificationService");
 const Admin = require("../models/adminSchema");
 const SheetManagement = require("../models/sheetManagementSchema");
 const notificationService = new NotificationService();
+const paymentService = require("../services/paymentService");
+const PaymentService = new paymentService();
 class AuthService {
   tokenGenerator = (payload) => {
     try {
@@ -161,6 +163,8 @@ class AuthService {
         agency_enroll = agency_enroll.toObject();
         agency_enroll.role = role;
 
+        await PaymentService.createContact(agency_enroll);
+
         if (payload?.affiliate_referral_code) {
           const decodedEmail = decodeURIComponent(payload?.affiliate_email);
           await this.affiliateReferralSignUp({
@@ -244,7 +248,7 @@ class AuthService {
 
         agency_enroll = agency_enroll.toObject();
         agency_enroll.role = role;
-
+        await PaymentService.createContact(agency);
         // -------------------- Notification --------------------------------
 
         await notificationService.addAdminNotification({
@@ -378,7 +382,7 @@ class AuthService {
             email: decodedEmail,
           });
         }
-
+        await PaymentService.createContact(agency_enroll);
         const lastLoginDateUTC = moment
           .utc(agency_enroll?.last_login_date)
           .startOf("day");
@@ -612,7 +616,7 @@ class AuthService {
             email: decodedEmail,
           });
         }
-
+        await PaymentService.createContact(agency_enroll);
         const lastLoginDateUTC = moment
           .utc(agency_enroll?.last_login_date)
           .startOf("day");

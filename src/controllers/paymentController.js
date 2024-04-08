@@ -151,7 +151,64 @@ exports.updateSubscriptionPlan = catchAsyncError(async (req, res, next) => {
     res,
     true,
     returnMessage("payment", "subscriptionPlanUpdate"),
-    {},
+    {}
+  );
+});
+
+exports.createContact = catchAsyncError(async (req, res, next) => {
+  const contact_detail = await paymentService.createContact(req.body);
+  sendResponse(
+    res,
+    true,
+    returnMessage("payment", "createContact"),
+    contact_detail,
+    200
+  );
+});
+
+exports.createFundAccount = catchAsyncError(async (req, res, next) => {
+  const fund_detail = await paymentService.creatFundAccount(req.body, req.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("payment", "createFundAccount"),
+    fund_detail,
+    200
+  );
+});
+
+exports.PendingPayout = catchAsyncError(async (req, res, next) => {
+  const PendingPayout = await paymentService.pendingpayout();
+  sendResponse(
+    res,
+    true,
+    returnMessage("payment", "payoutlist"),
+    PendingPayout,
+    200
+  );
+});
+
+exports.createPayout = catchAsyncError(async (req, res, next) => {
+  const createPayout = await paymentService.createPayouts(req.body);
+  sendResponse(
+    res,
+    true,
+    returnMessage("payment", "createPayout"),
+    createPayout,
+    200
+  );
+});
+
+exports.requestPayout = catchAsyncError(async (req, res, next) => {
+  const requestPayout = await paymentService.requestforPayout(
+    req.user,
+    req.body
+  );
+  sendResponse(
+    res,
+    true,
+    returnMessage("payment", "requestPayout"),
+    requestPayout,
     200
   );
 });

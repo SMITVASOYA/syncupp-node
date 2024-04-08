@@ -6,7 +6,8 @@ const { sendResponse } = require("../utils/sendResponse");
 const AgencyService = require("../services/agencyService");
 const adminService = new AdminService();
 const agencyService = new AgencyService();
-
+const PaymentService = require("../services/paymentService");
+const paymentService = new PaymentService();
 exports.login = catchAsyncError(async (req, res, next) => {
   const admin = await adminService.login(req.body);
   sendResponse(
@@ -135,5 +136,26 @@ exports.agencyDownload = catchAsyncError(async (req, res, next) => {
     returnMessage("agency", "agencyDataDownload"),
     agencyDownload,
     statusCode.success
+  );
+});
+exports.PendingPayout = catchAsyncError(async (req, res, next) => {
+  const PendingPayout = await paymentService.pendingpayout(req.body);
+  sendResponse(
+    res,
+    true,
+    returnMessage("payment", "payoutlist"),
+    PendingPayout,
+    200
+  );
+});
+
+exports.createPayout = catchAsyncError(async (req, res, next) => {
+  const createPayout = await paymentService.createPayouts(req.body);
+  sendResponse(
+    res,
+    true,
+    returnMessage("payment", "createPayout"),
+    createPayout,
+    200
   );
 });

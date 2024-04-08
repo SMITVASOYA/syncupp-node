@@ -270,7 +270,13 @@
     "subscriptionPlanUpdate": "Subscription plan updated.",
     "planNotFound": "Subscription plan does not exist.",
     "alreadySubscribed": "Subscription plan should not be same.",
-    "maxSheetsAllocated": "You have reached to the maximum sheet allocation."
+    "maxSheetsAllocated": "You have reached to the maximum sheet allocation.",
+    "insufficientReferralPoints": "Insufficient affiliate points.",
+    "requestPayout": "Request payout created successfully.",
+    "createPayout": "Payout completed successfully.",
+    "payoutlist": "Payout list fetch successfully.",
+    "createFundAccount": "Account added successfully.",
+    "accountnotfound": "Account detail  not found."
   },
   "affiliate": {
     "registered": "User registered successfully.",
