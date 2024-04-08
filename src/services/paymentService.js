@@ -319,20 +319,23 @@ class PaymentService {
               status: "inactive",
             },
             {
-              status: "active",
-              payment_id: payload?.subscription?.entity?.plan_id,
+              $set: {
+                status: "active",
+                payment_id: payload?.subscription?.entity?.plan_id,
+              },
             },
             { new: true }
           );
+
           let affilate_detail = await Affiliate_Referral.findOne({
             referred_to: agency_details?.reference_id,
             status: "active",
           }).lean();
-
+          console.log(affilate_detail);
           const affiliateCheck = await Affiliate.findOne({
             _id: affilate_detail.referred_by,
           }).lean();
-
+          console.log(affiliateCheck);
           const crmAffiliate = await Authentication.findOne({
             reference_id: affilate_detail.referred_by,
           }).lean();
