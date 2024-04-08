@@ -346,6 +346,8 @@ class PaymentService {
                 $inc: {
                   affiliate_point:
                     referral_data?.referral?.successful_referral_point,
+                  total_affiliate_earned_point:
+                    referral_data?.referral?.successful_referral_point,
                 },
               },
               { new: true }
@@ -357,6 +359,8 @@ class PaymentService {
               {
                 $inc: {
                   affiliate_point:
+                    referral_data?.referral?.successful_referral_point,
+                  total_affiliate_earned_point:
                     referral_data?.referral?.successful_referral_point,
                 },
               },
@@ -2737,6 +2741,14 @@ class PaymentService {
     try {
       const refer_data = await Configuration.findOne({}).lean();
       if (user?.affiliate_point >= refer_data?.affiliate?.payout_points) {
+        if (user?.affiliate_point < payload?.payout_amount) {
+          return throwError(
+            returnMessage("payment", "withdrawAmountNotMoreThanAffiliate")
+          );
+        }
+        if (!user?.fund_id) {
+          return throwError(returnMessage("payment", "bankDetailNotFound"));
+        }
         let payoutRequest = await Payout.create({
           contact_id: user.contact_id,
           reference_id: user._id,
@@ -2775,6 +2787,42 @@ class PaymentService {
       let filterObj = {
         payout_requested: true,
       };
+
+      if (payload?.search && payload?.search !== "") {
+        filterObj["$or"] = [
+          {
+            email: {
+              $regex: payload.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            "agency_data.agency_name": {
+              $regex: payload.search,
+              $options: "i",
+            },
+          },
+          {
+            "affiliates_data.affiliate_name": {
+              $regex: payload.search,
+              $options: "i",
+            },
+          },
+        ];
+
+        const keywordType = getKeywordType(payload.search);
+        if (keywordType === "number") {
+          const numericKeyword = parseInt(payload.search);
+
+          queryObj["$or"].push({
+            payout_amount: numericKeyword,
+          });
+        } else if (keywordType === "date") {
+          const dateKeyword = new Date(payload.search);
+          queryObj["$or"].push({ createdAt: dateKeyword });
+          queryObj["$or"].push({ updatedAt: dateKeyword });
+        }
+      }
       const pagination = paginationObject(payload);
       let pipeline = [
         { $match: filterObj },

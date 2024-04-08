@@ -16,6 +16,7 @@ const affiliateSchema = new mongoose.Schema(
     contact_id: { type: String },
     fund_id: { type: String },
     affiliate_point: { type: Number, default: 0 },
+    total_affiliate_earned_point: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
