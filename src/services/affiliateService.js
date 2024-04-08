@@ -20,6 +20,7 @@ const Configuration = require("../models/configurationSchema");
 const paymentService = require("../services/paymentService");
 const PaymentService = new paymentService();
 const { ObjectId } = require("mongodb");
+const Payout = require("../models/payoutSchema");
 
 class AffiliateService {
   // Generate Token
@@ -429,14 +430,36 @@ class AffiliateService {
         ]),
       ]);
 
+      const detailsPayout = await Payout.find({
+        reference_id: user?._id,
+        payout_requested: true,
+      }).lean();
+      const sum_payout_requested = detailsPayout.reduce((acc, curr) => {
+        return acc + parseInt(curr.payout_amount);
+      }, 0);
+
+      const detailsPayouts = await Payout.find({
+        reference_id: user?._id,
+        payout_requested: false,
+      }).lean();
+
+      const sum_payout_points_withdraw = detailsPayouts.reduce((acc, curr) => {
+        return acc + parseInt(curr.payout_amount);
+      }, 0);
+
+      const unpaid_requested =
+        user.total_affiliate_earned_point - sum_payout_requested;
+
       return {
         referral_count: totalReferralsCount ?? 0,
         customer_count: total_agencies ?? 0,
         click_count: clickData?.click_count ?? 0,
         last_month_earning: lastMonthEarning[0]?.total ?? 0,
-        total_earning: totalEarning[0]?.total ?? 0,
-        withdraw: 0,
-        unpaid: 0,
+        total_earning: user?.total_affiliate_earned_point,
+        withdraw: sum_payout_points_withdraw,
+        payout_requested: sum_payout_requested,
+        unpaid: unpaid_requested,
+        total_points: user?.affiliate_point,
       };
     } catch (error) {
       logger.error("Error while getting dashboard data", error);
