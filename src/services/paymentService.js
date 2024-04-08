@@ -2913,7 +2913,7 @@ class PaymentService {
 
       return data;
     } catch (error) {
-      onsole.log(JSON.stringify(error?.response?.data));
+      console.log(JSON.stringify(error?.response?.data));
       logger.error(`Error while fetch account detail: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
