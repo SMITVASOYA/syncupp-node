@@ -239,7 +239,10 @@ class AdminService {
   transactionHistory = async (payload) => {
     try {
       const search_obj = {};
-      let match_obj = { subscription_id: { $exists: true } };
+      let match_obj = {
+        subscription_id: { $exists: true },
+        payment_mode: { $ne: "referral" },
+      };
 
       if (payload?.search && payload?.search !== "") {
         search_obj["$or"] = [
@@ -287,6 +290,7 @@ class AdminService {
         match_obj = {
           subscription_id: { $exists: false },
           agency_id: new mongoose.Types.ObjectId(payload?.agency_id),
+          payment_mode: { $ne: "referral" },
         };
         pagination.skip = 0;
       }
@@ -367,7 +371,10 @@ class AdminService {
           );
           transactions[i].method = paymentDetails?.items[0].method;
           transactions[i].status = paymentDetails?.items[0].status;
-        } else {
+        } else if (
+          transactions[i]?.subscription_id &&
+          transactions[i]?.agency_id
+        ) {
           const [subscription_detail, orders_available, invoice_detail] =
             await Promise.all([
               paymentService.getSubscriptionDetail(

@@ -18,24 +18,25 @@ class dashboardService {
       let search_id;
       let admin_id;
 
-      if (user.role.name === "agency") search_id = "assign_to";
+      if (user.role.name === "agency") search_id = "agency_id";
       if (user.role.name === "client") search_id = "client_id";
       if (user.role.name === "team_client") {
         const memberRole = await Team_Client.findOne({
           _id: user.reference_id,
-        });
+        }).lean();
         search_id = "client_id";
         admin_id = memberRole.client_id;
       }
       if (user.role.name === "team_agency") {
-        const memberRole = await Team_Agency.findOne({
-          _id: user.reference_id,
-        }).populate("role");
+        const memberRole = await Team_Agency.findOne({ _id: user.reference_id })
+          .populate("role")
+          .lean();
         if (memberRole.role.name === "team_member") {
           search_id = "assign_to";
         }
         if (memberRole.role.name === "admin") {
-          search_id = "assign_to";
+          search_id = "agency_id";
+          user.reference_id = memberRole?.agency_id;
           admin_id = memberRole.agency_id;
         }
       }
@@ -130,13 +131,10 @@ class dashboardService {
           {
             $match: {
               [search_id]: user.reference_id,
-              "statusName.name": { $ne: "cancel" }, // Fix: Change $nq to $ne
+              "statusName.name": { $eq: "pending" }, // Fix: Change $nq to $ne
               "activity_type.name": "task", // Fix: Change $nq to $ne
               is_deleted: false,
-              due_date: {
-                $gte: startOfToday.toDate(),
-                $lte: endOfToday.toDate(),
-              },
+              due_date: { $lte: endOfToday.toDate() },
             },
           },
           {
@@ -169,24 +167,25 @@ class dashboardService {
     try {
       let search_id;
       let admin_id;
-      if (user.role.name === "agency") search_id = "assign_to";
+      if (user.role.name === "agency") search_id = "agency_id";
       if (user.role.name === "client") search_id = "client_id";
       if (user.role.name === "team_client") {
         const memberRole = await Team_Client.findOne({
           _id: user.reference_id,
-        });
+        }).lean();
         search_id = "client_id";
         admin_id = memberRole.client_id;
       }
       if (user.role.name === "team_agency") {
-        const memberRole = await Team_Agency.findOne({
-          _id: user.reference_id,
-        }).populate("role");
+        const memberRole = await Team_Agency.findOne({ _id: user.reference_id })
+          .populate("role")
+          .lean();
         if (memberRole.role.name === "team_member") {
           search_id = "assign_to";
         }
         if (memberRole.role.name === "admin") {
-          search_id = "assign_to";
+          search_id = "agency_id";
+          user.reference_id = memberRole?.agency_id;
           admin_id = memberRole.agency_id;
         }
       }
