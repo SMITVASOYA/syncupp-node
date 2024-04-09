@@ -2813,13 +2813,43 @@ class PaymentService {
           },
           {
             "agency_data.agency_name": {
-              $regex: payload.search,
+              $regex: payload.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            "agency_data.first_name": {
+              $regex: payload.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            "agency_data.last_name": {
+              $regex: payload.search.toLowerCase(),
               $options: "i",
             },
           },
           {
             "affiliates_data.affiliate_name": {
-              $regex: payload.search,
+              $regex: payload.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            "affiliates_data.first_name": {
+              $regex: payload.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            "affiliates_data.last_name": {
+              $regex: payload.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            fullname: {
+              $regex: payload.search.toLowerCase(),
               $options: "i",
             },
           },
@@ -2841,7 +2871,7 @@ class PaymentService {
       const pagination = paginationObject(payload);
       let pipeline = [
         filter,
-        { $match: filterObj },
+
         {
           $lookup: {
             from: "authentications",
@@ -2899,6 +2929,7 @@ class PaymentService {
             preserveNullAndEmptyArrays: true,
           },
         },
+        { $match: filterObj },
         {
           $project: {
             email: 1,

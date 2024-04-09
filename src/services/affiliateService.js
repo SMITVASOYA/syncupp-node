@@ -460,6 +460,7 @@ class AffiliateService {
         payout_requested: sum_payout_requested,
         unpaid: unpaid_requested,
         total_points: user?.affiliate_point,
+        fund_id: user?.fund_id,
       };
     } catch (error) {
       logger.error("Error while getting dashboard data", error);

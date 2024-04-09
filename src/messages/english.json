@@ -277,7 +277,7 @@
     "payoutlist": "Payout list fetch successfully.",
     "createFundAccount": "Account added successfully.",
     "accountnotfound": "Account detail  not found.",
-    "withdrawAmountNotMoreThanAffiliate": "Withdraw amount not more than affiliate points.",
+    "withdrawAmountNotMoreThanAffiliate": "Please enter less or equal amount of pending amount.",
     "bankDetailNotFound": "Bank Detail not found"
   },
   "affiliate": {
