@@ -13,6 +13,10 @@ const affiliateSchema = new mongoose.Schema(
     is_deleted: { type: Boolean, default: false },
     referral_code: { type: String, required: true },
     click_count: { type: Number, default: 0 }, // New field to track link clicks
+    contact_id: { type: String },
+    fund_id: { type: String },
+    affiliate_point: { type: Number, default: 0 },
+    total_affiliate_earned_point: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

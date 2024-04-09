@@ -4,6 +4,11 @@ const { protect } = require("../middlewares/authMiddleware");
 const adminProtect = require("../middlewares/authAdminMiddleware");
 
 paymentRoute.post("/plan-create", paymentConrtoller.createPlan);
+// for start payout
+paymentRoute.post("/contact-create", paymentConrtoller.createContact);
+// paymentRoute.post("/payout-create", paymentConrtoller.createPayout);
+// for end payout
+
 paymentRoute.post("/webhook", paymentConrtoller.webHookHandler);
 paymentRoute.post("/verify-signature", paymentConrtoller.verifySignature);
 paymentRoute.get("/plans", paymentConrtoller.listPlan);
@@ -15,6 +20,11 @@ paymentRoute.get(
 );
 
 paymentRoute.use(protect);
+
+paymentRoute.post("/fund-create", paymentConrtoller.createFundAccount);
+
+paymentRoute.post("/payout-request", paymentConrtoller.requestPayout);
+
 paymentRoute.post("/order", paymentConrtoller.singleTimePayment);
 paymentRoute.post("/history", paymentConrtoller.paymentHistory);
 paymentRoute.post("/create-subscription", paymentConrtoller.createSubscription);

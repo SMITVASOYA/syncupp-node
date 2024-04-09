@@ -437,6 +437,8 @@ class ChatService {
             created_by: 1,
             reference_id: 1,
             profile_image: 1,
+            createdAt: 1,
+            updatedAt: 1,
           },
         },
       ];
@@ -472,7 +474,7 @@ class ChatService {
         return;
       });
 
-      users.sort((a, b) => a?.createdAt - b?.createdAt);
+      users.sort((a, b) => b?.createdAt - a?.createdAt);
 
       return users;
     } catch (error) {

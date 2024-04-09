@@ -10,6 +10,8 @@ const {
   transactionHistory,
   dashboardData,
   agencyDownload,
+  PendingPayout,
+  createPayout,
 } = require("../controllers/adminController");
 const validatorFunc = require("../utils/validatorFunction.helper");
 const agencyController = require("../controllers/agencyController");
@@ -140,6 +142,8 @@ adminRoute.post("/transaction", transactionHistory);
 adminRoute.get("/dashboard", dashboardData);
 adminRoute.get("/agency-download", agencyDownload);
 
+adminRoute.post("/payout-list", PendingPayout);
+adminRoute.post("/payout-create", createPayout);
 // ------------------------ Notification ------------------------
 adminRoute.get("/notification", notificationController.getNotification);
 adminRoute.post(

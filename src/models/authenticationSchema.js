@@ -42,6 +42,8 @@ const authenticationSchema = new mongoose.Schema(
       default: "free_trial",
     },
     subscription_id: { type: String },
+    contact_id: { type: String },
+    fund_id: { type: String },
     subscribe_date: { typr: String },
     order_id: { type: String },
     referral_code: { type: String },
@@ -55,6 +57,7 @@ const authenticationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "subscription_plan",
     },
+    affiliate_point: { type: Number },
   },
   { timestamps: true }
 );
