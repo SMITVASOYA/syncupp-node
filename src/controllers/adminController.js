@@ -128,15 +128,15 @@ exports.dashboardData = catchAsyncError(async (req, res, next) => {
 
 // Dashboard
 exports.agencyDownload = catchAsyncError(async (req, res, next) => {
-  const agencyDownload = await adminService.agencyDownload(res);
+  await adminService.agencyDownload(res);
 
-  sendResponse(
-    res,
-    true,
-    returnMessage("agency", "agencyDataDownload"),
-    agencyDownload,
-    statusCode.success
-  );
+  // sendResponse(
+  //   res,
+  //   true,
+  //   returnMessage("agency", "agencyDataDownload"),
+  //   agencyDownload,
+  //   statusCode.success
+  // );
 });
 exports.PendingPayout = catchAsyncError(async (req, res, next) => {
   const PendingPayout = await paymentService.pendingpayout(req.body);
