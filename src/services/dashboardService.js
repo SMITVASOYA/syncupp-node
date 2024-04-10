@@ -4,10 +4,6 @@ const Activity = require("../models/activitySchema");
 const moment = require("moment");
 const Team_Agency = require("../models/teamAgencySchema");
 const Team_Client = require("../models/teamClientSchema");
-const Authentication = require("../models/authenticationSchema");
-const ReferralHistory = require("../models/referralHistorySchema");
-const PaymentHistory = require("../models/paymentHistorySchema");
-const Configuration = require("../models/configurationSchema");
 
 // Register Agency
 class dashboardService {

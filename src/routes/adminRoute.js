@@ -92,12 +92,6 @@ adminRoute.put(
 adminRoute.get("/getProfile", getAdmin);
 adminRoute.put("/updateProfile", updateAdmin);
 
-// adminRoute.post(
-//   "/add-term-and-condition",
-//   addTermAndConditionValidator,
-//   validatorFunc,
-//   addTermAndCondition
-// );
 adminRoute.post("/add-faq", addFaqValidator, validatorFunc, addFaq);
 adminRoute.post("/get-all-faq", getAllFaq);
 adminRoute.delete("/delete-faq", deleteFaqValidator, validatorFunc, deleteFaq);
