@@ -807,25 +807,68 @@ class AdminService {
         {
           $unwind: "$agency_detail",
         },
+        {
+          $project: {
+            subscription_id: 1,
+            agency_id: 1,
+            plan_id: 1,
+            payment_mode: 1,
+            createdAt: 1,
+            name: "$agency.name",
+            plan: 1,
+            method: 1,
+            order_id: 1,
+            amount: 1,
+            status: 1,
+            payment_id: 1,
+          },
+        },
       ];
 
       const transactions = await PaymentHistory.aggregate(aggragate);
 
       let plan;
       for (let i = 0; i < transactions.length; i++) {
+        if (
+          transactions[i]?.subscription_id === "sub_NntdFhQFVmMize" ||
+          transactions[i]?.subscription_id === "sub_Nnp8VY7i6zVPOp" ||
+          transactions[i]?.subscription_id === "sub_NnlkQmeyz6BSXG" ||
+          transactions[i]?.subscription_id === "sub_Nnju6iqpilvXpG" ||
+          transactions[i]?.subscription_id === "sub_NnifTWJrtroRZV" ||
+          transactions[i]?.subscription_id === "sub_NniUlPEBicS2A9" ||
+          transactions[i]?.subscription_id === "sub_Nney65aXuztTyh" ||
+          transactions[i]?.subscription_id === "sub_NmYwjzochRXXxA" ||
+          transactions[i]?.subscription_id === "sub_No3VnlWavkrKWl" ||
+          transactions[i]?.subscription_id === "sub_No7doVXUkh4gsX" ||
+          transactions[i]?.subscription_id === "sub_No7bZmb3v1bzYH" ||
+          transactions[i]?.subscription_id === "sub_No7qax1tjaAbHv" ||
+          transactions[i]?.subscription_id === "sub_No837ufiB4Nx6f" ||
+          transactions[i]?.subscription_id === "sub_No9PXU9DuzxzQN" ||
+          transactions[i]?.subscription_id === "sub_NoB79k0MTLQDhf" ||
+          transactions[i]?.subscription_id === "sub_NoB9NwDOzNfUVI" ||
+          transactions[i]?.subscription_id === "sub_NoBIv6jsFslb2U" ||
+          transactions[i]?.subscription_id === "sub_NoBaDtOS1tdSz9" ||
+          transactions[i]?.subscription_id === "sub_NoBpdYh4WAwbgH" ||
+          transactions[i]?.subscription_id === "sub_NoFf10q1T7Fh5U" ||
+          transactions[i]?.subscription_id === "sub_NoT5l7UXZ22UUv" ||
+          transactions[i]?.subscription_id === "sub_Noa2MrkJgAQ20o" ||
+          transactions[i]?.subscription_id === "sub_NwR8y9eJumTwCA"
+        ) {
+          continue; // Skip this iteration and move to the next transaction
+        }
         if (transactions[i].order_id) {
           const paymentDetails = await paymentService.orderPaymentDetails(
             transactions[i].order_id
           );
-          transactions[i].method = paymentDetails?.items[0].method;
-          transactions[i].status = paymentDetails?.items[0].status;
+          transactions[i].method = paymentDetails?.items[0]?.method;
+          transactions[i].status = paymentDetails?.items[0]?.status;
         } else if (transactions[i]?.subscription_id) {
           const [subscription_detail, invoice_detail] = await Promise.all([
             paymentService.getSubscriptionDetail(
-              transactions[i].subscription_id
+              transactions[i]?.subscription_id
             ),
 
-            paymentService.invoices(transactions[i].subscription_id),
+            paymentService.invoices(transactions[i]?.subscription_id),
           ]);
 
           if (plan && plan?.plan_id == subscription_detail?.plan_id) {
@@ -836,43 +879,38 @@ class AdminService {
             }).lean();
             transactions[i].plan = plan?.name;
           }
-          transactions[i].method = subscription_detail.payment_method;
+          transactions[i].method = subscription_detail?.payment_method;
           transactions[i].status = capitalizeFirstLetter(
             invoice_detail?.items[0]?.status
           );
         }
       }
-
       const workbook = new Excel.Workbook();
       const worksheet = workbook.addWorksheet("Data");
       // Define headers
       worksheet.columns = [
         { header: "Name", key: "name" },
-        { header: "Contact Number", key: "contact_number" },
-        { header: "Email", key: "email" },
-        { header: "Status", key: "status" },
-        { header: "Company Name", key: "company_name" },
-        { header: "Company Website", key: "company_website" },
-        { header: "Industry", key: "industry" },
-        { header: "No of People", key: "no_of_people" },
+        { header: "Amount", key: "amount" },
+        { header: "Date", key: "createdAt" },
+        { header: "Form of Payment", key: "method" },
+        { header: "Subscription ID", key: "subscription_id" },
+        { header: "Subscription Plan", key: "plan" },
       ];
 
       // Add headers from the first data object
       // const headers = Object.keys(agenciesData[0]);
       const headers = [
         "name",
-        "contact_number",
-        "email",
-        "status",
-        "company_name",
-        "company_website",
-        "industry",
-        "no_of_people",
+        "amount",
+        "createdAt",
+        "method",
+        "subscription_id",
+        "plan",
       ];
       worksheet.addRow();
 
       // Add data rows
-      agenciesData.forEach((data) => {
+      transactions.forEach((data) => {
         const row = [];
         headers.forEach((header) => {
           row.push(data.hasOwnProperty(header) ? data[header] : "");
@@ -880,8 +918,8 @@ class AdminService {
         worksheet.addRow(row);
       });
 
-      // const filePath = "data.xlsx";
-      // await workbook.xlsx.writeFile(filePath);
+      const filePath = "data.xlsx";
+      await workbook.xlsx.writeFile(filePath);
 
       // Write to file
       const buffer = await workbook.xlsx.writeBuffer();
@@ -890,7 +928,7 @@ class AdminService {
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
-      res.setHeader("Content-Disposition", "attachment; filename=data.xlsx");
+      // res.setHeader("Content-Disposition", "attachment; filename=data.xlsx");
       res.send(buffer);
     } catch (error) {
       logger.error(`Error while Admin update, ${error}`);

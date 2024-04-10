@@ -151,3 +151,7 @@ exports.createPayout = catchAsyncError(async (req, res, next) => {
     200
   );
 });
+
+exports.paymentDownload = catchAsyncError(async (req, res, next) => {
+  await adminService.paymentHistoryDownload(res);
+});
