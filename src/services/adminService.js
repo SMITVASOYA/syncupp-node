@@ -285,6 +285,7 @@ class AdminService {
           });
         }
       }
+
       const pagination = paginationObject(payload);
       if (payload?.subscription_id && payload?.agency_id) {
         match_obj = {
@@ -293,6 +294,22 @@ class AdminService {
           payment_mode: { $ne: "referral" },
         };
         pagination.skip = 0;
+      }
+
+      if (payload?.filter) {
+        const { plan_id, date } = payload?.filter;
+        if (plan_id && plan_id !== "") match_obj["plan_id"] = plan_id;
+        if (date && date !== "") {
+          const start_date = moment(date?.start_date, "DD-MM-YYYY").startOf(
+            "day"
+          );
+          const end_date = moment(date?.end_date, "DD-MM-YYYY").endOf("day");
+
+          match_obj["$and"] = [
+            { createdAt: { $gte: new Date(start_date) } },
+            { createdAt: { $lte: new Date(end_date) } },
+          ];
+        }
       }
       const aggragate = [
         {
@@ -323,6 +340,25 @@ class AdminService {
         },
         {
           $unwind: "$agency",
+        },
+        {
+          $lookup: {
+            from: "agencies",
+            localField: "agency_id",
+            foreignField: "_id",
+            as: "agency_detail",
+            pipeline: [
+              {
+                $project: {
+                  company_name: 1,
+                  company_website: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: "$agency_detail",
         },
       ];
 
@@ -658,6 +694,154 @@ class AdminService {
         },
       ];
       const agenciesData = await Authentication.aggregate(pipeLine);
+
+      const workbook = new Excel.Workbook();
+      const worksheet = workbook.addWorksheet("Data");
+      // Define headers
+      worksheet.columns = [
+        { header: "Name", key: "name" },
+        { header: "Contact Number", key: "contact_number" },
+        { header: "Email", key: "email" },
+        { header: "Status", key: "status" },
+        { header: "Company Name", key: "company_name" },
+        { header: "Company Website", key: "company_website" },
+        { header: "Industry", key: "industry" },
+        { header: "No of People", key: "no_of_people" },
+      ];
+
+      // Add headers from the first data object
+      // const headers = Object.keys(agenciesData[0]);
+      const headers = [
+        "name",
+        "contact_number",
+        "email",
+        "status",
+        "company_name",
+        "company_website",
+        "industry",
+        "no_of_people",
+      ];
+      worksheet.addRow();
+
+      // Add data rows
+      agenciesData.forEach((data) => {
+        const row = [];
+        headers.forEach((header) => {
+          row.push(data.hasOwnProperty(header) ? data[header] : "");
+        });
+        worksheet.addRow(row);
+      });
+
+      // const filePath = "data.xlsx";
+      // await workbook.xlsx.writeFile(filePath);
+
+      // Write to file
+      const buffer = await workbook.xlsx.writeBuffer();
+      // fs.writeFileSync(filePath, buffer);
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader("Content-Disposition", "attachment; filename=data.xlsx");
+      res.send(buffer);
+    } catch (error) {
+      logger.error(`Error while Admin update, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // payment history download
+  paymentHistoryDownload = async (res) => {
+    try {
+      let match_obj = {
+        $or: [
+          { subscription_id: { $exists: true } },
+          { order_id: { $exists: true } },
+        ],
+        payment_mode: { $ne: "referral" },
+      };
+
+      const aggragate = [
+        {
+          $match: match_obj,
+        },
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "agency_id",
+            foreignField: "reference_id",
+            as: "agency",
+            pipeline: [
+              {
+                $project: {
+                  first_name: 1,
+                  last_name: 1,
+                  name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                  email: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: "$agency",
+        },
+        {
+          $lookup: {
+            from: "agencies",
+            localField: "agency_id",
+            foreignField: "_id",
+            as: "agency_detail",
+            pipeline: [
+              {
+                $project: {
+                  company_name: 1,
+                  company_website: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: "$agency_detail",
+        },
+      ];
+
+      const transactions = await PaymentHistory.aggregate(aggragate);
+
+      let plan;
+      for (let i = 0; i < transactions.length; i++) {
+        if (transactions[i].order_id) {
+          const paymentDetails = await paymentService.orderPaymentDetails(
+            transactions[i].order_id
+          );
+          transactions[i].method = paymentDetails?.items[0].method;
+          transactions[i].status = paymentDetails?.items[0].status;
+        } else if (transactions[i]?.subscription_id) {
+          const [subscription_detail, invoice_detail] = await Promise.all([
+            paymentService.getSubscriptionDetail(
+              transactions[i].subscription_id
+            ),
+
+            paymentService.invoices(transactions[i].subscription_id),
+          ]);
+
+          if (plan && plan?.plan_id == subscription_detail?.plan_id) {
+            transactions[i].plan = plan?.name;
+          } else {
+            plan = await SubscriptionPlan.findOne({
+              plan_id: subscription_detail?.plan_id,
+            }).lean();
+            transactions[i].plan = plan?.name;
+          }
+          transactions[i].method = subscription_detail.payment_method;
+          transactions[i].status = capitalizeFirstLetter(
+            invoice_detail?.items[0]?.status
+          );
+        }
+      }
 
       const workbook = new Excel.Workbook();
       const worksheet = workbook.addWorksheet("Data");
