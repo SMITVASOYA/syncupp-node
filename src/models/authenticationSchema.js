@@ -58,6 +58,7 @@ const authenticationSchema = new mongoose.Schema(
       ref: "subscription_plan",
     },
     affiliate_point: { type: Number },
+    glide_campaign_id: { type: String },
   },
   { timestamps: true }
 );
