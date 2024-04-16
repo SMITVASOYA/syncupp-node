@@ -1362,31 +1362,30 @@ class AuthService {
         first_name: capitalizeFirstLetter(payload?.first_name),
         last_name: capitalizeFirstLetter(payload?.last_name),
         email: payload?.email,
-        phone: "91" + payload?.contact_number,
-        company: capitalizeFirstLetter(payload?.company_name),
+        phone:
+          payload?.contact_number && payload?.contact_number !== "undefined"
+            ? "91" + payload?.contact_number
+            : undefined,
+        company: payload?.company_name
+          ? capitalizeFirstLetter(payload?.company_name)
+          : undefined,
         website: payload?.website,
         role: "Agency",
-        created: payload?.createdAt,
+        created: moment().format("DD-MM-YYYY"),
       };
 
-      axios
-        .post(process.env.GLIDE_CAMPAIGN_URL, compaign_object)
-        .then(async (response) => {
-          const { data } = response;
-          await Authentication.findByIdAndUpdate(payload?._id, {
-            glide_campaign_id: data?.contact_id,
-          });
-          return;
-        })
-        .catch((error) => {
-          logger.error(
-            `Error while creating the contact in the glide campaign: ${error}`
-          );
-          throwError(error?.message, error?.statusCode);
+      const contact_created = await axios.post(
+        process.env.GLIDE_CAMPAIGN_URL,
+        compaign_object
+      );
+      if (contact_created) {
+        await Authentication.findByIdAndUpdate(payload?._id, {
+          glide_campaign_id: contact_created?.data?.data?.contact_id,
         });
-
+      }
       return;
     } catch (error) {
+      console.log(error);
       logger.error(
         `Error while creating the contact in the glide campaign: ${error}`
       );

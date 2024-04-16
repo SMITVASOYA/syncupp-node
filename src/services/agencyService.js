@@ -16,10 +16,10 @@ const moment = require("moment");
 const Invoice = require("../models/invoiceSchema");
 const mongoose = require("mongoose");
 const PaymentService = require("../services/paymentService");
-const SheetManagement = require("../models/sheetManagementSchema");
 const Agreement = require("../models/agreementSchema");
 const paymentService = new PaymentService();
 const fs = require("fs");
+const axios = require("axios");
 // Register Agency
 class AgencyService {
   agencyRegistration = async (payload) => {
@@ -306,6 +306,10 @@ class AgencyService {
             $set: agencyData,
           },
           { new: true }
+        ),
+        this.glideCampaignContactUpdate(
+          existingImage?.glide_campaign_id,
+          payload
         ),
       ]);
 
@@ -830,6 +834,80 @@ class AgencyService {
     } catch (error) {
       logger.error(`Error while fetch dashboard data for agency: ${error}`);
       return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  glideCampaignContactUpdate = async (glide_campaign_id, payload) => {
+    try {
+      if (!glide_campaign_id) return;
+
+      const submission_id = await axios.get(
+        process.env.GLIDE_CAMPAIGN_CONTACT_UPDATE_URL +
+          "/" +
+          glide_campaign_id +
+          "/submission",
+        {
+          auth: {
+            username: process.env.GLIDE_PUBLICE_KEY,
+            password: process.env.GLIDE_PRIVATE_KEY,
+          },
+        }
+      );
+
+      if (!submission_id?.data?.data[0]?.submission_id) return;
+
+      const contact_update_object = {
+        form_data: {
+          first_name: capitalizeFirstLetter(payload?.first_name),
+          last_name: capitalizeFirstLetter(payload?.last_name),
+          phone:
+            payload?.contact_number?.length <= 10
+              ? "91" + payload?.contact_number
+              : payload?.contact_number,
+          company: capitalizeFirstLetter(payload?.company_name),
+          website:
+            payload?.company_website &&
+            payload?.company_website !== "null" &&
+            payload?.company_website !== "undefined"
+              ? payload?.website
+              : undefined,
+          role: "Agency",
+          no_of_people:
+            payload?.no_of_people &&
+            payload?.no_of_people !== "null" &&
+            payload?.no_of_people !== "undefined"
+              ? payload?.no_of_people
+              : undefined,
+          industry:
+            payload?.industry &&
+            payload?.industry !== "null" &&
+            payload?.industry !== "undefined"
+              ? payload?.industry
+              : undefined,
+        },
+      };
+
+      await axios.put(
+        process.env.GLIDE_CAMPAIGN_CONTACT_UPDATE_URL +
+          "/" +
+          glide_campaign_id +
+          "/submission/" +
+          submission_id?.data?.data[0]?.submission_id,
+        contact_update_object,
+        {
+          auth: {
+            username: process.env.GLIDE_PUBLICE_KEY,
+            password: process.env.GLIDE_PRIVATE_KEY,
+          },
+        }
+      );
+
+      return;
+    } catch (error) {
+      console.log(error);
+      logger.error(
+        `Error while creating the contact in the glide campaign: ${error}`
+      );
     }
   };
 }

@@ -1,4 +1,4 @@
-const { protect, authorizeRole } = require("../middlewares/authMiddleware");
+const { protect } = require("../middlewares/authMiddleware");
 const clientController = require("../controllers/clientController");
 const agencyRoute = require("express").Router();
 const agencyController = require("../controllers/agencyController");
