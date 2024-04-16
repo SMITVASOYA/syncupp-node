@@ -8,8 +8,6 @@ const CompetitionPoint = require("../models/competitionPointSchema");
 class referralClass {
   checkReferralAvailable = async (user) => {
     try {
-      // let config = await Configuration.findOne().lean();
-      // let user_data = await Authentication.findById(user._id).lean();
       let [config, user_data] = await Promise.all([
         Configuration.findOne().lean(),
         Authentication.findById(user._id).lean(),

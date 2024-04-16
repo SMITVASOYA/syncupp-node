@@ -81,6 +81,8 @@ class AuthService {
 
   agencySignUp = async (payload, files) => {
     try {
+      if (payload?.contact_number && payload?.contact_number !== "")
+        payload.contact_number = "91" + payload.contact_number;
       const {
         first_name,
         last_name,
@@ -151,7 +153,7 @@ class AuthService {
           last_name,
           email: email?.toLowerCase(),
           password: encrypted_password,
-          contact_number,
+          contact_number: contact_number,
           image_url,
           reference_id: agency?._id,
           remember_me: payload?.remember_me,
@@ -190,7 +192,7 @@ class AuthService {
           contact_number: contact_number,
         });
 
-        var agencyCreated = await agencyCreatedTemplate({
+        var agencyCreated = agencyCreatedTemplate({
           agency_name:
             capitalizeFirstLetter(first_name) +
             " " +
@@ -220,6 +222,14 @@ class AuthService {
             { upsert: true }
           );
         }
+
+        await this.glideCampaign({
+          ...agency_enroll,
+          company_name: payload?.company_name,
+          company_website: payload?.company_website,
+          no_of_people: payload?.no_of_people,
+          industry: payload?.industry,
+        });
         return this.tokenGenerator({
           ...agency_enroll,
           rememberMe: payload?.rememberMe,
@@ -261,7 +271,7 @@ class AuthService {
           contact_number: contact_number,
         });
 
-        const admin = await Admin.findOne({});
+        const admin = await Admin.findOne({}).lean();
 
         await sendEmail({
           email: admin?.email,
@@ -286,6 +296,13 @@ class AuthService {
         delete agency_enroll?.is_facebook_signup;
         delete agency_enroll?.is_google_signup;
 
+        await this.glideCampaign({
+          ...agency_enroll,
+          company_name: payload?.company_name,
+          company_website: payload?.company_website,
+          no_of_people: payload?.no_of_people,
+          industry: payload?.industry,
+        });
         return this.tokenGenerator({
           ...agency_enroll,
           rememberMe: payload?.rememberMe,
@@ -443,6 +460,14 @@ class AuthService {
             { upsert: true }
           );
         }
+
+        await this.glideCampaign({
+          ...agency_enroll,
+          company_name: payload?.company_name,
+          company_website: payload?.company_website,
+          no_of_people: payload?.no_of_people,
+          industry: payload?.industry,
+        });
         return this.tokenGenerator({
           ...agency_enroll,
           subscription_halt_days:
@@ -678,6 +703,14 @@ class AuthService {
             { upsert: true }
           );
         }
+
+        await this.glideCampaign({
+          ...agency_enroll,
+          company_name: payload?.company_name,
+          company_website: payload?.company_website,
+          no_of_people: payload?.no_of_people,
+          industry: payload?.industry,
+        });
 
         return this.tokenGenerator({
           ...agency_enroll,
@@ -1319,6 +1352,44 @@ class AuthService {
     } catch (error) {
       logger.error(`Error while checking the subscription halt: ${error}`);
       return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // this function is used to create the contact in the  glide campaign
+  glideCampaign = async (payload) => {
+    try {
+      const compaign_object = {
+        first_name: capitalizeFirstLetter(payload?.first_name),
+        last_name: capitalizeFirstLetter(payload?.last_name),
+        email: payload?.email,
+        phone:
+          payload?.contact_number && payload?.contact_number !== "undefined"
+            ? "91" + payload?.contact_number
+            : undefined,
+        company: payload?.company_name
+          ? capitalizeFirstLetter(payload?.company_name)
+          : undefined,
+        website: payload?.website,
+        role: "Agency",
+        created: moment().format("DD-MM-YYYY"),
+      };
+
+      const contact_created = await axios.post(
+        process.env.GLIDE_CAMPAIGN_URL,
+        compaign_object
+      );
+      if (contact_created) {
+        await Authentication.findByIdAndUpdate(payload?._id, {
+          glide_campaign_id: contact_created?.data?.data?.contact_id,
+        });
+      }
+      return;
+    } catch (error) {
+      console.log(error);
+      logger.error(
+        `Error while creating the contact in the glide campaign: ${error}`
+      );
+      throwError(error?.message, error?.statusCode);
     }
   };
 }

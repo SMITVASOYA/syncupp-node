@@ -3,7 +3,6 @@ const { sendResponse } = require("./sendResponse");
 
 // show validation error message
 const validatorFunc = (req, res, next) => {
-  // console.log(errors);
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     console.log("VALIDATION....", errors.array()[0].msg);

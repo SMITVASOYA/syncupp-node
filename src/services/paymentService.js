@@ -43,7 +43,6 @@ const NotificationService = require("./notificationService");
 const Admin = require("../models/adminSchema");
 const notificationService = new NotificationService();
 const fs = require("fs");
-const Role_Master = require("../models/masters/roleMasterSchema");
 const Affiliate = require("../models/affiliateSchema");
 const Payout = require("../models/payoutSchema");
 class PaymentService {
@@ -1568,7 +1567,7 @@ class PaymentService {
         SubscriptionPlan.findById(user?.purchased_plan).lean(),
       ]);
 
-      if (sheets.total_sheets === 1 || plan?.plan_id === "unlimited")
+      if (sheets.total_sheets === 1 || plan?.plan_type === "unlimited")
         return throwError(returnMessage("payment", "canNotCancelSubscription"));
 
       if (!(sheets.occupied_sheets.length >= 0))
@@ -2347,6 +2346,7 @@ class PaymentService {
           return throwError(returnMessage("default", "default"));
       }
       await this.deactivateAccount(agency);
+      return;
     } catch (error) {
       logger.error(`Error while deactivating the agency: ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -2393,6 +2393,7 @@ class PaymentService {
           { agency_id: agency?.reference_id },
           { is_deleted: true }
         ),
+        this.glideCampaignContactDelete(agency?.glide_campaign_id),
       ]);
       return;
     } catch (error) {
@@ -3014,6 +3015,47 @@ class PaymentService {
       console.log(JSON.stringify(error?.response?.data));
       logger.error(`Error while fetch account detail: ${error}`);
       return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  glideCampaignContactDelete = async (glide_campaign_id) => {
+    try {
+      if (!glide_campaign_id) return;
+
+      const submission_id = await axios.get(
+        process.env.GLIDE_CAMPAIGN_CONTACT_UPDATE_URL +
+          "/" +
+          glide_campaign_id +
+          "/submission",
+        {
+          auth: {
+            username: process.env.GLIDE_PUBLICE_KEY,
+            password: process.env.GLIDE_PRIVATE_KEY,
+          },
+        }
+      );
+
+      if (!submission_id?.data?.data[0]?.submission_id) return;
+
+      await axios.delete(
+        process.env.GLIDE_CAMPAIGN_CONTACT_UPDATE_URL +
+          "/" +
+          glide_campaign_id +
+          "/submission/" +
+          submission_id?.data?.data[0]?.submission_id,
+        {
+          auth: {
+            username: process.env.GLIDE_PUBLICE_KEY,
+            password: process.env.GLIDE_PRIVATE_KEY,
+          },
+        }
+      );
+      return;
+    } catch (error) {
+      console.log(error);
+      logger.error(
+        `Error while creating the contact in the glide campaign: ${error}`
+      );
     }
   };
 }

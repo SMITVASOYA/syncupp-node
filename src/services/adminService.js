@@ -285,6 +285,7 @@ class AdminService {
           });
         }
       }
+
       const pagination = paginationObject(payload);
       if (payload?.subscription_id && payload?.agency_id) {
         match_obj = {
@@ -293,6 +294,22 @@ class AdminService {
           payment_mode: { $ne: "referral" },
         };
         pagination.skip = 0;
+      }
+
+      if (payload?.filter) {
+        const { plan_id, date } = payload?.filter;
+        if (plan_id && plan_id !== "") match_obj["plan_id"] = plan_id;
+        if (date && date !== "") {
+          const start_date = moment(date?.start_date, "DD-MM-YYYY").startOf(
+            "day"
+          );
+          const end_date = moment(date?.end_date, "DD-MM-YYYY").endOf("day");
+
+          match_obj["$and"] = [
+            { createdAt: { $gte: new Date(start_date) } },
+            { createdAt: { $lte: new Date(end_date) } },
+          ];
+        }
       }
       const aggragate = [
         {
@@ -323,6 +340,25 @@ class AdminService {
         },
         {
           $unwind: "$agency",
+        },
+        {
+          $lookup: {
+            from: "agencies",
+            localField: "agency_id",
+            foreignField: "_id",
+            as: "agency_detail",
+            pipeline: [
+              {
+                $project: {
+                  company_name: 1,
+                  company_website: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: "$agency_detail",
         },
       ];
 
@@ -707,6 +743,192 @@ class AdminService {
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
       res.setHeader("Content-Disposition", "attachment; filename=data.xlsx");
+      res.send(buffer);
+    } catch (error) {
+      logger.error(`Error while Admin update, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // payment history download
+  paymentHistoryDownload = async (res) => {
+    try {
+      let match_obj = {
+        $or: [
+          { subscription_id: { $exists: true } },
+          { order_id: { $exists: true } },
+        ],
+        payment_mode: { $ne: "referral" },
+      };
+
+      const aggragate = [
+        {
+          $match: match_obj,
+        },
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "agency_id",
+            foreignField: "reference_id",
+            as: "agency",
+            pipeline: [
+              {
+                $project: {
+                  first_name: 1,
+                  last_name: 1,
+                  name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                  email: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: "$agency",
+        },
+        {
+          $lookup: {
+            from: "agencies",
+            localField: "agency_id",
+            foreignField: "_id",
+            as: "agency_detail",
+            pipeline: [
+              {
+                $project: {
+                  company_name: 1,
+                  company_website: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: "$agency_detail",
+        },
+        {
+          $project: {
+            subscription_id: 1,
+            agency_id: 1,
+            plan_id: 1,
+            payment_mode: 1,
+            createdAt: 1,
+            name: "$agency.name",
+            plan: 1,
+            method: 1,
+            order_id: 1,
+            amount: 1,
+            status: 1,
+            payment_id: 1,
+          },
+        },
+      ];
+
+      const transactions = await PaymentHistory.aggregate(aggragate);
+
+      let plan;
+      for (let i = 0; i < transactions.length; i++) {
+        if (
+          transactions[i]?.subscription_id === "sub_NntdFhQFVmMize" ||
+          transactions[i]?.subscription_id === "sub_Nnp8VY7i6zVPOp" ||
+          transactions[i]?.subscription_id === "sub_NnlkQmeyz6BSXG" ||
+          transactions[i]?.subscription_id === "sub_Nnju6iqpilvXpG" ||
+          transactions[i]?.subscription_id === "sub_NnifTWJrtroRZV" ||
+          transactions[i]?.subscription_id === "sub_NniUlPEBicS2A9" ||
+          transactions[i]?.subscription_id === "sub_Nney65aXuztTyh" ||
+          transactions[i]?.subscription_id === "sub_NmYwjzochRXXxA" ||
+          transactions[i]?.subscription_id === "sub_No3VnlWavkrKWl" ||
+          transactions[i]?.subscription_id === "sub_No7doVXUkh4gsX" ||
+          transactions[i]?.subscription_id === "sub_No7bZmb3v1bzYH" ||
+          transactions[i]?.subscription_id === "sub_No7qax1tjaAbHv" ||
+          transactions[i]?.subscription_id === "sub_No837ufiB4Nx6f" ||
+          transactions[i]?.subscription_id === "sub_No9PXU9DuzxzQN" ||
+          transactions[i]?.subscription_id === "sub_NoB79k0MTLQDhf" ||
+          transactions[i]?.subscription_id === "sub_NoB9NwDOzNfUVI" ||
+          transactions[i]?.subscription_id === "sub_NoBIv6jsFslb2U" ||
+          transactions[i]?.subscription_id === "sub_NoBaDtOS1tdSz9" ||
+          transactions[i]?.subscription_id === "sub_NoBpdYh4WAwbgH" ||
+          transactions[i]?.subscription_id === "sub_NoFf10q1T7Fh5U" ||
+          transactions[i]?.subscription_id === "sub_NoT5l7UXZ22UUv" ||
+          transactions[i]?.subscription_id === "sub_Noa2MrkJgAQ20o" ||
+          transactions[i]?.subscription_id === "sub_NwR8y9eJumTwCA"
+        ) {
+          continue; // Skip this iteration and move to the next transaction
+        }
+        if (transactions[i].order_id) {
+          const paymentDetails = await paymentService.orderPaymentDetails(
+            transactions[i].order_id
+          );
+          transactions[i].method = paymentDetails?.items[0]?.method;
+          transactions[i].status = paymentDetails?.items[0]?.status;
+        } else if (transactions[i]?.subscription_id) {
+          const [subscription_detail, invoice_detail] = await Promise.all([
+            paymentService.getSubscriptionDetail(
+              transactions[i]?.subscription_id
+            ),
+
+            paymentService.invoices(transactions[i]?.subscription_id),
+          ]);
+
+          if (plan && plan?.plan_id == subscription_detail?.plan_id) {
+            transactions[i].plan = plan?.name;
+          } else {
+            plan = await SubscriptionPlan.findOne({
+              plan_id: subscription_detail?.plan_id,
+            }).lean();
+            transactions[i].plan = plan?.name;
+          }
+          transactions[i].method = subscription_detail?.payment_method;
+          transactions[i].status = capitalizeFirstLetter(
+            invoice_detail?.items[0]?.status
+          );
+        }
+      }
+      const workbook = new Excel.Workbook();
+      const worksheet = workbook.addWorksheet("Data");
+      // Define headers
+      worksheet.columns = [
+        { header: "Name", key: "name" },
+        { header: "Amount", key: "amount" },
+        { header: "Date", key: "createdAt" },
+        { header: "Form of Payment", key: "method" },
+        { header: "Subscription ID", key: "subscription_id" },
+        { header: "Subscription Plan", key: "plan" },
+      ];
+
+      // Add headers from the first data object
+      // const headers = Object.keys(agenciesData[0]);
+      const headers = [
+        "name",
+        "amount",
+        "createdAt",
+        "method",
+        "subscription_id",
+        "plan",
+      ];
+      worksheet.addRow();
+
+      // Add data rows
+      transactions.forEach((data) => {
+        const row = [];
+        headers.forEach((header) => {
+          row.push(data.hasOwnProperty(header) ? data[header] : "");
+        });
+        worksheet.addRow(row);
+      });
+
+      const filePath = "data.xlsx";
+      await workbook.xlsx.writeFile(filePath);
+
+      // Write to file
+      const buffer = await workbook.xlsx.writeBuffer();
+      // fs.writeFileSync(filePath, buffer);
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      // res.setHeader("Content-Disposition", "attachment; filename=data.xlsx");
       res.send(buffer);
     } catch (error) {
       logger.error(`Error while Admin update, ${error}`);

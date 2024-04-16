@@ -6,6 +6,5 @@ dashboardRoute.use(protect);
 dashboardRoute.get("/", dashboardController.dashboardData);
 dashboardRoute.get("/todays-task", dashboardController.todayTask);
 dashboardRoute.get("/overdue-task", dashboardController.overdueTask);
-// dashboardRoute.get("/affiliate", dashboardController.agencyAffiliate);
 
 module.exports = dashboardRoute;

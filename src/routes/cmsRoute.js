@@ -16,8 +16,6 @@ const {
   updateClientReview,
   getClientReviewByID,
 } = require("../controllers/adminClientReviewController");
-// const { upload } = require("../helpers/multer");
-// adminRoute.use(protect);
 
 // Home
 adminRoute.put("/home", cmsController.updateHome);
