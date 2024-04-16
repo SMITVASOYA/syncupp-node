@@ -1,7 +1,6 @@
-// const AdminFqa = require("../models/adminFaqSchema");
 const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
-const { returnMessage, paginationObject } = require("../utils/utils");
+const { paginationObject } = require("../utils/utils");
 const AdminClientReview = require("../models/adminClientReviewSchema");
 
 class ClientReviewService {
@@ -53,14 +52,6 @@ class ClientReviewService {
             },
           },
         ];
-
-        // const keywordType = getKeywordType(searchObj.search);
-        // if (keywordType === "number") {
-        //   const numericKeyword = parseInt(searchObj.search);
-        //   queryObj["$or"].push({
-        //     contact_number: numericKeyword,
-        //   });
-        // }
       }
 
       const pagination = paginationObject(searchObj);

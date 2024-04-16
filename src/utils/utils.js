@@ -84,168 +84,39 @@ exports.validateRequestFields = (payload, fields) => {
       switch (field) {
         case "title":
           return throwError(`Title is required.`);
-          break;
         case "agenda":
           return throwError(`Agency is required.`);
-          break;
         case "due_time":
           return throwError(`Due time is required.`);
-          break;
         case "client_id":
           return throwError(`Client detail is required.`);
-          break;
         case "due_date":
           return throwError(`Due date is required.`);
-          break;
         case "assign_to":
           return throwError(`Assignee is required.`);
-          break;
         case "activity_type":
           return throwError(`Activity type is required.`);
-          break;
         case "contact_number":
           return throwError(`Contact number is required.`);
-          break;
         case "token":
           return throwError(`Token is required.`);
-          break;
         case "first_name":
           return throwError(`First name is required.`);
-          break;
         case "last_name":
           return throwError(`Last name is required.`);
-          break;
         case "company_name":
           return throwError(`Company name is required.`);
-          break;
         case "password":
           return throwError(`Password is required.`);
-          break;
         case "email":
           return throwError(`Email is required.`);
-          break;
         case "agency_id":
           return throwError(`Agency detail is required.`);
-          break;
       }
     }
   }
   return;
 };
-
-// exports.forgotPasswordEmailTemplate = (link) => {
-//   const html = `
-//   <html>
-//     <head>
-//       <style>
-//         /* Styles for the email template */
-//         body {
-//           font-family: Arial, sans-serif;
-//           background-color: #f4f4f4;
-//           margin: 0;
-//           padding: 0;
-//         }
-//         .container {
-//           max-width: 600px;
-//           margin: 0 auto;
-//           padding: 20px;
-//           background-color: #ffffff;
-//           border-radius: 10px;
-//           box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-//         }
-//         .header {
-//           background-color: #4caf50;
-//           color: white;
-//           text-align: center;
-//           padding: 10px;
-//           border-radius: 10px 10px 0 0;
-//         }
-//         .content {
-//           padding: 20px;
-//         }
-//         .button {
-//           background-color: #4caf50;
-//           color: white;
-//           border: none;
-//           padding: 10px 20px;
-//           text-decoration: none;
-//           border-radius: 5px;
-//           cursor: pointer;
-//         }
-//       </style>
-//     </head>
-//     <body>
-//       <div class="container">
-//         <div class="header">
-//           <h1>Reset Password</h1>
-//         </div>
-//         <div class="content">
-//           <p>We received a request to verify your email. Click the button below to reset it:</p>
-//           <a class="button" href="${link}">Reset Password</a>
-//           <p>If you didn't request a password reset, please ignore this email.</p>
-//           <p>Best regards,<br>Your Company Name</p>
-//         </div>
-//       </div>
-//     </body>
-//   </html>`;
-//   return html;
-// };
-
-// exports.invitationEmail = (link, name) => {
-//   return `<html>
-//   <head>
-//     <style>
-//       /* Styles for the email template */
-//       body {
-//         font-family: Arial, sans-serif;
-//         background-color: #f4f4f4;
-//         margin: 0;
-//         padding: 0;
-//       }
-//       .container {
-//         max-width: 600px;
-//         margin: 0 auto;
-//         padding: 20px;
-//         background-color: #ffffff;
-//         border-radius: 10px;
-//         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-//       }
-//       .header {
-//         background-color: #4caf50;
-//         color: white;
-//         text-align: center;
-//         padding: 10px;
-//         border-radius: 10px 10px 0 0;
-//       }
-//       .content {
-//         padding: 20px;
-//       }
-//       .button {
-//         background-color: #4caf50;
-//         color: white;
-//         border: none;
-//         padding: 10px 20px;
-//         text-decoration: none;
-//         border-radius: 5px;
-//         cursor: pointer;
-//       }
-//     </style>
-//   </head>
-//   <body>
-//     <div class="container">
-//       <div class="header">
-//         <h1>Invitation to the SyncUpp</h1>
-//       </div>
-//       <div class="content">
-//       <p>hi, ${name}.</p>
-//         <p>Click the button below to join SyncUpp:</p>
-//         <a class="button" href="${link}">Join SyncUpp</a>
-//         <p>Best regards,<br>SyncUpp</p>
-//       </div>
-//     </div>
-//   </body>
-// </html>`;
-// };
 
 exports.agrementEmail = (data) => {
   return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">

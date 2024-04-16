@@ -60,27 +60,6 @@ exports.forgotPasswordValidator = [
     .trim(),
 ];
 
-// exports.userValidator = [
-//   body("email")
-//     .not()
-//     .isEmpty()
-//     .withMessage(constants.user.emailRequired)
-//     .isEmail()
-//     .withMessage(constants.user.isEmail)
-//     .trim(),
-//   body("password")
-//     .not()
-//     .isEmpty()
-//     .withMessage(constants.user.passwordRequired)
-//     .trim()
-//     .isLength({ min: 6 })
-//     .withMessage("Password must have atleast 6 letters.")
-//     .matches(/^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$.!%*#?&])[A-Za-z\d@$.!%*#?&]{6,}$/)
-//     .withMessage(
-//       "Password should be combination of one uppercase, one lower case, one special character, one digit and minimum 6."
-//     ),
-// ];
-
 exports.loginValidator = [
   body("email")
     .not()

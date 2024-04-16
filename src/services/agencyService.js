@@ -40,11 +40,24 @@ class AgencyService {
       const pagination = paginationObject(payload);
       const query_obj = { role: role?._id, is_deleted: false };
 
-      if (payload.status_name && payload.status_name !== "") {
-        query_obj["status"] = {
-          $regex: payload.status_name.toLowerCase(),
-          $options: "i",
-        };
+      if (payload?.filter) {
+        const { status, industry, no_of_people, date } = payload?.filter;
+        if (status && status !== "") query_obj["status"] = status;
+        if (industry && industry !== "")
+          query_obj["reference_id.industry"] = industry;
+        if (no_of_people && no_of_people !== "")
+          query_obj["reference_id.no_of_people"] = no_of_people;
+        if (date && date !== "") {
+          const start_date = moment(date?.start_date, "DD-MM-YYYY").startOf(
+            "day"
+          );
+          const end_date = moment(date?.end_date, "DD-MM-YYYY").endOf("day");
+
+          query_obj["$and"] = [
+            { createdAt: { $gte: new Date(start_date) } },
+            { createdAt: { $lte: new Date(end_date) } },
+          ];
+        }
       }
 
       if (payload.search && payload.search !== "") {

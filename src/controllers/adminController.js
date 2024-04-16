@@ -129,14 +129,6 @@ exports.dashboardData = catchAsyncError(async (req, res, next) => {
 // Dashboard
 exports.agencyDownload = catchAsyncError(async (req, res, next) => {
   await adminService.agencyDownload(res);
-
-  // sendResponse(
-  //   res,
-  //   true,
-  //   returnMessage("agency", "agencyDataDownload"),
-  //   agencyDownload,
-  //   statusCode.success
-  // );
 });
 exports.PendingPayout = catchAsyncError(async (req, res, next) => {
   const PendingPayout = await paymentService.pendingpayout(req.body);
@@ -158,4 +150,8 @@ exports.createPayout = catchAsyncError(async (req, res, next) => {
     createPayout,
     200
   );
+});
+
+exports.paymentDownload = catchAsyncError(async (req, res, next) => {
+  await adminService.paymentHistoryDownload(res);
 });

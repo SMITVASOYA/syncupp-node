@@ -1567,7 +1567,7 @@ class PaymentService {
         SubscriptionPlan.findById(user?.purchased_plan).lean(),
       ]);
 
-      if (sheets.total_sheets === 1 || plan?.plan_id === "unlimited")
+      if (sheets.total_sheets === 1 || plan?.plan_type === "unlimited")
         return throwError(returnMessage("payment", "canNotCancelSubscription"));
 
       if (!(sheets.occupied_sheets.length >= 0))

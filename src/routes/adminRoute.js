@@ -12,6 +12,7 @@ const {
   agencyDownload,
   PendingPayout,
   createPayout,
+  paymentDownload,
 } = require("../controllers/adminController");
 const validatorFunc = require("../utils/validatorFunction.helper");
 const agencyController = require("../controllers/agencyController");
@@ -92,12 +93,6 @@ adminRoute.put(
 adminRoute.get("/getProfile", getAdmin);
 adminRoute.put("/updateProfile", updateAdmin);
 
-// adminRoute.post(
-//   "/add-term-and-condition",
-//   addTermAndConditionValidator,
-//   validatorFunc,
-//   addTermAndCondition
-// );
 adminRoute.post("/add-faq", addFaqValidator, validatorFunc, addFaq);
 adminRoute.post("/get-all-faq", getAllFaq);
 adminRoute.delete("/delete-faq", deleteFaqValidator, validatorFunc, deleteFaq);
@@ -141,6 +136,7 @@ adminRoute.post("/get-coupon-list", getCouponList);
 adminRoute.post("/transaction", transactionHistory);
 adminRoute.get("/dashboard", dashboardData);
 adminRoute.get("/agency-download", agencyDownload);
+adminRoute.get("/payment-download", paymentDownload);
 
 adminRoute.post("/payout-list", PendingPayout);
 adminRoute.post("/payout-create", createPayout);

@@ -514,7 +514,6 @@ exports.socket_connection = (http_server) => {
             });
 
             const pending_notification = await Notification.countDocuments({
-              user_id: member,
               type: "group",
               group_id: payload?.group_id,
               user_id: member,
@@ -899,11 +898,10 @@ exports.socket_connection = (http_server) => {
       try {
         const { chat_id, reaction, group_id, from_user } = payload;
 
-        const [user_detail, group_detail] = await Promise.all([
+        const [user_detail] = await Promise.all([
           Authentication.findOne({ reference_id: from_user })
             .select("first_name last_name reference_id")
             .lean(),
-          Group_Chat.findById(group_id).lean(),
         ]);
 
         // Find the message by ID in group chat
@@ -1008,7 +1006,7 @@ exports.socket_connection = (http_server) => {
 
     socket.on("REACTION_DELETE", async (payload) => {
       try {
-        const { chat_id, reaction, from_user, to_user } = payload;
+        const { chat_id, from_user, to_user } = payload;
 
         // Find the message by ID
         const messages = await Chat.findById(chat_id);
@@ -1117,11 +1115,10 @@ exports.socket_connection = (http_server) => {
       try {
         const { chat_id, from_user, group_id } = payload;
 
-        const [user_detail, group_detail] = await Promise.all([
+        const [user_detail] = await Promise.all([
           Authentication.findOne({ reference_id: from_user })
             .select("first_name last_name reference_id")
             .lean(),
-          Group_Chat.findById(group_id).lean(),
         ]);
         // Find the message by ID
         const messages = await Chat.findById(chat_id);

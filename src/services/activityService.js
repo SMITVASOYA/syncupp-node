@@ -13,7 +13,6 @@ const {
   getRandomColor,
   capitalizeFirstLetter,
 } = require("../utils/utils");
-const ical = require("ical-generator");
 const moment = require("moment");
 const { default: mongoose } = require("mongoose");
 const Team_Agency = require("../models/teamAgencySchema");
@@ -28,11 +27,8 @@ const Activity_Status_Master = require("../models/masters/activityStatusMasterSc
 const notificationService = new NotificationService();
 const EventService = require("../services/eventService");
 const eventService = new EventService();
-const Client = require("../models/clientSchema");
 const ics = require("ics");
 const fs = require("fs");
-// import { createEvent } from "ics";
-const { ObjectId } = require("mongodb");
 const Activity_Type_Master = require("../models/masters/activityTypeMasterSchema");
 const momentTimezone = require("moment-timezone");
 const Team_Client = require("../models/teamClientSchema");

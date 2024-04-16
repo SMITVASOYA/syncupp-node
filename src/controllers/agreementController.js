@@ -93,11 +93,12 @@ exports.updateAgreement = catchAsyncError(async (req, res, next) => {
 // Get Agreement
 
 exports.getAgreement = catchAsyncError(async (req, res, next) => {
+  let getAgreement;
   if (req.user.role.name === "agency" || req.user.role.name === "client") {
-    const getAgreement = await agreementService.getAgreement(req?.params?.id);
+    getAgreement = await agreementService.getAgreement(req?.params?.id);
   }
 
-  const getAgreement = await agreementService.getAgreement(req?.params?.id);
+  getAgreement = await agreementService.getAgreement(req?.params?.id);
   sendResponse(
     res,
     true,
