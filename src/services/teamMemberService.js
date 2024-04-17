@@ -316,7 +316,7 @@ class TeamMemberService {
         teamMember.referral_code = referral_code;
         teamMember.affiliate_referral_code = affiliate_referral_code;
         //creating contact id
-        await PaymentService.createContact(teamMember);
+        PaymentService.createContact(teamMember);
         await teamMember.save();
         const company_urls = await Configuration.find().lean();
         let privacy_policy = company_urls[0]?.urls?.privacy_policy;
