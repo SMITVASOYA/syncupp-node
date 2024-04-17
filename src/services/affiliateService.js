@@ -76,7 +76,7 @@ class AffiliateService {
       newUser = newUser.toObject();
       delete newUser?.password;
       delete newUser?.is_deleted;
-      await PaymentService.createContact(newUser);
+      PaymentService.createContact(newUser);
       return this.tokenGenerator({
         ...newUser,
       });

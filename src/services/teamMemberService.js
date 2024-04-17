@@ -316,7 +316,7 @@ class TeamMemberService {
         teamMember.referral_code = referral_code;
         teamMember.affiliate_referral_code = affiliate_referral_code;
         //creating contact id
-        await PaymentService.createContact(teamMember);
+        PaymentService.createContact(teamMember);
         await teamMember.save();
         const company_urls = await Configuration.find().lean();
         let privacy_policy = company_urls[0]?.urls?.privacy_policy;
@@ -331,7 +331,7 @@ class TeamMemberService {
           facebook
         );
 
-        await sendEmail({
+        sendEmail({
           email: teamMember?.email,
           subject: returnMessage("emailTemplate", "welcomeMailSubject"),
           message: welcome_mail,
@@ -417,22 +417,19 @@ class TeamMemberService {
             facebook
           );
 
-          await sendEmail({
+          sendEmail({
             email: client_team_member?.email,
             subject: returnMessage("emailTemplate", "welcomeMailSubject"),
             message: welcome_mail,
           });
 
           // ------------------  Notifications ----------------
-          const clientData = await Authentication.findOne({
-            reference_id: client_id,
-          }).lean();
+          const [clientData, agencyData] = await Promise.all([
+            Authentication.findOne({ reference_id: client_id }).lean(),
+            Authentication.findOne({ reference_id: agency_id }).lean(),
+          ]);
 
-          const agencyData = await Authentication.findOne({
-            reference_id: agency_id,
-          }).lean();
-
-          await notificationService.addNotification({
+          notificationService.addNotification({
             module_name: "general",
             action_name: "teamClientPasswordSet",
             member_name: client_team_member?.name,

@@ -258,7 +258,7 @@ class ClientService {
           return throwError(returnMessage("auth", "invalidPassword"));
 
         if (client_auth?.status !== "confirm_pending")
-          return throwError(returnMessage("client", "clientNotFound"));
+          return throwError(returnMessage("client", "alreadyVerified"));
 
         const client = await Client.findById(client_auth?.reference_id).lean();
 
@@ -312,7 +312,7 @@ class ClientService {
           { new: true }
         );
         //craete contact id
-        await PaymentService.createContact(client_auth);
+        PaymentService.createContact(client_auth);
 
         const company_urls = await Configuration.find().lean();
         let privacy_policy = company_urls[0]?.urls?.privacy_policy;
@@ -327,14 +327,14 @@ class ClientService {
           facebook
         );
 
-        await sendEmail({
+        sendEmail({
           email: client_auth?.email,
           subject: returnMessage("emailTemplate", "welcomeMailSubject"),
           message: welcome_mail,
         });
 
         // ------------------  Notifications ----------------
-        await notificationService.addNotification({
+        notificationService.addNotification({
           module_name: "general",
           action_name: "clientPasswordSet",
           client_name: client_auth?.first_name + " " + client_auth?.last_name,

@@ -106,13 +106,17 @@ class AuthService {
       if (!passwordValidation(password))
         return throwError(returnMessage("auth", "invalidPassword"));
 
-      const [agency_exist, configuration] = await Promise.all([
-        Authentication.findOne({
-          email,
-          is_deleted: false,
-        }).lean(),
-        Configuration.findOne({}).lean(),
-      ]);
+      const [agency_exist, configuration, admin, encrypted_password, role] =
+        await Promise.all([
+          Authentication.findOne({
+            email,
+            is_deleted: false,
+          }).lean(),
+          Configuration.findOne({}).lean(),
+          Admin.findOne({}).lean(),
+          this.passwordEncryption({ password }),
+          Role_Master.findOne({ name: "agency" }).select("name").lean(),
+        ]);
 
       if (agency_exist)
         return throwError(returnMessage("agency", "agencyExist"));
@@ -120,13 +124,10 @@ class AuthService {
       let image_url,
         status = "payment_pending";
 
-      if (files && files.fieldname === "client_image") {
+      if (files && files.fieldname === "client_image")
         image_url = "uploads/" + files?.filename;
-      }
 
-      if (configuration?.payment?.free_trial > 0) {
-        status = "free_trial";
-      }
+      if (configuration?.payment?.free_trial > 0) status = "free_trial";
 
       const agency_object = {
         company_name: payload?.company_name,
@@ -134,12 +135,7 @@ class AuthService {
         no_of_people: payload?.no_of_people,
         industry: payload?.industry,
       };
-
-      const [agency, encrypted_password, role] = await Promise.all([
-        agencyService.agencyRegistration(agency_object),
-        this.passwordEncryption({ password }),
-        Role_Master.findOne({ name: "agency" }).select("name").lean(),
-      ]);
+      const agency = await agencyService.agencyRegistration(agency_object);
 
       if (!payload?.referral_code) {
         payload.referral_code = await this.referralCodeGenerator();
@@ -165,7 +161,7 @@ class AuthService {
         agency_enroll = agency_enroll.toObject();
         agency_enroll.role = role;
 
-        await PaymentService.createContact(agency_enroll);
+        PaymentService.createContact(agency_enroll);
 
         if (payload?.affiliate_referral_code) {
           const decodedEmail = decodeURIComponent(payload?.affiliate_email);
@@ -182,7 +178,7 @@ class AuthService {
 
         // -------------------- Notification --------------------------------
 
-        await notificationService.addAdminNotification({
+        notificationService.addAdminNotification({
           action_name: "agencyCreated",
           agency_name:
             capitalizeFirstLetter(first_name) +
@@ -201,9 +197,7 @@ class AuthService {
           contact_number: contact_number,
         });
 
-        const admin = await Admin.findOne({});
-
-        await sendEmail({
+        sendEmail({
           email: admin?.email,
           subject: returnMessage("emailTemplate", "agencyCreated"),
           message: agencyCreated,
@@ -223,13 +217,14 @@ class AuthService {
           );
         }
 
-        await this.glideCampaign({
+        this.glideCampaign({
           ...agency_enroll,
           company_name: payload?.company_name,
           company_website: payload?.company_website,
           no_of_people: payload?.no_of_people,
           industry: payload?.industry,
         });
+
         return this.tokenGenerator({
           ...agency_enroll,
           rememberMe: payload?.rememberMe,
@@ -258,10 +253,10 @@ class AuthService {
 
         agency_enroll = agency_enroll.toObject();
         agency_enroll.role = role;
-        await PaymentService.createContact(agency);
+        PaymentService.createContact(agency);
         // -------------------- Notification --------------------------------
 
-        await notificationService.addAdminNotification({
+        notificationService.addAdminNotification({
           action_name: "agencyCreated",
           agency_name:
             capitalizeFirstLetter(first_name) +
@@ -271,9 +266,7 @@ class AuthService {
           contact_number: contact_number,
         });
 
-        const admin = await Admin.findOne({}).lean();
-
-        await sendEmail({
+        sendEmail({
           email: admin?.email,
           subject: returnMessage("emailTemplate", "agencyCreated"),
           message: agencyCreated,
@@ -296,7 +289,7 @@ class AuthService {
         delete agency_enroll?.is_facebook_signup;
         delete agency_enroll?.is_google_signup;
 
-        await this.glideCampaign({
+        this.glideCampaign({
           ...agency_enroll,
           company_name: payload?.company_name,
           company_website: payload?.company_website,
@@ -323,11 +316,12 @@ class AuthService {
 
       const decoded = jwt.decode(signupId);
 
-      let [existing_agency, referral_data] = await Promise.all([
+      let [existing_agency, referral_data, admin] = await Promise.all([
         Authentication.findOne({ email: decoded.email, is_deleted: false })
           .populate("role", "name")
           .lean(),
         Configuration.findOne({}).lean(),
+        Admin.findOne({}).lean(),
       ]);
 
       if (existing_agency?.role?.name === "team_agency") {
@@ -346,9 +340,8 @@ class AuthService {
 
       let status = "payment_pending";
 
-      if (referral_data?.payment?.free_trial > 0) {
-        status = "free_trial";
-      }
+      if (referral_data?.payment?.free_trial > 0) status = "free_trial";
+
       if (!existing_agency) {
         const [agency, role] = await Promise.all([
           agencyService.agencyRegistration({}),
@@ -399,7 +392,7 @@ class AuthService {
             email: decodedEmail,
           });
         }
-        await PaymentService.createContact(agency_enroll);
+        PaymentService.createContact(agency_enroll);
         const lastLoginDateUTC = moment
           .utc(agency_enroll?.last_login_date)
           .startOf("day");
@@ -461,7 +454,32 @@ class AuthService {
           );
         }
 
-        await this.glideCampaign({
+        // -------------------- Notification --------------------------------
+
+        notificationService.addAdminNotification({
+          action_name: "agencyCreated",
+          agency_name:
+            capitalizeFirstLetter(decoded?.given_name) +
+            " " +
+            capitalizeFirstLetter(decoded?.family_name),
+          email: decoded?.email,
+        });
+
+        const agencyCreated = agencyCreatedTemplate({
+          agency_name:
+            capitalizeFirstLetter(decoded?.given_name) +
+            " " +
+            capitalizeFirstLetter(decoded?.family_name),
+          email: decoded?.email,
+        });
+
+        sendEmail({
+          email: admin?.email,
+          subject: returnMessage("emailTemplate", "agencyCreated"),
+          message: agencyCreated,
+        });
+        // -------------------- Notification --------------------------------
+        this.glideCampaign({
           ...agency_enroll,
           company_name: payload?.company_name,
           company_website: payload?.company_website,
@@ -561,7 +579,7 @@ class AuthService {
       if (!data?.email)
         return throwError(returnMessage("auth", "facebookEmailNotFound"));
 
-      let [existing_agency, referral_data] = await Promise.all([
+      let [existing_agency, referral_data, admin] = await Promise.all([
         Authentication.findOne({
           email: data?.email,
           is_deleted: false,
@@ -569,6 +587,7 @@ class AuthService {
           .populate("role", "name")
           .lean(),
         Configuration.findOne({}).lean(),
+        Admin.findOne({}).lean(),
       ]);
 
       if (existing_agency?.role?.name === "team_agency") {
@@ -641,7 +660,7 @@ class AuthService {
             email: decodedEmail,
           });
         }
-        await PaymentService.createContact(agency_enroll);
+        PaymentService.createContact(agency_enroll);
         const lastLoginDateUTC = moment
           .utc(agency_enroll?.last_login_date)
           .startOf("day");
@@ -704,7 +723,32 @@ class AuthService {
           );
         }
 
-        await this.glideCampaign({
+        // -------------------- Notification --------------------------------
+
+        notificationService.addAdminNotification({
+          action_name: "agencyCreated",
+          agency_name:
+            capitalizeFirstLetter(data?.first_name) +
+            " " +
+            capitalizeFirstLetter(data?.last_name),
+          email: data?.email,
+        });
+
+        const agencyCreated = agencyCreatedTemplate({
+          agency_name:
+            capitalizeFirstLetter(data?.first_name) +
+            " " +
+            capitalizeFirstLetter(data?.last_name),
+          email: data?.email,
+        });
+
+        sendEmail({
+          email: admin?.email,
+          subject: returnMessage("emailTemplate", "agencyCreated"),
+          message: agencyCreated,
+        });
+        // -------------------- Notification --------------------------------
+        this.glideCampaign({
           ...agency_enroll,
           company_name: payload?.company_name,
           company_website: payload?.company_website,
