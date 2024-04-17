@@ -1406,10 +1406,7 @@ class AuthService {
         first_name: capitalizeFirstLetter(payload?.first_name),
         last_name: capitalizeFirstLetter(payload?.last_name),
         email: payload?.email,
-        phone:
-          payload?.contact_number && payload?.contact_number !== "undefined"
-            ? "91" + payload?.contact_number
-            : undefined,
+        phone: payload?.contact_number,
         company: payload?.company_name
           ? capitalizeFirstLetter(payload?.company_name)
           : undefined,

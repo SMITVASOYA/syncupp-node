@@ -3039,19 +3039,19 @@ class PaymentService {
 
       if (!submission_id?.data?.data[0]?.submission_id) return;
 
-      await axios.delete(
-        process.env.GLIDE_CAMPAIGN_CONTACT_UPDATE_URL +
-          "/" +
-          glide_campaign_id +
-          "/submission/" +
-          submission_id?.data?.data[0]?.submission_id,
-        {
-          auth: {
-            username: process.env.GLIDE_PUBLICE_KEY,
-            password: process.env.GLIDE_PRIVATE_KEY,
-          },
-        }
-      );
+      await axios.delete(process.env.GLIDE_CAMPAIGN_CONTACT_DELETE_URL, {
+        headers: {
+          Authorization:
+            "Basic " +
+            Buffer.from(
+              process.env.GLIDE_PUBLICE_KEY +
+                ":" +
+                process.env.GLIDE_PRIVATE_KEY
+            ).toString("base64"),
+          "Content-Type": "application/json",
+        },
+        data: { contacts: [glide_campaign_id] },
+      });
       return;
     } catch (error) {
       console.log(error);
