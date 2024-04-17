@@ -106,12 +106,23 @@ class AuthService {
       if (!passwordValidation(password))
         return throwError(returnMessage("auth", "invalidPassword"));
 
-      const [agency_exist, configuration] = await Promise.all([
+      const [
+        agency_exist,
+        configuration,
+        admin,
+        agency,
+        encrypted_password,
+        role,
+      ] = await Promise.all([
         Authentication.findOne({
           email,
           is_deleted: false,
         }).lean(),
         Configuration.findOne({}).lean(),
+        Admin.findOne({}).lean(),
+        agencyService.agencyRegistration(agency_object),
+        this.passwordEncryption({ password }),
+        Role_Master.findOne({ name: "agency" }).select("name").lean(),
       ]);
 
       if (agency_exist)
@@ -120,13 +131,10 @@ class AuthService {
       let image_url,
         status = "payment_pending";
 
-      if (files && files.fieldname === "client_image") {
+      if (files && files.fieldname === "client_image")
         image_url = "uploads/" + files?.filename;
-      }
 
-      if (configuration?.payment?.free_trial > 0) {
-        status = "free_trial";
-      }
+      if (configuration?.payment?.free_trial > 0) status = "free_trial";
 
       const agency_object = {
         company_name: payload?.company_name,
@@ -134,12 +142,6 @@ class AuthService {
         no_of_people: payload?.no_of_people,
         industry: payload?.industry,
       };
-
-      const [agency, encrypted_password, role] = await Promise.all([
-        agencyService.agencyRegistration(agency_object),
-        this.passwordEncryption({ password }),
-        Role_Master.findOne({ name: "agency" }).select("name").lean(),
-      ]);
 
       if (!payload?.referral_code) {
         payload.referral_code = await this.referralCodeGenerator();
@@ -201,8 +203,6 @@ class AuthService {
           contact_number: contact_number,
         });
 
-        const admin = await Admin.findOne({});
-
         await sendEmail({
           email: admin?.email,
           subject: returnMessage("emailTemplate", "agencyCreated"),
@@ -223,13 +223,14 @@ class AuthService {
           );
         }
 
-        await this.glideCampaign({
+        this.glideCampaign({
           ...agency_enroll,
           company_name: payload?.company_name,
           company_website: payload?.company_website,
           no_of_people: payload?.no_of_people,
           industry: payload?.industry,
         });
+
         return this.tokenGenerator({
           ...agency_enroll,
           rememberMe: payload?.rememberMe,
@@ -271,8 +272,6 @@ class AuthService {
           contact_number: contact_number,
         });
 
-        const admin = await Admin.findOne({}).lean();
-
         await sendEmail({
           email: admin?.email,
           subject: returnMessage("emailTemplate", "agencyCreated"),
@@ -296,7 +295,7 @@ class AuthService {
         delete agency_enroll?.is_facebook_signup;
         delete agency_enroll?.is_google_signup;
 
-        await this.glideCampaign({
+        this.glideCampaign({
           ...agency_enroll,
           company_name: payload?.company_name,
           company_website: payload?.company_website,
@@ -346,9 +345,8 @@ class AuthService {
 
       let status = "payment_pending";
 
-      if (referral_data?.payment?.free_trial > 0) {
-        status = "free_trial";
-      }
+      if (referral_data?.payment?.free_trial > 0) status = "free_trial";
+
       if (!existing_agency) {
         const [agency, role] = await Promise.all([
           agencyService.agencyRegistration({}),
@@ -461,7 +459,7 @@ class AuthService {
           );
         }
 
-        await this.glideCampaign({
+        this.glideCampaign({
           ...agency_enroll,
           company_name: payload?.company_name,
           company_website: payload?.company_website,
@@ -704,7 +702,7 @@ class AuthService {
           );
         }
 
-        await this.glideCampaign({
+        this.glideCampaign({
           ...agency_enroll,
           company_name: payload?.company_name,
           company_website: payload?.company_website,
