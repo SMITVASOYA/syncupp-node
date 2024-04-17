@@ -653,9 +653,8 @@ class AdminService {
         {
           $project: {
             _id: 0,
-            name: {
-              $concat: ["$first_name", " ", "$last_name"],
-            },
+            first_name: 1,
+            last_name: 1,
             contact_number: 1,
             email: 1,
             status: {
@@ -694,6 +693,14 @@ class AdminService {
         },
       ];
       const agenciesData = await Authentication.aggregate(pipeLine);
+
+      agenciesData.forEach((agency) => {
+        agency.name =
+          capitalizeFirstLetter(agency?.first_name) +
+          " " +
+          capitalizeFirstLetter(agency?.last_name);
+        return;
+      });
 
       const workbook = new Excel.Workbook();
       const worksheet = workbook.addWorksheet("Data");
