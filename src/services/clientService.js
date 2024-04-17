@@ -334,7 +334,7 @@ class ClientService {
         });
 
         // ------------------  Notifications ----------------
-        await notificationService.addNotification({
+        notificationService.addNotification({
           module_name: "general",
           action_name: "clientPasswordSet",
           client_name: client_auth?.first_name + " " + client_auth?.last_name,
