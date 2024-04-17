@@ -45,6 +45,7 @@ const notificationService = new NotificationService();
 const fs = require("fs");
 const Affiliate = require("../models/affiliateSchema");
 const Payout = require("../models/payoutSchema");
+const Notification = require("../models/notificationSchema");
 class PaymentService {
   constructor() {
     this.razorpayApi = axios.create({

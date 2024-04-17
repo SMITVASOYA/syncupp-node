@@ -1389,7 +1389,6 @@ class AuthService {
       logger.error(
         `Error while creating the contact in the glide campaign: ${error}`
       );
-      throwError(error?.message, error?.statusCode);
     }
   };
 }
