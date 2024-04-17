@@ -2680,24 +2680,25 @@ class PaymentService {
   createContact = async (user) => {
     try {
       let { data } = await this.razorpayApi.post("/contacts", {
-        name: user.first_name + " " + user.last_name,
+        name: user?.first_name + " " + user?.last_name,
         email: user?.email,
         contact: user?.contact_number,
         type: "Affiliate",
         reference_id: user?._id?.toString(),
       });
 
-      await Authentication.findByIdAndUpdate(
-        user?._id,
-        { contact_id: data?.id },
-        { new: true }
-      );
-
-      await Affiliate.findByIdAndUpdate(
-        user?._id,
-        { contact_id: data?.id },
-        { new: true }
-      );
+      await Promise.all([
+        Authentication.findByIdAndUpdate(
+          user?._id,
+          { contact_id: data?.id },
+          { new: true }
+        ),
+        Affiliate.findByIdAndUpdate(
+          user?._id,
+          { contact_id: data?.id },
+          { new: true }
+        ),
+      ]);
 
       return data;
     } catch (error) {
