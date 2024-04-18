@@ -81,7 +81,11 @@ class AuthService {
 
   agencySignUp = async (payload, files) => {
     try {
-      if (payload?.contact_number && payload?.contact_number !== "")
+      if (
+        payload?.contact_number &&
+        payload?.contact_number !== "" &&
+        payload?.contact_number?.length <= 10
+      )
         payload.contact_number = "91" + payload.contact_number;
       const {
         first_name,
