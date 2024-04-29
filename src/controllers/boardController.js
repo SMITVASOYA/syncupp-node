@@ -18,6 +18,19 @@ exports.addBoard = catchAsyncError(async (req, res, next) => {
   );
 });
 
+// Get Board
+
+exports.getBoard = catchAsyncError(async (req, res, next) => {
+  const getBoard = await boardService.getBoard(req?.user, req?.params.id);
+  sendResponse(
+    res,
+    true,
+    returnMessage("board", "boardFetched"),
+    getBoard,
+    statusCode.success
+  );
+});
+
 // Update Board
 
 exports.updateBoard = catchAsyncError(async (req, res, next) => {
@@ -44,7 +57,33 @@ exports.listBoards = catchAsyncError(async (req, res, next) => {
     res,
     true,
     returnMessage("board", "listFetched"),
-    listBoard,
+    listBoards,
+    statusCode.success
+  );
+});
+
+// Pin Board
+
+exports.changePinStatus = catchAsyncError(async (req, res, next) => {
+  const updatedBoard = await boardService.changePinStatus(req.body, req?.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("board", "boardPinned"),
+    updatedBoard,
+    statusCode.success
+  );
+});
+
+// Member List
+
+exports.memberList = catchAsyncError(async (req, res, next) => {
+  const memberList = await boardService.memberList(req?.params?.id, req?.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("board", "membersFetched"),
+    memberList,
     statusCode.success
   );
 });

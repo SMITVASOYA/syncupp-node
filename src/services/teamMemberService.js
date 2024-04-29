@@ -972,6 +972,7 @@ class TeamMemberService {
   // Get all team members by Agency and by client
   getAllTeam = async (payload, user) => {
     try {
+      console.log("sccfwfw");
       if (!payload?.pagination) {
         return await this.teamListWithoutPagination(user);
       }
@@ -1065,7 +1066,7 @@ class TeamMemberService {
             ...search_obj,
           })
             .select(
-              "name first_name last_name email contact_number status createdAt reference_id"
+              "name first_name last_name email contact_number status createdAt reference_id profile_image"
             )
             .populate({
               path: "reference_id",
@@ -1090,6 +1091,7 @@ class TeamMemberService {
         teams.forEach((team) => {
           team.name = team?.first_name + " " + team?.last_name;
         });
+        console.log("ddddddddddddddddddd");
         return {
           teamMemberList: teams,
           page_count: Math.ceil(total_teams / pagination.result_per_page) || 0,
@@ -1149,6 +1151,8 @@ class TeamMemberService {
             });
           }
         });
+        console.log("cccccccccccccc");
+
         return {
           teamMemberList: teams,
           page_count: Math.ceil(total_teams / pagination.result_per_page) || 0,
@@ -1201,6 +1205,7 @@ class TeamMemberService {
             reference_id: 1,
             createdAt: 1,
             status: 1,
+            profile_image: 1,
           },
         },
       ];

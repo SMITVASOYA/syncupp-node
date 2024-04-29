@@ -350,7 +350,11 @@
     "created": "Board created successfully.",
     "alreadyExist": "Board name already exists.",
     "updated": "Board updated successfully.",
-    "listFetched": "Board list fetched successfully."
+    "listFetched": "Board list fetched successfully.",
+    "you": "Board list fetched successfully.",
+    "boardFetched": "Board fetched successfully.",
+    "boardPinned": "Board pinned successfully.",
+    "membersFetched": "Members fetched successfully."
   },
 
   "chat": {

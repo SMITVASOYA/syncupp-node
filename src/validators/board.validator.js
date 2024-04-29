@@ -5,9 +5,9 @@ exports.validateCreateBoard = [
   body("project_name")
     .notEmpty()
     .withMessage(validationMessage.board.projectNameRequired),
-  body("description")
-    .notEmpty()
-    .withMessage(validationMessage.board.descriptionRequired),
+  // body("description")
+  //   .notEmpty()
+  //   .withMessage(validationMessage.board.descriptionRequired),
   body("members")
     .notEmpty()
     .withMessage(validationMessage.board.membersRequired),

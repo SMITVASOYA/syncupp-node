@@ -26,4 +26,9 @@ boardRoute.put(
   boardController.updateBoard
 );
 
+boardRoute.post("/board/get-boards", boardController.listBoards);
+boardRoute.get("/board/:id", boardController.getBoard);
+boardRoute.put("/board/pin-status", boardController.changePinStatus);
+boardRoute.get("/board/member-list/:id", boardController.memberList);
+
 module.exports = boardRoute;

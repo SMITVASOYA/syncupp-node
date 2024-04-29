@@ -46,6 +46,11 @@ const activitySchema = new mongoose.Schema(
     mark_as_done: { type: Boolean, default: false },
     competition_point: { type: Number, default: 0 },
     attendees: [{ type: mongoose.Types.ObjectId }],
+    board_id: {
+      type: mongoose.Types.ObjectId,
+      ref: "board",
+      required: true,
+    },
   },
   { timestamps: true }
 );

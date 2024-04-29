@@ -559,6 +559,7 @@ class ClientService {
             name: { $concat: ["$first_name", " ", "$last_name"] },
             contact_number: 1,
             createdAt: 1,
+            profile_image: 1,
             reference_id: {
               company_name: 1,
               company_website: 1,
@@ -603,6 +604,7 @@ class ClientService {
 
   // Get the client ist for the Agency without pagination
   clientListWithoutPagination = async (agency) => {
+    console.log("cdvedgegeg");
     try {
       let clients;
       if (agency?.role?.name === "team_agency") {
@@ -633,6 +635,7 @@ class ClientService {
             createdAt: 1,
             reference_id: 1,
             contact_number: 1,
+            profile_image: 1,
           },
         },
       ];
@@ -843,6 +846,7 @@ class ClientService {
   // Get the client ist for the Agency without pagination
   //  and this will used for the activity only to add client team member
   clientListWithoutPaginationForActivity = async (agency) => {
+    console.log("adadadafa");
     try {
       let clients;
       let team_client;
@@ -892,9 +896,11 @@ class ClientService {
             createdAt: 1,
             reference_id: 1,
             contact_number: 1,
+            profile_image: 1,
           },
         },
       ];
+      console.log("dddddddddddddddddddd");
 
       return await Authentication.aggregate(aggrage_array);
     } catch (error) {

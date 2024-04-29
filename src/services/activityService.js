@@ -2425,6 +2425,7 @@ class ActivityService {
         internal_info,
         mark_as_done,
         attendees,
+        board_id,
       } = payload;
 
       let recurring_date;
@@ -2589,6 +2590,7 @@ class ActivityService {
         due_date: start_date,
         recurring_end_date: recurring_date,
         attendees: attendees,
+        board_id: board_id,
       });
 
       const event = {
