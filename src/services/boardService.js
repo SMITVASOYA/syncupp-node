@@ -17,6 +17,7 @@ const { json } = require("express");
 const fs = require("fs");
 const Team_Agency = require("../models/teamAgencySchema");
 const Team_Role_Master = require("../models/masters/teamRoleSchema");
+const Activity = require("../models/activitySchema");
 
 class BoardService {
   // Add   Board
@@ -89,52 +90,109 @@ class BoardService {
   // Update   Board
   updateBoard = async (payload, boardId, user, image) => {
     try {
-      const { project_name, description, members } = payload;
+      const { project_name, description, members, only_member_update } =
+        payload;
       payload.members = JSON.parse(members);
 
-      const existingBoard = await Board.findById(boardId);
+      const existingBoard = await Board.findById(boardId).lean();
+
+      const memberRoleId = await Team_Agency.findById(user?.reference_id);
+      const memberRoleType = await Team_Role_Master.findById(
+        memberRoleId?.role
+      );
+      if (memberRoleType?.name === "admin") {
+        const isInclude = existingBoard.members
+          .map((member) => member.member_id.toString())
+          .includes(user?.reference_id.toString());
+        if (!isInclude)
+          return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
       if (existingBoard) {
         payload.members.push(existingBoard?.agency_id);
       }
       if (!payload.members.includes(user.reference_id)) {
         payload.members.push(user?.reference_id);
       }
-      payload.members = [...new Set(payload.members)];
-      console.log(payload.members);
+
+      payload.members = [
+        ...new Set(payload.members.map((member) => member.toString())),
+      ].map((member) => new ObjectId(member));
+
+      // Add agency_id to members if not already included
+      const updatedMembers = payload?.members.map((member) => ({
+        member_id: member,
+      }));
+      const agencyMember = { member_id: user.reference_id };
+
+      if (!payload?.members.map((member) => member === user.reference_id)) {
+        updatedMembers.push(agencyMember);
+      }
+
       const board = await Board.findOne({ project_name: project_name });
+
       if (board && board?._id.toString() !== new ObjectId(boardId).toString()) {
         return throwError(returnMessage("board", "alreadyExist"));
       }
 
-      let imagePath = false;
-      if (image) {
-        imagePath = "uploads/" + image.filename;
-      } else if (image === "") {
-        imagePath = "";
-      }
-      const existingImage = await Board.findById(boardId);
-      existingImage &&
-        fs.unlink(`./src/public/${existingImage.board_image}`, (err) => {
-          if (err) {
-            logger.error(`Error while unlinking the documents: ${err}`);
+      // Check task assigned
+      for (const member of existingBoard.members) {
+        const isInclude = payload.members
+          .map(String)
+          .includes(String(member.member_id));
+        if (!isInclude) {
+          const task = await Activity.findOne({
+            $or: [
+              { assign_by: member.member_id },
+              { client_id: member.member_id },
+              { assign_to: member.member_id },
+            ],
+          });
+          if (task) {
+            throwError(returnMessage("board", "canNotRemove"));
           }
-        });
+        }
+      }
+      if (only_member_update === "true") {
+        let imagePath = false;
+        if (image) {
+          imagePath = "uploads/" + image.filename;
+        } else if (image === "") {
+          imagePath = "";
+        }
+        const existingImage = await Board.findById(boardId);
+        existingImage &&
+          fs.unlink(`./src/public/${existingImage.board_image}`, (err) => {
+            if (err) {
+              logger.error(`Error while unlinking the documents: ${err}`);
+            }
+          });
 
-      const newBoard = await Board.findByIdAndUpdate(
-        boardId,
-        {
-          project_name,
-          description,
-          members: payload.members,
-          ...((imagePath || imagePath === "") && {
-            board_image: imagePath,
-          }),
-          agency_id: user?.reference_id,
-        },
-        { new: true }
-      );
+        const newBoard = await Board.findByIdAndUpdate(
+          boardId,
+          {
+            project_name,
+            description,
+            members: updatedMembers,
+            ...(imagePath && {
+              board_image: imagePath,
+            }),
+          },
+          { new: true }
+        );
 
-      return newBoard;
+        return newBoard;
+      } else {
+        const newBoard = await Board.findByIdAndUpdate(
+          boardId,
+          {
+            members: updatedMembers,
+          },
+          { new: true }
+        );
+
+        return newBoard;
+      }
     } catch (error) {
       logger.error(`Error while  update Board, ${error}`);
       throwError(error?.message, error?.statusCode);
@@ -212,12 +270,18 @@ class BoardService {
           },
         ];
 
-        const boards = await Board.aggregate(pipeline)
-          .sort({ is_pinned: -1, createdAt: -1 })
-          .skip(skip)
-          .limit(limit);
+        const [boards, total_board_count] = await Promise.all([
+          Board.aggregate(pipeline)
+            .sort({ is_pinned: -1, createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
+          Board.aggregate(pipeline),
+        ]);
 
-        return boards;
+        return {
+          board_list: boards,
+          total_board_count: Math.ceil(total_board_count.length) || 0,
+        };
       }
     } catch (error) {
       logger.error(`Error while fetching agencies: ${error}`);
@@ -242,7 +306,6 @@ class BoardService {
 
   memberList = async (board_id, user) => {
     try {
-      console.log(board_id);
       // const updatedBoard = await Board.updateOne(
       //   { _id: board_id, "members.member_id": user?.reference_id },
       //   { $set: { "members.$.is_pinned": is_pinned } },

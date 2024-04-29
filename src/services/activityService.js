@@ -44,6 +44,7 @@ class ActivityService {
         client_id,
         mark_as_done,
         tags,
+        board_id,
       } = payload;
       if (client_id == "null" || client_id == null) client_id = null;
 
@@ -107,6 +108,7 @@ class ActivityService {
         agency_id,
         tags: newTags,
         attachments: attachments,
+        board_id,
       });
       const added_task = await newTask.save();
 
@@ -610,7 +612,10 @@ class ActivityService {
           $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
         },
         {
-          $match: queryObj,
+          $match: {
+            ...queryObj,
+            board_id: new mongoose.Types.ObjectId(searchObj?.board_id),
+          },
         },
         filter,
         {
@@ -635,6 +640,7 @@ class ActivityService {
             column_id: "$status.name",
             tags: 1,
             agency_id: 1,
+            board_id: 1,
           },
         },
       ];
@@ -957,7 +963,10 @@ class ActivityService {
           $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
         },
         {
-          $match: queryObj,
+          $match: {
+            ...queryObj,
+            board_id: new mongoose.Types.ObjectId(searchObj?.board_id),
+          },
         },
         {
           $project: {
@@ -979,9 +988,11 @@ class ActivityService {
             client_name: "$client_Data.client_name",
             column_id: "$status.name",
             tags: 1,
+            board_id: 1,
           },
         },
       ];
+      console.log("sfsfsffssgfs");
       const activity = await Activity.aggregate(taskPipeline).sort({
         createdAt: -1,
       });
@@ -2425,7 +2436,6 @@ class ActivityService {
         internal_info,
         mark_as_done,
         attendees,
-        board_id,
       } = payload;
 
       let recurring_date;
@@ -2590,7 +2600,6 @@ class ActivityService {
         due_date: start_date,
         recurring_end_date: recurring_date,
         attendees: attendees,
-        board_id: board_id,
       });
 
       const event = {

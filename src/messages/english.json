@@ -354,7 +354,8 @@
     "you": "Board list fetched successfully.",
     "boardFetched": "Board fetched successfully.",
     "boardPinned": "Board pinned successfully.",
-    "membersFetched": "Members fetched successfully."
+    "membersFetched": "Members fetched successfully.",
+    "canNotRemove": "Cannot remove member associated with task."
   },
 
   "chat": {

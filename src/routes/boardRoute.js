@@ -16,19 +16,18 @@ boardRoute.post(
   // authorizeRole("agency"),
   boardController.addBoard
 );
+boardRoute.put("/board/pin-status", boardController.changePinStatus);
+
 boardRoute.put(
   "/board/:id",
   checkProfileSize,
   upload.single("board_image"),
-  validateCreateBoard,
-  validatorFunc,
   // authorizeRole("agency"),
   boardController.updateBoard
 );
 
 boardRoute.post("/board/get-boards", boardController.listBoards);
 boardRoute.get("/board/:id", boardController.getBoard);
-boardRoute.put("/board/pin-status", boardController.changePinStatus);
 boardRoute.get("/board/member-list/:id", boardController.memberList);
 
 module.exports = boardRoute;

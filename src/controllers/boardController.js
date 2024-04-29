@@ -65,12 +65,12 @@ exports.listBoards = catchAsyncError(async (req, res, next) => {
 // Pin Board
 
 exports.changePinStatus = catchAsyncError(async (req, res, next) => {
-  const updatedBoard = await boardService.changePinStatus(req.body, req?.user);
+  await boardService.changePinStatus(req.body, req?.user);
   sendResponse(
     res,
     true,
     returnMessage("board", "boardPinned"),
-    updatedBoard,
+    null,
     statusCode.success
   );
 });

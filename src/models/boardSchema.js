@@ -11,7 +11,7 @@ const boardSchema = new mongoose.Schema(
         is_pinned: { type: Boolean, default: false },
       },
     ],
-    board_image: { type: String, required: true },
+    board_image: { type: String },
     agency_id: { type: mongoose.Types.ObjectId, required: true },
   },
   { timestamps: true }
