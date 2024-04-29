@@ -8,6 +8,7 @@ const teamMemberRoute = require("./teamMemberRoute");
 const invoiceRoute = require("./invoiceRoute");
 const agreementRoute = require("./agreementRoute");
 const activityRoute = require("./activityRoute");
+const boardRoute = require("./boardRoute");
 const paymentRoute = require("./paymentRoute");
 const inquiryRoute = require("./inquiryRoute");
 const affiliateRoute = require("./affiliateRoute");
@@ -21,6 +22,7 @@ const couponRoute = require("./couponRoute");
 const ticketRoute = require("./ticketRoute");
 
 router.use("/activity", activityRoute);
+router.use("/activity", boardRoute);
 router.use("/auth", authRoute);
 router.use("/admin", adminRoute);
 router.use("/affiliate", affiliateRoute);

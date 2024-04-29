@@ -94,5 +94,10 @@
     "discountTitleMaxLength": "Brand name must not exceed 15 characters",
     "siteURLRequired": "Wensite url is required",
     "couponIdsReq": "CouponIds To Delete key required"
+  },
+  "board": {
+    "projectNameRequired": "Project name is required",
+    "descriptionRequired": "Description name is required",
+    "membersRequired": "Members name are required"
   }
 }

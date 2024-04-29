@@ -346,6 +346,13 @@
     "cancleSubject": "Event Cancled."
   },
 
+  "board": {
+    "created": "Board created successfully.",
+    "alreadyExist": "Board name already exists.",
+    "updated": "Board updated successfully.",
+    "listFetched": "Board list fetched successfully."
+  },
+
   "chat": {
     "userIdRequired": "Other users' id is required to get messages.",
     "usersListFetched": "List of users fetched successfully.",
