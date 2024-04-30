@@ -21,7 +21,7 @@ exports.addBoard = catchAsyncError(async (req, res, next) => {
 // Get Board
 
 exports.getBoard = catchAsyncError(async (req, res, next) => {
-  const get_board = await boardService.getBoard(req?.user, req?.params.id);
+  const get_board = await boardService.getBoard(req?.params.id);
   sendResponse(
     res,
     true,

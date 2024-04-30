@@ -13,7 +13,6 @@ boardRoute.post(
   upload.single("board_image"),
   validateCreateBoard,
   validatorFunc,
-  // authorizeRole("agency"),
   boardController.addBoard
 );
 boardRoute.put("/pin-status", boardController.changePinStatus);
@@ -22,7 +21,6 @@ boardRoute.put(
   "/:id",
   checkProfileSize,
   upload.single("board_image"),
-  // authorizeRole("agency"),
   boardController.updateBoard
 );
 

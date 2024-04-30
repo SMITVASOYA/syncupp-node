@@ -14,7 +14,6 @@ class BoardService {
   addBoard = async (payload, user, image) => {
     try {
       const { project_name, description, members } = payload;
-
       const member_role_id = await Team_Agency.findById(user?.reference_id);
       const member_role_type = await Team_Role_Master.findById(
         member_role_id?.role
@@ -149,7 +148,7 @@ class BoardService {
           }
         }
       }
-      if (only_member_update === "true") {
+      if (only_member_update === "false") {
         let image_path = false;
         if (image) {
           image_path = "uploads/" + image.filename;

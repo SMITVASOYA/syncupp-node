@@ -604,7 +604,6 @@ class ClientService {
 
   // Get the client ist for the Agency without pagination
   clientListWithoutPagination = async (agency) => {
-    console.log("cdvedgegeg");
     try {
       let clients;
       if (agency?.role?.name === "team_agency") {
@@ -846,7 +845,6 @@ class ClientService {
   // Get the client ist for the Agency without pagination
   //  and this will used for the activity only to add client team member
   clientListWithoutPaginationForActivity = async (agency) => {
-    console.log("adadadafa");
     try {
       let clients;
       let team_client;

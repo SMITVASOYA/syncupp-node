@@ -89,7 +89,6 @@ const storage2 = multer.memoryStorage({
       const fs = require("fs");
 
       const blob = new Blob([new Uint8Array(file)]);
-      console.log(blob);
       const buffer = Buffer.from(blob);
 
       fs.writeFileSync("audio.wav", buffer);
