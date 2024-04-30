@@ -8,12 +8,12 @@ const boardService = new BoardService();
 // Add Board
 
 exports.addBoard = catchAsyncError(async (req, res, next) => {
-  const addBoard = await boardService.addBoard(req.body, req?.user, req?.file);
+  const add_board = await boardService.addBoard(req.body, req?.user, req?.file);
   sendResponse(
     res,
     true,
     returnMessage("board", "created"),
-    addBoard,
+    add_board,
     statusCode.success
   );
 });
@@ -21,12 +21,12 @@ exports.addBoard = catchAsyncError(async (req, res, next) => {
 // Get Board
 
 exports.getBoard = catchAsyncError(async (req, res, next) => {
-  const getBoard = await boardService.getBoard(req?.user, req?.params.id);
+  const get_board = await boardService.getBoard(req?.user, req?.params.id);
   sendResponse(
     res,
     true,
     returnMessage("board", "boardFetched"),
-    getBoard,
+    get_board,
     statusCode.success
   );
 });
@@ -34,7 +34,7 @@ exports.getBoard = catchAsyncError(async (req, res, next) => {
 // Update Board
 
 exports.updateBoard = catchAsyncError(async (req, res, next) => {
-  const updateBoard = await boardService.updateBoard(
+  await boardService.updateBoard(
     req.body,
     req?.params.id,
     req?.user,
@@ -52,12 +52,12 @@ exports.updateBoard = catchAsyncError(async (req, res, next) => {
 // List Board
 
 exports.listBoards = catchAsyncError(async (req, res, next) => {
-  const listBoards = await boardService.listBoards(req.body, req?.user);
+  const list_boards = await boardService.listBoards(req.body, req?.user);
   sendResponse(
     res,
     true,
     returnMessage("board", "listFetched"),
-    listBoards,
+    list_boards,
     statusCode.success
   );
 });
@@ -78,12 +78,12 @@ exports.changePinStatus = catchAsyncError(async (req, res, next) => {
 // Member List
 
 exports.memberList = catchAsyncError(async (req, res, next) => {
-  const memberList = await boardService.memberList(req?.params?.id, req?.user);
+  const member_list = await boardService.memberList(req?.params?.id, req?.user);
   sendResponse(
     res,
     true,
     returnMessage("board", "membersFetched"),
-    memberList,
+    member_list,
     statusCode.success
   );
 });

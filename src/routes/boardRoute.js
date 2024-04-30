@@ -8,7 +8,7 @@ const { checkProfileSize, upload } = require("../helpers/multer");
 boardRoute.use(protect);
 
 boardRoute.post(
-  "/board/create-board",
+  "/create-board",
   checkProfileSize,
   upload.single("board_image"),
   validateCreateBoard,
@@ -16,18 +16,18 @@ boardRoute.post(
   // authorizeRole("agency"),
   boardController.addBoard
 );
-boardRoute.put("/board/pin-status", boardController.changePinStatus);
+boardRoute.put("/pin-status", boardController.changePinStatus);
 
 boardRoute.put(
-  "/board/:id",
+  "/:id",
   checkProfileSize,
   upload.single("board_image"),
   // authorizeRole("agency"),
   boardController.updateBoard
 );
 
-boardRoute.post("/board/get-boards", boardController.listBoards);
-boardRoute.get("/board/:id", boardController.getBoard);
-boardRoute.get("/board/member-list/:id", boardController.memberList);
+boardRoute.post("/get-boards", boardController.listBoards);
+boardRoute.get("/:id", boardController.getBoard);
+boardRoute.get("/member-list/:id", boardController.memberList);
 
 module.exports = boardRoute;

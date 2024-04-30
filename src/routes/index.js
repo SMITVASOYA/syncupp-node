@@ -22,7 +22,7 @@ const couponRoute = require("./couponRoute");
 const ticketRoute = require("./ticketRoute");
 
 router.use("/activity", activityRoute);
-router.use("/activity", boardRoute);
+router.use("/board", boardRoute);
 router.use("/auth", authRoute);
 router.use("/admin", adminRoute);
 router.use("/affiliate", affiliateRoute);
