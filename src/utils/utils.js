@@ -8187,14 +8187,18 @@ exports.taskTemplate = (data) => {
                                       margin: 0;
                                       font-size: 0px;
                                     ">
-                                  <a target="_blank" href="${process.env.REACT_APP_URL}" style="
+                                  <a target="_blank" href="${
+                                    process.env.REACT_APP_URL
+                                  }" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
                                         text-decoration: underline;
                                         color: #2d3142;
                                         font-size: 14px;
-                                      "><img src="${process.env.SERVER_URL}/template/syncupp-logo.png" alt="Logo" style="
+                                      "><img src="${
+                                        process.env.SERVER_URL
+                                      }/template/syncupp-logo.png" alt="Logo" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -8307,7 +8311,9 @@ exports.taskTemplate = (data) => {
                                         margin-bottom: 30px;
                                       ">
                                     Recent Activity :
-                                    <span style="font-weight: 600;">${data?.TaskTitle}</span>
+                                    <span style="font-weight: 600;">${
+                                      data?.TaskTitle
+                                    }</span>
 
                                   </p>
                                   <table cellpadding="0" cellspacing="0" width="70%" style="
@@ -8339,7 +8345,20 @@ exports.taskTemplate = (data) => {
  text-overflow: ellipsis;
  white-space: nowrap;">${data?.taskName}</td>
                                           </tr>
-                                          
+                                          <tr>
+                                          <td style=" border-top-left-radius: 5px;
+                                                                                    border-collapse: collapse;">Project Name
+                                            :
+                                          </td>
+                                          <td
+                                            style="
+                                                                                    border-collapse: collapse; font-weight: 600;">
+                                            ${
+                                              data.board_name
+                                                ? data.board_name
+                                                : ""
+                                            }</td>
+                                        </tr>
                                           <tr>
                                             <td style=" border-top-left-radius: 5px;
                                                                                       border-collapse: collapse;">Status
@@ -8369,7 +8388,9 @@ exports.taskTemplate = (data) => {
                                             <td
                                               style="
                                                                                       border-collapse: collapse; font-weight: 600;">
-                                              ${data?.dueDate} | ${data?.dueTime}</td>
+                                              ${data?.dueDate} | ${
+    data?.dueTime
+  }</td>
                                           </tr>
                                          
                                           
@@ -8486,7 +8507,9 @@ exports.taskTemplate = (data) => {
                                           text-decoration: underline;
                                           color: #2d3142;
                                           font-size: 16px;
-                                        " href="${process.env.REACT_APP_URL}"></a>
+                                        " href="${
+                                          process.env.REACT_APP_URL
+                                        }"></a>
                                   </p>
                                 </td>
                               </tr>

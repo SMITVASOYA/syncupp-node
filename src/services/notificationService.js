@@ -278,7 +278,7 @@ class NotificationService {
             );
           }
         } else {
-          if (payload.client_id) {
+          if (payload.client_id && payload.client_id !== "null") {
             await createAndEmitNotification(
               client_id,
               message_type,

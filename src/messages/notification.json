@@ -45,37 +45,37 @@
       "assignToMessage": "Today is the due date for ${activity_type} '${title}'."
     },
     "createTask": {
-      "clientMessage": "Hi ${client_name}! You have a task titled ${title} due on ${due_date} before ${due_time}. Check the agenda. See you there!",
-      "assignToMessage": "Hey ${assigned_to_name}! You're assigned to a task titled ${title} due on ${due_date} before ${due_time}. Check the agenda. Be ready!",
-      "assignByMessage": "Hi ${agency_name}!${assigned_to_name} just created a task titled ${title} due on ${due_date} before ${due_time}. Check the agenda. See you there!"
+      "clientMessage": "Hi ${client_name}! You have a task titled ${title} due on ${due_date} before ${due_time} for project ${board_name}. Check the agenda. See you there!",
+      "assignToMessage": "Hey ${assigned_to_name}! You're assigned to a task titled ${title} due on ${due_date} before ${due_time} for project ${board_name}. Check the agenda. Be ready!",
+      "assignByMessage": "Hi ${agency_name}!${assigned_to_name} just created a task titled ${title} due on ${due_date} before ${due_time} for project ${board_name}. Check the agenda. See you there!"
     },
     "taskCompleted": {
-      "clientMessage": "Hi ${client_name}! Your task '${title}' is completed.",
-      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is completed. Great job!",
-      "assignByMessage": "Hi ${agency_name}! The task '${title}' is completed."
+      "clientMessage": "Hi ${client_name}! Your task '${title}' is completed for project ${board_name}.",
+      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is completed for project ${board_name}. Great job!",
+      "assignByMessage": "Hi ${agency_name}! The task '${title}' is completed  for project ${board_name}."
     },
     "taskPending": {
-      "clientMessage": "Hi ${client_name}! Your task '${title}' is pending.",
-      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is pending.",
-      "assignByMessage": "Hi ${client_name}! Your task '${title}' is pending."
+      "clientMessage": "Hi ${client_name}! Your task '${title}' is pending for project ${board_name}.",
+      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is pending for project ${board_name}.",
+      "assignByMessage": "Hi ${client_name}! Your task '${title}' is pending for project ${board_name}."
     },
     "taskUpdated": {
-      "clientMessage": "Updated: Hi ${client_name}! Your task titled ${title} now has a due date on ${due_date} before ${due_time}. See you there!",
-      "assignToMessage": "Updated: Hey ${assigned_to_name}! You're assigned to a task titled ${title} due on ${due_date} before ${due_time}. Be ready!",
-      "assignByMessage": "Updated: Hi ${agency_name}! Your task titled ${title} now has a due date on ${due_date} before ${due_time}. See you there!"
+      "clientMessage": "Updated: Hi ${client_name}! Your task titled ${title} now has a due date on ${due_date} before ${due_time} for project ${board_name}. See you there!",
+      "assignToMessage": "Updated: Hey ${assigned_to_name}! You're assigned to a task titled ${title} due on ${due_date} before ${due_time} for project ${board_name}. Be ready!",
+      "assignByMessage": "Updated: Hi ${agency_name}! Your task titled ${title} now has a due date on ${due_date} before ${due_time} for project ${board_name}. See you there!"
     },
     "taskInProgress": {
-      "clientMessage": "Hi ${client_name}! Your task '${title}' is in progress.",
-      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is in progress.",
-      "assignByMessage": "Hi ${assigned_by_name}! The task '${title}' is in progress."
+      "clientMessage": "Hi ${client_name}! Your task '${title}' is in progress for project ${board_name}.",
+      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is in progress for project ${board_name}.",
+      "assignByMessage": "Hi ${assigned_by_name}! The task '${title}' is in progress for project ${board_name}."
     },
     "taskCancelled": {
-      "clientMessage": "Hi ${client_name}! The task titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. ",
-      "assignToMessage": "Hi ${assigned_to_name}! The task titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled. "
+      "clientMessage": "Hi ${client_name}! The task titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled for project ${board_name}. ",
+      "assignToMessage": "Hi ${assigned_to_name}! The task titled ${title} scheduled for ${due_date} at ${meeting_start_time} has been canceled for project ${board_name}. "
     },
     "taskDeleted": {
-      "clientMessage": "Task '${title}' has been deleted.",
-      "assignToMessage": "Task '${title}' has been deleted."
+      "clientMessage": "Task '${title}' has been deleted for project ${board_name}.",
+      "assignToMessage": "Task '${title}' has been deleted for project ${board_name}."
     },
     "taskOverdue": {
       "clientMessage": "Task '${title}' has been overdue.",

@@ -32,6 +32,7 @@ const fs = require("fs");
 const Activity_Type_Master = require("../models/masters/activityTypeMasterSchema");
 const momentTimezone = require("moment-timezone");
 const Team_Client = require("../models/teamClientSchema");
+const Board = require("../models/boardSchema");
 
 class ActivityService {
   createTask = async (payload, user, files) => {
@@ -156,6 +157,7 @@ class ActivityService {
             column_id: "$status.name",
             assign_email: "$team_Data.email",
             agency_id: 1,
+            board_id: 1,
           },
         },
       ];
@@ -163,6 +165,8 @@ class ActivityService {
       const client_data = await Authentication.findOne({
         reference_id: client_id,
       }).lean();
+      const board = await Board.findOne({ _id: payload?.board_id }).lean();
+
       if (user.role.name === "agency") {
         // ----------------------- Notification Start -----------------------
         const indianTimeZone = dueDateObject.tz("Asia/Kolkata").format("HH:mm");
@@ -177,6 +181,7 @@ class ActivityService {
           dueTime: indianTimeZone,
           agginTo_email: getTask[0]?.assign_email,
           assignName: getTask[0]?.assigned_to_name,
+          board_name: board ? board.project_name : "",
         };
         const taskMessage = taskTemplate(data);
         sendEmail({
@@ -192,6 +197,7 @@ class ActivityService {
             message: taskTemplate({
               ...data,
               assignName: client_data.first_name + " " + client_data.last_name,
+              board_name: board ? board.project_name : "",
             }),
           });
         }
@@ -213,6 +219,7 @@ class ActivityService {
             activity_type: "task",
             due_time: moment(due_date).format("HH:mm"),
             due_date: moment(due_date).format("DD-MM-YYYY"),
+            board_name: board ? board.project_name : "",
           },
           getTask[0]?._id
         );
@@ -238,6 +245,7 @@ class ActivityService {
           dueTime: indianTimeZone,
           agginTo_email: getTask[0]?.assign_email,
           assignName: getTask[0]?.assigned_to_name,
+          board_name: board ? board.project_name : "",
         };
         const taskMessage = taskTemplate(data);
         sendEmail({
@@ -254,6 +262,7 @@ class ActivityService {
             message: taskTemplate({
               ...data,
               assignName: client_data.first_name + " " + client_data.last_name,
+              board_name: board ? board.project_name : "",
             }),
           });
         }
@@ -261,7 +270,6 @@ class ActivityService {
         const agencyData = await Authentication.findOne({
           reference_id: getTask[0]?.agency_id,
         });
-
         await notificationService.addNotification(
           {
             agency_name: agencyData?.first_name + " " + agencyData?.last_name,
@@ -281,6 +289,7 @@ class ActivityService {
             due_time: moment(due_date).format("HH:mm"),
             due_date: moment(due_date).format("DD-MM-YYYY"),
             log_user: "member",
+            board_name: board ? board.project_name : "",
           },
           getTask[0]?._id
         );
@@ -882,6 +891,12 @@ class ActivityService {
       const taskPipeline = [
         filter,
         {
+          $match: {
+            ...queryObj,
+            board_id: new mongoose.Types.ObjectId(searchObj?.board_id),
+          },
+        },
+        {
           $lookup: {
             from: "authentications",
             localField: "client_id",
@@ -963,12 +978,6 @@ class ActivityService {
           $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
         },
         {
-          $match: {
-            ...queryObj,
-            board_id: new mongoose.Types.ObjectId(searchObj?.board_id),
-          },
-        },
-        {
           $project: {
             contact_number: 1,
             title: 1,
@@ -992,7 +1001,6 @@ class ActivityService {
           },
         },
       ];
-      console.log("sfsfsffssgfs");
       const activity = await Activity.aggregate(taskPipeline).sort({
         createdAt: -1,
       });
@@ -1143,7 +1151,13 @@ class ActivityService {
             createdAt: 1,
             status: "$status.name",
             client_id: 1,
-            client_name: "$client_Data.name",
+            client_name: {
+              $concat: [
+                "$client_Data.first_name",
+                " ",
+                "$client_Data.last_name",
+              ],
+            },
             client_first_name: "$client_Data.first_name",
             client_last_name: "$client_Data.last_name",
             agenda: 1,
@@ -1280,11 +1294,14 @@ class ActivityService {
             title: 1,
             assign_to: 1,
             client_id: 1,
+            board_id: 1,
           },
         },
       ];
       const getTask = await Activity.aggregate(pipeline);
       getTask.forEach(async (task) => {
+        const board = await Board.findOne({ _id: task?.board_id }).lean();
+
         let data = {
           TaskTitle: "Deleted Task",
           taskName: task?.title,
@@ -1294,6 +1311,7 @@ class ActivityService {
           dueTime: task?.due_time,
           agginTo_email: task?.assign_email,
           assignName: task?.assigned_to_name,
+          board_name: board ? board.project_name : "",
         };
         const taskMessage = taskTemplate(data);
         const clientData = await Authentication.findOne({
@@ -1697,10 +1715,12 @@ class ActivityService {
             assign_email: "$team_Data.email",
             agency_id: 1,
             status_name: "$statusName.name",
+            board_id: 1,
           },
         },
       ];
       const getTask = await Activity.aggregate(pipeline);
+      const board = await Board.findOne({ _id: getTask[0]?.board_id }).lean();
 
       let data = {
         TaskTitle: "Updated Task ",
@@ -1714,25 +1734,31 @@ class ActivityService {
         dueTime: timeOnly,
         agginTo_email: getTask[0]?.assign_email,
         assignName: getTask[0]?.assigned_to_name,
+        board_name: board ? board.project_name : "",
       };
-      const client_data = await Authentication.findOne({
-        reference_id: payload?.client_id,
-      }).lean();
+
+      let client_data = false;
+      if (payload?.client_id !== "null" && payload?.client_id)
+        client_data = await Authentication.findOne({
+          reference_id: payload?.client_id,
+        }).lean();
 
       const taskMessage = taskTemplate(data);
+
       sendEmail({
         email: getTask[0]?.assign_email,
         subject: returnMessage("activity", "UpdateSubject"),
         message: taskMessage,
       });
 
-      if (client_data) {
+      if (client_data && client_data !== undefined) {
         sendEmail({
           email: client_data?.email,
           subject: returnMessage("activity", "UpdateSubject"),
           message: taskTemplate({
             ...data,
             assignName: client_data.first_name + " " + client_data.last_name,
+            board_name: board ? board.project_name : "",
           }),
         });
       }
@@ -1757,6 +1783,7 @@ class ActivityService {
             assigned_to_name: getTask[0]?.assigned_to_name,
             due_time: new Date(due_date).toTimeString().split(" ")[0],
             due_date: new Date(due_date).toLocaleDateString("en-GB"),
+            board_name: board ? board.project_name : "",
           },
           id
         );
@@ -1793,6 +1820,7 @@ class ActivityService {
             due_time: new Date(due_date).toTimeString().split(" ")[0],
             due_date: new Date(due_date).toLocaleDateString("en-GB"),
             log_user: "member",
+            board_name: board ? board.project_name : "",
           },
           id
         );
@@ -2123,18 +2151,21 @@ class ActivityService {
             client_id: 1,
             tags: 1,
             attendees: 1,
+            board_id: 1,
           },
         },
       ];
 
       const getTask = await Activity.aggregate(pipeline);
-      const [assign_to_data, client_data, attendees_data] = await Promise.all([
-        Authentication.findOne({ reference_id: getTask[0]?.assign_to }),
-        Authentication.findOne({ reference_id: getTask[0]?.client_id }),
-        Authentication.find({
-          reference_id: { $in: getTask[0]?.attendees },
-        }).lean(),
-      ]);
+      const [assign_to_data, client_data, attendees_data, board] =
+        await Promise.all([
+          Authentication.findOne({ reference_id: getTask[0]?.assign_to }),
+          Authentication.findOne({ reference_id: getTask[0]?.client_id }),
+          Authentication.find({
+            reference_id: { $in: getTask[0]?.attendees },
+          }).lean(),
+          Board.findOne({ _id: getTask[0]?.board_id }).lean(),
+        ]);
 
       let task_status;
       let emailTempKey;
@@ -2168,6 +2199,7 @@ class ActivityService {
           dueTime: getTask[0]?.due_time,
           agginTo_email: getTask[0]?.assign_email,
           assignName: getTask[0]?.assigned_to_name,
+          board_name: board ? board.project_name : "",
         };
         const taskMessage = taskTemplate(data);
         sendEmail({
@@ -2183,6 +2215,7 @@ class ActivityService {
             message: taskTemplate({
               ...data,
               assignName: client_data.first_name + " " + client_data.last_name,
+              board_name: board ? board.project_name : "",
             }),
           });
         }
@@ -2204,6 +2237,7 @@ class ActivityService {
                 "HH:mm"
               ),
               due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
+              board_name: board ? board.project_name : "",
             },
             id
           );
@@ -2238,6 +2272,7 @@ class ActivityService {
               due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
               assigned_by_name: getTask[0]?.assigned_by_name,
               assign_by: agencyData?.reference_id,
+              board_name: board ? board.project_name : "",
             },
             id
           );
@@ -2314,6 +2349,7 @@ class ActivityService {
               ),
               due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
               tags: getTask[0]?.tags,
+              board_name: board ? board.project_name : "",
             },
             id
           );

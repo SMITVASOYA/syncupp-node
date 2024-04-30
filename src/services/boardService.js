@@ -208,7 +208,7 @@ class BoardService {
       //   memberRoleId?.role
       // );
 
-      const { skip = 0, limit = 5, all } = searchObj;
+      const { skip = 0, limit = 5, all, project_name } = searchObj;
 
       if (all) {
         let query = {};
@@ -234,7 +234,7 @@ class BoardService {
           },
         ];
         const boards = await Board.aggregate(pipeline).sort({ createdAt: -1 });
-        return boards;
+        return { board_list: boards };
       } else {
         let query = {};
 
@@ -272,7 +272,11 @@ class BoardService {
 
         const [boards, total_board_count] = await Promise.all([
           Board.aggregate(pipeline)
-            .sort({ is_pinned: -1, createdAt: -1 })
+            .sort({
+              ...(project_name
+                ? { project_name: 1 }
+                : { is_pinned: -1, createdAt: -1 }),
+            })
             .skip(skip)
             .limit(limit),
           Board.aggregate(pipeline),
@@ -351,7 +355,25 @@ class BoardService {
           $project: {
             _id: 0,
             member_name: {
-              $concat: ["$member.first_name", " ", "$member.last_name"],
+              $concat: [
+                { $toUpper: { $substrCP: ["$member.first_name", 0, 1] } },
+                {
+                  $substrCP: [
+                    "$member.first_name",
+                    1,
+                    { $strLenCP: "$member.first_name" },
+                  ],
+                },
+                " ",
+                { $toUpper: { $substrCP: ["$member.last_name", 0, 1] } },
+                {
+                  $substrCP: [
+                    "$member.last_name",
+                    1,
+                    { $strLenCP: "$member.last_name" },
+                  ],
+                },
+              ],
             },
             role: "$statusName.name",
             reference_id: "$member.reference_id",

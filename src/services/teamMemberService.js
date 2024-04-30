@@ -972,7 +972,6 @@ class TeamMemberService {
   // Get all team members by Agency and by client
   getAllTeam = async (payload, user) => {
     try {
-      console.log("sccfwfw");
       if (!payload?.pagination) {
         return await this.teamListWithoutPagination(user);
       }
@@ -1091,7 +1090,6 @@ class TeamMemberService {
         teams.forEach((team) => {
           team.name = team?.first_name + " " + team?.last_name;
         });
-        console.log("ddddddddddddddddddd");
         return {
           teamMemberList: teams,
           page_count: Math.ceil(total_teams / pagination.result_per_page) || 0,
@@ -1151,7 +1149,6 @@ class TeamMemberService {
             });
           }
         });
-        console.log("cccccccccccccc");
 
         return {
           teamMemberList: teams,
