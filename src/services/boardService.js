@@ -14,28 +14,30 @@ class BoardService {
   addBoard = async (payload, user, image) => {
     try {
       const { project_name, description, members } = payload;
-      const member_role_id = await Team_Agency.findById(user?.reference_id).lean()
+      const member_role_id = await Team_Agency.findById(
+        user?.reference_id
+      ).lean();
       const member_role_type = await Team_Role_Master.findById(
         member_role_id?.role
-      ).lean()
+      ).lean();
       const member_agency = await Authentication.findOne({
         reference_id: member_role_id?.agency_id,
-      }).lean()
+      }).lean();
 
       if (member_role_type?.name !== "admin" && user?.role?.name !== "agency") {
         return throwError(returnMessage("auth", "insufficientPermission"));
       }
 
-      payload?.members = JSON.parse(members);
-      payload?.members.push(user?.reference_id);
-      if (member_agency) payload?.members?.push(member_agency?.reference_id);
-      payload?.members = [...new Set(payload?.members)];
+      payload.members = JSON.parse(members);
+      payload.members?.push(user?.reference_id);
+      if (member_agency) payload.members?.push(member_agency?.reference_id);
+      payload.members = [...new Set(payload.members)];
 
-      const member_objects = payload?.members?.map((member) => ({
+      const member_objects = payload.members?.map((member) => ({
         member_id: member,
       }));
 
-      const board = await Board.findOne({ project_name: project_name }).lean()
+      const board = await Board.findOne({ project_name: project_name }).lean();
       if (board) {
         return throwError(returnMessage("board", "alreadyExist"));
       }
@@ -47,7 +49,7 @@ class BoardService {
         image_path = "";
       }
 
-      const new_board = await Board.create({
+      await Board.create({
         project_name,
         description,
         members: member_objects,
@@ -59,7 +61,7 @@ class BoardService {
           : user?.reference_id,
       });
 
-      return new_board;
+      return;
     } catch (error) {
       logger.error(`Error while  create Board, ${error}`);
       throwError(error?.message, error?.statusCode);
@@ -84,14 +86,16 @@ class BoardService {
     try {
       const { project_name, description, members, only_member_update } =
         payload;
-      payload?.members = JSON.parse(members);
+      payload.members = JSON.parse(members);
 
       const existing_board = await Board.findById(board_id).lean();
 
-      const member_role_id = await Team_Agency.findById(user?.reference_id).lean()
+      const member_role_id = await Team_Agency.findById(
+        user?.reference_id
+      ).lean();
       const member_role_type = await Team_Role_Master.findById(
         member_role_id?.role
-      ).lean()
+      ).lean();
 
       if (member_role_type?.name === "admin") {
         const is_include = existing_board?.members
@@ -102,27 +106,27 @@ class BoardService {
       }
 
       if (existing_board) {
-        payload?.members?.push(existing_board?.agency_id);
+        payload.members?.push(existing_board?.agency_id);
       }
-      if (!payload?.members?.includes(user?.reference_id)) {
-        payload?.members?.push(user?.reference_id);
+      if (!payload.members?.includes(user?.reference_id)) {
+        payload.members?.push(user?.reference_id);
       }
 
-      payload?.members = [
-        ...new Set(payload?.members?.map((member) => member.toString())),
+      payload.members = [
+        ...new Set(payload.members?.map((member) => member.toString())),
       ].map((member) => new ObjectId(member));
 
       // Add agency_id to members if not already included
-      const updated_members = payload?.members?.map((member) => ({
+      const updated_members = payload.members?.map((member) => ({
         member_id: member,
       }));
       const agency_member = { member_id: user?.reference_id };
 
-      if (!payload?.members?.map((member) => member === user?.reference_id)) {
+      if (!payload.members?.map((member) => member === user?.reference_id)) {
         updated_members?.push(agency_member);
       }
 
-      const board = await Board.findOne({ project_name: project_name }).lean()
+      const board = await Board.findOne({ project_name: project_name }).lean();
 
       if (
         board &&
@@ -133,7 +137,7 @@ class BoardService {
 
       // Check task assigned
       for (const member of existing_board?.members) {
-        const is_include = payload?.members
+        const is_include = payload.members
           .map(String)
           .includes(String(member?.member_id));
         if (!is_include) {
@@ -173,11 +177,11 @@ class BoardService {
       if (only_member_update === "false") {
         let image_path = false;
         if (image) {
-          image_path = "uploads/" + image.filename;
+          image_path = "uploads/" + image?.filename;
         } else if (image === "") {
           image_path = "";
         }
-        const existing_image = await Board.findById(board_id).lean()
+        const existing_image = await Board.findById(board_id).lean();
         existing_image &&
           fs.unlink(`./src/public/${existing_image?.board_image}`, (err) => {
             if (err) {
@@ -185,7 +189,7 @@ class BoardService {
             }
           });
 
-        const new_board = await Board.findByIdAndUpdate(
+        await Board.findByIdAndUpdate(
           board_id,
           {
             project_name,
@@ -198,9 +202,9 @@ class BoardService {
           { new: true }
         );
 
-        return new_board;
+        return;
       } else {
-        const new_board = await Board.findByIdAndUpdate(
+        await Board.findByIdAndUpdate(
           board_id,
           {
             members: updated_members,
@@ -208,7 +212,7 @@ class BoardService {
           { new: true }
         );
 
-        return new_board;
+        return;
       }
     } catch (error) {
       logger.error(`Error while  update Board, ${error}`);
@@ -231,7 +235,7 @@ class BoardService {
 
       if (user) {
         if (user?.role?.name === "agency") {
-          query?.agency_id = user?.reference_id;
+          query.agency_id = user?.reference_id;
         } else {
           query["members.member_id"] = user?.reference_id;
         }
@@ -250,10 +254,9 @@ class BoardService {
             },
           },
         ];
-        const boards = await Board.aggregate(pipeline).sort({ createdAt: -1 })
+        const boards = await Board.aggregate(pipeline).sort({ createdAt: -1 });
         return { board_list: boards };
       } else {
-     
         const pipeline = [
           {
             $match: query,

@@ -8,12 +8,12 @@ const boardService = new BoardService();
 // Add Board
 
 exports.addBoard = catchAsyncError(async (req, res, next) => {
-  const add_board = await boardService.addBoard(req.body, req?.user, req?.file);
+  await boardService.addBoard(req?.body, req?.user, req?.file);
   sendResponse(
     res,
     true,
     returnMessage("board", "created"),
-    add_board,
+    null,
     statusCode.success
   );
 });
@@ -21,7 +21,7 @@ exports.addBoard = catchAsyncError(async (req, res, next) => {
 // Get Board
 
 exports.getBoard = catchAsyncError(async (req, res, next) => {
-  const get_board = await boardService.getBoard(req?.params.id);
+  const get_board = await boardService.getBoard(req?.params?.id);
   sendResponse(
     res,
     true,
@@ -35,7 +35,7 @@ exports.getBoard = catchAsyncError(async (req, res, next) => {
 
 exports.updateBoard = catchAsyncError(async (req, res, next) => {
   await boardService.updateBoard(
-    req.body,
+    req?.body,
     req?.params.id,
     req?.user,
     req?.file
@@ -52,7 +52,7 @@ exports.updateBoard = catchAsyncError(async (req, res, next) => {
 // List Board
 
 exports.listBoards = catchAsyncError(async (req, res, next) => {
-  const list_boards = await boardService.listBoards(req.body, req?.user);
+  const list_boards = await boardService.listBoards(req?.body, req?.user);
   sendResponse(
     res,
     true,
@@ -65,7 +65,7 @@ exports.listBoards = catchAsyncError(async (req, res, next) => {
 // Pin Board
 
 exports.changePinStatus = catchAsyncError(async (req, res, next) => {
-  await boardService.changePinStatus(req.body, req?.user);
+  await boardService.changePinStatus(req?.body, req?.user);
   sendResponse(
     res,
     true,

@@ -181,7 +181,7 @@ class ActivityService {
           dueTime: indianTimeZone,
           agginTo_email: getTask[0]?.assign_email,
           assignName: getTask[0]?.assigned_to_name,
-          board_name: board ? board.project_name : "",
+          board_name: board ? board?.project_name : "",
         };
         const taskMessage = taskTemplate(data);
         sendEmail({
@@ -197,7 +197,7 @@ class ActivityService {
             message: taskTemplate({
               ...data,
               assignName: client_data.first_name + " " + client_data.last_name,
-              board_name: board ? board.project_name : "",
+              board_name: board ? board?.project_name : "",
             }),
           });
         }
@@ -219,7 +219,7 @@ class ActivityService {
             activity_type: "task",
             due_time: moment(due_date).format("HH:mm"),
             due_date: moment(due_date).format("DD-MM-YYYY"),
-            board_name: board ? board.project_name : "",
+            board_name: board ? board?.project_name : "",
           },
           getTask[0]?._id
         );
@@ -245,7 +245,7 @@ class ActivityService {
           dueTime: indianTimeZone,
           agginTo_email: getTask[0]?.assign_email,
           assignName: getTask[0]?.assigned_to_name,
-          board_name: board ? board.project_name : "",
+          board_name: board ? board?.project_name : "",
         };
         const taskMessage = taskTemplate(data);
         sendEmail({
@@ -262,7 +262,7 @@ class ActivityService {
             message: taskTemplate({
               ...data,
               assignName: client_data.first_name + " " + client_data.last_name,
-              board_name: board ? board.project_name : "",
+              board_name: board ? board?.project_name : "",
             }),
           });
         }
@@ -289,7 +289,7 @@ class ActivityService {
             due_time: moment(due_date).format("HH:mm"),
             due_date: moment(due_date).format("DD-MM-YYYY"),
             log_user: "member",
-            board_name: board ? board.project_name : "",
+            board_name: board ? board?.project_name : "",
           },
           getTask[0]?._id
         );
@@ -1311,7 +1311,7 @@ class ActivityService {
           dueTime: task?.due_time,
           agginTo_email: task?.assign_email,
           assignName: task?.assigned_to_name,
-          board_name: board ? board.project_name : "",
+          board_name: board ? board?.project_name : "",
         };
         const taskMessage = taskTemplate(data);
         const clientData = await Authentication.findOne({
@@ -1734,7 +1734,7 @@ class ActivityService {
         dueTime: timeOnly,
         agginTo_email: getTask[0]?.assign_email,
         assignName: getTask[0]?.assigned_to_name,
-        board_name: board ? board.project_name : "",
+        board_name: board ? board?.project_name : "",
       };
 
       let client_data = false;
@@ -1758,7 +1758,7 @@ class ActivityService {
           message: taskTemplate({
             ...data,
             assignName: client_data.first_name + " " + client_data.last_name,
-            board_name: board ? board.project_name : "",
+            board_name: board ? board?.project_name : "",
           }),
         });
       }
@@ -1783,7 +1783,7 @@ class ActivityService {
             assigned_to_name: getTask[0]?.assigned_to_name,
             due_time: new Date(due_date).toTimeString().split(" ")[0],
             due_date: new Date(due_date).toLocaleDateString("en-GB"),
-            board_name: board ? board.project_name : "",
+            board_name: board ? board?.project_name : "",
           },
           id
         );
@@ -1820,7 +1820,7 @@ class ActivityService {
             due_time: new Date(due_date).toTimeString().split(" ")[0],
             due_date: new Date(due_date).toLocaleDateString("en-GB"),
             log_user: "member",
-            board_name: board ? board.project_name : "",
+            board_name: board ? board?.project_name : "",
           },
           id
         );
@@ -2199,7 +2199,7 @@ class ActivityService {
           dueTime: getTask[0]?.due_time,
           agginTo_email: getTask[0]?.assign_email,
           assignName: getTask[0]?.assigned_to_name,
-          board_name: board ? board.project_name : "",
+          board_name: board ? board?.project_name : "",
         };
         const taskMessage = taskTemplate(data);
         sendEmail({
@@ -2215,7 +2215,7 @@ class ActivityService {
             message: taskTemplate({
               ...data,
               assignName: client_data.first_name + " " + client_data.last_name,
-              board_name: board ? board.project_name : "",
+              board_name: board ? board?.project_name : "",
             }),
           });
         }
@@ -2237,7 +2237,7 @@ class ActivityService {
                 "HH:mm"
               ),
               due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
-              board_name: board ? board.project_name : "",
+              board_name: board ? board?.project_name : "",
             },
             id
           );
@@ -2272,7 +2272,7 @@ class ActivityService {
               due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
               assigned_by_name: getTask[0]?.assigned_by_name,
               assign_by: agencyData?.reference_id,
-              board_name: board ? board.project_name : "",
+              board_name: board ? board?.project_name : "",
             },
             id
           );
@@ -2349,7 +2349,7 @@ class ActivityService {
               ),
               due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
               tags: getTask[0]?.tags,
-              board_name: board ? board.project_name : "",
+              board_name: board ? board?.project_name : "",
             },
             id
           );
