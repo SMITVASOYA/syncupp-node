@@ -348,12 +348,12 @@ class BoardService {
             from: "role_masters",
             localField: "member.role",
             foreignField: "_id",
-            as: "statusName",
+            as: "status_name",
           },
         },
         {
           $unwind: {
-            path: "$statusName",
+            path: "$status_name",
             preserveNullAndEmptyArrays: true,
           },
         },
@@ -381,7 +381,7 @@ class BoardService {
                 },
               ],
             },
-            role: "$statusName.name",
+            role: "$status_name.name",
             reference_id: "$member.reference_id",
           },
         },
