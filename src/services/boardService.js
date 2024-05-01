@@ -138,9 +138,30 @@ class BoardService {
         if (!is_include) {
           const task = await Activity.findOne({
             $or: [
-              { assign_by: member.member_id },
-              { client_id: member.member_id },
-              { assign_to: member.member_id },
+              {
+                $and: [
+                  { assign_by: member.member_id },
+                  {
+                    board_id: board_id,
+                  },
+                ],
+              },
+              {
+                $and: [
+                  { client_id: member.member_id },
+                  {
+                    board_id: board_id,
+                  },
+                ],
+              },
+              {
+                $and: [
+                  { assign_to: member.member_id },
+                  {
+                    board_id: board_id,
+                  },
+                ],
+              },
             ],
           });
           if (task) {
@@ -198,7 +219,7 @@ class BoardService {
 
   listBoards = async (search_obj, user) => {
     try {
-      const { skip = 0, limit = 5, all, project_name } = search_obj;
+      const { skip = 0, limit = 5, all, project_name, agency_id } = search_obj;
 
       if (all) {
         let query = {};

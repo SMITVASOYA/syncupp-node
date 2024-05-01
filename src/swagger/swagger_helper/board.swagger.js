@@ -25,9 +25,12 @@ const addBoard = {
               type: "array",
               description: "Please add members ids",
             },
+
             board_image: {
               type: "string",
+              format: "binary",
               description: "Please board_image",
+              required: false,
             },
           },
         },
@@ -76,9 +79,12 @@ const updateBoard = {
               type: "array",
               description: "Please add members ids",
             },
+
             board_image: {
               type: "string",
+              format: "binary",
               description: "Please board_image",
+              required: false,
             },
           },
         },
