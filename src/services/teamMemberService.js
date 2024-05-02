@@ -1777,7 +1777,7 @@ class TeamMemberService {
           agency_details?.first_name
         )} ${capitalizeFirstLetter(
           agency_details?.last_name
-        )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+        )} has sent an invitation to you. please click on below button to join Syncupp.`;
         const company_urls = await Configuration.find().lean();
         let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 
@@ -1818,7 +1818,7 @@ class TeamMemberService {
           agency_details?.first_name
         )} ${capitalizeFirstLetter(
           agency_details?.last_name
-        )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+        )} has sent an invitation to you. please click on below button to join Syncupp.`;
         const company_urls = await Configuration.find().lean();
         let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 
@@ -1861,7 +1861,7 @@ class TeamMemberService {
           agency_details?.first_name
         )} ${capitalizeFirstLetter(
           agency_details?.last_name
-        )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+        )} has sent an invitation to you. please click on below button to join Syncupp.`;
         const company_urls = await Configuration.find().lean();
         let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 

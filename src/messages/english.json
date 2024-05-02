@@ -33,7 +33,7 @@
     "oldPassRequired": "Old password is required.",
     "teamAgencyIsInactive": "Your account has been deactivate by agency.",
     "sendRefferalEmail": "Referral email send successfully.",
-    "invitationEmailSubject": "Inviation to the SyncUpp.",
+    "invitationEmailSubject": "Inviation to the Syncupp.",
     "completeProfile": "Complete your profile first to access Syncupp.",
     "facebookEmailNotFound": "Your email is not linked with facebook."
   },
@@ -174,7 +174,7 @@
 
   "emailTemplate": {
     "forgotPasswordSubject": "Reset your password now.",
-    "invitation": "Join to SyncUpp",
+    "invitation": "Join to Syncupp",
     "welcomeMailSubject": "Welcome to Syncupp.",
     "newActivityMeeting": "New activity created",
     "activityUpdated": "Activity updated",

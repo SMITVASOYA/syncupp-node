@@ -586,7 +586,6 @@ exports.agrementEmail = (data) => {
                                                   -ms-interpolation-mode: bicubic;
                                                 "
                                                 height="60"
-                                                title="Logo"
                                             /></a>
                                           </td>
                                         </tr>
@@ -1536,7 +1535,6 @@ exports.invitationEmail = (
                                           -ms-interpolation-mode: bicubic;
                                         "
                                         height="60"
-                                        title="Logo"
                                     /></a>
                                   </td>
                                 </tr>
@@ -2518,7 +2516,6 @@ exports.welcomeMail = (username, privacy_policy, instagram, facebook) => {
                                             -ms-interpolation-mode: bicubic;
                                           "
                                           height="60"
-                                          title="Logo"
                                       /></a>
                                     </td>
                                   </tr>
@@ -2666,7 +2663,7 @@ exports.welcomeMail = (username, privacy_policy, instagram, facebook) => {
                                           margin-bottom: 30px;
                                         "
                                       >
-                                        Welcome to the Syncupp. you have succcessfully joined with the SyncUpp.
+                                        Welcome to the Syncupp. You have succcessfully joined with the Syncupp.
                                       </p>
                                     </td>
                                   </tr>
@@ -3451,7 +3448,6 @@ exports.forgotPasswordEmailTemplate = (
                                           -ms-interpolation-mode: bicubic;
                                         "
                                         height="60"
-                                        title="Logo"
                                     /></a>
                                   </td>
                                 </tr>
@@ -4409,7 +4405,7 @@ exports.invoiceTemplate = (invoiceData) => {
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60" /></a>
                                 </td>
                               </tr>
                             </table>
@@ -5528,7 +5524,6 @@ exports.inquiryTemplate = (data) => {
                                             -ms-interpolation-mode: bicubic;
                                           "
                                           height="60"
-                                          title="Logo"
                                       /></a>
                                     </td>
                                   </tr>
@@ -6536,7 +6531,7 @@ exports.activityTemplate = (data) => {
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"  /></a>
                                 </td>
                               </tr>
                             </table>
@@ -7395,7 +7390,7 @@ exports.invitationEmailTemplate = (data) => {
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"  /></a>
                                 </td>
                               </tr>
                             </table>
@@ -7524,7 +7519,7 @@ exports.invitationEmailTemplate = (data) => {
                                           'segoe ui symbol';
                                         margin-top: 30px;
                                         margin-bottom: 30px;
-                                      ">Join SyncUpp</a>
+                                      ">Join Syncupp</a>
                                   <p style="
                                         margin: 0;
                                         -webkit-text-size-adjust: none;
@@ -7547,7 +7542,7 @@ exports.invitationEmailTemplate = (data) => {
                                     <br />
                                     It's a small token of appreciation.
                                     <br />
-                                    Come on board and let's explore SyncUpp together!
+                                    Come on board and let's explore Syncupp together!
                                   </p>
                                 </td>
                               </tr>
@@ -7615,7 +7610,7 @@ exports.invitationEmailTemplate = (data) => {
                                         font-size: 16px;
                                       ">
                                     Thanks and Best Regards,<br />Have a great
-                                    day!<br />SyncUpp Team<a target="_blank" style="
+                                    day!<br />Syncupp Team<a target="_blank" style="
                                           -webkit-text-size-adjust: none;
                                           -ms-text-size-adjust: none;
                                           mso-line-height-rule: exactly;
@@ -8200,7 +8195,7 @@ exports.taskTemplate = (data) => {
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60" /></a>
                                 </td>
                               </tr>
                             </table>
@@ -8981,7 +8976,7 @@ exports.eventTemplate = (data) => {
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60" /></a>
                                 </td>
                               </tr>
                             </table>
@@ -9796,7 +9791,7 @@ exports.agencyCreatedTemplate = (data) => {
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"/></a>
                                 </td>
                               </tr>
                             </table>
@@ -10556,7 +10551,7 @@ exports.memberDeletedTemplate = (data) => {
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"  /></a>
                                 </td>
                               </tr>
                             </table>
@@ -11333,7 +11328,7 @@ exports.memberDeletedClient = (data) => {
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"/></a>
                                 </td>
                               </tr>
                             </table>
@@ -12112,7 +12107,7 @@ exports.seatRemoved = (data) => {
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"/></a>
                                 </td>
                               </tr>
                             </table>
@@ -12900,7 +12895,7 @@ exports.clientMemberAdded = (data) => {
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"  /></a>
                                 </td>
                               </tr>
                             </table>
@@ -13679,7 +13674,7 @@ exports.teamMemberPasswordSet = (data) => {
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"/></a>
                                 </td>
                               </tr>
                             </table>
@@ -14452,7 +14447,7 @@ exports.clientPasswordSet = (data) => {
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"  /></a>
                                 </td>
                               </tr>
                             </table>
@@ -15246,7 +15241,6 @@ exports.paymentExpireAlert = (
                                             -ms-interpolation-mode: bicubic;
                                           "
                                           height="60"
-                                          title="Logo"
                                       /></a>
                                     </td>
                                   </tr>
@@ -16179,7 +16173,6 @@ exports.paymentAboutToExpire = (
                                             -ms-interpolation-mode: bicubic;
                                           "
                                           height="60"
-                                          title="Logo"
                                       /></a>
                                     </td>
                                   </tr>
@@ -17161,7 +17154,6 @@ exports.ticketTemplate = (data) => {
                                             -ms-interpolation-mode: bicubic;
                                           "
                                           height="60"
-                                          title="Logo"
                                       /></a>
                                     </td>
                                   </tr>

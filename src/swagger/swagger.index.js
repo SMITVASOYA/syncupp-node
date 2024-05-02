@@ -18,7 +18,7 @@ const swaggerDoc = {
   openapi: "3.0.0",
   host: "",
   info: {
-    title: "SyncUpp",
+    title: "Syncupp",
     version: "0.0.1",
     description: "Swagger API Documentation for Admin Panel",
   },
