@@ -198,7 +198,9 @@
     "agreementUpdated": "Agreement updated.",
     "agreementAgreed": "Agreement agreed.",
     "newTicketReceived": "New ticket received.",
-    "newTicketSent": "Ticket successfully raised."
+    "newTicketSent": "Ticket successfully raised.",
+    "memberAddedBoard": "You are added in project.",
+    "memberRemovedBoard": "You are removed from project."
   },
 
   "client": {

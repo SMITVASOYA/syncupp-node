@@ -1,6 +1,10 @@
 const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
-const { returnMessage } = require("../utils/utils");
+const {
+  returnMessage,
+  capitalizeFirstLetter,
+  boardTemplate,
+} = require("../utils/utils");
 const { ObjectId } = require("mongodb");
 const Authentication = require("../models/authenticationSchema");
 const Board = require("../models/boardSchema");
@@ -8,6 +12,9 @@ const fs = require("fs");
 const Team_Agency = require("../models/teamAgencySchema");
 const Team_Role_Master = require("../models/masters/teamRoleSchema");
 const Activity = require("../models/activitySchema");
+const NotificationService = require("./notificationService");
+const sendEmail = require("../helpers/sendEmail");
+const notificationService = new NotificationService();
 
 class BoardService {
   // Add   Board
@@ -49,7 +56,7 @@ class BoardService {
         image_path = "";
       }
 
-      await Board.create({
+      const new_board = await Board.create({
         project_name,
         description,
         members: member_objects,
@@ -60,6 +67,45 @@ class BoardService {
           ? member_agency?.reference_id
           : user?.reference_id,
       });
+
+      // ------------- Notifications -------------
+      await notificationService.addNotification(
+        {
+          module_name: "board",
+          members: payload.members?.filter(
+            (item) => item !== user?.reference_id
+          ),
+          project_name: project_name,
+          created_by_name:
+            capitalizeFirstLetter(user?.first_name) +
+            " " +
+            capitalizeFirstLetter(user?.last_name),
+        },
+        new_board._id
+      );
+
+      const member_send_mail = payload.members?.filter(
+        (item) => item !== user?.reference_id
+      );
+      const board_template = boardTemplate({
+        project_name: project_name,
+        description: description,
+        added_by:
+          capitalizeFirstLetter(user?.first_name) +
+          " " +
+          capitalizeFirstLetter(user?.last_name),
+      });
+      member_send_mail.map(async (member) => {
+        const member_data = await Authentication.findOne({
+          reference_id: member,
+        });
+        sendEmail({
+          email: member_data?.email,
+          subject: returnMessage("emailTemplate", "memberAddedBoard"),
+          message: board_template,
+        });
+      });
+      // ------------- Notifications -------------
 
       return;
     } catch (error) {
@@ -126,13 +172,26 @@ class BoardService {
         updated_members?.push(agency_member);
       }
 
+      // check board name already exists
       const board = await Board.findOne({ project_name: project_name }).lean();
-
       if (
         board &&
         board?._id.toString() !== new ObjectId(board_id).toString()
       ) {
         return throwError(returnMessage("board", "alreadyExist"));
+      }
+
+      const new_member = [];
+      const removed_member = [];
+
+      // Check new member added
+      for (const member of payload.members) {
+        const is_include = existing_board?.members
+          .map((existingMember) => String(existingMember.member_id))
+          .includes(String(member));
+        if (!is_include) {
+          new_member.push(member);
+        }
       }
 
       // Check task assigned
@@ -141,6 +200,7 @@ class BoardService {
           .map(String)
           .includes(String(member?.member_id));
         if (!is_include) {
+          removed_member.push(member?.member_id);
           const task = await Activity.findOne({
             $or: [
               {
@@ -174,6 +234,7 @@ class BoardService {
           }
         }
       }
+
       if (only_member_update === "false") {
         let image_path = false;
         if (image) {
@@ -201,8 +262,6 @@ class BoardService {
           },
           { new: true }
         );
-
-        return;
       } else {
         await Board.findByIdAndUpdate(
           board_id,
@@ -211,9 +270,62 @@ class BoardService {
           },
           { new: true }
         );
-
-        return;
       }
+
+      // ------------- Notifications -------------
+      const elementsToRemove = [existing_board?.agency_id, user?.reference_id];
+      const actions = ["updated", "memberRemoved"];
+      actions?.map(async (action) => {
+        let member_list;
+        let mail_subject;
+        if (action === "updated") {
+          member_list = new_member;
+          mail_subject = "memberAddedBoard";
+        }
+        if (action === "memberRemoved") {
+          member_list = removed_member;
+          mail_subject = "memberRemovedBoard";
+        }
+        await notificationService.addNotification(
+          {
+            module_name: "board",
+            action_name: action,
+            members: member_list?.filter(
+              (item) => !elementsToRemove.includes(item)
+            ),
+            project_name: existing_board?.project_name,
+            added_by:
+              capitalizeFirstLetter(user?.first_name) +
+              " " +
+              capitalizeFirstLetter(user?.last_name),
+          },
+          board_id
+        );
+
+        const member_send_mail = member_list?.filter(
+          (item) => !elementsToRemove.includes(item)
+        );
+        const board_template = boardTemplate({
+          ...existing_board,
+          added_by:
+            capitalizeFirstLetter(user?.first_name) +
+            " " +
+            capitalizeFirstLetter(user?.last_name),
+        });
+        member_send_mail.map(async (member) => {
+          const member_data = await Authentication.findOne({
+            reference_id: member,
+          });
+          sendEmail({
+            email: member_data?.email,
+            subject: returnMessage("emailTemplate", mail_subject),
+            message: board_template,
+          });
+        });
+      });
+      // ------------- Notifications -------------
+
+      return;
     } catch (error) {
       logger.error(`Error while  update Board, ${error}`);
       throwError(error?.message, error?.statusCode);
@@ -229,7 +341,7 @@ class BoardService {
       let query = {
         ...((user?.role?.name === "client" ||
           user?.role?.name === "team_client") && {
-          agency_id: agency_id,
+          agency_id: new ObjectId(agency_id),
         }),
       };
 

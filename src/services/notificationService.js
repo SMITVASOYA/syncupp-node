@@ -12,6 +12,7 @@ const Admin = require("../models/adminSchema");
 
 class NotificationService {
   // Add Notification
+
   addNotification = async (payload, id) => {
     let { module_name, activity_type_action, client_id, assign_to, agenda } =
       payload;
@@ -285,7 +286,6 @@ class NotificationService {
               "clientMessage"
             );
           }
-
           await createAndEmitNotification(
             assign_to,
             message_type,
@@ -375,7 +375,6 @@ class NotificationService {
           data_reference_id: id,
           message: message,
         });
-
         eventEmitter(
           "NOTIFICATION",
           await with_unread_count(notification, userId),
@@ -538,6 +537,45 @@ class NotificationService {
             "payment",
             "deleted"
           );
+        }
+      }
+
+      if (payload?.module_name === "board") {
+        if (payload.action_name === "created") {
+          payload?.members &&
+            payload?.members[0] &&
+            payload?.members?.map(async (item) => {
+              await createAndEmitNotification(
+                item,
+                "boardCreated",
+                "board",
+                "board"
+              );
+            });
+        }
+        if (payload.action_name === "updated") {
+          payload?.members &&
+            payload?.members[0] &&
+            payload?.members?.map(async (item) => {
+              await createAndEmitNotification(
+                item,
+                "boardUpdated",
+                "board",
+                "board"
+              );
+            });
+        }
+        if (payload.action_name === "memberRemoved") {
+          payload?.members &&
+            payload?.members[0] &&
+            payload?.members?.map(async (item) => {
+              await createAndEmitNotification(
+                item,
+                "memberRemoved",
+                "board",
+                "deleted"
+              );
+            });
         }
       }
 

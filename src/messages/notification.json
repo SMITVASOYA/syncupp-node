@@ -141,5 +141,10 @@
     "login": "${points} Points added to your account for your first daily login.",
     "taskDeduct": "${points} points deducted of Task ${task_name}.",
     "taskAdded": "${points} points added of Task ${task_name}."
+  },
+  "board": {
+    "boardCreated": "New board named ${project_name} created by ${created_by_name}. You are added as a member.",
+    "boardUpdated": "You are added in project ${project_name} by ${added_by}.",
+    "memberRemoved": "You are removed from project ${project_name} by ${added_by}."
   }
 }

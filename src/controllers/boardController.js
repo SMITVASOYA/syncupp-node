@@ -36,7 +36,7 @@ exports.getBoard = catchAsyncError(async (req, res, next) => {
 exports.updateBoard = catchAsyncError(async (req, res, next) => {
   await boardService.updateBoard(
     req?.body,
-    req?.params.id,
+    req?.params?.id,
     req?.user,
     req?.file
   );
