@@ -577,7 +577,6 @@ exports.agrementEmail = (data) => {
                                               "
                                               ><img
                                                 src="${process.env.SERVER_URL}/template/syncupp-logo.png"
-                                                alt="Logo"
                                                 style="
                                                   display: block;
                                                   border: 0;
@@ -1526,7 +1525,6 @@ exports.invitationEmail = (
                                       "
                                       ><img
                                         src="${process.env.SERVER_URL}/template/logo.png"
-                                        alt="Logo"
                                         style="
                                           display: block;
                                           border: 0;
@@ -2507,7 +2505,6 @@ exports.welcomeMail = (username, privacy_policy, instagram, facebook) => {
                                         "
                                         ><img
                                           src="${process.env.SERVER_URL}/template/logo.png"
-                                          alt="Logo"
                                           style="
                                             display: block;
                                             border: 0;
@@ -3439,7 +3436,6 @@ exports.forgotPasswordEmailTemplate = (
                                       "
                                       ><img
                                         src="${process.env.SERVER_URL}/template/logo.png"
-                                        alt="Logo"
                                         style="
                                           display: block;
                                           border: 0;
@@ -4399,7 +4395,7 @@ exports.invoiceTemplate = (invoiceData) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -5515,7 +5511,6 @@ exports.inquiryTemplate = (data) => {
                                         "
                                         ><img
                                           src="${process.env.SERVER_URL}/template/syncupp-logo.png"
-                                          alt="Logo"
                                           style="
                                             display: block;
                                             border: 0;
@@ -6525,7 +6520,7 @@ exports.activityTemplate = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -7384,7 +7379,7 @@ exports.invitationEmailTemplate = (data) => {
                                         text-decoration: underline;
                                         color: #2d3142;
                                         font-size: 14px;
-                                      "><img src="${process.env.SERVER_URL}/template/syncupp-logo.png" alt="Logo" style="
+                                      "><img src="${process.env.SERVER_URL}/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -8189,7 +8184,7 @@ exports.taskTemplate = (data) => {
                                         text-decoration: underline;
                                         color: #2d3142;
                                         font-size: 14px;
-                                      "><img src="${process.env.SERVER_URL}/template/syncupp-logo.png" alt="Logo" style="
+                                      "><img src="${process.env.SERVER_URL}/template/syncupp-logo.png" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -8970,7 +8965,7 @@ exports.eventTemplate = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -9785,7 +9780,7 @@ exports.agencyCreatedTemplate = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -10545,7 +10540,7 @@ exports.memberDeletedTemplate = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -11322,7 +11317,7 @@ exports.memberDeletedClient = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -12101,7 +12096,7 @@ exports.seatRemoved = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -12889,7 +12884,7 @@ exports.clientMemberAdded = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -13668,7 +13663,7 @@ exports.teamMemberPasswordSet = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -14441,7 +14436,7 @@ exports.clientPasswordSet = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
@@ -15232,7 +15227,6 @@ exports.paymentExpireAlert = (
                                         "
                                         ><img
                                           src="${process.env.SERVER_URL}/template/logo.png"
-                                          alt="Logo"
                                           style="
                                             display: block;
                                             border: 0;
@@ -16164,7 +16158,6 @@ exports.paymentAboutToExpire = (
                                         "
                                         ><img
                                           src="${process.env.SERVER_URL}/template/logo.png"
-                                          alt="Logo"
                                           style="
                                             display: block;
                                             border: 0;
@@ -17145,7 +17138,6 @@ exports.ticketTemplate = (data) => {
                                           src="${
                                             process.env.SERVER_URL
                                           }/template/syncupp-logo.png"
-                                          alt="Logo"
                                           style="
                                             display: block;
                                             border: 0;
