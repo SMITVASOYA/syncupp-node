@@ -55,7 +55,7 @@ app.use(errorHandler);
 const http_server = require("http").createServer(app);
 socket_connection(http_server);
 
-setupNightlyCronJob();
+// setupNightlyCronJob();
 
 http_server.listen(port, async () => {
   // await insertData();

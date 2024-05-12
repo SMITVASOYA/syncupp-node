@@ -3,7 +3,8 @@ const authController = require("../controllers/authController");
 const { protect } = require("../middlewares/authMiddleware");
 const { upload, checkProfileSize } = require("../helpers/multer");
 
-authRoute.post("/signup", authController.agencySignUp);
+authRoute.post("/signup", authController.userSignUp);
+authRoute.patch("/signup-complete", authController.signupComplete);
 
 authRoute.post("/google-signup", authController.agencyGoogleSignUp);
 authRoute.post("/facebook-signup", authController.agencyFacebookSignUp);

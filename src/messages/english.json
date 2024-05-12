@@ -365,5 +365,10 @@
     "latesthistoryFetched": "chat fetched successfully."
   },
 
+  "user": {
+    "userRegistered": "User registered successfully.",
+    "userAlreadyExist": "This email is already exist. Please try another one."
+  },
+
   "default": { "default": "Something went wrong." }
 }

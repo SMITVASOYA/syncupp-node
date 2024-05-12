@@ -1,13 +1,53 @@
-const registerAgency = {
+const registerUser = {
   tags: ["CRM Panel"],
   description: "",
-  summary: "Register Agency.",
+  summary: "User registration.",
   requestBody: {
     content: {
       "application/json": {
         schema: {
           type: "object",
           properties: {
+            email: {
+              type: "string",
+              descripition: "Enter your email",
+              required: true,
+            },
+          },
+        },
+      },
+    },
+  },
+
+  responses: {
+    200: {
+      descripition: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
+const signupComplete = {
+  tags: ["CRM Panel"],
+  description: "",
+  summary: "User complete the signup.",
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+          properties: {
+            email: {
+              type: "string",
+              descripition: "Enter your email",
+              required: true,
+            },
             first_name: {
               type: "string",
               descripition: "Enter your first name",
@@ -18,40 +58,26 @@ const registerAgency = {
               descripition: "Enter your last name",
               required: true,
             },
-            email: {
-              type: "string",
-              descripition: "Enter your email",
-              required: true,
-            },
-            contact_number: {
-              type: "string",
-              descripition: "Enter your contact number",
-              required: true,
-            },
             password: {
               type: "string",
               descripition: "Enter your password",
               required: true,
             },
-            remember_me: {
-              type: "boolean",
-              default: false,
-            },
-            company_website: {
+            contact_number: {
               type: "string",
-              descripition: "Enter your company website",
+              descripition: "Enter your contact number",
             },
             no_of_people: {
               type: "string",
-              descripition: "Enter no. of people",
+              descripition: "Enter no of people",
             },
-            company_name: {
+            profession_role: {
               type: "string",
-              descripition: "Enter name of company",
+              descripition: "Enter professional role",
             },
-            industry: {
+            referral_code: {
               type: "string",
-              descripition: "Enter object id of the industry",
+              descripition: "Enter referral code",
             },
           },
         },
@@ -550,7 +576,7 @@ const checkSubscriptionHalt = {
 
 const authRoutes = {
   "/api/v1/auth/signup": {
-    post: registerAgency,
+    post: registerUser,
   },
   "/api/v1/auth/google-signup": {
     post: googleSignIn,

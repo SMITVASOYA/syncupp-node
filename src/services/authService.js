@@ -79,67 +79,22 @@ class AuthService {
     }
   };
 
-  agencySignUp = async (payload, files) => {
+  userSignUp = async (payload) => {
     try {
-      if (
-        payload?.contact_number &&
-        payload?.contact_number !== "" &&
-        payload?.contact_number?.length <= 10
-      )
-        payload.contact_number = "91" + payload.contact_number;
-      const {
-        first_name,
-        last_name,
-        email,
-        password,
-        contact_number,
-        referral_code,
-      } = payload;
+      const { email, referral_code } = payload;
 
-      validateRequestFields(payload, [
-        "first_name",
-        "last_name",
-        "email",
-        "password",
-        "contact_number",
-      ]);
+      validateRequestFields(payload, ["email"]);
 
       if (!validateEmail(email))
         return throwError(returnMessage("auth", "invalidEmail"));
 
-      if (!passwordValidation(password))
-        return throwError(returnMessage("auth", "invalidPassword"));
+      const user_exist = await Authentication.findOne({
+        email,
+        is_deleted: false,
+      }).lean();
 
-      const [agency_exist, configuration, admin, encrypted_password, role] =
-        await Promise.all([
-          Authentication.findOne({
-            email,
-            is_deleted: false,
-          }).lean(),
-          Configuration.findOne({}).lean(),
-          Admin.findOne({}).lean(),
-          this.passwordEncryption({ password }),
-          Role_Master.findOne({ name: "agency" }).select("name").lean(),
-        ]);
-
-      if (agency_exist)
-        return throwError(returnMessage("agency", "agencyExist"));
-
-      let image_url,
-        status = "payment_pending";
-
-      if (files && files.fieldname === "client_image")
-        image_url = "uploads/" + files?.filename;
-
-      if (configuration?.payment?.free_trial > 0) status = "free_trial";
-
-      const agency_object = {
-        company_name: payload?.company_name,
-        company_website: payload?.company_website,
-        no_of_people: payload?.no_of_people,
-        industry: payload?.industry,
-      };
-      const agency = await agencyService.agencyRegistration(agency_object);
+      if (user_exist && user_exist?.status === "signup_completed")
+        return throwError(returnMessage("user", "userAlreadyExist"));
 
       if (!payload?.referral_code) {
         payload.referral_code = await this.referralCodeGenerator();
@@ -148,91 +103,78 @@ class AuthService {
         if (!payload.referral_code)
           return throwError(returnMessage("referral", "codeGenerationFailed"));
 
-        let agency_enroll = await Authentication.create({
-          first_name,
-          last_name,
-          email: email?.toLowerCase(),
-          password: encrypted_password,
-          contact_number: contact_number,
-          image_url,
-          reference_id: agency?._id,
-          remember_me: payload?.remember_me,
-          role: role?._id,
-          status,
-          referral_code: payload.referral_code,
-          affiliate_referral_code: affiliate_referral_code,
+        let user_enroll = await Authentication.create({
+          email,
+          referral_code: payload?.referral_code,
+          affiliate_referral_code,
         });
-        agency_enroll = agency_enroll.toObject();
-        agency_enroll.role = role;
+        user_enroll = user_enroll.toObject();
 
-        PaymentService.createContact(agency_enroll);
+        // commented as we will create the contact after the user will fill the details like
+        // email, firstname and lastname
+        // PaymentService.createContact(agency_enroll);
 
         if (payload?.affiliate_referral_code) {
           const decodedEmail = decodeURIComponent(payload?.affiliate_email);
-          await this.affiliateReferralSignUp({
+          this.affiliateReferralSignUp({
             referral_code: payload?.affiliate_referral_code,
-            referred_to: agency_enroll.reference_id,
+            referred_to: user_enroll._id,
             email: decodedEmail,
           });
         }
 
-        delete agency_enroll?.password;
-        delete agency_enroll?.is_facebook_signup;
-        delete agency_enroll?.is_google_signup;
-
+        // this is pending while changing the signup flow
         // -------------------- Notification --------------------------------
 
-        notificationService.addAdminNotification({
-          action_name: "agencyCreated",
-          agency_name:
-            capitalizeFirstLetter(first_name) +
-            " " +
-            capitalizeFirstLetter(last_name),
-          email: email,
-          contact_number: contact_number,
-        });
+        // notificationService.addAdminNotification({
+        //   action_name: "agencyCreated",
+        //   agency_name:
+        //     capitalizeFirstLetter(first_name) +
+        //     " " +
+        //     capitalizeFirstLetter(last_name),
+        //   email: email,
+        //   contact_number: contact_number,
+        // });
 
-        var agencyCreated = agencyCreatedTemplate({
-          agency_name:
-            capitalizeFirstLetter(first_name) +
-            " " +
-            capitalizeFirstLetter(last_name),
-          email: email,
-          contact_number: contact_number,
-        });
+        // var agencyCreated = agencyCreatedTemplate({
+        //   agency_name:
+        //     capitalizeFirstLetter(first_name) +
+        //     " " +
+        //     capitalizeFirstLetter(last_name),
+        //   email: email,
+        //   contact_number: contact_number,
+        // });
 
-        sendEmail({
-          email: admin?.email,
-          subject: returnMessage("emailTemplate", "agencyCreated"),
-          message: agencyCreated,
-        });
+        // sendEmail({
+        //   email: admin?.email,
+        //   subject: returnMessage("emailTemplate", "agencyCreated"),
+        //   message: agencyCreated,
+        // });
         // -------------------- Notification --------------------------------
 
         // this will used if we are adding the trial periods
-        if (configuration?.payment?.free_trial > 0) {
-          await SheetManagement.findOneAndUpdate(
-            { agency_id: agency_enroll?.reference_id },
-            {
-              agency_id: agency_enroll?.reference_id,
-              total_sheets: 1,
-              occupied_sheets: [],
-            },
-            { upsert: true }
-          );
-        }
+        // if (configuration?.payment?.free_trial > 0) {
+        //   await SheetManagement.findOneAndUpdate(
+        //     { agency_id: agency_enroll?.reference_id },
+        //     {
+        //       agency_id: agency_enroll?.reference_id,
+        //       total_sheets: 1,
+        //       occupied_sheets: [],
+        //     },
+        //     { upsert: true }
+        //   );
+        // }
 
-        this.glideCampaign({
-          ...agency_enroll,
-          company_name: payload?.company_name,
-          company_website: payload?.company_website,
-          no_of_people: payload?.no_of_people,
-          industry: payload?.industry,
-        });
+        // removed as we will create the user after the user provide the email, firstname and lastname
+        // this.glideCampaign({
+        //   ...agency_enroll,
+        //   company_name: payload?.company_name,
+        //   company_website: payload?.company_website,
+        //   no_of_people: payload?.no_of_people,
+        //   industry: payload?.industry,
+        // });
 
-        return this.tokenGenerator({
-          ...agency_enroll,
-          rememberMe: payload?.rememberMe,
-        });
+        return user_enroll;
       } else if (payload?.referral_code) {
         let new_referral_code = await this.referralCodeGenerator();
         let affiliate_referral_code = await this.referralCodeGenerator();
@@ -240,47 +182,40 @@ class AuthService {
         if (!new_referral_code)
           return throwError(returnMessage("referral", "codeGenerationFailed"));
 
-        let agency_enroll = await Authentication.create({
-          first_name,
-          last_name,
+        let user_enroll = await Authentication.create({
           email: email?.toLowerCase(),
-          password: encrypted_password,
-          contact_number,
-          image_url,
-          reference_id: agency?._id,
-          remember_me: payload?.remember_me,
-          role: role?._id,
-          status,
           referral_code: new_referral_code,
-          affiliate_referral_code: affiliate_referral_code,
+          affiliate_referral_code,
         });
 
-        agency_enroll = agency_enroll.toObject();
-        agency_enroll.role = role;
-        PaymentService.createContact(agency);
+        // commented as we will create the contact after the user will fill the details like
+        // email, firstname and lastname
+        // PaymentService.createContact(agency);
+
+        // removed as of now because of the implementation of the new sign up flow
         // -------------------- Notification --------------------------------
 
-        notificationService.addAdminNotification({
-          action_name: "agencyCreated",
-          agency_name:
-            capitalizeFirstLetter(first_name) +
-            " " +
-            capitalizeFirstLetter(last_name),
-          email: email,
-          contact_number: contact_number,
-        });
+        // notificationService.addAdminNotification({
+        //   action_name: "agencyCreated",
+        //   agency_name:
+        //     capitalizeFirstLetter(first_name) +
+        //     " " +
+        //     capitalizeFirstLetter(last_name),
+        //   email: email,
+        //   contact_number: contact_number,
+        // });
 
-        sendEmail({
-          email: admin?.email,
-          subject: returnMessage("emailTemplate", "agencyCreated"),
-          message: agencyCreated,
-        });
+        // sendEmail({
+        //   email: admin?.email,
+        //   subject: returnMessage("emailTemplate", "agencyCreated"),
+        //   message: agencyCreated,
+        // });
         // -------------------- Notification --------------------------------
 
         if (payload?.referral_code) {
           const referral_registered = await this.referralSignUp({
             referral_code: referral_code,
-            referred_to: agency_enroll,
+            referred_to: user_enroll,
           });
 
           if (typeof referral_registered === "string") {
@@ -289,22 +224,282 @@ class AuthService {
           }
         }
 
-        delete agency_enroll?.password;
-        delete agency_enroll?.is_facebook_signup;
-        delete agency_enroll?.is_google_signup;
-
-        this.glideCampaign({
-          ...agency_enroll,
-          company_name: payload?.company_name,
-          company_website: payload?.company_website,
-          no_of_people: payload?.no_of_people,
-          industry: payload?.industry,
-        });
-        return this.tokenGenerator({
-          ...agency_enroll,
-          rememberMe: payload?.rememberMe,
-        });
+        // commented as we will create the contact after the user will fill the details like
+        // email, firstname and lastname
+        // this.glideCampaign({
+        //   ...agency_enroll,
+        //   company_name: payload?.company_name,
+        //   company_website: payload?.company_website,
+        //   no_of_people: payload?.no_of_people,
+        //   industry: payload?.industry,
+        // });
+        return user_enroll;
       }
+    } catch (error) {
+      logger.error(`Error while agency signup: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  userSignUp = async (payload) => {
+    try {
+      let user_enroll;
+      const { email, referral_code } = payload;
+
+      validateRequestFields(payload, ["email"]);
+
+      if (!validateEmail(email))
+        return throwError(returnMessage("auth", "invalidEmail"));
+
+      const user_exist = await Authentication.findOne({
+        email,
+        is_deleted: false,
+      }).lean();
+
+      if (user_exist && user_exist?.status === "signup_completed")
+        return throwError(returnMessage("user", "userAlreadyExist"));
+
+      if (!payload?.referral_code) {
+        payload.referral_code = await this.referralCodeGenerator();
+        let affiliate_referral_code = await this.referralCodeGenerator();
+
+        if (!payload.referral_code)
+          return throwError(returnMessage("referral", "codeGenerationFailed"));
+
+        user_enroll = await Authentication.create({
+          email,
+          referral_code: payload?.referral_code,
+          affiliate_referral_code,
+        });
+
+        if (payload?.affiliate_referral_code) {
+          const decodedEmail = decodeURIComponent(payload?.affiliate_email);
+          this.affiliateReferralSignUp({
+            referral_code: payload?.affiliate_referral_code,
+            referred_to: user_enroll._id,
+            email: decodedEmail,
+          });
+        }
+      } else if (payload?.referral_code) {
+        let new_referral_code = await this.referralCodeGenerator();
+        let affiliate_referral_code = await this.referralCodeGenerator();
+
+        if (!new_referral_code)
+          return throwError(returnMessage("referral", "codeGenerationFailed"));
+
+        user_enroll = await Authentication.create({
+          email: email?.toLowerCase(),
+          referral_code: new_referral_code,
+          affiliate_referral_code,
+        });
+
+        if (payload?.referral_code) {
+          const referral_registered = await this.referralSignUp({
+            referral_code: referral_code,
+            referred_to: user_enroll,
+          });
+
+          if (typeof referral_registered === "string") {
+            await Authentication.findByIdAndDelete(user_enroll._id);
+            return referral_registered;
+          }
+        }
+      }
+      return user_enroll.toObject();
+    } catch (error) {
+      logger.error(`Error while agency signup: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  signupComplete = async (payload) => {
+    try {
+      let user_enroll;
+      let {
+        email,
+        first_name,
+        last_name,
+        password,
+        contact_number,
+        no_of_people,
+        profession_role,
+        referral_code,
+      } = payload;
+
+      validateRequestFields(payload, [
+        "email",
+        "first_name",
+        "last_name",
+        "password",
+      ]);
+
+      if (!validateEmail(email))
+        return throwError(returnMessage("auth", "invalidEmail"));
+
+      if (!passwordValidation(password))
+        return throwError(returnMessage("auth", "invalidPassword"));
+      password = await this.passwordEncryption({ password });
+
+      const user_exist = await Authentication.findOne({
+        email,
+        is_deleted: false,
+      }).lean();
+
+      if (user_exist && user_exist?.status === "signup_completed")
+        return throwError(returnMessage("user", "userAlreadyExist"));
+
+      if (!payload?.referral_code) {
+        payload.referral_code = await this.referralCodeGenerator();
+        let affiliate_referral_code = await this.referralCodeGenerator();
+
+        if (!payload.referral_code)
+          return throwError(returnMessage("referral", "codeGenerationFailed"));
+
+        user_enroll = await Authentication.create({
+          email,
+          referral_code: payload?.referral_code,
+          affiliate_referral_code,
+          password,
+          first_name: first_name?.toLowerCase(),
+          last_name: last_name?.toLowerCase(),
+          profession_role,
+          no_of_people,
+          contact_number,
+        });
+
+        // commented as we will create the contact after the user will fill the details like
+        // email, firstname and lastname
+        // PaymentService.createContact(agency_enroll);
+
+        if (payload?.affiliate_referral_code) {
+          const decodedEmail = decodeURIComponent(payload?.affiliate_email);
+          this.affiliateReferralSignUp({
+            referral_code: payload?.affiliate_referral_code,
+            referred_to: user_enroll._id,
+            email: decodedEmail,
+          });
+        }
+
+        // this is pending while changing the signup flow
+        // -------------------- Notification --------------------------------
+
+        // notificationService.addAdminNotification({
+        //   action_name: "agencyCreated",
+        //   agency_name:
+        //     capitalizeFirstLetter(first_name) +
+        //     " " +
+        //     capitalizeFirstLetter(last_name),
+        //   email: email,
+        //   contact_number: contact_number,
+        // });
+
+        // var agencyCreated = agencyCreatedTemplate({
+        //   agency_name:
+        //     capitalizeFirstLetter(first_name) +
+        //     " " +
+        //     capitalizeFirstLetter(last_name),
+        //   email: email,
+        //   contact_number: contact_number,
+        // });
+
+        // sendEmail({
+        //   email: admin?.email,
+        //   subject: returnMessage("emailTemplate", "agencyCreated"),
+        //   message: agencyCreated,
+        // });
+        // -------------------- Notification --------------------------------
+
+        // this will used if we are adding the trial periods
+        // if (configuration?.payment?.free_trial > 0) {
+        //   await SheetManagement.findOneAndUpdate(
+        //     { agency_id: agency_enroll?.reference_id },
+        //     {
+        //       agency_id: agency_enroll?.reference_id,
+        //       total_sheets: 1,
+        //       occupied_sheets: [],
+        //     },
+        //     { upsert: true }
+        //   );
+        // }
+
+        // removed as we will create the user after the user provide the email, firstname and lastname
+        // this.glideCampaign({
+        //   ...agency_enroll,
+        //   company_name: payload?.company_name,
+        //   company_website: payload?.company_website,
+        //   no_of_people: payload?.no_of_people,
+        //   industry: payload?.industry,
+        // });
+      } else if (payload?.referral_code) {
+        let new_referral_code = await this.referralCodeGenerator();
+        let affiliate_referral_code = await this.referralCodeGenerator();
+
+        if (!new_referral_code)
+          return throwError(returnMessage("referral", "codeGenerationFailed"));
+
+        user_enroll = await Authentication.create({
+          email: email?.toLowerCase(),
+          referral_code: new_referral_code,
+          affiliate_referral_code,
+          password,
+          first_name: first_name?.toLowerCase(),
+          last_name: last_name?.toLowerCase(),
+          profession_role,
+          no_of_people,
+          contact_number,
+        });
+
+        // commented as we will create the contact after the user will fill the details like
+        // email, firstname and lastname
+        // PaymentService.createContact(agency);
+
+        // removed as of now because of the implementation of the new sign up flow
+        // -------------------- Notification --------------------------------
+
+        // notificationService.addAdminNotification({
+        //   action_name: "agencyCreated",
+        //   agency_name:
+        //     capitalizeFirstLetter(first_name) +
+        //     " " +
+        //     capitalizeFirstLetter(last_name),
+        //   email: email,
+        //   contact_number: contact_number,
+        // });
+
+        // sendEmail({
+        //   email: admin?.email,
+        //   subject: returnMessage("emailTemplate", "agencyCreated"),
+        //   message: agencyCreated,
+        // });
+        // -------------------- Notification --------------------------------
+
+        if (payload?.referral_code) {
+          const referral_registered = await this.referralSignUp({
+            referral_code: referral_code,
+            referred_to: user_enroll,
+          });
+
+          if (typeof referral_registered === "string") {
+            await Authentication.findByIdAndDelete(user_enroll._id);
+            return referral_registered;
+          }
+        }
+
+        // commented as we will create the contact after the user will fill the details like
+        // email, firstname and lastname
+        // this.glideCampaign({
+        //   ...agency_enroll,
+        //   company_name: payload?.company_name,
+        //   company_website: payload?.company_website,
+        //   no_of_people: payload?.no_of_people,
+        //   industry: payload?.industry,
+        // });
+      }
+      user_enroll = user_enroll.toObject();
+      return this.tokenGenerator({
+        ...user_enroll,
+        rememberMe: payload?.rememberMe,
+      });
     } catch (error) {
       logger.error(`Error while agency signup: ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -1255,14 +1450,14 @@ class AuthService {
       await ReferralHistory.deleteMany({
         referral_code,
         registered: false,
-        referred_by: referral_code_exist.reference_id,
+        referred_by: referral_code_exist?._id,
         email: referred_to?.email,
       });
 
       await ReferralHistory.create({
         referral_code,
-        referred_by: referral_code_exist?.reference_id,
-        referred_to: referred_to?.reference_id,
+        referred_by: referral_code_exist?._id,
+        referred_to: referred_to?._id,
         email: referred_to?.email,
         registered: true,
       });

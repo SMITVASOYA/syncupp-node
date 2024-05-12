@@ -19,7 +19,6 @@ const moment = require("moment");
 const Configuration = require("../models/configurationSchema");
 const paymentService = require("../services/paymentService");
 const PaymentService = new paymentService();
-const { ObjectId } = require("mongodb");
 const Payout = require("../models/payoutSchema");
 
 class AffiliateService {
