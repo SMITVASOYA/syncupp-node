@@ -13,6 +13,14 @@ const registerUser = {
               descripition: "Enter your email",
               required: true,
             },
+            affiliate_referral_code: {
+              type: "string",
+              descripition: "Enter referral code",
+            },
+            referral_code: {
+              type: "string",
+              descripition: "Enter affiliate referral code",
+            },
           },
         },
       },
@@ -75,9 +83,49 @@ const signupComplete = {
               type: "string",
               descripition: "Enter professional role",
             },
-            referral_code: {
+            workspace_name: {
               type: "string",
-              descripition: "Enter referral code",
+              descripition: "Enter workspace name.",
+            },
+          },
+        },
+      },
+    },
+  },
+
+  responses: {
+    200: {
+      descripition: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
+const checkContactunique = {
+  tags: ["CRM Panel"],
+  description: "",
+  summary: "Check for the contact number is unique.",
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+          properties: {
+            email: {
+              type: "string",
+              descripition: "Enter your email",
+              required: true,
+            },
+            contact_number: {
+              type: "string",
+              descripition: "Enter contact number",
+              required: true,
             },
           },
         },
@@ -577,6 +625,12 @@ const checkSubscriptionHalt = {
 const authRoutes = {
   "/api/v1/auth/signup": {
     post: registerUser,
+  },
+  "/api/v1/auth/signup-complete": {
+    patch: signupComplete,
+  },
+  "/api/v1/auth/contact-unique": {
+    post: checkContactunique,
   },
   "/api/v1/auth/google-signup": {
     post: googleSignIn,

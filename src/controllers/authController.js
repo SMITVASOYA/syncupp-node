@@ -26,6 +26,11 @@ exports.signupComplete = catchAsyncError(async (req, res, next) => {
   sendResponse(res, true, message, user, statusCode.success);
 });
 
+exports.checkContactunique = catchAsyncError(async (req, res, next) => {
+  const contact = await authService.checkContactunique(req.body);
+  sendResponse(res, true, undefined, contact, statusCode.success);
+});
+
 exports.agencyGoogleSignUp = catchAsyncError(async (req, res, next) => {
   const agencyGoogleSignUp = await authService.googleSign(req.body);
   return sendResponse(

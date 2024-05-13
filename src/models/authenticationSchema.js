@@ -16,7 +16,7 @@ const authenticationSchema = new mongoose.Schema(
     profile_image: { type: String },
     status: {
       type: String,
-      enum: ["signup_incomplete", "signup_completed"],
+      enum: ["signup_incomplete", "signup_completed", "inactive"],
       default: "signup_incomplete",
     },
     subscription_id: { type: String },
@@ -55,5 +55,8 @@ const Authentication = crm_connection.model(
   "authentication",
   authenticationSchema
 );
+
+authenticationSchema.index({ email: 1 });
+authenticationSchema.index({ contact_number: 1 });
 
 module.exports = Authentication;
