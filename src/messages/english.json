@@ -369,7 +369,8 @@
     "userRegistered": "User registered successfully.",
     "userAlreadyExist": "This email is already exist. Please choose another one.",
     "userInactive": "Your account has been suspended by admin. Contact admin.",
-    "contactNumberExist": "Contact number already exist."
+    "contactNumberExist": "Contact number already exist.",
+    "signupIncomplete":"Profile is in-complete. Please complete your profile first."
   },
 
   "workspace": {
@@ -378,7 +379,8 @@
     "nameMissing":"Workspace name is required.",
     "workspacesFetched":"Workspaces fetched successfully.",
     "workspaceNotFound":"Workspace does not exist.",
-    "workspaceRequired":"Workspace id is required."
+    "workspaceRequired":"Workspace id is required.",
+    "alreadyExistInWorkspace":"This user already exist in this workspace"
   },
 
   "default": { "default": "Something went wrong." }

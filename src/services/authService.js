@@ -177,11 +177,16 @@ class AuthService {
         is_deleted: false,
       }).lean();
 
-      if (user_exist && user_exist?.status === "signup_completed")
+      if (
+        user_exist &&
+        user_exist?.status === "signup_completed" &&
+        user_exist?.contact_number &&
+        user_exist?.no_of_people &&
+        user_exist?.profession_role
+      )
         return throwError(returnMessage("user", "userAlreadyExist"));
 
-      if (user_exist && user_exist?.status === "signup_incomplete")
-        return user_exist;
+      if (user_exist) return user_exist;
 
       if (!payload?.referral_code) {
         payload.referral_code = await this.referralCodeGenerator();
@@ -249,19 +254,16 @@ class AuthService {
         referral_code,
       } = payload;
 
-      validateRequestFields(payload, [
-        "email",
-        "first_name",
-        "last_name",
-        "password",
-      ]);
+      validateRequestFields(payload, ["email", "first_name", "last_name"]);
 
       if (!validateEmail(email))
         return throwError(returnMessage("auth", "invalidEmail"));
 
-      if (!passwordValidation(password))
-        return throwError(returnMessage("auth", "invalidPassword"));
-      password = await this.passwordEncryption({ password });
+      if (password) {
+        if (!passwordValidation(password))
+          return throwError(returnMessage("auth", "invalidPassword"));
+        password = await this.passwordEncryption({ password });
+      }
 
       const user_exist = await Authentication.findOne({
         email,
@@ -304,7 +306,8 @@ class AuthService {
           no_of_people,
           contact_number,
           status: "signup_completed",
-        }
+        },
+        { new: true }
       );
 
       if (!payload?.referral_code) {
@@ -915,6 +918,9 @@ class AuthService {
           returnMessage("auth", "dataNotFound"),
           statusCode.notFound
         );
+
+      if (user_exist?.status === "signup_incomplete")
+        return { user: user_exist };
 
       if (!user_exist?.password)
         return throwError(returnMessage("auth", "incorrectPassword"));

@@ -4,6 +4,8 @@ const notificationMessage = require("../messages/notification.json");
 const cheerio = require("cheerio");
 const colorsData = require("../messages/colors.json");
 const colors = colorsData.colors;
+const ejs = require("ejs");
+const fs = require("fs");
 
 exports.returnMessage = (module, key, language = "en") => {
   return engMessage[module][key];
@@ -117,6 +119,12 @@ exports.validateRequestFields = (payload, fields) => {
     }
   }
   return;
+};
+
+exports.templateMaker = (file_name, payload) => {
+  const templatePath = path.join(__dirname, "utils/templates", file_name);
+  const templateData = fs.readFileSync(templatePath, "utf-8");
+  return ejs.render(templateData, payload);
 };
 
 exports.agrementEmail = (data) => {

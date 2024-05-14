@@ -3,16 +3,24 @@ const { crm_connection } = require("../config/connection");
 
 const sheetManagementSchema = new mongoose.Schema(
   {
-    agency_id: {
+    user_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "agency",
-      unique: true,
+      ref: "authentication",
+      required: true,
     },
     total_sheets: { type: Number, default: 1 },
     occupied_sheets: [
       {
-        user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
-        role: { type: String, required: true },
+        user_id: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "authentication",
+          required: true,
+        },
+        role: {
+          type: mongoose.Schema.ObjectId,
+          ref: "role_master",
+          required: true,
+        },
         date: { type: Date, default: new Date() },
       },
     ],

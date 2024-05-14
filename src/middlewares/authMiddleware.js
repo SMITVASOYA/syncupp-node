@@ -137,8 +137,10 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
       .equals("false")
       .select("-password")
       .lean();
+
     if (!user) return throwError(returnMessage("auth", "unAuthorized"), 401);
     req.user = user;
+    req.user["workspace"] = decodedUserData?.workspace;
     next();
   } else {
     return throwError(returnMessage("auth", "unAuthorized"), 401);
