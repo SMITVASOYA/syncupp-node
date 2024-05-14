@@ -30,4 +30,7 @@ authRoute.patch(
 );
 authRoute.post("/send-referral", authController.refferalEmail);
 authRoute.get("/subscription-halt", authController.checkSubscriptionHalt);
+
+// workspace route
+authRoute.post("/change-workspace", authController.changeWorkspace);
 module.exports = authRoute;

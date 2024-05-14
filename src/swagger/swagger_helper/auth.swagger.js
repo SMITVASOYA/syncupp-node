@@ -622,6 +622,46 @@ const checkSubscriptionHalt = {
   },
 };
 
+const workspaceChange = {
+  tags: ["CRM Panel"],
+  description: "",
+  summary: "Change workspace.",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+          properties: {
+            workspace_id: {
+              type: "string",
+              descripition: "Add workspace id",
+              required: true,
+            },
+          },
+        },
+      },
+    },
+  },
+
+  responses: {
+    200: {
+      descripition: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
 const authRoutes = {
   "/api/v1/auth/signup": {
     post: registerUser,
@@ -667,6 +707,9 @@ const authRoutes = {
   },
   "/api/v1/auth/subscription-halt": {
     get: checkSubscriptionHalt,
+  },
+  "/api/v1/auth/change-workspace": {
+    post: workspaceChange,
   },
 };
 

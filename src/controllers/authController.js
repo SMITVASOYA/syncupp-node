@@ -31,6 +31,15 @@ exports.checkContactunique = catchAsyncError(async (req, res, next) => {
   sendResponse(res, true, undefined, contact, statusCode.success);
 });
 
+exports.changeWorkspace = catchAsyncError(async (req, res, next) => {
+  const workspace = await authService.changeWorkspace(
+    req.headers.authorization || req.headers.token,
+    req.body,
+    req.user
+  );
+  sendResponse(res, true, undefined, workspace, statusCode.success);
+});
+
 exports.agencyGoogleSignUp = catchAsyncError(async (req, res, next) => {
   const agencyGoogleSignUp = await authService.googleSign(req.body);
   return sendResponse(

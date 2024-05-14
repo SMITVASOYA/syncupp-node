@@ -76,12 +76,56 @@ class AuthService {
       return throwError(error?.message, error?.statusCode);
     }
   };
-  changeWorkspaces = async (token, workspace_id, user) => {
+
+  tokenRegenerator = (token, workspace_id, user_id) => {
     try {
+      const decode = jwt.decode(token);
+      return jwt.sign(
+        { id: user_id, workspace: workspace_id },
+        process.env.JWT_SECRET_KEY,
+        {
+          expiresIn: decode?.exp,
+        }
+      );
+    } catch (error) {
+      logger.error(`Error while regenerating the token: ${error}`);
+    }
+  };
+
+  changeWorkspace = async (token, payload, user) => {
+    try {
+      const { workspace_id } = payload;
+      if (!workspace_id)
+        return throwError(returnMessage("workspace", "workspaceRequired"));
       const workspace_exist = await Workspace.findOne({
         _id: workspace_id,
         "members.user_id": user?._id,
-      });
+        is_deleted: false,
+      }).lean();
+
+      if (!workspace_exist)
+        return throwError(
+          returnMessage("workspace", "workspaceNotFound"),
+          statusCode.notFound
+        );
+
+      const new_token = this.tokenRegenerator(
+        token,
+        workspace_exist?._id,
+        user?._id
+      );
+
+      const member_details = workspace_exist?.members?.find(
+        (member) => member?.user_id?.toString() === user?._id?.toString()
+      );
+
+      const role = await Role_Master.findById(member_details?.role).lean();
+      return {
+        token: new_token,
+        workspace: workspace_exist,
+        user,
+        user_role: role?.name,
+      };
     } catch (error) {
       logger.error(`Error while changing the workspace: ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -531,6 +575,11 @@ class AuthService {
         // });
         return user_enroll;
       } else {
+        // this condition is used when user enters the same email id while sign up and then uses google signin method
+        if (!user_exist?.is_google_signup)
+          await Authentication.findByIdAndUpdate(user_exist?._id, {
+            is_google_signup: true,
+          });
         // this is on halt now
         // const lastLoginDateUTC = moment
         //   .utc(existing_agency?.last_login_date)
@@ -762,6 +811,11 @@ class AuthService {
 
         return user_enroll;
       } else {
+        // this condition is used when user enters the same email id while sign up and then uses google signin method
+        if (!user_exist?.is_facebook_signup)
+          await Authentication.findByIdAndUpdate(user_exist?._id, {
+            is_facebook_signup: true,
+          });
         // need to integrate and test later
         // const lastLoginDateUTC = moment
         //   .utc(existing_agency?.last_login_date)
