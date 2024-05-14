@@ -46,6 +46,7 @@ const workspaceService = new WorkspaceService();
 class AuthService {
   tokenGenerator = async (payload) => {
     try {
+      let role;
       const expiresIn = payload?.rememberMe
         ? process.env.JWT_REMEMBER_EXPIRE
         : process.env.JWT_EXPIRES_IN;
@@ -61,6 +62,13 @@ class AuthService {
           .sort({ "members.joining_date": -1 })
           .lean();
       }
+      if (workspace) {
+        const member_details = workspace?.members?.find(
+          (member) => member?.user_id?.toString() === payload?._id?.toString()
+        );
+
+        role = await Role_Master.findById(member_details?.role).lean();
+      }
 
       const token = jwt.sign(
         { id: payload._id, workspace: workspace?._id },
@@ -70,7 +78,11 @@ class AuthService {
         }
       );
 
-      return { token, user: payload };
+      return {
+        token,
+        user: payload,
+        workspace: { workspace, role: role?.name },
+      };
     } catch (error) {
       logger.error(`Error while token generate: ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -217,7 +229,7 @@ class AuthService {
           }
         }
       }
-      return user_enroll.toObject();
+      return user_enroll?.toObject();
     } catch (error) {
       logger.error(`Error while agency signup: ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -387,7 +399,7 @@ class AuthService {
           }
         }
       }
-      user_enroll = user_enroll.toObject();
+      user_enroll = user_enroll?.toObject();
       // this.glideCampaign({
       //   ...user_enroll,
       //   no_of_people: payload?.no_of_people,
@@ -453,7 +465,7 @@ class AuthService {
           status: "signup_incomplete",
         });
 
-        user_enroll = user_enroll.toObject();
+        user_enroll = user_enroll?.toObject();
 
         if (payload?.referral_code) {
           const referral_registered = await this.referralSignUp({
@@ -689,7 +701,7 @@ class AuthService {
           affiliate_referral_code,
         });
 
-        user_enroll = user_enroll.toObject();
+        user_enroll = user_enroll?.toObject();
 
         if (payload?.referral_code) {
           const referral_registered = await this.referralSignUp({

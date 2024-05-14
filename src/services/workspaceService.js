@@ -66,7 +66,11 @@ class WorkspaceService {
     try {
       const [created, invited] = await Promise.all([
         Workspace.find({ created_by: user?._id, is_deleted: false }).lean(),
-        Workspace.find({ "members.user_id": user?._id, is_deleted: false })
+        Workspace.find({
+          "members.user_id": user?._id,
+          is_deleted: false,
+          created_by: { $ne: user?._id },
+        })
           .sort({ "members.joining_date": -1 })
           .lean(),
       ]);
