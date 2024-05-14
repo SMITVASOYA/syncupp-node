@@ -19,6 +19,7 @@ const chatRoute = require("./chatRoute");
 const eventRoute = require("./eventRoute");
 const couponRoute = require("./couponRoute");
 const ticketRoute = require("./ticketRoute");
+const workspaceRoute = require("./workspaceRoute");
 
 router.use("/activity", activityRoute);
 router.use("/auth", authRoute);
@@ -39,5 +40,6 @@ router.use("/chat", chatRoute);
 router.use("/event", eventRoute);
 router.use("/coupon", couponRoute);
 router.use("/ticket", ticketRoute);
+router.use("/workspace", workspaceRoute);
 
 module.exports = router;

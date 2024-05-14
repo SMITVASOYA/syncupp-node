@@ -13,7 +13,9 @@ const Configuration = require("../models/configurationSchema");
 const Agency = require("../models/agencySchema");
 const Team_Agency = require("../models/teamAgencySchema");
 const { eventEmitter } = require("../socket");
-exports.protect = catchAsyncErrors(async (req, res, next) => {
+
+// removed the old middleware as of now
+/* exports.protect = catchAsyncErrors(async (req, res, next) => {
   const token = req.headers.authorization || req.headers.token;
 
   if (token) {
@@ -114,6 +116,28 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
         user?.reference_id?.toString()
       );
 
+    req.user = user;
+    next();
+  } else {
+    return throwError(returnMessage("auth", "unAuthorized"), 401);
+  }
+}); */
+
+exports.protect = catchAsyncErrors(async (req, res, next) => {
+  const token = req.headers.authorization || req.headers.token;
+
+  if (token) {
+    const Authorization = token.split(" ")[1];
+    const decodedUserData = jwt.verify(
+      Authorization,
+      process.env.JWT_SECRET_KEY
+    );
+    const user = await Authentication.findById(decodedUserData.id)
+      .where("is_deleted")
+      .equals("false")
+      .select("-password")
+      .lean();
+    if (!user) return throwError(returnMessage("auth", "unAuthorized"), 401);
     req.user = user;
     next();
   } else {
