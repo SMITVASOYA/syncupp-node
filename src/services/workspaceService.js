@@ -36,7 +36,7 @@ class WorkspaceService {
         return throwError(returnMessage("workspace", "nameMissing"));
 
       const workspace_obj = {
-        name: workspace_name_exist,
+        name: workspace_name,
         created_by: user?._id,
         members: [
           {

@@ -291,6 +291,7 @@ class AuthService {
           profession_role,
           no_of_people,
           contact_number,
+          status: "signup_completed",
         }
       );
 
