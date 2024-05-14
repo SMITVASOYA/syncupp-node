@@ -3,7 +3,9 @@ const authController = require("../controllers/authController");
 const { protect } = require("../middlewares/authMiddleware");
 const { upload, checkProfileSize } = require("../helpers/multer");
 
-authRoute.post("/signup", authController.agencySignUp);
+authRoute.post("/signup", authController.userSignUp);
+authRoute.patch("/signup-complete", authController.signupComplete);
+authRoute.post("/contact-unique", authController.checkContactunique);
 
 authRoute.post("/google-signup", authController.agencyGoogleSignUp);
 authRoute.post("/facebook-signup", authController.agencyFacebookSignUp);
@@ -28,4 +30,7 @@ authRoute.patch(
 );
 authRoute.post("/send-referral", authController.refferalEmail);
 authRoute.get("/subscription-halt", authController.checkSubscriptionHalt);
+
+// workspace route
+authRoute.post("/change-workspace", authController.changeWorkspace);
 module.exports = authRoute;

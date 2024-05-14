@@ -4,7 +4,7 @@ const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
 const { returnMessage, invoiceTemplate } = require("../utils/utils");
 const Client = require("../models/clientSchema");
-const { ObjectId } = require("mongodb");
+const { ObjectId } = require("mongoose");
 
 const { calculateInvoice, calculateAmount } = require("./commonSevice");
 const { paginationObject, getKeywordType } = require("../utils/utils");

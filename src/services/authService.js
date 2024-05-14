@@ -39,24 +39,107 @@ const SheetManagement = require("../models/sheetManagementSchema");
 const notificationService = new NotificationService();
 const paymentService = require("../services/paymentService");
 const PaymentService = new paymentService();
+const WorkspaceService = require("../services/workspaceService");
+const Workspace = require("../models/workspaceSchema");
+const workspaceService = new WorkspaceService();
+
 class AuthService {
-  tokenGenerator = (payload) => {
+  tokenGenerator = async (payload) => {
     try {
+      let role;
       const expiresIn = payload?.rememberMe
         ? process.env.JWT_REMEMBER_EXPIRE
         : process.env.JWT_EXPIRES_IN;
 
+      let workspace = await Workspace.findOne({
+        created_by: payload?._id,
+      }).lean();
+      if (!workspace) {
+        workspace = await Workspace.findOne({
+          "members.user_id": payload?._id,
+          is_deleted: false,
+        })
+          .sort({ "members.joining_date": -1 })
+          .lean();
+      }
+      if (workspace) {
+        const member_details = workspace?.members?.find(
+          (member) => member?.user_id?.toString() === payload?._id?.toString()
+        );
+
+        role = await Role_Master.findById(member_details?.role).lean();
+      }
+
       const token = jwt.sign(
-        { id: payload._id, reference: payload.reference_id },
+        { id: payload._id, workspace: workspace?._id },
         process.env.JWT_SECRET_KEY,
         {
           expiresIn,
         }
       );
 
-      return { token, user: payload };
+      return {
+        token,
+        user: payload,
+        workspace: { workspace, role: role?.name },
+      };
     } catch (error) {
       logger.error(`Error while token generate: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  tokenRegenerator = (token, workspace_id, user_id) => {
+    try {
+      const decode = jwt.decode(token);
+      return jwt.sign(
+        { id: user_id, workspace: workspace_id },
+        process.env.JWT_SECRET_KEY,
+        {
+          expiresIn: decode?.exp,
+        }
+      );
+    } catch (error) {
+      logger.error(`Error while regenerating the token: ${error}`);
+    }
+  };
+
+  changeWorkspace = async (token, payload, user) => {
+    try {
+      const { workspace_id } = payload;
+      if (!workspace_id)
+        return throwError(returnMessage("workspace", "workspaceRequired"));
+      const workspace_exist = await Workspace.findOne({
+        _id: workspace_id,
+        "members.user_id": user?._id,
+        is_deleted: false,
+      }).lean();
+
+      if (!workspace_exist)
+        return throwError(
+          returnMessage("workspace", "workspaceNotFound"),
+          statusCode.notFound
+        );
+
+      const new_token = this.tokenRegenerator(
+        token,
+        workspace_exist?._id,
+        user?._id
+      );
+
+      const member_details = workspace_exist?.members?.find(
+        (member) => member?.user_id?.toString() === user?._id?.toString()
+      );
+
+      const role = await Role_Master.findById(member_details?.role).lean();
+      return {
+        token: new_token,
+        workspace: workspace_exist,
+        user,
+        user_role: role?.name,
+      };
+    } catch (error) {
+      logger.error(`Error while changing the workspace: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
@@ -79,67 +162,26 @@ class AuthService {
     }
   };
 
-  agencySignUp = async (payload, files) => {
+  userSignUp = async (payload) => {
     try {
-      if (
-        payload?.contact_number &&
-        payload?.contact_number !== "" &&
-        payload?.contact_number?.length <= 10
-      )
-        payload.contact_number = "91" + payload.contact_number;
-      const {
-        first_name,
-        last_name,
-        email,
-        password,
-        contact_number,
-        referral_code,
-      } = payload;
+      let user_enroll;
+      const { email, referral_code } = payload;
 
-      validateRequestFields(payload, [
-        "first_name",
-        "last_name",
-        "email",
-        "password",
-        "contact_number",
-      ]);
+      validateRequestFields(payload, ["email"]);
 
       if (!validateEmail(email))
         return throwError(returnMessage("auth", "invalidEmail"));
 
-      if (!passwordValidation(password))
-        return throwError(returnMessage("auth", "invalidPassword"));
+      const user_exist = await Authentication.findOne({
+        email,
+        is_deleted: false,
+      }).lean();
 
-      const [agency_exist, configuration, admin, encrypted_password, role] =
-        await Promise.all([
-          Authentication.findOne({
-            email,
-            is_deleted: false,
-          }).lean(),
-          Configuration.findOne({}).lean(),
-          Admin.findOne({}).lean(),
-          this.passwordEncryption({ password }),
-          Role_Master.findOne({ name: "agency" }).select("name").lean(),
-        ]);
+      if (user_exist && user_exist?.status === "signup_completed")
+        return throwError(returnMessage("user", "userAlreadyExist"));
 
-      if (agency_exist)
-        return throwError(returnMessage("agency", "agencyExist"));
-
-      let image_url,
-        status = "payment_pending";
-
-      if (files && files.fieldname === "client_image")
-        image_url = "uploads/" + files?.filename;
-
-      if (configuration?.payment?.free_trial > 0) status = "free_trial";
-
-      const agency_object = {
-        company_name: payload?.company_name,
-        company_website: payload?.company_website,
-        no_of_people: payload?.no_of_people,
-        industry: payload?.industry,
-      };
-      const agency = await agencyService.agencyRegistration(agency_object);
+      if (user_exist && user_exist?.status === "signup_incomplete")
+        return user_exist;
 
       if (!payload?.referral_code) {
         payload.referral_code = await this.referralCodeGenerator();
@@ -148,91 +190,20 @@ class AuthService {
         if (!payload.referral_code)
           return throwError(returnMessage("referral", "codeGenerationFailed"));
 
-        let agency_enroll = await Authentication.create({
-          first_name,
-          last_name,
-          email: email?.toLowerCase(),
-          password: encrypted_password,
-          contact_number: contact_number,
-          image_url,
-          reference_id: agency?._id,
-          remember_me: payload?.remember_me,
-          role: role?._id,
-          status,
-          referral_code: payload.referral_code,
-          affiliate_referral_code: affiliate_referral_code,
+        user_enroll = await Authentication.create({
+          email,
+          referral_code: payload?.referral_code,
+          affiliate_referral_code,
         });
-        agency_enroll = agency_enroll.toObject();
-        agency_enroll.role = role;
-
-        PaymentService.createContact(agency_enroll);
 
         if (payload?.affiliate_referral_code) {
           const decodedEmail = decodeURIComponent(payload?.affiliate_email);
-          await this.affiliateReferralSignUp({
+          this.affiliateReferralSignUp({
             referral_code: payload?.affiliate_referral_code,
-            referred_to: agency_enroll.reference_id,
+            referred_to: user_enroll._id,
             email: decodedEmail,
           });
         }
-
-        delete agency_enroll?.password;
-        delete agency_enroll?.is_facebook_signup;
-        delete agency_enroll?.is_google_signup;
-
-        // -------------------- Notification --------------------------------
-
-        notificationService.addAdminNotification({
-          action_name: "agencyCreated",
-          agency_name:
-            capitalizeFirstLetter(first_name) +
-            " " +
-            capitalizeFirstLetter(last_name),
-          email: email,
-          contact_number: contact_number,
-        });
-
-        var agencyCreated = agencyCreatedTemplate({
-          agency_name:
-            capitalizeFirstLetter(first_name) +
-            " " +
-            capitalizeFirstLetter(last_name),
-          email: email,
-          contact_number: contact_number,
-        });
-
-        sendEmail({
-          email: admin?.email,
-          subject: returnMessage("emailTemplate", "agencyCreated"),
-          message: agencyCreated,
-        });
-        // -------------------- Notification --------------------------------
-
-        // this will used if we are adding the trial periods
-        if (configuration?.payment?.free_trial > 0) {
-          await SheetManagement.findOneAndUpdate(
-            { agency_id: agency_enroll?.reference_id },
-            {
-              agency_id: agency_enroll?.reference_id,
-              total_sheets: 1,
-              occupied_sheets: [],
-            },
-            { upsert: true }
-          );
-        }
-
-        this.glideCampaign({
-          ...agency_enroll,
-          company_name: payload?.company_name,
-          company_website: payload?.company_website,
-          no_of_people: payload?.no_of_people,
-          industry: payload?.industry,
-        });
-
-        return this.tokenGenerator({
-          ...agency_enroll,
-          rememberMe: payload?.rememberMe,
-        });
       } else if (payload?.referral_code) {
         let new_referral_code = await this.referralCodeGenerator();
         let affiliate_referral_code = await this.referralCodeGenerator();
@@ -240,73 +211,225 @@ class AuthService {
         if (!new_referral_code)
           return throwError(returnMessage("referral", "codeGenerationFailed"));
 
-        let agency_enroll = await Authentication.create({
-          first_name,
-          last_name,
+        user_enroll = await Authentication.create({
           email: email?.toLowerCase(),
-          password: encrypted_password,
-          contact_number,
-          image_url,
-          reference_id: agency?._id,
-          remember_me: payload?.remember_me,
-          role: role?._id,
-          status,
           referral_code: new_referral_code,
-          affiliate_referral_code: affiliate_referral_code,
+          affiliate_referral_code,
         });
 
-        agency_enroll = agency_enroll.toObject();
-        agency_enroll.role = role;
-        PaymentService.createContact(agency);
+        if (payload?.referral_code) {
+          const referral_registered = await this.referralSignUp({
+            referral_code: referral_code,
+            referred_to: user_enroll,
+          });
+
+          if (typeof referral_registered === "string") {
+            await Authentication.findByIdAndDelete(user_enroll._id);
+            return referral_registered;
+          }
+        }
+      }
+      return user_enroll?.toObject();
+    } catch (error) {
+      logger.error(`Error while agency signup: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  signupComplete = async (payload) => {
+    try {
+      let {
+        email,
+        first_name,
+        last_name,
+        password,
+        contact_number,
+        no_of_people,
+        profession_role,
+        referral_code,
+      } = payload;
+
+      validateRequestFields(payload, [
+        "email",
+        "first_name",
+        "last_name",
+        "password",
+      ]);
+
+      if (!validateEmail(email))
+        return throwError(returnMessage("auth", "invalidEmail"));
+
+      if (!passwordValidation(password))
+        return throwError(returnMessage("auth", "invalidPassword"));
+      password = await this.passwordEncryption({ password });
+
+      const user_exist = await Authentication.findOne({
+        email,
+        is_deleted: false,
+      }).lean();
+
+      if (contact_number) {
+        const unique_contact = await Authentication.findOne({
+          contact_number,
+          _id: { $ne: user_exist?._id },
+          is_deleted: false,
+        }).lean();
+        if (unique_contact)
+          return throwError(returnMessage("user", "contactNumberExist"));
+      }
+
+      if (
+        user_exist &&
+        user_exist?.contact_number &&
+        user_exist?.no_of_people &&
+        user_exist?.profession_role
+      )
+        return throwError(returnMessage("user", "userAlreadyExist"));
+
+      if (payload?.workspace_name) {
+        await workspaceService.createWorkspace(
+          { workspace_name: payload?.workspace_name },
+          user_exist
+        );
+      }
+
+      let user_enroll = await Authentication.findByIdAndUpdate(
+        user_exist?._id,
+        {
+          email: email?.toLowerCase(),
+          password,
+          first_name: first_name?.toLowerCase(),
+          last_name: last_name?.toLowerCase(),
+          profession_role,
+          no_of_people,
+          contact_number,
+          status: "signup_completed",
+        }
+      );
+
+      if (!payload?.referral_code) {
+        // commented as we will create the contact after the user will fill the details like
+        // email, firstname and lastname
+        // PaymentService.createContact(agency_enroll);
+
+        if (payload?.affiliate_referral_code) {
+          const decodedEmail = decodeURIComponent(payload?.affiliate_email);
+          this.affiliateReferralSignUp({
+            referral_code: payload?.affiliate_referral_code,
+            referred_to: user_enroll._id,
+            email: decodedEmail,
+          });
+        }
+
+        // this is pending while changing the signup flow
         // -------------------- Notification --------------------------------
 
-        notificationService.addAdminNotification({
-          action_name: "agencyCreated",
-          agency_name:
-            capitalizeFirstLetter(first_name) +
-            " " +
-            capitalizeFirstLetter(last_name),
-          email: email,
-          contact_number: contact_number,
-        });
+        // notificationService.addAdminNotification({
+        //   action_name: "agencyCreated",
+        //   agency_name:
+        //     capitalizeFirstLetter(first_name) +
+        //     " " +
+        //     capitalizeFirstLetter(last_name),
+        //   email: email,
+        //   contact_number: contact_number,
+        // });
 
-        sendEmail({
-          email: admin?.email,
-          subject: returnMessage("emailTemplate", "agencyCreated"),
-          message: agencyCreated,
-        });
+        // var agencyCreated = agencyCreatedTemplate({
+        //   agency_name:
+        //     capitalizeFirstLetter(first_name) +
+        //     " " +
+        //     capitalizeFirstLetter(last_name),
+        //   email: email,
+        //   contact_number: contact_number,
+        // });
+
+        // sendEmail({
+        //   email: admin?.email,
+        //   subject: returnMessage("emailTemplate", "agencyCreated"),
+        //   message: agencyCreated,
+        // });
+        // -------------------- Notification --------------------------------
+
+        // this will used if we are adding the trial periods
+        // if (configuration?.payment?.free_trial > 0) {
+        //   await SheetManagement.findOneAndUpdate(
+        //     { agency_id: agency_enroll?.reference_id },
+        //     {
+        //       agency_id: agency_enroll?.reference_id,
+        //       total_sheets: 1,
+        //       occupied_sheets: [],
+        //     },
+        //     { upsert: true }
+        //   );
+        // }
+      } else if (payload?.referral_code) {
+        // commented as we will create the contact after the user will fill the details like
+        // email, firstname and lastname
+        // PaymentService.createContact(agency);
+
+        // removed as of now because of the implementation of the new sign up flow
+        // -------------------- Notification --------------------------------
+
+        // notificationService.addAdminNotification({
+        //   action_name: "agencyCreated",
+        //   agency_name:
+        //     capitalizeFirstLetter(first_name) +
+        //     " " +
+        //     capitalizeFirstLetter(last_name),
+        //   email: email,
+        //   contact_number: contact_number,
+        // });
+
+        // sendEmail({
+        //   email: admin?.email,
+        //   subject: returnMessage("emailTemplate", "agencyCreated"),
+        //   message: agencyCreated,
+        // });
         // -------------------- Notification --------------------------------
 
         if (payload?.referral_code) {
           const referral_registered = await this.referralSignUp({
             referral_code: referral_code,
-            referred_to: agency_enroll,
+            referred_to: user_enroll,
           });
 
           if (typeof referral_registered === "string") {
-            await Authentication.findByIdAndDelete(agency_enroll._id);
+            await Authentication.findByIdAndDelete(user_enroll._id);
             return referral_registered;
           }
         }
-
-        delete agency_enroll?.password;
-        delete agency_enroll?.is_facebook_signup;
-        delete agency_enroll?.is_google_signup;
-
-        this.glideCampaign({
-          ...agency_enroll,
-          company_name: payload?.company_name,
-          company_website: payload?.company_website,
-          no_of_people: payload?.no_of_people,
-          industry: payload?.industry,
-        });
-        return this.tokenGenerator({
-          ...agency_enroll,
-          rememberMe: payload?.rememberMe,
-        });
       }
+      user_enroll = user_enroll?.toObject();
+      // this.glideCampaign({
+      //   ...user_enroll,
+      //   no_of_people: payload?.no_of_people,
+      //   industry: payload?.profession_role,
+      // });
+      return await this.tokenGenerator({
+        ...user_enroll,
+        rememberMe: payload?.rememberMe,
+      });
     } catch (error) {
       logger.error(`Error while agency signup: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  checkContactunique = async (payload) => {
+    try {
+      validateRequestFields(payload, ["email", "contact_number"]);
+      const { email, contact_number } = payload;
+
+      const contact_exist = await Authentication.findOne({
+        contact_number,
+        email: { $ne: email },
+        is_deleted: false,
+      }).lean();
+      let unique_contact = true;
+      if (contact_exist) unique_contact = false;
+      return { unique_contact };
+    } catch (error) {
+      logger.error(`Error while checking the unique number: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
@@ -320,70 +443,38 @@ class AuthService {
 
       const decoded = jwt.decode(signupId);
 
-      let [existing_agency, referral_data, admin] = await Promise.all([
-        Authentication.findOne({ email: decoded.email, is_deleted: false })
-          .populate("role", "name")
-          .lean(),
-        Configuration.findOne({}).lean(),
-        Admin.findOne({}).lean(),
-      ]);
+      let user_exist = await Authentication.findOne({
+        email: decoded.email,
+        is_deleted: false,
+        is_google_signup: true,
+      }).lean();
 
-      if (existing_agency?.role?.name === "team_agency") {
-        const team_agency_detail = await Team_Agency.findById(
-          existing_agency?.reference_id
-        ).lean();
-        const agency_detail = await Authentication.findOne({
-          reference_id: team_agency_detail?.agency_id,
-        }).lean();
-
-        if (agency_detail?.status === "payment_pending")
-          return throwError(
-            returnMessage("payment", "paymentPendingForAgency")
-          );
-      }
-
-      let status = "payment_pending";
-
-      if (referral_data?.payment?.free_trial > 0) status = "free_trial";
-
-      if (!existing_agency) {
-        const [agency, role] = await Promise.all([
-          agencyService.agencyRegistration({}),
-          Role_Master.findOne({ name: "agency" }).select("name").lean(),
-        ]);
-
+      if (!user_exist) {
         const referral_code = await this.referralCodeGenerator();
         let affiliate_referral_code = await this.referralCodeGenerator();
 
         if (!referral_code) return returnMessage("default");
 
-        let agency_enroll = await Authentication.create({
+        let user_enroll = await Authentication.create({
           first_name: decoded?.given_name,
           last_name: decoded?.family_name,
-          name:
-            capitalizeFirstLetter(decoded?.given_name) +
-            " " +
-            capitalizeFirstLetter(decoded?.family_name),
           email: decoded?.email,
-          reference_id: agency?._id,
-          role: role?._id,
-          status,
           is_google_signup: true,
           referral_code,
-          affiliate_referral_code: affiliate_referral_code,
+          affiliate_referral_code,
+          status: "signup_incomplete",
         });
 
-        agency_enroll = agency_enroll.toObject();
-        agency_enroll.role = role;
+        user_enroll = user_enroll?.toObject();
 
         if (payload?.referral_code) {
           const referral_registered = await this.referralSignUp({
             referral_code: payload?.referral_code,
-            referred_to: agency_enroll,
+            referred_to: user_enroll,
           });
 
           if (typeof referral_registered === "string") {
-            await Authentication.findByIdAndDelete(agency_enroll._id);
+            await Authentication.findByIdAndDelete(user_enroll?._id);
             return referral_registered;
           }
         }
@@ -392,173 +483,178 @@ class AuthService {
           const decodedEmail = decodeURIComponent(payload?.affiliate_email);
           await this.affiliateReferralSignUp({
             referral_code: payload?.affiliate_referral_code,
-            referred_to: agency_enroll.reference_id,
+            referred_to: user_enroll?._id,
             email: decodedEmail,
           });
         }
-        PaymentService.createContact(agency_enroll);
-        const lastLoginDateUTC = moment
-          .utc(agency_enroll?.last_login_date)
-          .startOf("day");
-        const currentDateUTC = moment.utc().startOf("day");
+        // removed as of now we will integrate this one later
+        // PaymentService.createContact(user_enroll);
+        // this is on halt as of now
+        // const lastLoginDateUTC = moment
+        //   .utc(user_enroll?.last_login_date)
+        //   .startOf("day");
+        // const currentDateUTC = moment.utc().startOf("day");
 
-        if (
-          currentDateUTC.isAfter(lastLoginDateUTC) ||
-          !agency_enroll.last_login_date
-        ) {
-          if (
-            agency_enroll?.role?.name === "team_agency" ||
-            agency_enroll?.role?.name === "agency"
-          ) {
-            await CompetitionPoint.create({
-              user_id: agency_enroll?.reference_id,
-              agency_id: agency_enroll?.reference_id,
-              point: +referral_data?.competition?.successful_login?.toString(),
-              type: "login",
-              role: agency_enroll?.role?.name,
-            });
+        // if (
+        //   currentDateUTC.isAfter(lastLoginDateUTC) ||
+        //   !user_enroll?.last_login_date
+        // ) {
+        //   if (
+        //     agency_enroll?.role?.name === "team_agency" ||
+        //     agency_enroll?.role?.name === "agency"
+        //   ) {
+        //     await CompetitionPoint.create({
+        //       user_id: agency_enroll?.reference_id,
+        //       agency_id: agency_enroll?.reference_id,
+        //       point: +referral_data?.competition?.successful_login?.toString(),
+        //       type: "login",
+        //       role: agency_enroll?.role?.name,
+        //     });
 
-            await notificationService.addNotification({
-              module_name: "referral",
-              action_type: "login",
-              referred_to:
-                agency_enroll?.first_name + " " + agency_enroll?.last_name,
-              receiver_id: agency_enroll?.reference_id,
-              points: referral_data?.competition?.successful_login?.toString(),
-            });
+        //     await notificationService.addNotification({
+        //       module_name: "referral",
+        //       action_type: "login",
+        //       referred_to:
+        //         agency_enroll?.first_name + " " + agency_enroll?.last_name,
+        //       receiver_id: agency_enroll?.reference_id,
+        //       points: referral_data?.competition?.successful_login?.toString(),
+        //     });
 
-            await Agency.findOneAndUpdate(
-              { _id: agency_enroll?.reference_id },
-              {
-                $inc: {
-                  total_referral_point:
-                    referral_data?.competition?.successful_login,
-                },
-              },
-              { new: true }
-            );
-            await Authentication.findOneAndUpdate(
-              { reference_id: agency_enroll.reference_id },
-              { last_login_date: moment.utc().startOf("day") },
-              { new: true }
-            );
-          }
-        }
+        //     await Agency.findOneAndUpdate(
+        //       { _id: agency_enroll?.reference_id },
+        //       {
+        //         $inc: {
+        //           total_referral_point:
+        //             referral_data?.competition?.successful_login,
+        //         },
+        //       },
+        //       { new: true }
+        //     );
+        //     await Authentication.findOneAndUpdate(
+        //       { reference_id: agency_enroll.reference_id },
+        //       { last_login_date: moment.utc().startOf("day") },
+        //       { new: true }
+        //     );
+        //   }
+        // }
 
+        // currently it is on halt
         // this will used if we are adding the trial periods
-        if (referral_data?.payment?.free_trial > 0) {
-          await SheetManagement.findOneAndUpdate(
-            { agency_id: agency_enroll?.reference_id },
-            {
-              agency_id: agency_enroll?.reference_id,
-              total_sheets: 1,
-              occupied_sheets: [],
-            },
-            { upsert: true }
-          );
-        }
+        // if (referral_data?.payment?.free_trial > 0) {
+        //   await SheetManagement.findOneAndUpdate(
+        //     { agency_id: agency_enroll?.reference_id },
+        //     {
+        //       agency_id: agency_enroll?.reference_id,
+        //       total_sheets: 1,
+        //       occupied_sheets: [],
+        //     },
+        //     { upsert: true }
+        //   );
+        // }
 
+        // notification flow is on halt in the new sign up flow
         // -------------------- Notification --------------------------------
 
-        notificationService.addAdminNotification({
-          action_name: "agencyCreated",
-          agency_name:
-            capitalizeFirstLetter(decoded?.given_name) +
-            " " +
-            capitalizeFirstLetter(decoded?.family_name),
-          email: decoded?.email,
-        });
+        // notificationService.addAdminNotification({
+        //   action_name: "agencyCreated",
+        //   agency_name:
+        //     capitalizeFirstLetter(decoded?.given_name) +
+        //     " " +
+        //     capitalizeFirstLetter(decoded?.family_name),
+        //   email: decoded?.email,
+        // });
 
-        const agencyCreated = agencyCreatedTemplate({
-          agency_name:
-            capitalizeFirstLetter(decoded?.given_name) +
-            " " +
-            capitalizeFirstLetter(decoded?.family_name),
-          email: decoded?.email,
-        });
+        // const agencyCreated = agencyCreatedTemplate({
+        //   agency_name:
+        //     capitalizeFirstLetter(decoded?.given_name) +
+        //     " " +
+        //     capitalizeFirstLetter(decoded?.family_name),
+        //   email: decoded?.email,
+        // });
 
-        sendEmail({
-          email: admin?.email,
-          subject: returnMessage("emailTemplate", "agencyCreated"),
-          message: agencyCreated,
-        });
-        // -------------------- Notification --------------------------------
-        this.glideCampaign({
-          ...agency_enroll,
-          company_name: payload?.company_name,
-          company_website: payload?.company_website,
-          no_of_people: payload?.no_of_people,
-          industry: payload?.industry,
-        });
-        return this.tokenGenerator({
-          ...agency_enroll,
-          subscription_halt_days:
-            referral_data?.payment?.subscription_halt_days,
-        });
+        // sendEmail({
+        //   email: admin?.email,
+        //   subject: returnMessage("emailTemplate", "agencyCreated"),
+        //   message: agencyCreated,
+        // });
+        // // -------------------- Notification --------------------------------
+        // glide campaign is on halt and it will resume after the new Sign up flow
+        // this.glideCampaign({
+        //   ...agency_enroll,
+        //   company_name: payload?.company_name,
+        //   company_website: payload?.company_website,
+        //   no_of_people: payload?.no_of_people,
+        //   industry: payload?.industry,
+        // });
+        return user_enroll;
       } else {
-        const lastLoginDateUTC = moment
-          .utc(existing_agency?.last_login_date)
-          .startOf("day");
-        const currentDateUTC = moment.utc().startOf("day");
+        // this condition is used when user enters the same email id while sign up and then uses google signin method
+        if (!user_exist?.is_google_signup)
+          await Authentication.findByIdAndUpdate(user_exist?._id, {
+            is_google_signup: true,
+          });
+        // this is on halt now
+        // const lastLoginDateUTC = moment
+        //   .utc(existing_agency?.last_login_date)
+        //   .startOf("day");
+        // const currentDateUTC = moment.utc().startOf("day");
 
-        if (
-          currentDateUTC.isAfter(lastLoginDateUTC) ||
-          !existing_agency?.last_login_date
-        ) {
-          if (
-            existing_agency?.role?.name === "team_agency" ||
-            existing_agency?.role?.name === "agency"
-          ) {
-            await CompetitionPoint.create({
-              user_id: existing_agency?.reference_id,
-              agency_id: existing_agency?.reference_id,
-              point: +referral_data?.competition?.successful_login?.toString(),
-              type: "login",
-              role: existing_agency?.role?.name,
-            });
+        // if (
+        //   currentDateUTC.isAfter(lastLoginDateUTC) ||
+        //   !existing_agency?.last_login_date
+        // ) {
+        //   if (
+        //     existing_agency?.role?.name === "team_agency" ||
+        //     existing_agency?.role?.name === "agency"
+        //   ) {
+        //     await CompetitionPoint.create({
+        //       user_id: existing_agency?.reference_id,
+        //       agency_id: existing_agency?.reference_id,
+        //       point: +referral_data?.competition?.successful_login?.toString(),
+        //       type: "login",
+        //       role: existing_agency?.role?.name,
+        //     });
 
-            await notificationService.addNotification({
-              module_name: "referral",
-              action_type: "login",
-              referred_to:
-                existing_agency?.first_name + " " + existing_agency?.last_name,
-              receiver_id: existing_agency?.reference_id,
-              points: referral_data?.competition?.successful_login?.toString(),
-            });
-            if (existing_agency?.role?.name === "agency") {
-              await Agency.findOneAndUpdate(
-                { _id: existing_agency.reference_id },
-                {
-                  $inc: {
-                    total_referral_point:
-                      referral_data?.competition?.successful_login,
-                  },
-                },
-                { new: true }
-              );
-            } else if (existing_agency?.role?.name === "team_agency") {
-              await Team_Agency.findOneAndUpdate(
-                { _id: existing_agency.reference_id },
-                {
-                  $inc: {
-                    total_referral_point:
-                      referral_data?.competition?.successful_login,
-                  },
-                },
-                { new: true }
-              );
-            }
-            await Authentication.findOneAndUpdate(
-              { reference_id: existing_agency.reference_id },
-              { last_login_date: moment.utc().startOf("day") },
-              { new: true }
-            );
-          }
-        }
-        return this.tokenGenerator({
-          ...existing_agency,
-          subscription_halt_days:
-            referral_data?.payment?.subscription_halt_days,
+        //     await notificationService.addNotification({
+        //       module_name: "referral",
+        //       action_type: "login",
+        //       referred_to:
+        //         existing_agency?.first_name + " " + existing_agency?.last_name,
+        //       receiver_id: existing_agency?.reference_id,
+        //       points: referral_data?.competition?.successful_login?.toString(),
+        //     });
+        //     if (existing_agency?.role?.name === "agency") {
+        //       await Agency.findOneAndUpdate(
+        //         { _id: existing_agency.reference_id },
+        //         {
+        //           $inc: {
+        //             total_referral_point:
+        //               referral_data?.competition?.successful_login,
+        //           },
+        //         },
+        //         { new: true }
+        //       );
+        //     } else if (existing_agency?.role?.name === "team_agency") {
+        //       await Team_Agency.findOneAndUpdate(
+        //         { _id: existing_agency.reference_id },
+        //         {
+        //           $inc: {
+        //             total_referral_point:
+        //               referral_data?.competition?.successful_login,
+        //           },
+        //         },
+        //         { new: true }
+        //       );
+        //     }
+        //     await Authentication.findOneAndUpdate(
+        //       { reference_id: existing_agency.reference_id },
+        //       { last_login_date: moment.utc().startOf("day") },
+        //       { new: true }
+        //     );
+        //   }
+        // }
+        return await this.tokenGenerator({
+          ...user_exist,
         });
       }
     } catch (error) {
@@ -583,75 +679,38 @@ class AuthService {
       if (!data?.email)
         return throwError(returnMessage("auth", "facebookEmailNotFound"));
 
-      let [existing_agency, referral_data, admin] = await Promise.all([
-        Authentication.findOne({
-          email: data?.email,
-          is_deleted: false,
-        })
-          .populate("role", "name")
-          .lean(),
-        Configuration.findOne({}).lean(),
-        Admin.findOne({}).lean(),
-      ]);
+      let user_exist = await Authentication.findOne({
+        email: data?.email,
+        is_deleted: false,
+        is_facebook_signup: true,
+      }).lean();
 
-      if (existing_agency?.role?.name === "team_agency") {
-        const team_agency_detail = await Team_Agency.findById(
-          existing_agency?.reference_id
-        ).lean();
-        const agency_detail = await Authentication.findOne({
-          reference_id: team_agency_detail?.agency_id,
-        }).lean();
-
-        if (agency_detail?.status === "payment_pending")
-          return throwError(
-            returnMessage("payment", "paymentPendingForAgency")
-          );
-      }
-
-      let status = "payment_pending";
-
-      if (referral_data?.payment?.free_trial > 0) {
-        status = "free_trial";
-      }
-
-      if (!existing_agency) {
-        const [agency, role] = await Promise.all([
-          agencyService.agencyRegistration({}),
-          Role_Master.findOne({ name: "agency" }).select("name").lean(),
-        ]);
-
+      if (!user_exist) {
         const referral_code = await this.referralCodeGenerator();
         let affiliate_referral_code = await this.referralCodeGenerator();
 
         if (!referral_code) return returnMessage("default");
 
-        let agency_enroll = await Authentication.create({
+        let user_enroll = await Authentication.create({
           first_name: data?.first_name,
           last_name: data?.last_name,
-          name:
-            capitalizeFirstLetter(data?.first_name) +
-            " " +
-            capitalizeFirstLetter(data?.last_name),
           email: data?.email,
-          reference_id: agency?._id,
-          role: role?._id,
-          status,
+          status: "signup_incomplete",
           is_facebook_signup: true,
           referral_code,
-          affiliate_referral_code: affiliate_referral_code,
+          affiliate_referral_code,
         });
 
-        agency_enroll = agency_enroll.toObject();
-        agency_enroll.role = role;
+        user_enroll = user_enroll?.toObject();
 
         if (payload?.referral_code) {
           const referral_registered = await this.referralSignUp({
             referral_code: payload?.referral_code,
-            referred_to: agency_enroll,
+            referred_to: user_enroll,
           });
 
           if (typeof referral_registered === "string") {
-            await Authentication.findByIdAndDelete(agency_enroll._id);
+            await Authentication.findByIdAndDelete(user_enroll?._id);
             return referral_registered;
           }
         }
@@ -660,176 +719,179 @@ class AuthService {
           const decodedEmail = decodeURIComponent(payload?.affiliate_email);
           await this.affiliateReferralSignUp({
             referral_code: payload?.affiliate_referral_code,
-            referred_to: agency_enroll.reference_id,
+            referred_to: user_enroll?._id,
             email: decodedEmail,
           });
         }
-        PaymentService.createContact(agency_enroll);
-        const lastLoginDateUTC = moment
-          .utc(agency_enroll?.last_login_date)
-          .startOf("day");
-        const currentDateUTC = moment.utc().startOf("day");
+        // need to check the flow after the new signup flow
+        // PaymentService.createContact(user_enroll);
+        // need to verify later and store process of the login points
+        // const lastLoginDateUTC = moment
+        //   .utc(agency_enroll?.last_login_date)
+        //   .startOf("day");
+        // const currentDateUTC = moment.utc().startOf("day");
 
-        if (
-          currentDateUTC.isAfter(lastLoginDateUTC) ||
-          !agency_enroll?.last_login_date
-        ) {
-          if (
-            agency_enroll?.role?.name === "team_agency" ||
-            agency_enroll?.role?.name === "agency"
-          ) {
-            await CompetitionPoint.create({
-              user_id: agency_enroll?.reference_id,
-              agency_id: agency_enroll?.reference_id,
-              point: +referral_data?.competition?.successful_login?.toString(),
-              type: "login",
-              role: agency_enroll?.role?.name,
-              login_date: moment.utc().startOf("day"),
-            });
+        // if (
+        //   currentDateUTC.isAfter(lastLoginDateUTC) ||
+        //   !agency_enroll?.last_login_date
+        // ) {
+        //   if (
+        //     agency_enroll?.role?.name === "team_agency" ||
+        //     agency_enroll?.role?.name === "agency"
+        //   ) {
+        //     await CompetitionPoint.create({
+        //       user_id: agency_enroll?.reference_id,
+        //       agency_id: agency_enroll?.reference_id,
+        //       point: +referral_data?.competition?.successful_login?.toString(),
+        //       type: "login",
+        //       role: agency_enroll?.role?.name,
+        //       login_date: moment.utc().startOf("day"),
+        //     });
 
-            await notificationService.addNotification({
-              module_name: "referral",
-              action_type: "login",
-              referred_to:
-                agency_enroll?.first_name + " " + agency_enroll?.last_name,
-              receiver_id: agency_enroll?.reference_id,
-              points: referral_data?.competition?.successful_login?.toString(),
-            });
+        //     await notificationService.addNotification({
+        //       module_name: "referral",
+        //       action_type: "login",
+        //       referred_to:
+        //         agency_enroll?.first_name + " " + agency_enroll?.last_name,
+        //       receiver_id: agency_enroll?.reference_id,
+        //       points: referral_data?.competition?.successful_login?.toString(),
+        //     });
 
-            await Agency.findOneAndUpdate(
-              { _id: agency_enroll?.reference_id },
-              {
-                $inc: {
-                  total_referral_point:
-                    referral_data?.competition?.successful_login,
-                },
-              },
-              { new: true }
-            );
-            await Authentication.findOneAndUpdate(
-              { reference_id: agency_enroll.reference_id },
-              { last_login_date: moment.utc().startOf("day") },
-              { new: true }
-            );
-          }
-        }
+        //     await Agency.findOneAndUpdate(
+        //       { _id: agency_enroll?.reference_id },
+        //       {
+        //         $inc: {
+        //           total_referral_point:
+        //             referral_data?.competition?.successful_login,
+        //         },
+        //       },
+        //       { new: true }
+        //     );
+        //     await Authentication.findOneAndUpdate(
+        //       { reference_id: agency_enroll.reference_id },
+        //       { last_login_date: moment.utc().startOf("day") },
+        //       { new: true }
+        //     );
+        //   }
+        // }
 
         // this will used if we are adding the trial periods
-        if (referral_data?.payment?.free_trial > 0) {
-          await SheetManagement.findOneAndUpdate(
-            { agency_id: agency_enroll?.reference_id },
-            {
-              agency_id: agency_enroll?.reference_id,
-              total_sheets: 1,
-              occupied_sheets: [],
-            },
-            { upsert: true }
-          );
-        }
+        // if (referral_data?.payment?.free_trial > 0) {
+        //   await SheetManagement.findOneAndUpdate(
+        //     { agency_id: agency_enroll?.reference_id },
+        //     {
+        //       agency_id: agency_enroll?.reference_id,
+        //       total_sheets: 1,
+        //       occupied_sheets: [],
+        //     },
+        //     { upsert: true }
+        //   );
+        // }
 
-        // -------------------- Notification --------------------------------
+        // notification is on halt now
+        // // -------------------- Notification --------------------------------
 
-        notificationService.addAdminNotification({
-          action_name: "agencyCreated",
-          agency_name:
-            capitalizeFirstLetter(data?.first_name) +
-            " " +
-            capitalizeFirstLetter(data?.last_name),
-          email: data?.email,
-        });
+        // notificationService.addAdminNotification({
+        //   action_name: "agencyCreated",
+        //   agency_name:
+        //     capitalizeFirstLetter(data?.first_name) +
+        //     " " +
+        //     capitalizeFirstLetter(data?.last_name),
+        //   email: data?.email,
+        // });
 
-        const agencyCreated = agencyCreatedTemplate({
-          agency_name:
-            capitalizeFirstLetter(data?.first_name) +
-            " " +
-            capitalizeFirstLetter(data?.last_name),
-          email: data?.email,
-        });
+        // const agencyCreated = agencyCreatedTemplate({
+        //   agency_name:
+        //     capitalizeFirstLetter(data?.first_name) +
+        //     " " +
+        //     capitalizeFirstLetter(data?.last_name),
+        //   email: data?.email,
+        // });
 
-        sendEmail({
-          email: admin?.email,
-          subject: returnMessage("emailTemplate", "agencyCreated"),
-          message: agencyCreated,
-        });
-        // -------------------- Notification --------------------------------
-        this.glideCampaign({
-          ...agency_enroll,
-          company_name: payload?.company_name,
-          company_website: payload?.company_website,
-          no_of_people: payload?.no_of_people,
-          industry: payload?.industry,
-        });
+        // sendEmail({
+        //   email: admin?.email,
+        //   subject: returnMessage("emailTemplate", "agencyCreated"),
+        //   message: agencyCreated,
+        // });
+        // // -------------------- Notification --------------------------------
+        // this.glideCampaign({
+        //   ...agency_enroll,
+        //   company_name: payload?.company_name,
+        //   company_website: payload?.company_website,
+        //   no_of_people: payload?.no_of_people,
+        //   industry: payload?.industry,
+        // });
 
-        return this.tokenGenerator({
-          ...agency_enroll,
-          subscription_halt_days:
-            referral_data?.payment?.subscription_halt_days,
-        });
+        return user_enroll;
       } else {
-        const lastLoginDateUTC = moment
-          .utc(existing_agency?.last_login_date)
-          .startOf("day");
-        const currentDateUTC = moment.utc().startOf("day");
+        // this condition is used when user enters the same email id while sign up and then uses google signin method
+        if (!user_exist?.is_facebook_signup)
+          await Authentication.findByIdAndUpdate(user_exist?._id, {
+            is_facebook_signup: true,
+          });
+        // need to integrate and test later
+        // const lastLoginDateUTC = moment
+        //   .utc(existing_agency?.last_login_date)
+        //   .startOf("day");
+        // const currentDateUTC = moment.utc().startOf("day");
 
-        if (
-          currentDateUTC.isAfter(lastLoginDateUTC) ||
-          !existing_agency?.last_login_date
-        ) {
-          if (
-            existing_agency?.role?.name === "team_agency" ||
-            existing_agency?.role?.name === "agency"
-          ) {
-            await CompetitionPoint.create({
-              user_id: existing_agency?.reference_id,
-              agency_id: existing_agency?.reference_id,
-              point: +referral_data?.competition?.successful_login?.toString(),
-              type: "login",
-              role: existing_agency?.role?.name,
-            });
+        // if (
+        //   currentDateUTC.isAfter(lastLoginDateUTC) ||
+        //   !existing_agency?.last_login_date
+        // ) {
+        //   if (
+        //     existing_agency?.role?.name === "team_agency" ||
+        //     existing_agency?.role?.name === "agency"
+        //   ) {
+        //     await CompetitionPoint.create({
+        //       user_id: existing_agency?.reference_id,
+        //       agency_id: existing_agency?.reference_id,
+        //       point: +referral_data?.competition?.successful_login?.toString(),
+        //       type: "login",
+        //       role: existing_agency?.role?.name,
+        //     });
 
-            await notificationService.addNotification({
-              module_name: "referral",
-              action_type: "login",
-              referred_to:
-                existing_agency?.first_name + " " + existing_agency?.last_name,
-              receiver_id: existing_agency?.reference_id,
-              points: referral_data?.competition?.successful_login?.toString(),
-            });
+        //     await notificationService.addNotification({
+        //       module_name: "referral",
+        //       action_type: "login",
+        //       referred_to:
+        //         existing_agency?.first_name + " " + existing_agency?.last_name,
+        //       receiver_id: existing_agency?.reference_id,
+        //       points: referral_data?.competition?.successful_login?.toString(),
+        //     });
 
-            if (existing_agency?.role?.name === "agency") {
-              await Agency.findOneAndUpdate(
-                { _id: existing_agency.reference_id },
-                {
-                  $inc: {
-                    total_referral_point:
-                      referral_data?.competition?.successful_login,
-                  },
-                },
-                { new: true }
-              );
-            } else if (existing_agency?.role?.name === "team_agency") {
-              await Team_Agency.findOneAndUpdate(
-                { _id: existing_agency.reference_id },
-                {
-                  $inc: {
-                    total_referral_point:
-                      referral_data?.competition?.successful_login,
-                  },
-                },
-                { new: true }
-              );
-            }
-            await Authentication.findOneAndUpdate(
-              { reference_id: existing_agency?.reference_id },
-              { last_login_date: moment.utc().startOf("day") },
-              { new: true }
-            );
-          }
-        }
-        return this.tokenGenerator({
-          ...existing_agency,
-          subscription_halt_days:
-            referral_data?.payment?.subscription_halt_days,
+        //     if (existing_agency?.role?.name === "agency") {
+        //       await Agency.findOneAndUpdate(
+        //         { _id: existing_agency.reference_id },
+        //         {
+        //           $inc: {
+        //             total_referral_point:
+        //               referral_data?.competition?.successful_login,
+        //           },
+        //         },
+        //         { new: true }
+        //       );
+        //     } else if (existing_agency?.role?.name === "team_agency") {
+        //       await Team_Agency.findOneAndUpdate(
+        //         { _id: existing_agency.reference_id },
+        //         {
+        //           $inc: {
+        //             total_referral_point:
+        //               referral_data?.competition?.successful_login,
+        //           },
+        //         },
+        //         { new: true }
+        //       );
+        //     }
+        //     await Authentication.findOneAndUpdate(
+        //       { reference_id: existing_agency?.reference_id },
+        //       { last_login_date: moment.utc().startOf("day") },
+        //       { new: true }
+        //     );
+        //   }
+        // }
+        return await this.tokenGenerator({
+          ...user_exist,
         });
       }
     } catch (error) {
@@ -843,161 +905,141 @@ class AuthService {
       const { email, password } = payload;
       validateRequestFields(payload, ["email", "password"]);
 
-      const existing_Data = await Authentication.findOne({
+      const user_exist = await Authentication.findOne({
         email,
         is_deleted: false,
-      })
-        .populate("role", "name")
-        .lean();
+      }).lean();
 
-      if (!existing_Data)
+      if (!user_exist)
         return throwError(
           returnMessage("auth", "dataNotFound"),
           statusCode.notFound
         );
 
-      if (!existing_Data?.password)
+      if (!user_exist?.password)
         return throwError(returnMessage("auth", "incorrectPassword"));
 
       if (
         !(await this.passwordVerifier({
           password,
-          encrypted_password: existing_Data?.password,
+          encrypted_password: user_exist?.password,
         }))
       )
         return throwError(returnMessage("auth", "incorrectPassword"));
 
-      if (
-        existing_Data?.role?.name == "agency" &&
-        existing_Data?.status == "agency_inactive"
-      )
-        return throwError(returnMessage("agency", "agencyInactive"));
+      if (user_exist?.status == "inactive")
+        return throwError(returnMessage("user", "userInactive"));
 
-      if (existing_Data?.role?.name === "team_agency") {
-        const team_agency_detail = await Team_Agency.findById(
-          existing_Data?.reference_id
-        )
-          .populate("role", "name")
-          .lean();
-        existing_Data.team_agency_detail = team_agency_detail;
-        const agency_detail = await Authentication.findOne({
-          reference_id: team_agency_detail?.agency_id,
-        }).lean();
+      delete user_exist?.is_facebook_signup;
+      delete user_exist?.is_google_signup;
+      delete user_exist?.password;
 
-        if (agency_detail?.status === "payment_pending")
-          return throwError(
-            returnMessage("payment", "paymentPendingForAgency")
-          );
-      }
-      delete existing_Data?.is_facebook_signup;
-      delete existing_Data?.is_google_signup;
-      delete existing_Data?.password;
+      // removed as of now
+      // const lastLoginDateUTC = moment
+      //   .utc(existing_Data?.last_login_date)
+      //   .startOf("day");
 
-      const lastLoginDateUTC = moment
-        .utc(existing_Data?.last_login_date)
-        .startOf("day");
-
-      // Get the current date in UTC format using Moment.js
-      const currentDateUTC = moment.utc().startOf("day");
-      const referral_data = await Configuration.findOne().lean();
+      // // Get the current date in UTC format using Moment.js
+      // const currentDateUTC = moment.utc().startOf("day");
+      // const referral_data = await Configuration.findOne().lean();
       // Check if last login date is the same as current date
-      if (
-        currentDateUTC.isAfter(lastLoginDateUTC) ||
-        !existing_Data?.last_login_date
-      ) {
-        // If the condition is true, execute the following code
-        if (
-          existing_Data?.role?.name === "team_agency" ||
-          existing_Data?.role?.name === "agency"
-        ) {
-          let agency_key,
-            parent_id = existing_Data?.reference_id;
+      // if (
+      //   currentDateUTC.isAfter(lastLoginDateUTC) ||
+      //   !existing_Data?.last_login_date
+      // ) {
+      //   // If the condition is true, execute the following code
+      //   if (
+      //     existing_Data?.role?.name === "team_agency" ||
+      //     existing_Data?.role?.name === "agency"
+      //   ) {
+      //     let agency_key,
+      //       parent_id = existing_Data?.reference_id;
 
-          if (existing_Data?.role?.name === "team_agency") {
-            const team_detail = await Team_Agency.findOneAndUpdate(
-              { _id: existing_Data.reference_id },
-              {
-                $inc: {
-                  total_referral_point:
-                    referral_data?.competition?.successful_login,
-                },
-              },
-              { new: true }
-            );
-            parent_id = team_detail?.agency_id;
-          }
+      //     if (existing_Data?.role?.name === "team_agency") {
+      //       const team_detail = await Team_Agency.findOneAndUpdate(
+      //         { _id: existing_Data.reference_id },
+      //         {
+      //           $inc: {
+      //             total_referral_point:
+      //               referral_data?.competition?.successful_login,
+      //           },
+      //         },
+      //         { new: true }
+      //       );
+      //       parent_id = team_detail?.agency_id;
+      //     }
 
-          await CompetitionPoint.create({
-            user_id: existing_Data?.reference_id,
-            agency_id: parent_id,
-            point: +referral_data?.competition?.successful_login?.toString(),
-            type: "login",
-            role: existing_Data?.role?.name,
-          });
+      //     await CompetitionPoint.create({
+      //       user_id: existing_Data?.reference_id,
+      //       agency_id: parent_id,
+      //       point: +referral_data?.competition?.successful_login?.toString(),
+      //       type: "login",
+      //       role: existing_Data?.role?.name,
+      //     });
 
-          await notificationService.addNotification({
-            module_name: "referral",
-            action_type: "login",
-            referred_to:
-              existing_Data?.first_name + " " + existing_Data?.last_name,
-            receiver_id: existing_Data?.reference_id,
-            points: referral_data?.competition?.successful_login?.toString(),
-          });
+      //     await notificationService.addNotification({
+      //       module_name: "referral",
+      //       action_type: "login",
+      //       referred_to:
+      //         existing_Data?.first_name + " " + existing_Data?.last_name,
+      //       receiver_id: existing_Data?.reference_id,
+      //       points: referral_data?.competition?.successful_login?.toString(),
+      //     });
 
-          if (existing_Data?.role?.name === "agency") {
-            await Agency.findOneAndUpdate(
-              { _id: existing_Data.reference_id },
-              {
-                $inc: {
-                  total_referral_point:
-                    referral_data?.competition?.successful_login,
-                },
-              },
-              { new: true }
-            );
-          }
-          await Authentication.findOneAndUpdate(
-            { reference_id: existing_Data.reference_id },
-            { last_login_date: moment.utc().startOf("day") },
-            { new: true }
-          );
-        }
-      }
+      //     if (existing_Data?.role?.name === "agency") {
+      //       await Agency.findOneAndUpdate(
+      //         { _id: existing_Data.reference_id },
+      //         {
+      //           $inc: {
+      //             total_referral_point:
+      //               referral_data?.competition?.successful_login,
+      //           },
+      //         },
+      //         { new: true }
+      //       );
+      //     }
+      //     await Authentication.findOneAndUpdate(
+      //       { reference_id: existing_Data.reference_id },
+      //       { last_login_date: moment.utc().startOf("day") },
+      //       { new: true }
+      //     );
+      //   }
+      // }
 
-      if (existing_Data?.role?.name === "agency") {
-        const agency_profile = await Agency.findById(
-          existing_Data?.reference_id
-        ).lean();
-        if (
-          !agency_profile?.address ||
-          agency_profile?.address === "" ||
-          !agency_profile?.state ||
-          !agency_profile?.country ||
-          !agency_profile?.city ||
-          !agency_profile?.pincode ||
-          agency_profile?.pincode === ""
-        )
-          existing_Data.profile_pending = true;
-      } else if (existing_Data?.role?.name === "client") {
-        const client_profile = await Client.findById(
-          existing_Data?.reference_id
-        ).lean();
-        if (
-          !client_profile?.address ||
-          client_profile?.address === "" ||
-          !client_profile?.state ||
-          !client_profile?.country ||
-          !client_profile?.city ||
-          !client_profile?.pincode ||
-          client_profile?.pincode === ""
-        )
-          existing_Data.profile_pending = true;
-      }
+      // this will check after the complete signup flow
+      // if (existing_Data?.role?.name === "agency") {
+      //   const agency_profile = await Agency.findById(
+      //     existing_Data?.reference_id
+      //   ).lean();
+      //   if (
+      //     !agency_profile?.address ||
+      //     agency_profile?.address === "" ||
+      //     !agency_profile?.state ||
+      //     !agency_profile?.country ||
+      //     !agency_profile?.city ||
+      //     !agency_profile?.pincode ||
+      //     agency_profile?.pincode === ""
+      //   )
+      //     existing_Data.profile_pending = true;
+      // } else if (existing_Data?.role?.name === "client") {
+      //   const client_profile = await Client.findById(
+      //     existing_Data?.reference_id
+      //   ).lean();
+      //   if (
+      //     !client_profile?.address ||
+      //     client_profile?.address === "" ||
+      //     !client_profile?.state ||
+      //     !client_profile?.country ||
+      //     !client_profile?.city ||
+      //     !client_profile?.pincode ||
+      //     client_profile?.pincode === ""
+      //   )
+      //     existing_Data.profile_pending = true;
+      // }
 
-      return this.tokenGenerator({
-        ...existing_Data,
+      return await this.tokenGenerator({
+        ...user_exist,
         rememberMe: payload?.rememberMe,
-        subscription_halt_days: referral_data?.payment?.subscription_halt_days,
       });
     } catch (error) {
       logger.error(`Error while login: ${error.message}`);
@@ -1255,14 +1297,14 @@ class AuthService {
       await ReferralHistory.deleteMany({
         referral_code,
         registered: false,
-        referred_by: referral_code_exist.reference_id,
+        referred_by: referral_code_exist?._id,
         email: referred_to?.email,
       });
 
       await ReferralHistory.create({
         referral_code,
-        referred_by: referral_code_exist?.reference_id,
-        referred_to: referred_to?.reference_id,
+        referred_by: referral_code_exist?._id,
+        referred_to: referred_to?._id,
         email: referred_to?.email,
         registered: true,
       });

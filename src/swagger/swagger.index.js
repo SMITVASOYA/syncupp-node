@@ -13,13 +13,12 @@ const activityRoute = require("./swagger_helper/activity.swagger");
 const paymentRoute = require("./swagger_helper/payment.swagger");
 const chatRoute = require("./swagger_helper/chat.swagger");
 const referralRoute = require("./swagger_helper/referral.swagger");
-const boardRoutes = require("./swagger_helper/board.swagger");
 
 const swaggerDoc = {
   openapi: "3.0.0",
   host: "",
   info: {
-    title: "SyncUpp",
+    title: "Syncupp",
     version: "0.0.1",
     description: "Swagger API Documentation for Admin Panel",
   },
@@ -76,7 +75,6 @@ const swaggerDoc = {
     ...paymentRoute,
     ...chatRoute,
     ...referralRoute,
-    ...boardRoutes,
   },
 };
 module.exports = swaggerDoc;

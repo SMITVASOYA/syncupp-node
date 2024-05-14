@@ -22,7 +22,7 @@ const Role_Master = require("../models/masters/roleMasterSchema");
 const Team_Agency = require("../models/teamAgencySchema");
 const Team_Role_Master = require("../models/masters/teamRoleSchema");
 const Team_Client = require("../models/teamClientSchema");
-const { ObjectId } = require("mongodb");
+const { ObjectId } = require("mongoose");
 const Agency = require("../models/agencySchema");
 const AuthService = require("./authService");
 const authService = new AuthService();
@@ -1307,20 +1307,22 @@ class TeamMemberService {
       )
         company_website = null;
 
+      const existingImage = await Authentication.findById(user_id).lean();
       let imagePath = false;
       if (image) {
         imagePath = "uploads/" + image.filename;
-      } else if (image === "") {
+      } else if (
+        image === "" ||
+        (image === undefined && !payload?.profile_image)
+      ) {
         imagePath = "";
+        existingImage &&
+          fs.unlink(`./src/public/${existingImage?.profile_image}`, (err) => {
+            if (err) {
+              logger.error(`Error while unlinking the documents: ${err}`);
+            }
+          });
       }
-
-      const existingImage = await Authentication.findById(user_id);
-      existingImage &&
-        fs.unlink(`./src/public/${existingImage.profile_image}`, (err) => {
-          if (err) {
-            logger.error(`Error while unlinking the documents: ${err}`);
-          }
-        });
 
       const authData = {
         first_name,
@@ -1796,7 +1798,7 @@ class TeamMemberService {
           agency_details?.first_name
         )} ${capitalizeFirstLetter(
           agency_details?.last_name
-        )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+        )} has sent an invitation to you. please click on below button to join Syncupp.`;
         const company_urls = await Configuration.find().lean();
         let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 
@@ -1837,7 +1839,7 @@ class TeamMemberService {
           agency_details?.first_name
         )} ${capitalizeFirstLetter(
           agency_details?.last_name
-        )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+        )} has sent an invitation to you. please click on below button to join Syncupp.`;
         const company_urls = await Configuration.find().lean();
         let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 
@@ -1880,7 +1882,7 @@ class TeamMemberService {
           agency_details?.first_name
         )} ${capitalizeFirstLetter(
           agency_details?.last_name
-        )} has sent an invitation to you. please click on below button to join SyncUpp.`;
+        )} has sent an invitation to you. please click on below button to join Syncupp.`;
         const company_urls = await Configuration.find().lean();
         let privacy_policy = company_urls[0]?.urls?.privacy_policy;
 

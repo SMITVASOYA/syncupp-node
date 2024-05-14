@@ -1,13 +1,61 @@
-const registerAgency = {
+const registerUser = {
   tags: ["CRM Panel"],
   description: "",
-  summary: "Register Agency.",
+  summary: "User registration.",
   requestBody: {
     content: {
       "application/json": {
         schema: {
           type: "object",
           properties: {
+            email: {
+              type: "string",
+              descripition: "Enter your email",
+              required: true,
+            },
+            affiliate_referral_code: {
+              type: "string",
+              descripition: "Enter referral code",
+            },
+            referral_code: {
+              type: "string",
+              descripition: "Enter affiliate referral code",
+            },
+          },
+        },
+      },
+    },
+  },
+
+  responses: {
+    200: {
+      descripition: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
+const signupComplete = {
+  tags: ["CRM Panel"],
+  description: "",
+  summary: "User complete the signup.",
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+          properties: {
+            email: {
+              type: "string",
+              descripition: "Enter your email",
+              required: true,
+            },
             first_name: {
               type: "string",
               descripition: "Enter your first name",
@@ -18,6 +66,57 @@ const registerAgency = {
               descripition: "Enter your last name",
               required: true,
             },
+            password: {
+              type: "string",
+              descripition: "Enter your password",
+              required: true,
+            },
+            contact_number: {
+              type: "string",
+              descripition: "Enter your contact number",
+            },
+            no_of_people: {
+              type: "string",
+              descripition: "Enter no of people",
+            },
+            profession_role: {
+              type: "string",
+              descripition: "Enter professional role",
+            },
+            workspace_name: {
+              type: "string",
+              descripition: "Enter workspace name.",
+            },
+          },
+        },
+      },
+    },
+  },
+
+  responses: {
+    200: {
+      descripition: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
+const checkContactunique = {
+  tags: ["CRM Panel"],
+  description: "",
+  summary: "Check for the contact number is unique.",
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+          properties: {
             email: {
               type: "string",
               descripition: "Enter your email",
@@ -25,33 +124,8 @@ const registerAgency = {
             },
             contact_number: {
               type: "string",
-              descripition: "Enter your contact number",
+              descripition: "Enter contact number",
               required: true,
-            },
-            password: {
-              type: "string",
-              descripition: "Enter your password",
-              required: true,
-            },
-            remember_me: {
-              type: "boolean",
-              default: false,
-            },
-            company_website: {
-              type: "string",
-              descripition: "Enter your company website",
-            },
-            no_of_people: {
-              type: "string",
-              descripition: "Enter no. of people",
-            },
-            company_name: {
-              type: "string",
-              descripition: "Enter name of company",
-            },
-            industry: {
-              type: "string",
-              descripition: "Enter object id of the industry",
             },
           },
         },
@@ -548,9 +622,55 @@ const checkSubscriptionHalt = {
   },
 };
 
+const workspaceChange = {
+  tags: ["CRM Panel"],
+  description: "",
+  summary: "Change workspace.",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+          properties: {
+            workspace_id: {
+              type: "string",
+              descripition: "Add workspace id",
+              required: true,
+            },
+          },
+        },
+      },
+    },
+  },
+
+  responses: {
+    200: {
+      descripition: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
 const authRoutes = {
   "/api/v1/auth/signup": {
-    post: registerAgency,
+    post: registerUser,
+  },
+  "/api/v1/auth/signup-complete": {
+    patch: signupComplete,
+  },
+  "/api/v1/auth/contact-unique": {
+    post: checkContactunique,
   },
   "/api/v1/auth/google-signup": {
     post: googleSignIn,
@@ -587,6 +707,9 @@ const authRoutes = {
   },
   "/api/v1/auth/subscription-halt": {
     get: checkSubscriptionHalt,
+  },
+  "/api/v1/auth/change-workspace": {
+    post: workspaceChange,
   },
 };
 

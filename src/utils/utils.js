@@ -577,7 +577,6 @@ exports.agrementEmail = (data) => {
                                               "
                                               ><img
                                                 src="${process.env.SERVER_URL}/template/syncupp-logo.png"
-                                                alt="Logo"
                                                 style="
                                                   display: block;
                                                   border: 0;
@@ -586,7 +585,6 @@ exports.agrementEmail = (data) => {
                                                   -ms-interpolation-mode: bicubic;
                                                 "
                                                 height="60"
-                                                title="Logo"
                                             /></a>
                                           </td>
                                         </tr>
@@ -1527,7 +1525,6 @@ exports.invitationEmail = (
                                       "
                                       ><img
                                         src="${process.env.SERVER_URL}/template/logo.png"
-                                        alt="Logo"
                                         style="
                                           display: block;
                                           border: 0;
@@ -1536,7 +1533,6 @@ exports.invitationEmail = (
                                           -ms-interpolation-mode: bicubic;
                                         "
                                         height="60"
-                                        title="Logo"
                                     /></a>
                                   </td>
                                 </tr>
@@ -2509,7 +2505,6 @@ exports.welcomeMail = (username, privacy_policy, instagram, facebook) => {
                                         "
                                         ><img
                                           src="${process.env.SERVER_URL}/template/logo.png"
-                                          alt="Logo"
                                           style="
                                             display: block;
                                             border: 0;
@@ -2518,7 +2513,6 @@ exports.welcomeMail = (username, privacy_policy, instagram, facebook) => {
                                             -ms-interpolation-mode: bicubic;
                                           "
                                           height="60"
-                                          title="Logo"
                                       /></a>
                                     </td>
                                   </tr>
@@ -2666,7 +2660,7 @@ exports.welcomeMail = (username, privacy_policy, instagram, facebook) => {
                                           margin-bottom: 30px;
                                         "
                                       >
-                                        Welcome to the Syncupp. you have succcessfully joined with the SyncUpp.
+                                        Welcome to the Syncupp. You have succcessfully joined with the Syncupp.
                                       </p>
                                     </td>
                                   </tr>
@@ -3442,7 +3436,6 @@ exports.forgotPasswordEmailTemplate = (
                                       "
                                       ><img
                                         src="${process.env.SERVER_URL}/template/logo.png"
-                                        alt="Logo"
                                         style="
                                           display: block;
                                           border: 0;
@@ -3451,7 +3444,6 @@ exports.forgotPasswordEmailTemplate = (
                                           -ms-interpolation-mode: bicubic;
                                         "
                                         height="60"
-                                        title="Logo"
                                     /></a>
                                   </td>
                                 </tr>
@@ -4403,13 +4395,13 @@ exports.invoiceTemplate = (invoiceData) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60" /></a>
                                 </td>
                               </tr>
                             </table>
@@ -5519,7 +5511,6 @@ exports.inquiryTemplate = (data) => {
                                         "
                                         ><img
                                           src="${process.env.SERVER_URL}/template/syncupp-logo.png"
-                                          alt="Logo"
                                           style="
                                             display: block;
                                             border: 0;
@@ -5528,7 +5519,6 @@ exports.inquiryTemplate = (data) => {
                                             -ms-interpolation-mode: bicubic;
                                           "
                                           height="60"
-                                          title="Logo"
                                       /></a>
                                     </td>
                                   </tr>
@@ -6530,13 +6520,13 @@ exports.activityTemplate = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"  /></a>
                                 </td>
                               </tr>
                             </table>
@@ -7389,13 +7379,13 @@ exports.invitationEmailTemplate = (data) => {
                                         text-decoration: underline;
                                         color: #2d3142;
                                         font-size: 14px;
-                                      "><img src="${process.env.SERVER_URL}/template/syncupp-logo.png" alt="Logo" style="
+                                      "><img src="${process.env.SERVER_URL}/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"  /></a>
                                 </td>
                               </tr>
                             </table>
@@ -7524,7 +7514,7 @@ exports.invitationEmailTemplate = (data) => {
                                           'segoe ui symbol';
                                         margin-top: 30px;
                                         margin-bottom: 30px;
-                                      ">Join SyncUpp</a>
+                                      ">Join Syncupp</a>
                                   <p style="
                                         margin: 0;
                                         -webkit-text-size-adjust: none;
@@ -7547,7 +7537,7 @@ exports.invitationEmailTemplate = (data) => {
                                     <br />
                                     It's a small token of appreciation.
                                     <br />
-                                    Come on board and let's explore SyncUpp together!
+                                    Come on board and let's explore Syncupp together!
                                   </p>
                                 </td>
                               </tr>
@@ -7615,7 +7605,7 @@ exports.invitationEmailTemplate = (data) => {
                                         font-size: 16px;
                                       ">
                                     Thanks and Best Regards,<br />Have a great
-                                    day!<br />SyncUpp Team<a target="_blank" style="
+                                    day!<br />Syncupp Team<a target="_blank" style="
                                           -webkit-text-size-adjust: none;
                                           -ms-text-size-adjust: none;
                                           mso-line-height-rule: exactly;
@@ -8204,7 +8194,7 @@ exports.taskTemplate = (data) => {
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60" /></a>
                                 </td>
                               </tr>
                             </table>
@@ -8998,13 +8988,13 @@ exports.eventTemplate = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60" /></a>
                                 </td>
                               </tr>
                             </table>
@@ -9813,13 +9803,13 @@ exports.agencyCreatedTemplate = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"/></a>
                                 </td>
                               </tr>
                             </table>
@@ -10573,13 +10563,13 @@ exports.memberDeletedTemplate = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"  /></a>
                                 </td>
                               </tr>
                             </table>
@@ -11350,13 +11340,13 @@ exports.memberDeletedClient = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"/></a>
                                 </td>
                               </tr>
                             </table>
@@ -12129,13 +12119,13 @@ exports.seatRemoved = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"/></a>
                                 </td>
                               </tr>
                             </table>
@@ -12917,13 +12907,13 @@ exports.clientMemberAdded = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"  /></a>
                                 </td>
                               </tr>
                             </table>
@@ -13696,13 +13686,13 @@ exports.teamMemberPasswordSet = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png" style="
                                           display: block;
                                           border: 0;
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"/></a>
                                 </td>
                               </tr>
                             </table>
@@ -14469,13 +14459,13 @@ exports.clientPasswordSet = (data) => {
                                         font-size: 14px;
                                       "><img src="${
                                         process.env.SERVER_URL
-                                      }/template/syncupp-logo.png" alt="Logo" style="
+                                      }/template/syncupp-logo.png"  style="
                                           display: block;
                                           border: 0;
                                           outline: none;
                                           text-decoration: none;
                                           -ms-interpolation-mode: bicubic;
-                                        " height="60" title="Logo" /></a>
+                                        " height="60"  /></a>
                                 </td>
                               </tr>
                             </table>
@@ -15260,7 +15250,6 @@ exports.paymentExpireAlert = (
                                         "
                                         ><img
                                           src="${process.env.SERVER_URL}/template/logo.png"
-                                          alt="Logo"
                                           style="
                                             display: block;
                                             border: 0;
@@ -15269,7 +15258,6 @@ exports.paymentExpireAlert = (
                                             -ms-interpolation-mode: bicubic;
                                           "
                                           height="60"
-                                          title="Logo"
                                       /></a>
                                     </td>
                                   </tr>
@@ -16193,7 +16181,6 @@ exports.paymentAboutToExpire = (
                                         "
                                         ><img
                                           src="${process.env.SERVER_URL}/template/logo.png"
-                                          alt="Logo"
                                           style="
                                             display: block;
                                             border: 0;
@@ -16202,7 +16189,6 @@ exports.paymentAboutToExpire = (
                                             -ms-interpolation-mode: bicubic;
                                           "
                                           height="60"
-                                          title="Logo"
                                       /></a>
                                     </td>
                                   </tr>
@@ -17175,7 +17161,6 @@ exports.ticketTemplate = (data) => {
                                           src="${
                                             process.env.SERVER_URL
                                           }/template/syncupp-logo.png"
-                                          alt="Logo"
                                           style="
                                             display: block;
                                             border: 0;
@@ -17184,7 +17169,6 @@ exports.ticketTemplate = (data) => {
                                             -ms-interpolation-mode: bicubic;
                                           "
                                           height="60"
-                                          title="Logo"
                                       /></a>
                                     </td>
                                   </tr>

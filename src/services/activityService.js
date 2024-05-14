@@ -4550,7 +4550,8 @@ class ActivityService {
       const match_obj = {};
 
       if (user?.role?.name === "agency") {
-        match_obj.agency_id = user?.reference_id;
+        // match_obj.agency_id = user?.reference_id;
+        match_obj.user_id = user?.reference_id;
       } else if (user?.role?.name === "team_agency") {
         match_obj.user_id = user?.reference_id;
       }

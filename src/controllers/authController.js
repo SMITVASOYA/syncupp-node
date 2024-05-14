@@ -14,15 +14,30 @@ const { throwError } = require("../helpers/errorUtil");
 
 // this function is used only for the Agency Sign-up
 
-exports.agencySignUp = catchAsyncError(async (req, res, next) => {
-  const files = req?.files || undefined;
-  const agency = await authService.agencySignUp(req.body, files);
+exports.userSignUp = catchAsyncError(async (req, res, next) => {
+  const user = await authService.userSignUp(req.body);
+  let message = returnMessage("user", "userRegistered");
+  sendResponse(res, true, message, user, statusCode.success);
+});
 
-  let message = returnMessage("agency", "agencyRegistered");
-  if (agency?.user?.status === "free_trial") {
-    message = "Agency registered successfully.";
-  }
-  sendResponse(res, true, message, agency, statusCode.success);
+exports.signupComplete = catchAsyncError(async (req, res, next) => {
+  const user = await authService.signupComplete(req.body);
+  let message = returnMessage("user", "userRegistered");
+  sendResponse(res, true, message, user, statusCode.success);
+});
+
+exports.checkContactunique = catchAsyncError(async (req, res, next) => {
+  const contact = await authService.checkContactunique(req.body);
+  sendResponse(res, true, undefined, contact, statusCode.success);
+});
+
+exports.changeWorkspace = catchAsyncError(async (req, res, next) => {
+  const workspace = await authService.changeWorkspace(
+    req.headers.authorization || req.headers.token,
+    req.body,
+    req.user
+  );
+  sendResponse(res, true, undefined, workspace, statusCode.success);
 });
 
 exports.agencyGoogleSignUp = catchAsyncError(async (req, res, next) => {
