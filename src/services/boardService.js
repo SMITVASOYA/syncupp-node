@@ -57,20 +57,21 @@ class BoardService {
         image_path = "";
       }
 
-      const is_image_exist = await Board.findOne({
-        board_image: payload?.board_image,
-      }).lean();
-
+      if (payload?.board_image) {
+        var is_image_exist = await Board.findOne({
+          board_image: payload?.board_image,
+        }).lean();
+      }
       const new_board = await Board.create({
         project_name,
         description,
-        workspace_id: user?.workspace,
+        workspace_id: "66445f8ddd707e8e9544e01c",
         members: member_objects,
         ...((image_path || image_path === "") && {
           board_image: image_path,
         }),
         ...(is_image_exist && {
-          board_image: is_image_exist?.board_image,
+          board_image: payload?.board_image,
         }),
         agency_id: user?._id,
       });
@@ -352,16 +353,19 @@ class BoardService {
 
       if (user) {
         if (user?.role?.name === "agency") {
-          query.agency_id = user?.reference_id;
+          query.agency_id = user?._id;
         } else {
-          query["members.member_id"] = user?.reference_id;
+          query["members.member_id"] = user?._id;
         }
       }
 
       if (all) {
         const pipeline = [
           {
-            $match: { ...query, workspace_id: user?.workspace },
+            $match: {
+              ...query,
+              workspace_id: new ObjectId("66445f8ddd707e8e9544e01c"),
+            },
           },
           {
             $project: {
@@ -375,14 +379,17 @@ class BoardService {
       } else {
         const pipeline = [
           {
-            $match: { ...query, workspace_id: user?.workspace },
+            $match: {
+              ...query,
+              workspace_id: new ObjectId("66445f8ddd707e8e9544e01c"),
+            },
           },
           {
             $unwind: "$members",
           },
           {
             $match: {
-              "members.member_id": user?.reference_id,
+              "members.member_id": user?._id,
             },
           },
           {
@@ -393,12 +400,15 @@ class BoardService {
               agency_id: 1,
               is_pinned: "$members.is_pinned",
               createdAt: 1,
+              workspace_id: 1,
             },
           },
         ];
 
-        let sort_by;
-
+        let sort_by = {
+          is_pinned: -1,
+          createdAt: -1,
+        };
         if (sort === "newest") {
           sort_by = {
             is_pinned: -1,
@@ -428,7 +438,10 @@ class BoardService {
         }
 
         const [boards, total_board_count] = await Promise.all([
-          Board.aggregate(pipeline).sort(sort_by).skip(skip).limit(limit),
+          Board.aggregate(pipeline)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
           Board.aggregate(pipeline),
         ]);
 
@@ -537,7 +550,7 @@ class BoardService {
     try {
       const pipeline = [
         {
-          $match: { _id: new ObjectId(user?.workspace) },
+          $match: { _id: new ObjectId("66445f8ddd707e8e9544e01c") },
         },
 
         {
@@ -625,14 +638,17 @@ class BoardService {
   fetchBoardImages = async (user) => {
     try {
       const board_images = await Board.find({
-        workspace_id: user.workspace,
+        workspace_id: "66445f8ddd707e8e9544e01c",
       })
         .select("board_image")
         .lean();
-
       let images = [];
       if (board_images) {
-        board_images.map((board) => images.push(board.board_image));
+        board_images.forEach((board) => {
+          if (board?.board_image !== null && board.board_image !== undefined) {
+            images.push(board.board_image);
+          }
+        });
       }
       return images;
     } catch (error) {

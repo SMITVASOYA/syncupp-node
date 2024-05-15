@@ -5,6 +5,7 @@ const validatorFunc = require("../utils/validatorFunction.helper");
 const boardController = require("../controllers/boardController");
 const { checkProfileSize, upload } = require("../helpers/multer");
 
+boardRoute.get("/board-images", boardController.fetchBoardImage);
 boardRoute.use(protect);
 
 boardRoute.post(
@@ -24,11 +25,10 @@ boardRoute.put(
   boardController.updateBoard
 );
 
+boardRoute.get("/fetch-users", boardController.allUserList);
 boardRoute.post("/get-boards", boardController.listBoards);
 boardRoute.get("/:id", boardController.getBoard);
 boardRoute.get("/member-list/:id", boardController.memberList);
-boardRoute.get("/board-images", boardController.fetchBoardImage);
-boardRoute.get("/fetch-users", boardController.allUserList);
 boardRoute.get("/add-remove-user", boardController.addRemoveMember);
 
 module.exports = boardRoute;
