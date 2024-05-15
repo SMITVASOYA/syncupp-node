@@ -13,6 +13,11 @@ const boardSchema = new mongoose.Schema(
     ],
     board_image: { type: String },
     agency_id: { type: mongoose.Types.ObjectId, required: true },
+    workspace_id: {
+      type: mongoose.Types.ObjectId,
+      ref: "workspaces",
+      required: true,
+    },
   },
   { timestamps: true }
 );

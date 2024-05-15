@@ -356,7 +356,10 @@
     "boardFetched": "Board fetched successfully.",
     "boardPinned": "Board pinned successfully.",
     "membersFetched": "Members fetched successfully.",
-    "canNotRemove": "Cannot remove member associated with task."
+    "canNotRemove": "Cannot remove member associated with task.",
+    "boardImageFetched": "Board images fetched successfully.",
+    "boardMemberUpdated": "Board member list updated successfully.",
+    "userFetched": "Users fetched successfully."
   },
 
   "chat": {
@@ -387,11 +390,11 @@
 
   "workspace": {
     "workspaceAlreadyCreated": "You can create only one workspace.",
-    "duplicateWorkspaceName":"This workspace name already exist. Please choose another one.",
-    "nameMissing":"Workspace name is required.",
-    "workspacesFetched":"Workspaces fetched successfully.",
-    "workspaceNotFound":"Workspace does not exist.",
-    "workspaceRequired":"Workspace id is required."
+    "duplicateWorkspaceName": "This workspace name already exist. Please choose another one.",
+    "nameMissing": "Workspace name is required.",
+    "workspacesFetched": "Workspaces fetched successfully.",
+    "workspaceNotFound": "Workspace does not exist.",
+    "workspaceRequired": "Workspace id is required."
   },
 
   "default": { "default": "Something went wrong." }

@@ -14,6 +14,7 @@ const Team_Role_Master = require("../models/masters/teamRoleSchema");
 const Activity = require("../models/activitySchema");
 const NotificationService = require("./notificationService");
 const sendEmail = require("../helpers/sendEmail");
+const Workspace = require("../models/workspaceSchema");
 const notificationService = new NotificationService();
 
 class BoardService {
@@ -21,23 +22,23 @@ class BoardService {
   addBoard = async (payload, user, image) => {
     try {
       const { project_name, description, members } = payload;
-      const member_role_id = await Team_Agency.findById(
-        user?.reference_id
-      ).lean();
-      const member_role_type = await Team_Role_Master.findById(
-        member_role_id?.role
-      ).lean();
-      const member_agency = await Authentication.findOne({
-        reference_id: member_role_id?.agency_id,
-      }).lean();
+      // const member_role_id = await Team_Agency.findById(
+      //   user?.reference_id
+      // ).lean();
+      // const member_role_type = await Team_Role_Master.findById(
+      //   member_role_id?.role
+      // ).lean();
+      // const member_agency = await Authentication.findOne({
+      //   _id: member_role_id?.agency_id,
+      // }).lean();
 
-      if (member_role_type?.name !== "admin" && user?.role?.name !== "agency") {
-        return throwError(returnMessage("auth", "insufficientPermission"));
-      }
+      // if (member_role_type?.name !== "admin" && user?.role?.name !== "agency") {
+      //   return throwError(returnMessage("auth", "insufficientPermission"));
+      // }
 
       payload.members = JSON.parse(members);
-      payload.members?.push(user?.reference_id);
-      if (member_agency) payload.members?.push(member_agency?.reference_id);
+      payload.members?.push(user?._id);
+      // if (member_agency) payload.members?.push(member_agency?.reference_id);
       payload.members = [...new Set(payload.members)];
 
       const member_objects = payload.members?.map((member) => ({
@@ -56,25 +57,29 @@ class BoardService {
         image_path = "";
       }
 
+      const is_image_exist = await Board.findOne({
+        board_image: payload?.board_image,
+      }).lean();
+
       const new_board = await Board.create({
         project_name,
         description,
+        workspace_id: user?.workspace,
         members: member_objects,
         ...((image_path || image_path === "") && {
           board_image: image_path,
         }),
-        agency_id: member_agency
-          ? member_agency?.reference_id
-          : user?.reference_id,
+        ...(is_image_exist && {
+          board_image: is_image_exist?.board_image,
+        }),
+        agency_id: user?._id,
       });
 
       // ------------- Notifications -------------
       await notificationService.addNotification(
         {
           module_name: "board",
-          members: payload.members?.filter(
-            (item) => item !== user?.reference_id
-          ),
+          members: payload?.members?.filter((item) => item !== user?._id),
           project_name: project_name,
           created_by_name:
             capitalizeFirstLetter(user?.first_name) +
@@ -84,8 +89,8 @@ class BoardService {
         new_board._id
       );
 
-      const member_send_mail = payload.members?.filter(
-        (item) => item !== user?.reference_id
+      const member_send_mail = payload?.members?.filter(
+        (item) => item !== user?._id
       );
       const board_template = boardTemplate({
         project_name: project_name,
@@ -97,7 +102,7 @@ class BoardService {
       });
       member_send_mail.map(async (member) => {
         const member_data = await Authentication.findOne({
-          reference_id: member,
+          _id: member,
         });
         sendEmail({
           email: member_data?.email,
@@ -136,26 +141,26 @@ class BoardService {
 
       const existing_board = await Board.findById(board_id).lean();
 
-      const member_role_id = await Team_Agency.findById(
-        user?.reference_id
-      ).lean();
-      const member_role_type = await Team_Role_Master.findById(
-        member_role_id?.role
-      ).lean();
+      // const member_role_id = await Team_Agency.findById(
+      //   user?.reference_id
+      // ).lean();
+      // const member_role_type = await Team_Role_Master.findById(
+      //   member_role_id?.role
+      // ).lean();
 
-      if (member_role_type?.name === "admin") {
-        const is_include = existing_board?.members
-          .map((member) => member?.member_id.toString())
-          .includes(user?.reference_id.toString());
-        if (!is_include)
-          return throwError(returnMessage("auth", "insufficientPermission"));
-      }
+      // if (member_role_type?.name === "admin") {
+      //   const is_include = existing_board?.members
+      //     .map((member) => member?.member_id.toString())
+      //     .includes(user?.reference_id.toString());
+      //   if (!is_include)
+      //     return throwError(returnMessage("auth", "insufficientPermission"));
+      // }
 
       if (existing_board) {
         payload.members?.push(existing_board?.agency_id);
       }
-      if (!payload.members?.includes(user?.reference_id)) {
-        payload.members?.push(user?.reference_id);
+      if (!payload.members?.includes(user?._id)) {
+        payload.members?.push(user?._id);
       }
 
       payload.members = [
@@ -166,9 +171,9 @@ class BoardService {
       const updated_members = payload.members?.map((member) => ({
         member_id: member,
       }));
-      const agency_member = { member_id: user?.reference_id };
+      const agency_member = { member_id: user?._id };
 
-      if (!payload.members?.map((member) => member === user?.reference_id)) {
+      if (!payload.members?.map((member) => member === user?._id)) {
         updated_members?.push(agency_member);
       }
 
@@ -273,56 +278,56 @@ class BoardService {
       }
 
       // ------------- Notifications -------------
-      const elementsToRemove = [existing_board?.agency_id, user?.reference_id];
-      const actions = ["updated", "memberRemoved"];
-      actions?.map(async (action) => {
-        let member_list;
-        let mail_subject;
-        if (action === "updated") {
-          member_list = new_member;
-          mail_subject = "memberAddedBoard";
-        }
-        if (action === "memberRemoved") {
-          member_list = removed_member;
-          mail_subject = "memberRemovedBoard";
-        }
-        await notificationService.addNotification(
-          {
-            module_name: "board",
-            action_name: action,
-            members: member_list?.filter(
-              (item) => !elementsToRemove.includes(item)
-            ),
-            project_name: existing_board?.project_name,
-            added_by:
-              capitalizeFirstLetter(user?.first_name) +
-              " " +
-              capitalizeFirstLetter(user?.last_name),
-          },
-          board_id
-        );
+      // const elementsToRemove = [existing_board?.agency_id, user?._id];
+      // const actions = ["updated", "memberRemoved"];
+      // actions?.map(async (action) => {
+      //   let member_list;
+      //   let mail_subject;
+      //   if (action === "updated") {
+      //     member_list = new_member;
+      //     mail_subject = "memberAddedBoard";
+      //   }
+      //   if (action === "memberRemoved") {
+      //     member_list = removed_member;
+      //     mail_subject = "memberRemovedBoard";
+      //   }
+      //   await notificationService.addNotification(
+      //     {
+      //       module_name: "board",
+      //       action_name: action,
+      //       members: member_list?.filter(
+      //         (item) => !elementsToRemove.includes(item)
+      //       ),
+      //       project_name: existing_board?.project_name,
+      //       added_by:
+      //         capitalizeFirstLetter(user?.first_name) +
+      //         " " +
+      //         capitalizeFirstLetter(user?.last_name),
+      //     },
+      //     board_id
+      //   );
 
-        const member_send_mail = member_list?.filter(
-          (item) => !elementsToRemove.includes(item)
-        );
-        const board_template = boardTemplate({
-          ...existing_board,
-          added_by:
-            capitalizeFirstLetter(user?.first_name) +
-            " " +
-            capitalizeFirstLetter(user?.last_name),
-        });
-        member_send_mail.map(async (member) => {
-          const member_data = await Authentication.findOne({
-            reference_id: member,
-          });
-          sendEmail({
-            email: member_data?.email,
-            subject: returnMessage("emailTemplate", mail_subject),
-            message: board_template,
-          });
-        });
-      });
+      //   const member_send_mail = member_list?.filter(
+      //     (item) => !elementsToRemove.includes(item)
+      //   );
+      //   const board_template = boardTemplate({
+      //     ...existing_board,
+      //     added_by:
+      //       capitalizeFirstLetter(user?.first_name) +
+      //       " " +
+      //       capitalizeFirstLetter(user?.last_name),
+      //   });
+      //   member_send_mail.map(async (member) => {
+      //     const member_data = await Authentication.findOne({
+      //       reference_id: member,
+      //     });
+      //     sendEmail({
+      //       email: member_data?.email,
+      //       subject: returnMessage("emailTemplate", mail_subject),
+      //       message: board_template,
+      //     });
+      //   });
+      // });
       // ------------- Notifications -------------
 
       return;
@@ -336,7 +341,7 @@ class BoardService {
 
   listBoards = async (search_obj, user) => {
     try {
-      const { skip = 0, limit = 5, all, project_name, agency_id } = search_obj;
+      const { skip = 0, limit = 5, all, agency_id, sort } = search_obj;
 
       let query = {
         ...((user?.role?.name === "client" ||
@@ -356,9 +361,8 @@ class BoardService {
       if (all) {
         const pipeline = [
           {
-            $match: query,
+            $match: { ...query, workspace_id: user?.workspace },
           },
-
           {
             $project: {
               project_name: 1,
@@ -371,7 +375,7 @@ class BoardService {
       } else {
         const pipeline = [
           {
-            $match: query,
+            $match: { ...query, workspace_id: user?.workspace },
           },
           {
             $unwind: "$members",
@@ -393,15 +397,38 @@ class BoardService {
           },
         ];
 
+        let sort_by;
+
+        if (sort === "newest") {
+          sort_by = {
+            is_pinned: -1,
+            createdAt: -1,
+          };
+        } else if (sort === "oldest") {
+          sort_by = {
+            is_pinned: -1,
+            createdAt: 1,
+          };
+        } else if (sort === "asc") {
+          sort_by = {
+            is_pinned: -1,
+            project_name: 1,
+          };
+        } else if (sort === "desc") {
+          sort_by = {
+            is_pinned: -1,
+            project_name: -1,
+          };
+        } else {
+          // Default sorting if no sort option is provided
+          sort_by = await Board.aggregate(pipeline).sort({
+            is_pinned: -1,
+            createdAt: -1,
+          });
+        }
+
         const [boards, total_board_count] = await Promise.all([
-          Board.aggregate(pipeline)
-            .sort({
-              ...(project_name
-                ? { project_name: 1 }
-                : { is_pinned: -1, createdAt: -1 }),
-            })
-            .skip(skip)
-            .limit(limit),
+          Board.aggregate(pipeline).sort(sort_by).skip(skip).limit(limit),
           Board.aggregate(pipeline),
         ]);
 
@@ -502,6 +529,137 @@ class BoardService {
       return member_list;
     } catch (error) {
       logger.error(`Error while member list fetch: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  allUserList = async (user) => {
+    try {
+      const pipeline = [
+        {
+          $match: { _id: new ObjectId(user?.workspace) },
+        },
+
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "members.user_id",
+            foreignField: "_id",
+            as: "userDetails",
+          },
+        },
+
+        {
+          $unwind: {
+            path: "$userDetails",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "members.client_id",
+            foreignField: "_id",
+            as: "clientDetails",
+          },
+        },
+
+        {
+          $unwind: {
+            path: "$clientDetails",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $lookup: {
+            from: "role_masters",
+            localField: "members.role",
+            foreignField: "_id",
+            as: "status_name",
+          },
+        },
+        {
+          $unwind: {
+            path: "$status_name",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            user_name: {
+              $concat: [
+                { $toUpper: { $substrCP: ["$userDetails.first_name", 0, 1] } },
+                {
+                  $substrCP: [
+                    "$userDetails.first_name",
+                    1,
+                    { $strLenCP: "$userDetails.first_name" },
+                  ],
+                },
+                " ",
+                { $toUpper: { $substrCP: ["$userDetails.last_name", 0, 1] } },
+                {
+                  $substrCP: [
+                    "$userDetails.last_name",
+                    1,
+                    { $strLenCP: "$userDetails.last_name" },
+                  ],
+                },
+              ],
+            },
+            role: "$status_name.name",
+            user_id: "$userDetails._id",
+            client_id: "$clientDetails._id",
+          },
+        },
+      ];
+      const user_list = await Workspace.aggregate(pipeline);
+      return user_list;
+    } catch (error) {
+      logger.error(`Error while member list fetch: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  fetchBoardImages = async (user) => {
+    try {
+      const board_images = await Board.find({
+        workspace_id: user.workspace,
+      })
+        .select("board_image")
+        .lean();
+
+      let images = [];
+      if (board_images) {
+        board_images.map((board) => images.push(board.board_image));
+      }
+      return images;
+    } catch (error) {
+      logger.error(`Error while fetch Board Images: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  addRemoveMember = async (payload) => {
+    try {
+      const { board_id, member_id, action_name } = payload;
+
+      const board_details = await Board.findById(board_id);
+
+      if (action_name === "remove") {
+        board_details.members = board_details.members.filter(
+          (member) => member.member_id.toString() !== member_id
+        );
+      }
+      if (action_name === "add") {
+        board_details.members.push({ member_id: member_id, is_pinned: false });
+      }
+
+      await board_details.save();
+      return;
+    } catch (error) {
+      logger.error(`Error while fetch Add remove member in board: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };

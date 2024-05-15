@@ -259,6 +259,76 @@ const memberList = {
     },
   ],
 
+  requestBody: {},
+
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
+const userList = {
+  tags: ["Board"],
+  description: "",
+  summary: "Member list",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+          properties: {
+            is_pinned: {
+              type: "string",
+              description: "Enter status",
+              required: true,
+            },
+            board_id: {
+              type: "string",
+              description: "Enter board id",
+              required: true,
+            },
+          },
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+const boardImage = {
+  tags: ["Board"],
+  description: "",
+  summary: "Member list",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+
   parameters: [
     {
       name: "id",
@@ -285,7 +355,55 @@ const memberList = {
     },
   },
 };
+const addRemoveUser = {
+  tags: ["Board"],
+  description: "action_name : [ `add` , `remove`]",
+  summary: "Member list",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
 
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+          properties: {
+            member_id: {
+              type: "string",
+              description: "Enter member id",
+              required: true,
+            },
+            board_id: {
+              type: "string",
+              description: "Enter board id",
+              required: true,
+            },
+            action_name: {
+              type: "string",
+              description: "Enter action name",
+              required: true,
+            },
+          },
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
 const boardRoutes = {
   "/api/v1/board/create-board": {
     post: addBoard,
@@ -303,6 +421,15 @@ const boardRoutes = {
   },
   "/api/v1/board/member-list/{id}": {
     get: memberList,
+  },
+  "/api/v1/board/fetch-users": {
+    get: userList,
+  },
+  "/api/v1/board/board-images": {
+    get: boardImage,
+  },
+  "/api/v1/board/add-remove-user": {
+    post: addRemoveUser,
   },
 };
 

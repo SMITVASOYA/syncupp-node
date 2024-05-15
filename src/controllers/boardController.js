@@ -87,3 +87,42 @@ exports.memberList = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+// User List
+
+exports.allUserList = catchAsyncError(async (req, res, next) => {
+  const all_user_list = await boardService.allUserList(req?.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("board", "membersFetched"),
+    all_user_list,
+    statusCode.success
+  );
+});
+
+// Fetch Images Of Board
+
+exports.fetchBoardImage = catchAsyncError(async (req, res, next) => {
+  const board_images = await boardService.fetchBoardImages(req?.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("board", "boardImageFetched"),
+    board_images,
+    statusCode.success
+  );
+});
+
+// Add Remove Member
+
+exports.addRemoveMember = catchAsyncError(async (req, res, next) => {
+  await boardService.addRemoveMember(req?.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("board", "boardMemberUpdated"),
+    null,
+    statusCode.success
+  );
+});
