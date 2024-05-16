@@ -239,7 +239,9 @@
     "taskDeleted": "Task deleted Task.",
     "ActivityCannotUpdate": "Activity cannot be updated.",
     "tagsList": "Tags list fetch successfully.",
-    "completionHistory": "Points history fetched successfully."
+    "completionHistory": "Points history fetched successfully.",
+    "commentAdded": "Comment added successfully.",
+    "commentFetched": "Comments fetched successfully."
   },
 
   "payment": {

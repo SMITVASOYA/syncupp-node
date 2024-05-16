@@ -169,8 +169,8 @@ exports.tagList = catchAsyncError(async (req, res, next) => {
 
 exports.completionHistory = catchAsyncError(async (req, res, next) => {
   const completionHistory = await activityService.completionHistory(
-    req.body,
-    req.user
+    req?.body,
+    req?.user
   );
   sendResponse(
     res,
@@ -182,6 +182,30 @@ exports.completionHistory = catchAsyncError(async (req, res, next) => {
 });
 
 exports.competitionStats = catchAsyncError(async (req, res, next) => {
-  const competitionStats = await activityService.competitionStats(req.user);
+  const competitionStats = await activityService.competitionStats(req?.user);
   sendResponse(res, true, undefined, competitionStats, statusCode.success);
+});
+
+exports.addTaskComment = catchAsyncError(async (req, res, next) => {
+  let addTaskComment = await activityService.addTaskComment(
+    req?.body,
+    req?.user
+  );
+  sendResponse(
+    res,
+    true,
+    returnMessage("activity", "commentAdded"),
+    addTaskComment,
+    statusCode.success
+  );
+});
+exports.listTaskComment = catchAsyncError(async (req, res, next) => {
+  let listTaskComment = await activityService.listTaskComment(req?.params);
+  sendResponse(
+    res,
+    true,
+    returnMessage("activity", "commentFetched"),
+    listTaskComment,
+    statusCode.success
+  );
 });

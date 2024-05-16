@@ -34,5 +34,10 @@ activityRoute.post("/leaderboard", activityController.leaderboard);
 activityRoute.post("/assigned_activity", activityController.leaderboard);
 activityRoute.post("/completion_history", activityController.completionHistory);
 activityRoute.get("/competitionStats", activityController.competitionStats);
+activityRoute.post("/add-comment", activityController.addTaskComment);
+activityRoute.get(
+  "/list-comments/:task_id",
+  activityController.listTaskComment
+);
 
 module.exports = activityRoute;

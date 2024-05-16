@@ -33,6 +33,7 @@ const Activity_Type_Master = require("../models/masters/activityTypeMasterSchema
 const momentTimezone = require("moment-timezone");
 const Team_Client = require("../models/teamClientSchema");
 const Board = require("../models/boardSchema");
+const { ObjectId } = require("mongoose");
 
 class ActivityService {
   createTask = async (payload, user, files) => {
@@ -42,26 +43,26 @@ class ActivityService {
         agenda,
         due_date,
         assign_to,
-        client_id,
         mark_as_done,
-        tags,
         board_id,
+        priority,
       } = payload;
-      if (client_id == "null" || client_id == null) client_id = null;
 
+      payload.assign_to = JSON.parse(assign_to);
       const attachments = [];
       if (files && files.length > 0) {
         files.forEach((file) => {
           attachments.push("uploads/" + file.filename);
         });
       }
-      let agency_id;
-      if (user.role.name === "agency") {
-        agency_id = user?.reference_id;
-      } else if (user.role.name === "team_agency") {
-        const agencies = await Team_Agency.findById(user?.reference_id).lean();
-        agency_id = agencies.agency_id;
-      }
+      const workspace_id = "66449ef806f749155b9d6060";
+      let agency_id = user?.reference_id; // Static data
+      // if (user.role.name === "agency") {
+      //   agency_id = user?.reference_id;
+      // } else if (user.role.name === "team_agency") {
+      //   const agencies = await Team_Agency.findById(user?.reference_id).lean();    // This need to change
+      //   agency_id = agencies.agency_id;
+      // }
       const dueDateObject = moment(due_date);
       const duetimeObject = moment(due_date);
 
@@ -80,221 +81,166 @@ class ActivityService {
       }
 
       const type = await ActivityType.findOne({ name: "task" }).lean();
-      let newTags = [];
-      if (tags && typeof tags !== "string") {
-        tags?.forEach((item) =>
-          newTags.push({
-            name: capitalizeFirstLetter(item),
-            color: getRandomColor(),
-          })
-        );
-      } else {
-        tags &&
-          newTags.push({
-            name: capitalizeFirstLetter(tags),
-            color: getRandomColor(),
-          });
-      }
 
       const newTask = new Activity({
         title,
         agenda,
         due_date: dueDateObject.toDate(),
         due_time: timeOnly,
-        assign_to,
-        assign_by: user.reference_id,
-        client_id,
+        assign_to: payload.assign_to,
+        assign_by: user._id,
         activity_status: status._id,
         activity_type: type._id,
         agency_id,
-        tags: newTags,
         attachments: attachments,
         board_id,
+        priority,
+        workspace_id,
       });
       const added_task = await newTask.save();
 
-      const pipeline = [
-        {
-          $lookup: {
-            from: "authentications",
-            localField: "assign_to",
-            foreignField: "reference_id",
-            as: "team_Data",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                  first_name: 1,
-                  last_name: 1,
-                  email: 1,
-                  assigned_to_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: "$team_Data",
-        },
-        {
-          $match: {
-            _id: new mongoose.Types.ObjectId(added_task._id),
-            is_deleted: false,
-          },
-        },
-        {
-          $project: {
-            agenda: 1,
-            assigned_by_first_name: "$assign_by.first_name",
-            assigned_by_last_name: "$assign_by.last_name",
-            assigned_to_first_name: "$team_Data.first_name",
-            assigned_to_last_name: "$team_Data.last_name",
-            assigned_to_name: "$team_Data.assigned_to_name",
-            assigned_by_name: "$assign_by.assigned_by_name",
-            client_name: "$client_Data.client_name",
-            column_id: "$status.name",
-            assign_email: "$team_Data.email",
-            agency_id: 1,
-            board_id: 1,
-          },
-        },
-      ];
-
-      const client_data = await Authentication.findOne({
-        reference_id: client_id,
-      }).lean();
       const board = await Board.findOne({ _id: payload?.board_id }).lean();
 
-      if (user.role.name === "agency") {
-        // ----------------------- Notification Start -----------------------
-        const indianTimeZone = dueDateObject.tz("Asia/Kolkata").format("HH:mm");
-
-        const getTask = await Activity.aggregate(pipeline);
-        let data = {
-          TaskTitle: "New Task Created",
-          taskName: title,
-          status: status?.name,
-          assign_by: user.first_name + " " + user.last_name,
-          dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
-          dueTime: indianTimeZone,
-          agginTo_email: getTask[0]?.assign_email,
-          assignName: getTask[0]?.assigned_to_name,
-          board_name: board ? board?.project_name : "",
-        };
-        const taskMessage = taskTemplate(data);
-        sendEmail({
-          email: getTask[0]?.assign_email,
-          subject: returnMessage("activity", "createSubject"),
-          message: taskMessage,
-        });
-
-        if (client_data) {
-          sendEmail({
-            email: client_data?.email,
-            subject: returnMessage("activity", "createSubject"),
-            message: taskTemplate({
-              ...data,
-              assignName: client_data.first_name + " " + client_data.last_name,
-              board_name: board ? board?.project_name : "",
-            }),
-          });
-        }
-
-        await notificationService.addNotification(
-          {
-            assign_by: user?.reference_id,
-            assigned_by_name: user?.first_name + " " + user?.last_name,
-            client_name: client_data
-              ? client_data.first_name + " " + client_data.last_name
-              : "",
-            assigned_to_name:
-              getTask[0]?.assigned_to_first_name +
+      // ----------------------- Notification Start -----------------------
+      var indianTimeZone = dueDateObject.tz("Asia/Kolkata").format("HH:mm");
+      payload?.assign_to &&
+        payload?.assign_to[0] &&
+        payload?.assign_to.forEach(async (user_id) => {
+          const user_data = await Authentication.findOne({
+            _id: user_id,
+          }).lean();
+          console.log(user_id, "ooooooooooo");
+          console.log(user_data, "ddwffwfwfwfwfwfwf");
+          let data = {
+            TaskTitle: "New Task Created",
+            taskName: capitalizeFirstLetter(title),
+            status: capitalizeFirstLetter(status?.name),
+            assign_by:
+              capitalizeFirstLetter(user.first_name) +
               " " +
-              getTask[0]?.assigned_to_last_name,
-            ...payload,
-            module_name: "task",
-            activity_type_action: "createTask",
-            activity_type: "task",
-            due_time: moment(due_date).format("HH:mm"),
-            due_date: moment(due_date).format("DD-MM-YYYY"),
-            board_name: board ? board?.project_name : "",
-          },
-          getTask[0]?._id
-        );
-
-        // ----------------------- Notification END -----------------------
-      }
-
-      if (
-        user.role.name === "team_agency" ||
-        user.role.name === "team_client"
-      ) {
-        // ----------------------- Notification Start -----------------------
-
-        const indianTimeZone = dueDateObject.tz("Asia/Kolkata").format("HH:mm");
-
-        const getTask = await Activity.aggregate(pipeline);
-        let data = {
-          TaskTitle: "New Task Created",
-          taskName: title,
-          status: status?.name,
-          assign_by: user.first_name + " " + user.last_name,
-          dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
-          dueTime: indianTimeZone,
-          agginTo_email: getTask[0]?.assign_email,
-          assignName: getTask[0]?.assigned_to_name,
-          board_name: board ? board?.project_name : "",
-        };
-        const taskMessage = taskTemplate(data);
-        sendEmail({
-          email: getTask[0]?.assign_email,
-          subject: returnMessage("activity", "createSubject"),
-          message: taskMessage,
-        });
-
-        if (client_data) {
-          sendEmail({
-            email: client_data?.email,
-            subject: returnMessage("activity", "createSubject"),
-
-            message: taskTemplate({
-              ...data,
-              assignName: client_data.first_name + " " + client_data.last_name,
-              board_name: board ? board?.project_name : "",
-            }),
-          });
-        }
-
-        const agencyData = await Authentication.findOne({
-          reference_id: getTask[0]?.agency_id,
-        });
-        await notificationService.addNotification(
-          {
-            agency_name: agencyData?.first_name + " " + agencyData?.last_name,
-            agency_id: agencyData?.reference_id,
-            assigned_by_name: user?.first_name + " " + user?.last_name,
-            client_name: client_data
-              ? client_data.first_name + " " + client_data.last_name
-              : "",
-            assigned_to_name:
-              getTask[0]?.assigned_to_first_name +
+              capitalizeFirstLetter(user.last_name),
+            dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
+            dueTime: indianTimeZone,
+            agginTo_email: user_data?.email,
+            assignName:
+              capitalizeFirstLetter(user_data?.first_name) +
               " " +
-              getTask[0]?.assigned_to_last_name,
-            ...payload,
-            module_name: "task",
-            activity_type_action: "createTask",
-            activity_type: "task",
-            due_time: moment(due_date).format("HH:mm"),
-            due_date: moment(due_date).format("DD-MM-YYYY"),
-            log_user: "member",
-            board_name: board ? board?.project_name : "",
-          },
-          getTask[0]?._id
-        );
-        // ----------------------- Notification END -----------------------
-      }
+              capitalizeFirstLetter(user_data?.last_name),
+            board_name: board ? capitalizeFirstLetter(board?.project_name) : "",
+          };
+
+          const taskMessage = taskTemplate(data);
+          sendEmail({
+            email: user_data?.email,
+            subject: returnMessage("activity", "createSubject"),
+            message: taskMessage,
+          });
+          if (true) {
+            await notificationService.addNotification(
+              {
+                assign_by: user?._id,
+                assigned_by_name: user?.first_name + " " + user?.last_name,
+                assigned_to_name:
+                  user_data?.first_name + " " + user_data?.last_name,
+                ...payload,
+                module_name: "task",
+                activity_type_action: "createTask",
+                activity_type: "task",
+                due_time: moment(due_date).format("HH:mm"),
+                due_date: moment(due_date).format("DD-MM-YYYY"),
+                board_name: board ? board?.project_name : "",
+                assign_to: user_data?._id,
+              },
+              added_task?._id
+            );
+          }
+
+          // else if (user?.role?.name === "team_agency") {
+          //   await notificationService.addNotification(
+          //     {
+          //       agency_name:
+          //         agencyData?.first_name + " " + agencyData?.last_name,
+          //       agency_id: agencyData?._id,
+          //       assigned_by_name: user?.first_name + " " + user?.last_name,
+
+          //       assigned_to_name:
+          //         user_data?.first_name + " " + user_data?.last_name,
+          //       ...payload,
+          //       module_name: "task",
+          //       activity_type_action: "createTask",
+          //       activity_type: "task",
+          //       due_time: moment(due_date).format("HH:mm"),
+          //       due_date: moment(due_date).format("DD-MM-YYYY"),
+          //       log_user: "member",
+          //       board_name: board ? board?.project_name : "",
+          //     },
+          //     added_task?._id
+          //   );
+          // }
+        });
+
+      // ----------------------- Notification END -----------------------
+      // }
+
+      // if (
+      //   user.role.name === "team_agency" ||
+      // ) {
+      //   // ----------------------- Notification Start -----------------------
+
+      // payload?.assign_to &&
+      //   payload?.assign_to[0] &&
+      //   payload?.assign_to.forEach(async (user_id) => {
+      //     const user_data = await Authentication.findOne({
+      //       _id: user_id,
+      //     }).lean();
+      //     let data = {
+      //       TaskTitle: "New Task Created",
+      //       taskName: title,
+      //       status: status?.name,
+      //       assign_by: user.first_name + " " + user.last_name,
+      //       dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
+      //       dueTime: indianTimeZone,
+      //       agginTo_email: getTask[0]?.assign_email,
+      //       assignName: getTask[0]?.assigned_to_name,
+      //       board_name: board ? board?.project_name : "",
+      //     };
+      //     const taskMessage = taskTemplate(data);
+      //     sendEmail({
+      //       email: getTask[0]?.assign_email,
+      //       subject: returnMessage("activity", "createSubject"),
+      //       message: taskMessage,
+      //     });
+
+      //     const agencyData = await Authentication.findOne({
+      //       reference_id: getTask[0]?.agency_id,
+      //     });
+      //     await notificationService.addNotification(
+      //       {
+      //         agency_name: agencyData?.first_name + " " + agencyData?.last_name,
+      //         agency_id: agencyData?.reference_id,
+      //         assigned_by_name: user?.first_name + " " + user?.last_name,
+      //         client_name: client_data
+      //           ? client_data.first_name + " " + client_data.last_name
+      //           : "",
+      //         assigned_to_name:
+      //           getTask[0]?.assigned_to_first_name +
+      //           " " +
+      //           getTask[0]?.assigned_to_last_name,
+      //         ...payload,
+      //         module_name: "task",
+      //         activity_type_action: "createTask",
+      //         activity_type: "task",
+      //         due_time: moment(due_date).format("HH:mm"),
+      //         due_date: moment(due_date).format("DD-MM-YYYY"),
+      //         log_user: "member",
+      //         board_name: board ? board?.project_name : "",
+      //       },
+      //       getTask[0]?._id
+      //     );
+      //   });
+
+      // ----------------------- Notification END -----------------------
+      // }
 
       return added_task;
     } catch (error) {
@@ -1357,18 +1303,8 @@ class ActivityService {
 
   updateTask = async (payload, id, files, logInUser) => {
     try {
-      let {
-        title,
-        agenda,
-        due_date,
-        assign_to,
-        client_id,
-        mark_as_done,
-        tags,
-      } = payload;
-
-      if (client_id == "null" || client_id == null) client_id = null;
-
+      let { title, agenda, due_date, assign_to, mark_as_done, priority } =
+        payload;
       const attachments = [];
       if (files && files.length > 0) {
         files.forEach((file) => {
@@ -1408,68 +1344,24 @@ class ActivityService {
       if (mark_as_done === true) {
         status = await ActivityStatus.findOne({ name: "completed" }).lean();
       }
-
-      let newTags = [];
-
-      if (tags && typeof tags !== "string") {
-        tags?.forEach((item) =>
-          newTags.push({
-            name: capitalizeFirstLetter(item),
-            color: getRandomColor(),
-          })
-        );
-      } else {
-        tags &&
-          newTags.push({
-            name: capitalizeFirstLetter(tags),
-            color: getRandomColor(),
-          });
-      }
-
+      payload.assign_to = JSON.parse(assign_to);
       const current_activity = await Activity.findById(id).lean();
       let updateTasksPayload = {
         title,
         agenda,
         due_date: dueDateObject.toDate(),
         due_time: timeOnly,
-        assign_to,
+        assign_to: payload.assign_to,
         activity_status: status?._id,
-        ...(newTags[0] && { tags: newTags }),
-        ...(typeof tags !== "string" && { tags: newTags }),
-        ...(!tags && { tags: [] }),
-        ...(attachments.length > 0 && { attachments }),
+        ...(attachments?.length > 0 && { attachments }),
+        priority,
       };
-
-      // Check if client_id is null, exclude it from the update payload
-      if (!client_id) {
-        updateTasksPayload.client_id = null;
-      } else {
-        updateTasksPayload.client_id = client_id;
-      }
-
+      console.log(updateTasksPayload);
       const updateTasks = await Activity.findByIdAndUpdate(
         id,
         updateTasksPayload,
         { new: true, useFindAndModify: false }
       );
-      // const updateTasks = await Activity.findByIdAndUpdate(
-      //   id,
-      //   {
-      //     title,
-      //     agenda,
-      //     due_date: dueDateObject.toDate(),
-      //     due_time: timeOnly,
-      //     assign_to,
-      //     client_id,
-      //     activity_status: status?._id,
-      //     ...(newTags[0] && { tags: newTags }),
-      //     ...(typeof tags !== "string" && { tags: newTags }),
-      //     ...(!tags && { tags: [] }),
-
-      //     ...(attachments.length > 0 && { attachments }),
-      //   },
-      //   { new: true, useFindAndModify: false }
-      // );
       const current_status = current_activity?.activity_status;
 
       if (current_status?.toString() !== status?._id.toString()) {
@@ -1496,10 +1388,10 @@ class ActivityService {
           );
 
           const userData = await Authentication.findOne({
-            reference_id: current_activity.assign_to,
-          }).populate("role");
+            _id: current_activity.assign_to,
+          }).populate("role", "name");
 
-          if (userData.role.name === "agency") {
+          if (userData.role.name === "agency" || true) {
             await Agency.findOneAndUpdate(
               { _id: current_activity.assign_to },
               {
@@ -1512,21 +1404,21 @@ class ActivityService {
             );
           }
 
-          if (userData.role.name === "team_agency") {
-            await Team_Agency.findOneAndUpdate(
-              { _id: current_activity.assign_to },
-              {
-                $inc: {
-                  total_referral_point:
-                    -referral_data?.competition?.successful_task_competition,
-                },
-              },
-              { new: true }
-            );
-          }
+          // if (userData.role.name === "team_agency") {
+          //   await Team_Agency.findOneAndUpdate(
+          //     { _id: current_activity.assign_to },
+          //     {
+          //       $inc: {
+          //         total_referral_point:
+          //           -referral_data?.competition?.successful_task_competition,
+          //       },
+          //     },
+          //     { new: true }
+          //   );
+          // }
 
           const assign_role = await Authentication.findOne({
-            reference_id: current_activity.assign_to,
+            _id: current_activity.assign_to,
           }).populate("role", "name");
 
           await Competition_Point.create({
@@ -1539,7 +1431,7 @@ class ActivityService {
           });
 
           const agencyData = await Authentication.findOne({
-            reference_id: current_activity.agency_id,
+            _id: current_activity.agency_id,
           });
 
           await notificationService.addNotification({
@@ -1581,7 +1473,7 @@ class ActivityService {
             { new: true }
           );
 
-          if (userData.role.name === "agency") {
+          if (userData.role.name === "agency" || true) {
             await Agency.findOneAndUpdate(
               { _id: current_activity.assign_to },
               {
@@ -1593,21 +1485,21 @@ class ActivityService {
               { new: true }
             );
           }
-          if (userData.role.name === "team_agency") {
-            await Team_Agency.findOneAndUpdate(
-              { _id: current_activity.assign_to },
-              {
-                $inc: {
-                  total_referral_point:
-                    -referral_data?.competition?.successful_task_competition,
-                },
-              },
-              { new: true }
-            );
-          }
+          // if (userData.role.name === "team_agency") {
+          //   await Team_Agency.findOneAndUpdate(
+          //     { _id: current_activity.assign_to },
+          //     {
+          //       $inc: {
+          //         total_referral_point:
+          //           -referral_data?.competition?.successful_task_competition,
+          //       },
+          //     },
+          //     { new: true }
+          //   );
+          // }
 
           const assign_role = await Authentication.findOne({
-            reference_id: current_activity.assign_to,
+            _id: current_activity.assign_to,
           }).populate("role", "name");
 
           await Competition_Point.create({
@@ -1620,7 +1512,7 @@ class ActivityService {
           });
 
           const agencyData = await Authentication.findOne({
-            reference_id: current_activity.agency_id,
+            _id: current_activity.agency_id,
           });
 
           await notificationService.addNotification({
@@ -1640,7 +1532,7 @@ class ActivityService {
           $lookup: {
             from: "authentications",
             localField: "assign_to",
-            foreignField: "reference_id",
+            foreignField: "_id",
             as: "team_Data",
             pipeline: [
               {
@@ -1657,14 +1549,15 @@ class ActivityService {
             ],
           },
         },
+
         {
-          $unwind: "$team_Data",
+          $unwind: { path: "$team_Data", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
             from: "authentications",
             localField: "assign_by",
-            foreignField: "reference_id",
+            foreignField: "_id",
             as: "assign_by",
             pipeline: [
               {
@@ -1681,9 +1574,8 @@ class ActivityService {
           },
         },
         {
-          $unwind: "$assign_by",
+          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
         },
-
         {
           $lookup: {
             from: "activity_status_masters",
@@ -1721,112 +1613,111 @@ class ActivityService {
       ];
       const getTask = await Activity.aggregate(pipeline);
       const board = await Board.findOne({ _id: getTask[0]?.board_id }).lean();
+      payload?.assign_to[0] &&
+        payload?.assign_to.forEach(async (user_id) => {
+          var user_data = await Authentication.findOne({
+            _id: user_id,
+          }).lean();
 
-      let data = {
-        TaskTitle: "Updated Task ",
-        taskName: title,
-        status:
-          payload?.mark_as_done === "true"
-            ? "Completed"
-            : getTask[0]?.status_name,
-        assign_by: getTask[0]?.assigned_by_name,
-        dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
-        dueTime: timeOnly,
-        agginTo_email: getTask[0]?.assign_email,
-        assignName: getTask[0]?.assigned_to_name,
-        board_name: board ? board?.project_name : "",
-      };
-
-      let client_data = false;
-      if (payload?.client_id !== "null" && payload?.client_id)
-        client_data = await Authentication.findOne({
-          reference_id: payload?.client_id,
-        }).lean();
-
-      const taskMessage = taskTemplate(data);
-
-      sendEmail({
-        email: getTask[0]?.assign_email,
-        subject: returnMessage("activity", "UpdateSubject"),
-        message: taskMessage,
-      });
-
-      if (client_data && client_data !== undefined) {
-        sendEmail({
-          email: client_data?.email,
-          subject: returnMessage("activity", "UpdateSubject"),
-          message: taskTemplate({
-            ...data,
-            assignName: client_data.first_name + " " + client_data.last_name,
+          let data = {
+            TaskTitle: "Updated Task ",
+            taskName: title,
+            status:
+              payload?.mark_as_done === "true"
+                ? "Completed"
+                : getTask[0]?.status_name,
+            assign_by: getTask[0]?.assigned_by_name,
+            dueDate: moment(dueDateObject)?.format("DD/MM/YYYY"),
+            dueTime: timeOnly,
+            agginTo_email: user_data?.email,
+            assignName:
+              capitalizeFirstLetter(user_data?.first_name) +
+              " " +
+              capitalizeFirstLetter(user_data?.last_name),
             board_name: board ? board?.project_name : "",
-          }),
+          };
+
+          let client_data = false;
+          if (payload?.client_id !== "null" && payload?.client_id)
+            client_data = await Authentication.findOne({
+              reference_id: payload?.client_id,
+            }).lean();
+
+          const taskMessage = taskTemplate(data);
+          console.log(user_data?.email);
+          sendEmail({
+            email: user_data?.email,
+            subject: returnMessage("activity", "UpdateSubject"),
+            message: taskMessage,
+          });
+
+          if (logInUser?.role?.name === "agency" || true) {
+            // -------------- Socket notification start --------------------
+
+            let taskAction = "update";
+            // For Complete
+            if (mark_as_done === "true") taskAction = "completed";
+            await notificationService.addNotification(
+              {
+                ...payload,
+                module_name: "task",
+                activity_type_action: taskAction,
+                activity_type: "task",
+                agenda: agenda,
+                title: title,
+                assigned_to_name:
+                  capitalizeFirstLetter(user_data?.first_name) +
+                  " " +
+                  capitalizeFirstLetter(user_data?.last_name),
+                due_time: new Date(due_date).toTimeString().split(" ")[0],
+                due_date: new Date(due_date).toLocaleDateString("en-GB"),
+                board_name: board ? board?.project_name : "",
+                assign_to: user_data?._id,
+              },
+              id
+            );
+
+            // -------------- Socket notification end --------------------
+          } else if (logInUser?.role?.name === "team_agency") {
+            // -------------- Socket notification start --------------------
+
+            const client_data = await Authentication.findOne({
+              reference_id: client_id,
+            });
+
+            const agencyData = await Authentication.findOne({
+              reference_id: getTask[0]?.agency_id,
+            });
+            let taskAction = "update";
+            // For Complete
+
+            if (mark_as_done === "true") taskAction = "completed";
+            await notificationService.addNotification(
+              {
+                ...payload,
+                module_name: "task",
+                activity_type_action: taskAction,
+                activity_type: "task",
+                agenda: agenda,
+                title: title,
+                client_name: client_data
+                  ? client_data.first_name + " " + client_data.last_name
+                  : "",
+                agency_name:
+                  agencyData?.first_name + " " + agencyData?.last_name,
+                agency_id: getTask[0]?.agency_id,
+                assigned_to_name: getTask[0]?.assigned_to_name,
+                due_time: new Date(due_date).toTimeString().split(" ")[0],
+                due_date: new Date(due_date).toLocaleDateString("en-GB"),
+                log_user: "member",
+                board_name: board ? board?.project_name : "",
+              },
+              id
+            );
+
+            // -------------- Socket notification end --------------------
+          }
         });
-      }
-
-      if (logInUser?.role?.name === "agency") {
-        // -------------- Socket notification start --------------------
-
-        let taskAction = "update";
-        // For Complete
-        if (mark_as_done === "true") taskAction = "completed";
-        await notificationService.addNotification(
-          {
-            ...payload,
-            module_name: "task",
-            activity_type_action: taskAction,
-            activity_type: "task",
-            agenda: agenda,
-            title: title,
-            client_name: client_data
-              ? client_data.first_name + " " + client_data.last_name
-              : "",
-            assigned_to_name: getTask[0]?.assigned_to_name,
-            due_time: new Date(due_date).toTimeString().split(" ")[0],
-            due_date: new Date(due_date).toLocaleDateString("en-GB"),
-            board_name: board ? board?.project_name : "",
-          },
-          id
-        );
-
-        // -------------- Socket notification end --------------------
-      } else if (logInUser?.role?.name === "team_agency") {
-        // -------------- Socket notification start --------------------
-
-        const client_data = await Authentication.findOne({
-          reference_id: client_id,
-        });
-
-        const agencyData = await Authentication.findOne({
-          reference_id: getTask[0]?.agency_id,
-        });
-        let taskAction = "update";
-        // For Complete
-
-        if (mark_as_done === "true") taskAction = "completed";
-        await notificationService.addNotification(
-          {
-            ...payload,
-            module_name: "task",
-            activity_type_action: taskAction,
-            activity_type: "task",
-            agenda: agenda,
-            title: title,
-            client_name: client_data
-              ? client_data.first_name + " " + client_data.last_name
-              : "",
-            agency_name: agencyData?.first_name + " " + agencyData?.last_name,
-            agency_id: getTask[0]?.agency_id,
-            assigned_to_name: getTask[0]?.assigned_to_name,
-            due_time: new Date(due_date).toTimeString().split(" ")[0],
-            due_date: new Date(due_date).toLocaleDateString("en-GB"),
-            log_user: "member",
-            board_name: board ? board?.project_name : "",
-          },
-          id
-        );
-
-        // -------------- Socket notification end --------------------
-      }
 
       return updateTasks;
     } catch (error) {
@@ -4669,6 +4560,52 @@ class ActivityService {
       };
     } catch (error) {
       logger.error(`Error while fetching the competition stats: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  addTaskComment = async (payload, user) => {
+    try {
+      const { comment, task_id } = payload;
+      const task = await Activity.findById(task_id);
+
+      task.comments.push({ user_id: user?._id, comment: comment });
+      task.save();
+      return;
+    } catch (error) {
+      logger.error(`Error while Add task comment: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  listTaskComment = async (payload) => {
+    try {
+      const { task_id } = payload;
+      const task = await Activity.findById(task_id);
+
+      let comments = [];
+
+      task &&
+        task.comments[0] &&
+        task.comments.map(async (item) => {
+          console.log(item);
+          const user_data = await Authentication.findById(item.user_id).lean();
+          console.log(user_data);
+          comments.push({
+            comment: item.comment,
+            user_image: user_data?.profile_image,
+            name: user_data?.first_name + " " + user_data?.last_name,
+          });
+          console.log({
+            comment: item.comment,
+            user_image: user_data?.profile_image,
+            name: user_data?.first_name + " " + user_data?.last_name,
+          });
+        });
+
+      return comments;
+    } catch (error) {
+      logger.error(`Error while Add task comment: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
