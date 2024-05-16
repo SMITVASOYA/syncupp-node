@@ -4584,25 +4584,17 @@ class ActivityService {
       const task = await Activity.findById(task_id);
 
       let comments = [];
-
-      task &&
-        task.comments[0] &&
-        task.comments.map(async (item) => {
-          console.log(item);
+      if (task && task.comments.length > 0) {
+        for (const item of task.comments) {
           const user_data = await Authentication.findById(item.user_id).lean();
-          console.log(user_data);
           comments.push({
             comment: item.comment,
             user_image: user_data?.profile_image,
             name: user_data?.first_name + " " + user_data?.last_name,
+            user_id: user_data?._id,
           });
-          console.log({
-            comment: item.comment,
-            user_image: user_data?.profile_image,
-            name: user_data?.first_name + " " + user_data?.last_name,
-          });
-        });
-
+        }
+      }
       return comments;
     } catch (error) {
       logger.error(`Error while Add task comment: ${error}`);
