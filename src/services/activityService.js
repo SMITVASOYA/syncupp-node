@@ -47,7 +47,6 @@ class ActivityService {
         board_id,
         priority,
       } = payload;
-
       payload.assign_to = JSON.parse(assign_to);
       const attachments = [];
       if (files && files.length > 0) {
@@ -55,14 +54,13 @@ class ActivityService {
           attachments.push("uploads/" + file.filename);
         });
       }
-      const workspace_id = "66449ef806f749155b9d6060";
-      let agency_id = user?.reference_id; // Static data
-      // if (user.role.name === "agency") {
-      //   agency_id = user?.reference_id;
-      // } else if (user.role.name === "team_agency") {
-      //   const agencies = await Team_Agency.findById(user?.reference_id).lean();    // This need to change
-      //   agency_id = agencies.agency_id;
-      // }
+      let agency_id;
+      if (user.role === "agency") {
+        agency_id = user?._id;
+      } else if (user.role === "team_agency") {
+        const agencies = await Team_Agency.findById(user?._id).lean();
+        agency_id = agencies.agency_id;
+      }
       const dueDateObject = moment(due_date);
       const duetimeObject = moment(due_date);
 
@@ -95,7 +93,7 @@ class ActivityService {
         attachments: attachments,
         board_id,
         priority,
-        workspace_id,
+        workspace_id: user?.workspace,
       });
       const added_task = await newTask.save();
 
@@ -135,7 +133,7 @@ class ActivityService {
             subject: returnMessage("activity", "createSubject"),
             message: taskMessage,
           });
-          if (true) {
+          if (user?.role === "agency") {
             await notificationService.addNotification(
               {
                 assign_by: user?._id,
@@ -1391,18 +1389,18 @@ class ActivityService {
             _id: current_activity.assign_to,
           }).populate("role", "name");
 
-          if (userData.role.name === "agency" || true) {
-            await Agency.findOneAndUpdate(
-              { _id: current_activity.assign_to },
-              {
-                $inc: {
-                  total_referral_point:
-                    -referral_data?.competition?.successful_task_competition,
-                },
-              },
-              { new: true }
-            );
-          }
+          // if (userData.role.name === "agency" || true) {
+          //   await Agency.findOneAndUpdate(
+          //     { _id: current_activity.assign_to },
+          //     {
+          //       $inc: {
+          //         total_referral_point:
+          //           -referral_data?.competition?.successful_task_competition,
+          //       },
+          //     },
+          //     { new: true }
+          //   );
+          // }
 
           // if (userData.role.name === "team_agency") {
           //   await Team_Agency.findOneAndUpdate(
@@ -1473,18 +1471,18 @@ class ActivityService {
             { new: true }
           );
 
-          if (userData.role.name === "agency" || true) {
-            await Agency.findOneAndUpdate(
-              { _id: current_activity.assign_to },
-              {
-                $inc: {
-                  total_referral_point:
-                    referral_data?.competition?.successful_task_competition,
-                },
-              },
-              { new: true }
-            );
-          }
+          // if (userData.role.name === "agency" || true) {
+          //   await Agency.findOneAndUpdate(
+          //     { _id: current_activity.assign_to },
+          //     {
+          //       $inc: {
+          //         total_referral_point:
+          //           referral_data?.competition?.successful_task_competition,
+          //       },
+          //     },
+          //     { new: true }
+          //   );
+          // }
           // if (userData.role.name === "team_agency") {
           //   await Team_Agency.findOneAndUpdate(
           //     { _id: current_activity.assign_to },
