@@ -137,16 +137,17 @@ class ClientService {
           agency?.workspace
         )}`;
 
-        const invitation_text = `${capitalizeFirstLetter(
-          agency_details?.first_name
-        )} ${capitalizeFirstLetter(
-          agency_details?.last_name
-        )} has sent an invitation to you. please click on below button to join Syncupp.`;
+        // const invitation_text = `${capitalizeFirstLetter(
+        //   agency_details?.first_name
+        // )} ${capitalizeFirstLetter(
+        //   agency_details?.last_name
+        // )} has sent an invitation to you. please click on below button to join Syncupp.`;
 
         const invitation_mail = invitationEmail(
           link,
           user_obj.name,
-          invitation_text
+          ""
+          // invitation_text
         );
         await sendEmail({
           email,
@@ -403,7 +404,7 @@ class ClientService {
         const referral_code = await this.referralCodeGenerator();
         let affiliate_referral_code = await this.referralCodeGenerator();
 
-        await Authentication.findByIdAndUpdate(
+        const user_details = await Authentication.findByIdAndUpdate(
           client_auth?._id,
           {
             status: "signup_completed",
@@ -413,6 +414,13 @@ class ClientService {
           },
           { new: true }
         );
+
+        await Workspace.updateOne({
+          _id: workspace_id,
+          "members.user_id": user_details?._id
+        }, {
+          $set: {"members.$.status": 'confirmed'}
+        });
         //craete contact id
         // PaymentService.createContact(client_auth);
 
@@ -618,7 +626,8 @@ class ClientService {
               { $unwind: "$members" },
               {
                 $project: {
-                  role: "$members.role"
+                  role: "$members.role",
+                  status: "$members.status"
                 }
               }
             ],
@@ -643,7 +652,7 @@ class ClientService {
             company_name: 1,
             company_website: 1,
             createdAt: 1,
-            status: 1,
+            status: {$arrayElemAt: ["$workspaceRoles.status", 0]},
             role: { $arrayElemAt: ["$roleDetails.name", 0] }
           }
         },
