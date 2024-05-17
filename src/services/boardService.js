@@ -256,6 +256,11 @@ class BoardService {
             }
           });
 
+        if (payload?.board_image) {
+          var is_image_exist = await Board.findOne({
+            board_image: payload?.board_image,
+          }).lean();
+        }
         await Board.findByIdAndUpdate(
           board_id,
           {
@@ -264,6 +269,9 @@ class BoardService {
             members: updated_members,
             ...(image_path && {
               board_image: image_path,
+            }),
+            ...(is_image_exist && {
+              board_image: payload?.board_image,
             }),
           },
           { new: true }
@@ -403,7 +411,6 @@ class BoardService {
             },
           },
         ];
-        console.log(sort);
         let sort_by = {
           is_pinned: -1,
           createdAt: -1,
@@ -428,12 +435,6 @@ class BoardService {
             is_pinned: -1,
             project_name: -1,
           };
-        } else {
-          // Default sorting if no sort option is provided
-          sort_by = await Board.aggregate(pipeline).sort({
-            is_pinned: -1,
-            createdAt: -1,
-          });
         }
 
         const [boards, total_board_count] = await Promise.all([
@@ -624,7 +625,71 @@ class BoardService {
         },
       ];
       const user_list = await Workspace.aggregate(pipeline);
-      return user_list;
+
+      const data = [
+        {
+          user_name: "Jeremy Harnden",
+          role: "agency",
+          user_id: "66445f5cdd707e8e9544e009",
+          profile_image: "ddf",
+        },
+        {
+          user_name: "Harshal Prajapati",
+          role: "agency",
+          user_id: "66445f5cdd707e8e9544e009",
+          profile_image: "ddf",
+        },
+        {
+          user_name: "Alice Johnson",
+          role: "team_client",
+          user_id: "12345abcde67890fghijk123",
+          profile_image: "image1.jpg",
+        },
+        {
+          user_name: "Bob Smith",
+          role: "team_client",
+          user_id: "67890fghijk12345abcde123",
+          profile_image: "image2.jpg",
+        },
+        {
+          user_name: "Carol Williams",
+          role: "team_client",
+          user_id: "23456bcdef78901ghijk234",
+          profile_image: "image3.jpg",
+        },
+        {
+          user_name: "David Brown",
+          role: "agency",
+          user_id: "34567cdef89012hijk3456",
+          profile_image: "image4.jpg",
+        },
+        {
+          user_name: "Eva Green",
+          role: "client",
+          user_id: "45678def90123ijk4567",
+          profile_image: "image5.jpg",
+        },
+        {
+          user_name: "Frank Miller",
+          role: "team_agency",
+          user_id: "56789ef01234jkl5678",
+          profile_image: "image6.jpg",
+        },
+        {
+          user_name: "Grace Lee",
+          role: "agency",
+          user_id: "67890f012345klm6789",
+          profile_image: "image7.jpg",
+        },
+        {
+          user_name: "Hannah Taylor",
+          role: "team_client",
+          user_id: "78901f123456lmn7890",
+          profile_image: "image8.jpg",
+        },
+      ];
+
+      return data;
     } catch (error) {
       logger.error(`Error while member list fetch: ${error}`);
       return throwError(error?.message, error?.statusCode);
