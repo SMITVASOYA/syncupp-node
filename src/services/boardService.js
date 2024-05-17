@@ -619,6 +619,7 @@ class BoardService {
             },
             role: "$status_name.name",
             user_id: "$userDetails._id",
+            profile_image: "$userDetails.profile_image",
             client_id: "$clientDetails._id",
           },
         },
@@ -634,7 +635,7 @@ class BoardService {
   fetchBoardImages = async (user) => {
     try {
       const board_images = await Board.find({
-        workspace_id: "66445f8ddd707e8e9544e01c",
+        workspace_id: user?.workspace,
       })
         .select("board_image")
         .lean();
