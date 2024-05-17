@@ -13,6 +13,8 @@ const Configuration = require("../models/configurationSchema");
 const Agency = require("../models/agencySchema");
 const Team_Agency = require("../models/teamAgencySchema");
 const { eventEmitter } = require("../socket");
+const Workspace = require("../models/workspaceSchema");
+const Role_Master = require("../models/masters/roleMasterSchema");
 
 // removed the old middleware as of now
 /* exports.protect = catchAsyncErrors(async (req, res, next) => {
@@ -139,6 +141,17 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
       .lean();
     if (!user) return throwError(returnMessage("auth", "unAuthorized"), 401);
     req.user = user;
+
+    req.user["workspace"] = decodedUserData.workspace;
+
+    const workspace = await Workspace.findById(
+      decodedUserData.workspace
+    ).lean();
+    const userRole = workspace.members.find(
+      (item) => item.user_id.toString() === decodedUserData.id.toString()
+    );
+    const findUserRole = await Role_Master.findById(userRole?.role);
+    req.user["role"] = findUserRole.name;
     next();
   } else {
     return throwError(returnMessage("auth", "unAuthorized"), 401);
