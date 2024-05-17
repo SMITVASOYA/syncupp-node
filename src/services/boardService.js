@@ -65,7 +65,7 @@ class BoardService {
       const new_board = await Board.create({
         project_name,
         description,
-        workspace_id: "66445f8ddd707e8e9544e01c",
+        workspace_id: user.workspace,
         members: member_objects,
         ...((image_path || image_path === "") && {
           board_image: image_path,
@@ -345,14 +345,13 @@ class BoardService {
       const { skip = 0, limit = 5, all, agency_id, sort } = search_obj;
 
       let query = {
-        ...((user?.role?.name === "client" ||
-          user?.role?.name === "team_client") && {
+        ...((user?.role === "client" || user?.role === "team_client") && {
           agency_id: new ObjectId(agency_id),
         }),
       };
 
       if (user) {
-        if (user?.role?.name === "agency") {
+        if (user?.role === "agency") {
           query.agency_id = user?._id;
         } else {
           query["members.member_id"] = user?._id;
@@ -364,7 +363,7 @@ class BoardService {
           {
             $match: {
               ...query,
-              workspace_id: new ObjectId("66445f8ddd707e8e9544e01c"),
+              workspace_id: new ObjectId(user.workspace),
             },
           },
           {
@@ -381,7 +380,7 @@ class BoardService {
           {
             $match: {
               ...query,
-              workspace_id: new ObjectId("66445f8ddd707e8e9544e01c"),
+              workspace_id: new ObjectId(user.workspace),
             },
           },
           {
@@ -404,7 +403,7 @@ class BoardService {
             },
           },
         ];
-
+        console.log(sort);
         let sort_by = {
           is_pinned: -1,
           createdAt: -1,
@@ -438,10 +437,7 @@ class BoardService {
         }
 
         const [boards, total_board_count] = await Promise.all([
-          Board.aggregate(pipeline)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit),
+          Board.aggregate(pipeline).sort(sort_by).skip(skip).limit(limit),
           Board.aggregate(pipeline),
         ]);
 
@@ -485,7 +481,7 @@ class BoardService {
           $lookup: {
             from: "authentications",
             localField: "members.member_id",
-            foreignField: "reference_id",
+            foreignField: "_id",
             as: "member",
           },
         },
@@ -534,7 +530,7 @@ class BoardService {
               ],
             },
             role: "$status_name.name",
-            reference_id: "$member.reference_id",
+            id: "$member._id",
           },
         },
       ];
@@ -550,7 +546,7 @@ class BoardService {
     try {
       const pipeline = [
         {
-          $match: { _id: new ObjectId("66445f8ddd707e8e9544e01c") },
+          $match: { _id: new ObjectId(user.workspace) },
         },
 
         {
