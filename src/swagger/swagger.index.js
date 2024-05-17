@@ -14,6 +14,8 @@ const paymentRoute = require("./swagger_helper/payment.swagger");
 const chatRoute = require("./swagger_helper/chat.swagger");
 const referralRoute = require("./swagger_helper/referral.swagger");
 const boardRoutes = require("./swagger_helper/board.swagger");
+const workspaceRoute = require("./swagger_helper/workspace.swagger");
+const sectionRoutes = require("./swagger_helper/section.swagger");
 
 const swaggerDoc = {
   openapi: "3.0.0",
@@ -77,6 +79,8 @@ const swaggerDoc = {
     ...chatRoute,
     ...referralRoute,
     ...boardRoutes,
+    ...workspaceRoute,
+    ...sectionRoutes,
   },
 };
 module.exports = swaggerDoc;
