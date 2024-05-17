@@ -35,12 +35,16 @@ const TeamMemberService = require("../services/teamMemberService");
 const teamMemberService = new TeamMemberService();
 const fs = require("fs");
 const paymentService = require("../services/paymentService");
+const Workspace = require("../models/workspaceSchema");
+const WorkspaceService = require("./workspaceService");
 const PaymentService = new paymentService();
+const workspaceService = new WorkspaceService();
 
 class ClientService {
   // create client for the agency
   createClient = async (payload, agency) => {
     try {
+      console.log(agency, "agency");
       // commented as only agency can create the client
       // if (agency?.role?.name === "team_agency") {
       //   const team_agency_detail = await Team_Agency.findById(
@@ -58,8 +62,8 @@ class ClientService {
       //   }
       // }
 
-      if (agency?.role?.name !== "agency")
-        return throwError(returnMessage("auth", "insufficientPermission"), 403);
+      // if (agency?.role?.name !== "agency")
+      //   return throwError(returnMessage("auth", "insufficientPermission"), 403);
 
       const { first_name, last_name, email, company_name } = payload;
       validateRequestFields(payload, [
@@ -76,12 +80,111 @@ class ClientService {
         .select("_id")
         .lean();
 
+      // Add client to workspace
+      const workspace_exist = await Workspace.findOne({
+        _id: agency?.workspace,
+      })
+        .where("is_deleted")
+        .equals(false)
+        .lean();
+
+      if (!workspace_exist) {
+        return throwError(
+          returnMessage("workspace", "workspaceNotFound"),
+          statusCode.notFound
+        );
+      }
+
       const client_exist = await Authentication.findOne({
         email,
         is_deleted: false,
-      })
-        .populate("role", "name")
-        .lean();
+      }).lean();
+
+      if (!client_exist) {
+        // Client in not exist
+        const user_obj = {
+          email: email?.toLowerCase(),
+          first_name,
+          last_name,
+          company_name,
+          name:
+            capitalizeFirstLetter(first_name) +
+            " " +
+            capitalizeFirstLetter(last_name),
+          contact_number: payload?.contact_number,
+          status: "signup_incomplete",
+          address: payload?.address,
+          city: payload?.city,
+          state: payload?.state,
+          country: payload?.country,
+          pincode: payload?.pincode,
+          company_website: payload?.company_website,
+        };
+
+        const client = await Authentication.create(user_obj);
+        client.role = role?._id;
+        workspaceService.updateWorkspace(
+          { workspace_id: agency?.workspace },
+          client
+        );
+
+        // Send workspace invitaion mail
+        let link = `${
+          process.env.REACT_APP_URL
+        }/client/verify?name=${encodeURIComponent(
+          agency?.first_name + " " + agency?.last_name
+        )}&email=${encodeURIComponent(email)}&workspace=${encodeURIComponent(
+          agency?.workspace
+        )}`;
+
+        // const invitation_text = `${capitalizeFirstLetter(
+        //   agency_details?.first_name
+        // )} ${capitalizeFirstLetter(
+        //   agency_details?.last_name
+        // )} has sent an invitation to you. please click on below button to join Syncupp.`;
+
+        const invitation_mail = invitationEmail(
+          link,
+          user_obj.name,
+          ""
+          // invitation_text
+        );
+        await sendEmail({
+          email,
+          subject: returnMessage("emailTemplate", "invitation"),
+          message: invitation_mail,
+        });
+      } else {
+        // Check - client is already in exist in workspace
+        if (workspace_exist?.members?.length > 0) {
+          const client_already_in_ws = workspace_exist?.members?.findIndex(
+            (member) =>
+              member?.user_id?.toString() == client_exist?._id?.toString()
+          );
+          if (client_already_in_ws !== -1) {
+            return throwError(
+              returnMessage("client", "clientIsAlreadyExistInWorkspace")
+            );
+          }
+        }
+
+        // Client is exist in authentication
+        client_exist.role = role._id;
+        workspaceService.updateWorkspace(
+          { workspace_id: agency?.workspace, agency_id: agency?._id },
+          client_exist
+        );
+
+        // Send invitation main
+        const invitation_mail = invitationEmail("", user_obj.name);
+        await sendEmail({
+          email,
+          subject: returnMessage("emailTemplate", "invitation"),
+          message: invitation_mail,
+        });
+      }
+
+      return;
 
       // removed because of the payment integration
       // let link = `${
@@ -110,6 +213,7 @@ class ClientService {
           ],
         };
         const new_client = await Client.create(client_obj);
+
         const client_auth_obj = {
           first_name,
           last_name,
@@ -197,14 +301,13 @@ class ClientService {
   // verify client that was invitd by any agency
   verifyClient = async (payload) => {
     try {
-      const { email, password, redirect, agency_id } = payload;
+      const { email, password, redirect, workspace_id } = payload;
       const role = await Role_Master.findOne({ name: "client" })
         .select("_id")
         .lean();
       const client_auth = await Authentication.findOne({
         email,
         is_deleted: false,
-        role: role?._id,
       }).lean();
 
       if (redirect && client_auth && client_auth?.status === "confirmed") {
@@ -249,7 +352,7 @@ class ClientService {
         // return authService.tokenGenerator(client_auth);
       } else {
         // removed first_name and last_name from the validation
-        validateRequestFields(payload, ["password", "email", "agency_id"]);
+        validateRequestFields(payload, ["password", "email", "workspace_id"]);
 
         if (!validateEmail(email))
           return throwError(returnMessage("auth", "invalidEmail"));
@@ -257,104 +360,114 @@ class ClientService {
         if (!passwordValidation(password))
           return throwError(returnMessage("auth", "invalidPassword"));
 
-        if (client_auth?.status !== "confirm_pending")
-          return throwError(returnMessage("client", "alreadyVerified"));
+        // if (client_auth?.status !== "confirm_pending")
+        //   return throwError(returnMessage("client", "alreadyVerified"));
 
-        const client = await Client.findById(client_auth?.reference_id).lean();
+        // const client = await Client.findById(client_auth?.reference_id).lean();
 
-        const agency_exist = client?.agency_ids.filter(
-          (id) => id?.agency_id?.toString() == agency_id
-        );
+        // const agency_exist = client?.agency_ids.filter(
+        //   (id) => id?.agency_id?.toString() == agency_id
+        // );
 
-        if (agency_exist.length == 0)
-          return throwError(returnMessage("agency", "agencyNotFound"));
+        // if (agency_exist.length == 0)
+        //   return throwError(returnMessage("agency", "agencyNotFound"));
 
-        agency_exist.forEach((agency) => {
-          if (
-            agency?.status !== "pending" &&
-            agency?.agency_id?.toString() == agency_id
-          )
-            return throwError(
-              returnMessage("agency", "alreadyVerified"),
-              statusCode.unprocessableEntity
-            );
-          else if (
-            agency?.status === "deleted" &&
-            agency?.agency_id?.toString() == agency_id
-          )
-            return throwError(
-              returnMessage("client", "agencyRemovedBeforeVerify"),
-              statusCode.unprocessableEntity
-            );
-        });
+        // agency_exist.forEach((agency) => {
+        // if (
+        //   agency?.status !== "pending" &&
+        //   agency?.agency_id?.toString() == agency_id
+        // )
+        //   return throwError(
+        //     returnMessage("agency", "alreadyVerified"),
+        //     statusCode.unprocessableEntity
+        //   );
+        // else if (
+        //   agency?.status === "deleted" &&
+        //   agency?.agency_id?.toString() == agency_id
+        // )
+        //   return throwError(
+        //     returnMessage("client", "agencyRemovedBeforeVerify"),
+        //     statusCode.unprocessableEntity
+        //   );
+        // });
 
         const hash_password = await authService.passwordEncryption({
           password,
         });
 
-        await Client.updateOne(
-          { _id: client?._id, "agency_ids.agency_id": agency_id },
-          { $set: { "agency_ids.$.status": "active" } },
-          { new: true }
-        );
+        // await Client.updateOne(
+        //   { _id: client?._id, "agency_ids.agency_id": agency_id },
+        //   { $set: { "agency_ids.$.status": "active" } },
+        //   { new: true }
+        // );
 
         const referral_code = await this.referralCodeGenerator();
         let affiliate_referral_code = await this.referralCodeGenerator();
 
-        await Authentication.findByIdAndUpdate(
+        const user_details = await Authentication.findByIdAndUpdate(
           client_auth?._id,
           {
-            status: "confirmed",
+            status: "signup_completed",
             password: hash_password,
             referral_code: referral_code,
             affiliate_referral_code: affiliate_referral_code,
           },
           { new: true }
         );
-        //craete contact id
-        PaymentService.createContact(client_auth);
 
-        const company_urls = await Configuration.find().lean();
-        let privacy_policy = company_urls[0]?.urls?.privacy_policy;
-
-        let facebook = company_urls[0]?.urls?.facebook;
-
-        let instagram = company_urls[0]?.urls?.instagram;
-        const welcome_mail = welcomeMail(
-          client_auth?.name,
-          privacy_policy,
-          instagram,
-          facebook
+        await Workspace.updateOne(
+          {
+            _id: workspace_id,
+            "members.user_id": user_details?._id,
+          },
+          {
+            $set: { "members.$.status": "confirmed" },
+          }
         );
+        //craete contact id
+        // PaymentService.createContact(client_auth);
 
-        sendEmail({
-          email: client_auth?.email,
-          subject: returnMessage("emailTemplate", "welcomeMailSubject"),
-          message: welcome_mail,
-        });
+        // const company_urls = await Configuration.find().lean();
+        // let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+
+        // let facebook = company_urls[0]?.urls?.facebook;
+
+        // let instagram = company_urls[0]?.urls?.instagram;
+        // const welcome_mail = welcomeMail(
+        //   client_auth?.name,
+        //   privacy_policy,
+        //   instagram,
+        //   facebook
+        // );
+
+        // sendEmail({
+        //   email: client_auth?.email,
+        //   subject: returnMessage("emailTemplate", "welcomeMailSubject"),
+        //   message: welcome_mail,
+        // });
 
         // ------------------  Notifications ----------------
-        notificationService.addNotification({
-          module_name: "general",
-          action_name: "clientPasswordSet",
-          client_name: client_auth?.first_name + " " + client_auth?.last_name,
-          receiver_id: agency_id,
-        });
+        // notificationService.addNotification({
+        //   module_name: "general",
+        //   action_name: "clientPasswordSet",
+        //   client_name: client_auth?.first_name + " " + client_auth?.last_name,
+        //   receiver_id: agency_id,
+        // });
 
-        const agencyData = await Authentication.findOne({
-          reference_id: agency_id,
-        }).lean();
+        // const agencyData = await Authentication.findOne({
+        //   reference_id: agency_id,
+        // }).lean();
 
-        const clientPasswordSetTemp = clientPasswordSet({
-          ...client_auth,
-          client_name: client_auth?.first_name + " " + client_auth?.last_name,
-        });
+        // const clientPasswordSetTemp = clientPasswordSet({
+        //   ...client_auth,
+        //   client_name: client_auth?.first_name + " " + client_auth?.last_name,
+        // });
 
-        sendEmail({
-          email: agencyData?.email,
-          subject: returnMessage("emailTemplate", "clientPasswordSet"),
-          message: clientPasswordSetTemp,
-        });
+        // sendEmail({
+        //   email: agencyData?.email,
+        //   subject: returnMessage("emailTemplate", "clientPasswordSet"),
+        //   message: clientPasswordSetTemp,
+        // });
 
         // ------------------  Notifications ----------------
         return;
@@ -444,112 +557,93 @@ class ClientService {
   // Get the client ist for the Agency
   clientList = async (payload, agency) => {
     try {
-      if (agency?.role?.name === "team_agency") {
-        const team_agency_detail = await Team_Agency.findById(
-          agency?.reference_id
-        )
-          .populate("role", "name")
-          .lean();
-        if (team_agency_detail?.role?.name === "admin") {
-          agency = await Authentication.findOne({
-            reference_id: team_agency_detail?.agency_id,
-          })
-            .populate("role", "name")
-            .lean();
-        }
-      }
+      // if (agency?.role?.name === "team_agency") {
+      //   const team_agency_detail = await Team_Agency.findById(
+      //     agency?.reference_id
+      //   )
+      //     .populate("role", "name")
+      //     .lean();
+      //   if (team_agency_detail?.role?.name === "admin") {
+      //     agency = await Authentication.findOne({
+      //       reference_id: team_agency_detail?.agency_id,
+      //     })
+      //       .populate("role", "name")
+      //       .lean();
+      //   }
+      // }
 
-      if (!payload?.pagination && !payload?.for_activity)
-        return await this.clientListWithoutPagination(agency);
+      // if (!payload?.pagination && !payload?.for_activity)
+      //   return await this.clientListWithoutPagination(agency);
 
-      if (!payload?.pagination && payload?.for_activity)
-        return await this.clientListWithoutPaginationForActivity(agency);
+      // if (!payload?.pagination && payload?.for_activity)
+      //   return await this.clientListWithoutPaginationForActivity(agency);
 
-      if (
-        payload.sort_field &&
-        (payload.sort_field === "company_name" ||
-          payload.sort_field === "company_website")
-      ) {
-        payload.sort_field = `reference_id.${payload.sort_field}`;
-      }
+      // if (
+      //   payload.sort_field &&
+      //   (payload.sort_field === "company_name" ||
+      //     payload.sort_field === "company_website")
+      // ) {
+      //   payload.sort_field = `reference_id.${payload.sort_field}`;
+      // }
       const pagination = paginationObject(payload);
 
-      const clients_ids = await Client.distinct("_id", {
-        agency_ids: {
-          $elemMatch: {
-            agency_id: agency?.reference_id,
-            status: { $ne: "deleted" },
-          },
-        },
+      const role = await Role_Master.findOne({ name: "client" })
+        .select("_id")
+        .lean();
+
+      console.log(agency, "agency");
+
+      const workspace = await Workspace.findById({
+        _id: agency?.workspace,
       }).lean();
+
+      let client_ids = workspace?.members
+        ?.filter((member) => member?.role?.toString() === role?._id?.toString())
+        ?.map((member) => member?.user_id);
 
       const query_obj = {};
 
-      if (payload?.search && payload?.search !== " ") {
-        query_obj["$or"] = [
-          {
-            first_name: { $regex: payload.search, $options: "i" },
-          },
-          {
-            last_name: { $regex: payload.search, $options: "i" },
-          },
-          {
-            email: { $regex: payload.search, $options: "i" },
-          },
-          {
-            name: { $regex: payload.search, $options: "i" },
-          },
-          {
-            contact_number: { $regex: payload.search, $options: "i" },
-          },
-          {
-            "reference_id.company_name": {
-              $regex: payload.search,
-              $options: "i",
-            },
-          },
-          {
-            "reference_id.company_website": {
-              $regex: payload.search,
-              $options: "i",
-            },
-          },
-          {
-            $and: [
-              { "reference_id.agency_ids.$.agency_id": agency?.reference_id },
-              {
-                "reference_id.agency_ids.$.status": {
-                  $regex: payload.search,
-                  $options: "i",
-                },
-              },
-            ],
-          },
-        ];
-      }
-
       const aggrage_array = [
-        { $match: { reference_id: { $in: clients_ids }, is_deleted: false } },
+        { $match: { _id: { $in: client_ids }, is_deleted: false } },
         {
           $lookup: {
-            from: "clients",
-            localField: "reference_id",
-            foreignField: "_id",
-            as: "reference_id",
+            from: "workspaces",
+            let: { client_id: "$_id" },
             pipeline: [
               {
+                $match: {
+                  $expr: { $in: ["$$client_id", "$members.user_id"] },
+                },
+              },
+              {
                 $project: {
-                  company_name: 1,
-                  company_website: 1,
-                  agency_ids: 1,
-                  _id: 1,
+                  members: {
+                    $filter: {
+                      input: "$members",
+                      as: "member",
+                      cond: { $eq: ["$$member.user_id", "$$client_id"] },
+                    },
+                  },
+                },
+              },
+              { $unwind: "$members" },
+              {
+                $project: {
+                  role: "$members.role",
+                  status: "$members.status",
                 },
               },
             ],
+            as: "workspaceRoles",
           },
         },
         {
-          $unwind: { path: "$reference_id", preserveNullAndEmptyArrays: true },
+          $lookup: {
+            from: "role_masters",
+            localField: "workspaceRoles.role",
+            foreignField: "_id",
+            as: "roleDetails",
+          },
         },
         {
           $project: {
@@ -558,18 +652,110 @@ class ClientService {
             email: 1,
             name: { $concat: ["$first_name", " ", "$last_name"] },
             contact_number: 1,
+            company_name: 1,
+            company_website: 1,
             createdAt: 1,
-            profile_image: 1,
-            reference_id: {
-              company_name: 1,
-              company_website: 1,
-              agency_ids: 1,
-              _id: 1,
-            },
+            status: { $arrayElemAt: ["$workspaceRoles.status", 0] },
+            role: { $arrayElemAt: ["$roleDetails.name", 0] },
           },
         },
         { $match: query_obj },
       ];
+
+      // const clients_ids = await Client.distinct("_id", {
+      //   agency_ids: {
+      //     $elemMatch: {
+      //       agency_id: agency?.reference_id,
+      //       status: { $ne: "deleted" },
+      //     },
+      //   },
+      // }).lean();
+
+      // if (payload?.search && payload?.search !== " ") {
+      //   query_obj["$or"] = [
+      //     {
+      //       first_name: { $regex: payload.search, $options: "i" },
+      //     },
+      //     {
+      //       last_name: { $regex: payload.search, $options: "i" },
+      //     },
+      //     {
+      //       email: { $regex: payload.search, $options: "i" },
+      //     },
+      //     {
+      //       name: { $regex: payload.search, $options: "i" },
+      //     },
+      //     {
+      //       contact_number: { $regex: payload.search, $options: "i" },
+      //     },
+      //     {
+      //       "reference_id.company_name": {
+      //         $regex: payload.search,
+      //         $options: "i",
+      //       },
+      //     },
+      //     {
+      //       "reference_id.company_website": {
+      //         $regex: payload.search,
+      //         $options: "i",
+      //       },
+      //     },
+      //     {
+      //       $and: [
+      //         { "reference_id.agency_ids.$.agency_id": agency?.reference_id },
+      //         {
+      //           "reference_id.agency_ids.$.status": {
+      //             $regex: payload.search,
+      //             $options: "i",
+      //           },
+      //         },
+      //       ],
+      //     },
+      //   ];
+      // }
+
+      // const aggrage_array = [
+      //   { $match: { reference_id: { $in: clients_ids }, is_deleted: false } },
+      //   {
+      //     $lookup: {
+      //       from: "clients",
+      //       localField: "reference_id",
+      //       foreignField: "_id",
+      //       as: "reference_id",
+      //       pipeline: [
+      //         {
+      //           $project: {
+      //             company_name: 1,
+      //             company_website: 1,
+      //             agency_ids: 1,
+      //             _id: 1,
+      //           },
+      //         },
+      //       ],
+      //     },
+      //   },
+      //   {
+      //     $unwind: { path: "$reference_id", preserveNullAndEmptyArrays: true },
+      //   },
+      //   {
+      //     $project: {
+      //       first_name: 1,
+      //       last_name: 1,
+      //       email: 1,
+      //       name: { $concat: ["$first_name", " ", "$last_name"] },
+      //       contact_number: 1,
+      //       createdAt: 1,
+      //       reference_id: {
+      //         company_name: 1,
+      //         company_website: 1,
+      //         agency_ids: 1,
+      //         _id: 1,
+      //       },
+      //     },
+      //   },
+      //   { $match: query_obj },
+      // ];
+
       const [clients, totalClients] = await Promise.all([
         Authentication.aggregate(aggrage_array)
           .sort(pagination.sort)
@@ -578,16 +764,16 @@ class ClientService {
         Authentication.aggregate(aggrage_array),
       ]);
 
-      clients.forEach((client) => {
-        const agency_exists = client?.reference_id?.agency_ids?.find(
-          (ag) => ag?.agency_id?.toString() == agency?.reference_id
-        );
-        if (agency_exists) {
-          client["status"] = agency_exists?.status;
-          client.agency = agency_exists;
-        }
-        delete client?.reference_id?.agency_ids;
-      });
+      // clients.forEach((client) => {
+      //   const agency_exists = client?.reference_id?.agency_ids?.find(
+      //     (ag) => ag?.agency_id?.toString() == agency?.reference_id
+      //   );
+      //   if (agency_exists) {
+      //     client["status"] = agency_exists?.status;
+      //     client.agency = agency_exists;
+      //   }
+      //   delete client?.reference_id?.agency_ids;
+      // });
 
       return {
         clients,

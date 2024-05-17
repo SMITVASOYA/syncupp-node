@@ -12,6 +12,7 @@ const {
   clientMemberAdded,
   teamMemberPasswordSet,
   invitationEmail,
+  templateMaker,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const bcrypt = require("bcryptjs");
@@ -37,6 +38,7 @@ const Configuration = require("../models/configurationSchema");
 const fs = require("fs");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
 const paymentService = require("../services/paymentService");
+const Workspace = require("../models/workspaceSchema");
 const PaymentService = new paymentService();
 class TeamMemberService {
   // Add Team Member by agency or client
@@ -74,47 +76,53 @@ class TeamMemberService {
       const { email, first_name, last_name, contact_number, role } = payload;
       if (!role || role === "")
         return throwError(returnMessage("teamMember", "roleRequired"));
-      let check_agency;
-      // removed team member of admin role can add the team member
-      // if (user?.role?.name === "team_agency") {
-      //   check_agency = await Team_Agency.findById(user?.reference_id)
-      //     .populate("role", "name")
-      //     .lean();
-      // }
+
+      const workspace_exist = await Workspace.findById(user?.workspace)
+        .where("is_deleted")
+        .equals(false)
+        .lean();
+
+      if (!workspace_exist)
+        return throwError(
+          returnMessage("workspace", "workspaceNotFound"),
+          statusCode.notFound
+        );
 
       const [team_member_exist, team_role, role_for_auth, plan] =
         await Promise.all([
-          Authentication.findOne({
-            email,
-            is_deleted: false,
-          }).lean(),
+          Authentication.findOne({ email, is_deleted: false }).lean(),
           Team_Role_Master.findOne({ name: role }).select("_id").lean(),
           Role_Master.findOne({ name: "team_agency" }).lean(),
-          SubscriptionPlan.findById(user?.purchased_plan).lean(),
+          // SubscriptionPlan.findById(user?.purchased_plan).lean(),
         ]);
 
-      if (plan?.plan_type === "unlimited") {
+      // need to work on this later
+      /* if (plan?.plan_type === "unlimited") {
         const sheets = await SheetManagement.findOne({
           agency_id: user?.reference_id,
         }).lean();
 
         if (sheets?.occupied_sheets?.length >= sheets?.total_sheets - 1)
           return throwError(returnMessage("payment", "maxSheetsAllocated"));
+      } */
+
+      if (team_member_exist) {
+        // check for the user already exist in the workspace
+        const exist_in_workspace = await Workspace.findOne({
+          "members.user_id": team_member_exist?._id,
+          is_deleted: false,
+        }).lean();
+
+        if (exist_in_workspace)
+          return throwError(
+            returnMessage("workspace", "alreadyExistInWorkspace")
+          );
+
+        const email_template = templateMaker("teamInvitaion.html", {});
+      } else {
       }
 
-      let team_member_create_query = {
-        agency_id: user?.reference_id,
-        role: team_role?._id,
-      };
-      if (check_agency?.role?.name === "admin") {
-        team_member_create_query = {
-          ...team_member_create_query,
-          created_by: check_agency?.agency_id,
-        };
-      }
-
-      if (team_member_exist)
-        return throwError(returnMessage("teamMember", "emailExist"));
+      return throwError(returnMessage("teamMember", "emailExist"));
 
       let invitation_token = crypto.randomBytes(32).toString("hex");
 
@@ -123,10 +131,6 @@ class TeamMemberService {
       await Authentication.create({
         first_name,
         last_name,
-        name:
-          capitalizeFirstLetter(first_name) +
-          " " +
-          capitalizeFirstLetter(last_name),
         status: "payment_pending",
         email: email?.toLowerCase(),
         reference_id: team_agency?._id,

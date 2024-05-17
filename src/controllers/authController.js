@@ -64,13 +64,10 @@ exports.agencyFacebookSignUp = catchAsyncError(async (req, res, next) => {
 
 exports.login = catchAsyncError(async (req, res, next) => {
   const loggedIn = await authService.login(req.body);
-  return sendResponse(
-    res,
-    true,
-    returnMessage("auth", "loggedIn"),
-    loggedIn,
-    statusCode.success
-  );
+  let message = returnMessage("auth", "loggedIn");
+  if (loggedIn?.user?.status === "signup_incomplete")
+    message = returnMessage("user", "signupIncomplete");
+  return sendResponse(res, true, message, loggedIn, statusCode.success);
 });
 
 exports.forgotPassword = catchAsyncError(async (req, res, next) => {
