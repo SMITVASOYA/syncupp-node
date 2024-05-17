@@ -115,6 +115,8 @@ exports.validateRequestFields = (payload, fields) => {
           return throwError(`Email is required.`);
         case "agency_id":
           return throwError(`Agency detail is required.`);
+        case "workspace_id":
+          return throwError(`Workspace id is required`);
       }
     }
   }
