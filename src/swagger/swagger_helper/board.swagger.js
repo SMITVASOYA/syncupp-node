@@ -285,27 +285,6 @@ const userList = {
     },
   ],
 
-  requestBody: {
-    content: {
-      "application/json": {
-        schema: {
-          type: "object",
-          properties: {
-            is_pinned: {
-              type: "string",
-              description: "Enter status",
-              required: true,
-            },
-            board_id: {
-              type: "string",
-              description: "Enter board id",
-              required: true,
-            },
-          },
-        },
-      },
-    },
-  },
   responses: {
     200: {
       description: "ok",
