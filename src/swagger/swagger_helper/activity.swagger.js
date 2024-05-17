@@ -379,6 +379,45 @@ const competitionStats = {
   },
 };
 
+const leaveTask = {
+  tags: ["Activity - CRM Panel"],
+  description: "",
+  summary: "Leave Task",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+
+          properties: {
+            task_id: {
+              type: "string",
+              description: "Enter task id.",
+            },
+          },
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
 const activityRoute = {
   "/api/v1/activity/call-meeting": {
     post: createActivity,
@@ -400,6 +439,9 @@ const activityRoute = {
   },
   "/api/v1/activity/competitionStats": {
     get: competitionStats,
+  },
+  "/api/v1/activity/leave-task": {
+    post: leaveTask,
   },
 };
 

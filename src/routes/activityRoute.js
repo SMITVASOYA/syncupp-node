@@ -39,5 +39,6 @@ activityRoute.get(
   "/list-comments/:task_id",
   activityController.listTaskComment
 );
+activityRoute.post("/leave-task", activityController.leaveTask);
 
 module.exports = activityRoute;

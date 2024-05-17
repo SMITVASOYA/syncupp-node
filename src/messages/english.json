@@ -242,7 +242,8 @@
     "tagsList": "Tags list fetch successfully.",
     "completionHistory": "Points history fetched successfully.",
     "commentAdded": "Comment added successfully.",
-    "commentFetched": "Comments fetched successfully."
+    "commentFetched": "Comments fetched successfully.",
+    "taskLeave": "Task leave successfully."
   },
 
   "payment": {

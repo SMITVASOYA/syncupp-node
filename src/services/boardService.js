@@ -249,13 +249,22 @@ class BoardService {
           image_path = "";
         }
         const existing_image = await Board.findById(board_id).lean();
-        existing_image &&
-          fs.unlink(`./src/public/${existing_image?.board_image}`, (err) => {
-            if (err) {
-              logger.error(`Error while unlinking the documents: ${err}`);
-            }
-          });
 
+        // Check weather same image used in other board else do not delete
+        const check_image = await Board.find({
+          board_id: { $ne: board_id },
+          board_image: existing_image.board_image,
+        }).lean();
+        if (!check_image) {
+          existing_image &&
+            fs.unlink(`./src/public/${existing_image?.board_image}`, (err) => {
+              if (err) {
+                logger.error(`Error while unlinking the documents: ${err}`);
+              }
+            });
+        }
+
+        // Check weather existing image available then use the same
         if (payload?.board_image) {
           var is_image_exist = await Board.findOne({
             board_image: payload?.board_image,
@@ -287,56 +296,56 @@ class BoardService {
       }
 
       // ------------- Notifications -------------
-      // const elementsToRemove = [existing_board?.agency_id, user?._id];
-      // const actions = ["updated", "memberRemoved"];
-      // actions?.map(async (action) => {
-      //   let member_list;
-      //   let mail_subject;
-      //   if (action === "updated") {
-      //     member_list = new_member;
-      //     mail_subject = "memberAddedBoard";
-      //   }
-      //   if (action === "memberRemoved") {
-      //     member_list = removed_member;
-      //     mail_subject = "memberRemovedBoard";
-      //   }
-      //   await notificationService.addNotification(
-      //     {
-      //       module_name: "board",
-      //       action_name: action,
-      //       members: member_list?.filter(
-      //         (item) => !elementsToRemove.includes(item)
-      //       ),
-      //       project_name: existing_board?.project_name,
-      //       added_by:
-      //         capitalizeFirstLetter(user?.first_name) +
-      //         " " +
-      //         capitalizeFirstLetter(user?.last_name),
-      //     },
-      //     board_id
-      //   );
+      const elementsToRemove = [existing_board?.agency_id, user?._id];
+      const actions = ["updated", "memberRemoved"];
+      actions?.map(async (action) => {
+        let member_list;
+        let mail_subject;
+        if (action === "updated") {
+          member_list = new_member;
+          mail_subject = "memberAddedBoard";
+        }
+        if (action === "memberRemoved") {
+          member_list = removed_member;
+          mail_subject = "memberRemovedBoard";
+        }
+        await notificationService.addNotification(
+          {
+            module_name: "board",
+            action_name: action,
+            members: member_list?.filter(
+              (item) => !elementsToRemove.includes(item)
+            ),
+            project_name: existing_board?.project_name,
+            added_by:
+              capitalizeFirstLetter(user?.first_name) +
+              " " +
+              capitalizeFirstLetter(user?.last_name),
+          },
+          board_id
+        );
 
-      //   const member_send_mail = member_list?.filter(
-      //     (item) => !elementsToRemove.includes(item)
-      //   );
-      //   const board_template = boardTemplate({
-      //     ...existing_board,
-      //     added_by:
-      //       capitalizeFirstLetter(user?.first_name) +
-      //       " " +
-      //       capitalizeFirstLetter(user?.last_name),
-      //   });
-      //   member_send_mail.map(async (member) => {
-      //     const member_data = await Authentication.findOne({
-      //       reference_id: member,
-      //     });
-      //     sendEmail({
-      //       email: member_data?.email,
-      //       subject: returnMessage("emailTemplate", mail_subject),
-      //       message: board_template,
-      //     });
-      //   });
-      // });
+        const member_send_mail = member_list?.filter(
+          (item) => !elementsToRemove.includes(item)
+        );
+        const board_template = boardTemplate({
+          ...existing_board,
+          added_by:
+            capitalizeFirstLetter(user?.first_name) +
+            " " +
+            capitalizeFirstLetter(user?.last_name),
+        });
+        member_send_mail.map(async (member) => {
+          const member_data = await Authentication.findOne({
+            reference_id: member,
+          });
+          sendEmail({
+            email: member_data?.email,
+            subject: returnMessage("emailTemplate", mail_subject),
+            message: board_template,
+          });
+        });
+      });
       // ------------- Notifications -------------
 
       return;
@@ -388,16 +397,11 @@ class BoardService {
           {
             $match: {
               ...query,
-              workspace_id: new ObjectId(user.workspace),
+              workspace_id: new ObjectId(user?.workspace),
             },
           },
           {
             $unwind: "$members",
-          },
-          {
-            $match: {
-              "members.member_id": user?._id,
-            },
           },
           {
             $project: {
@@ -551,6 +555,13 @@ class BoardService {
         },
 
         {
+          $unwind: {
+            path: "$members",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+
+        {
           $lookup: {
             from: "authentications",
             localField: "members.user_id",
@@ -565,21 +576,7 @@ class BoardService {
             preserveNullAndEmptyArrays: true,
           },
         },
-        {
-          $lookup: {
-            from: "authentications",
-            localField: "members.client_id",
-            foreignField: "_id",
-            as: "clientDetails",
-          },
-        },
 
-        {
-          $unwind: {
-            path: "$clientDetails",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
         {
           $lookup: {
             from: "role_masters",
@@ -594,6 +591,7 @@ class BoardService {
             preserveNullAndEmptyArrays: true,
           },
         },
+
         {
           $project: {
             _id: 0,
@@ -621,89 +619,29 @@ class BoardService {
             role: "$status_name.name",
             user_id: "$userDetails._id",
             profile_image: "$userDetails.profile_image",
-            client_id: "$clientDetails._id",
+            first_name: "$userDetails.first_name",
+            last_name: "$userDetails.last_name",
           },
         },
       ];
       const user_list = await Workspace.aggregate(pipeline);
 
-      const data = [
-        {
-          user_name: "Jeremy Harnden",
-          role: "agency",
-          user_id: "66445f5cdd707e8e9544e009",
-          profile_image: "ddf",
-        },
-        {
-          user_name: "Harshal Prajapati",
-          role: "agency",
-          user_id: "66445f5cdd707e8e9544e009",
-          profile_image: "ddf",
-        },
-        {
-          user_name: "Alice Johnson",
-          role: "team_client",
-          user_id: "12345abcde67890fghijk123",
-          profile_image: "image1.jpg",
-        },
-        {
-          user_name: "Bob Smith",
-          role: "team_client",
-          user_id: "67890fghijk12345abcde123",
-          profile_image: "image2.jpg",
-        },
-        {
-          user_name: "Carol Williams",
-          role: "team_client",
-          user_id: "23456bcdef78901ghijk234",
-          profile_image: "image3.jpg",
-        },
-        {
-          user_name: "David Brown",
-          role: "agency",
-          user_id: "34567cdef89012hijk3456",
-          profile_image: "image4.jpg",
-        },
-        {
-          user_name: "Eva Green",
-          role: "client",
-          user_id: "45678def90123ijk4567",
-          profile_image: "image5.jpg",
-        },
-        {
-          user_name: "Frank Miller",
-          role: "team_agency",
-          user_id: "56789ef01234jkl5678",
-          profile_image: "image6.jpg",
-        },
-        {
-          user_name: "Grace Lee",
-          role: "agency",
-          user_id: "67890f012345klm6789",
-          profile_image: "image7.jpg",
-        },
-        {
-          user_name: "Hannah Taylor",
-          role: "team_client",
-          user_id: "78901f123456lmn7890",
-          profile_image: "image8.jpg",
-        },
-      ];
-
-      return data;
+      return user_list;
     } catch (error) {
-      logger.error(`Error while member list fetch: ${error}`);
+      logger.error(`Error while user list fetch: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
 
   fetchBoardImages = async (user) => {
+    console.log(user);
     try {
       const board_images = await Board.find({
         workspace_id: user?.workspace,
       })
         .select("board_image")
         .lean();
+      console.log(user);
       let images = [];
       if (board_images) {
         board_images.forEach((board) => {

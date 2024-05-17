@@ -209,3 +209,14 @@ exports.listTaskComment = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+exports.leaveTask = catchAsyncError(async (req, res, next) => {
+  await activityService.leaveTask(req?.body, req?.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("activity", "taskLeave"),
+    null,
+    statusCode.success
+  );
+});
