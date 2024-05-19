@@ -58,8 +58,6 @@ class sectionService {
   // Update   Section
   updateSection = async (payload, section_data) => {
     try {
-      console.log(payload);
-      console.log(section_data);
       const { section_name, board_id, sort_order } = payload;
       const { section_id } = section_data;
       const is_exist = await Section.findOne({

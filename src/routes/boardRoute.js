@@ -28,7 +28,7 @@ boardRoute.get("/fetch-users", boardController.allUserList);
 boardRoute.post("/get-boards", boardController.listBoards);
 boardRoute.get("/:id", boardController.getBoard);
 boardRoute.get("/member-list/:id", boardController.memberList);
-boardRoute.get("/add-remove-user", boardController.addRemoveMember);
+boardRoute.post("/add-remove-user", boardController.addRemoveMember);
 boardRoute.get("/image/board-images", boardController.fetchBoardImage);
 
 module.exports = boardRoute;

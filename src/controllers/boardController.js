@@ -117,7 +117,7 @@ exports.fetchBoardImage = catchAsyncError(async (req, res, next) => {
 // Add Remove Member
 
 exports.addRemoveMember = catchAsyncError(async (req, res, next) => {
-  await boardService.addRemoveMember(req?.user);
+  await boardService.addRemoveMember(req?.body, req?.user);
   sendResponse(
     res,
     true,

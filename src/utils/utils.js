@@ -8277,7 +8277,9 @@ exports.taskTemplate = (data) => {
                                         color: #111318;
                                         text-align: center;
                                       ">
-                                    Hi <span>${data?.assignName}</span>,&nbsp;
+                                    Hi <span   text-transform: capitalize;>${
+                                      data?.assignName
+                                    }</span>,&nbsp;
                                   </h3>
                                   <p style="
                                         margin: 0;
@@ -8311,7 +8313,7 @@ exports.taskTemplate = (data) => {
                                         margin-bottom: 30px;
                                       ">
                                     Recent Activity :
-                                    <span style="font-weight: 600;">${
+                                    <span style="font-weight: 600; text-transform: capitalize;">${
                                       data?.TaskTitle
                                     }</span>
 
@@ -8343,7 +8345,7 @@ exports.taskTemplate = (data) => {
   border-collapse: collapse; font-weight: 600; max-width: 100px;
  overflow: hidden;
  text-overflow: ellipsis;
- white-space: nowrap;">${data?.taskName}</td>
+ white-space: nowrap;  text-transform: capitalize;">${data?.taskName}</td>
                                           </tr>
                                           <tr>
                                           <td style=" border-top-left-radius: 5px;
@@ -8352,7 +8354,7 @@ exports.taskTemplate = (data) => {
                                           </td>
                                           <td
                                             style="
-                                                                                    border-collapse: collapse; font-weight: 600;">
+                                                                                    border-collapse: collapse; font-weight: 600; text-transform: capitalize;">
                                             ${
                                               data.board_name
                                                 ? data.board_name
@@ -8366,7 +8368,7 @@ exports.taskTemplate = (data) => {
                                             </td>
                                             <td
                                               style="
-                                                                                      border-collapse: collapse; font-weight: 600;">
+                                                                                      border-collapse: collapse; font-weight: 600; text-transform: capitalize;">
                                               ${data.status}</td>
                                           </tr>
                                           <tr>
@@ -8377,7 +8379,7 @@ exports.taskTemplate = (data) => {
                                             </td>
                                             <td
                                               style="
-                                                                                                                                border-collapse: collapse; font-weight: 600;">
+                                                                                                                                border-collapse: collapse; font-weight: 600; text-transform: capitalize;">
                                               ${data?.assign_by}</td>
                                           </tr>
                                           <tr>
@@ -8387,7 +8389,7 @@ exports.taskTemplate = (data) => {
                                             </td>
                                             <td
                                               style="
-                                                                                      border-collapse: collapse; font-weight: 600;">
+                                                                                      border-collapse: collapse; font-weight: 600; text-transform: capitalize;">
                                               ${data?.dueDate} | ${
     data?.dueTime
   }</td>

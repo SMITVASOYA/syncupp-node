@@ -15,7 +15,10 @@ const Activity = require("../models/activitySchema");
 const NotificationService = require("./notificationService");
 const sendEmail = require("../helpers/sendEmail");
 const Workspace = require("../models/workspaceSchema");
+const Section = require("../models/sectionSchema");
 const notificationService = new NotificationService();
+const colorsData = require("../messages/colors.json");
+const colors = colorsData.colors;
 
 class BoardService {
   // Add   Board
@@ -39,9 +42,9 @@ class BoardService {
       payload.members = JSON.parse(members);
       payload.members?.push(user?._id);
       // if (member_agency) payload.members?.push(member_agency?.reference_id);
-      payload.members = [...new Set(payload.members)];
+      payload.members = [...new Set(payload?.members)];
 
-      const member_objects = payload.members?.map((member) => ({
+      const member_objects = payload?.members?.map((member) => ({
         member_id: member,
       }));
 
@@ -52,7 +55,7 @@ class BoardService {
 
       let image_path = false;
       if (image) {
-        image_path = "uploads/" + image.filename;
+        image_path = "uploads/" + image?.filename;
       } else if (image === "") {
         image_path = "";
       }
@@ -76,6 +79,61 @@ class BoardService {
         agency_id: user?._id,
       });
 
+      // Create Task status for Board
+      const get_random_color = async () => {
+        const color_keys = Object.keys(colors);
+        let random_color_key;
+        let is_color = false;
+
+        do {
+          random_color_key =
+            color_keys[Math.floor(Math.random() * color_keys.length)];
+          const is_color_exist = await Section.findOne({
+            board_id: new_board?._id,
+            color: colors[random_color_key],
+          }).lean();
+
+          if (!is_color_exist) {
+            is_color = true;
+          }
+        } while (!is_color);
+
+        return colors[random_color_key];
+      };
+
+      const resolved_color = await get_random_color();
+      await Promise.all([
+        Section.create({
+          section_name: "Pending",
+          board_id: new_board?._id,
+          is_deletable: false,
+          sort_order: 1,
+          color: resolved_color,
+        }),
+        Section.create({
+          section_name: "In Progress",
+          board_id: new_board?._id,
+          is_deletable: false,
+          sort_order: 2,
+          color: resolved_color,
+        }),
+        Section.create({
+          section_name: "Overdue",
+          board_id: new_board?._id,
+          is_deletable: false,
+          sort_order: 3,
+          color: resolved_color,
+        }),
+        Section.create({
+          section_name: "Completed",
+          board_id: new_board?._id,
+          is_deletable: false,
+          is_completed: true,
+          sort_order: 4,
+          color: resolved_color,
+        }),
+      ]);
+
       // ------------- Notifications -------------
       await notificationService.addNotification(
         {
@@ -87,7 +145,7 @@ class BoardService {
             " " +
             capitalizeFirstLetter(user?.last_name),
         },
-        new_board._id
+        new_board?._id
       );
 
       const member_send_mail = payload?.members?.filter(
@@ -158,23 +216,23 @@ class BoardService {
       // }
 
       if (existing_board) {
-        payload.members?.push(existing_board?.agency_id);
+        payload?.members?.push(existing_board?.agency_id);
       }
       if (!payload.members?.includes(user?._id)) {
-        payload.members?.push(user?._id);
+        payload?.members?.push(user?._id);
       }
 
       payload.members = [
-        ...new Set(payload.members?.map((member) => member.toString())),
+        ...new Set(payload?.members?.map((member) => member.toString())),
       ].map((member) => new ObjectId(member));
 
       // Add agency_id to members if not already included
-      const updated_members = payload.members?.map((member) => ({
+      const updated_members = payload?.members?.map((member) => ({
         member_id: member,
       }));
       const agency_member = { member_id: user?._id };
 
-      if (!payload.members?.map((member) => member === user?._id)) {
+      if (!payload?.members?.map((member) => member === user?._id)) {
         updated_members?.push(agency_member);
       }
 
@@ -191,7 +249,7 @@ class BoardService {
       const removed_member = [];
 
       // Check new member added
-      for (const member of payload.members) {
+      for (const member of payload?.members) {
         const is_include = existing_board?.members
           .map((existingMember) => String(existingMember.member_id))
           .includes(String(member));
@@ -208,32 +266,8 @@ class BoardService {
         if (!is_include) {
           removed_member.push(member?.member_id);
           const task = await Activity.findOne({
-            $or: [
-              {
-                $and: [
-                  { assign_by: member?.member_id },
-                  {
-                    board_id: board_id,
-                  },
-                ],
-              },
-              {
-                $and: [
-                  { client_id: member?.member_id },
-                  {
-                    board_id: board_id,
-                  },
-                ],
-              },
-              {
-                $and: [
-                  { assign_to: member?.member_id },
-                  {
-                    board_id: board_id,
-                  },
-                ],
-              },
-            ],
+            board_id: board_id,
+            assign_to: { $in: [member?.member_id] },
           });
           if (task) {
             throwError(returnMessage("board", "canNotRemove"));
@@ -253,7 +287,7 @@ class BoardService {
         // Check weather same image used in other board else do not delete
         const check_image = await Board.find({
           board_id: { $ne: board_id },
-          board_image: existing_image.board_image,
+          board_image: existing_image?.board_image,
         }).lean();
         if (!check_image) {
           existing_image &&
@@ -270,6 +304,7 @@ class BoardService {
             board_image: payload?.board_image,
           }).lean();
         }
+
         await Board.findByIdAndUpdate(
           board_id,
           {
@@ -294,7 +329,6 @@ class BoardService {
           { new: true }
         );
       }
-
       // ------------- Notifications -------------
       const elementsToRemove = [existing_board?.agency_id, user?._id];
       const actions = ["updated", "memberRemoved"];
@@ -337,8 +371,8 @@ class BoardService {
         });
         member_send_mail.map(async (member) => {
           const member_data = await Authentication.findOne({
-            reference_id: member,
-          });
+            _id: member,
+          }).lean();
           sendEmail({
             email: member_data?.email,
             subject: returnMessage("emailTemplate", mail_subject),
@@ -393,28 +427,6 @@ class BoardService {
         const boards = await Board.aggregate(pipeline).sort({ createdAt: -1 });
         return { board_list: boards };
       } else {
-        const pipeline = [
-          {
-            $match: {
-              ...query,
-              workspace_id: new ObjectId(user?.workspace),
-            },
-          },
-          {
-            $unwind: "$members",
-          },
-          {
-            $project: {
-              project_name: 1,
-              description: 1,
-              board_image: 1,
-              agency_id: 1,
-              is_pinned: "$members.is_pinned",
-              createdAt: 1,
-              workspace_id: 1,
-            },
-          },
-        ];
         let sort_by = {
           is_pinned: -1,
           createdAt: -1,
@@ -441,6 +453,28 @@ class BoardService {
           };
         }
 
+        const pipeline = [
+          {
+            $match: {
+              ...query,
+              workspace_id: new ObjectId(user?.workspace),
+            },
+          },
+          {
+            $unwind: "$members",
+          },
+          {
+            $project: {
+              project_name: 1,
+              description: 1,
+              board_image: 1,
+              agency_id: 1,
+              is_pinned: "$members.is_pinned",
+              createdAt: 1,
+              workspace_id: 1,
+            },
+          },
+        ];
         const [boards, total_board_count] = await Promise.all([
           Board.aggregate(pipeline).sort(sort_by).skip(skip).limit(limit),
           Board.aggregate(pipeline),
@@ -634,14 +668,12 @@ class BoardService {
   };
 
   fetchBoardImages = async (user) => {
-    console.log(user);
     try {
       const board_images = await Board.find({
         workspace_id: user?.workspace,
       })
         .select("board_image")
         .lean();
-      console.log(user);
       let images = [];
       if (board_images) {
         board_images.forEach((board) => {
@@ -664,15 +696,24 @@ class BoardService {
       const board_details = await Board.findById(board_id);
 
       if (action_name === "remove") {
+        const task = await Activity.findOne({
+          board_id: board_id,
+          assign_to: { $in: [member_id] },
+        });
+        if (task) {
+          throwError(returnMessage("board", "canNotRemove"));
+        }
+
         board_details.members = board_details.members.filter(
           (member) => member.member_id.toString() !== member_id
         );
+        await board_details.save();
       }
       if (action_name === "add") {
         board_details.members.push({ member_id: member_id, is_pinned: false });
+        await board_details.save();
       }
 
-      await board_details.save();
       return;
     } catch (error) {
       logger.error(`Error while fetch Add remove member in board: ${error}`);

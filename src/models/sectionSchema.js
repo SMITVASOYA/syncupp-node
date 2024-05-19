@@ -15,6 +15,14 @@ const sectionSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    is_deletable: {
+      type: Boolean,
+      default: true,
+    },
+    is_completed: {
+      type: Boolean,
+      default: false,
+    },
     color: {
       type: String,
       required: true,
