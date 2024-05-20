@@ -461,8 +461,22 @@ class BoardService {
             },
           },
           {
+            $addFields: {
+              members: {
+                $filter: {
+                  input: "$members",
+                  as: "member",
+                  cond: {
+                    $eq: ["$$member.member_id", new ObjectId(user?._id)],
+                  },
+                },
+              },
+            },
+          },
+          {
             $unwind: "$members",
           },
+
           {
             $project: {
               project_name: 1,
