@@ -78,6 +78,33 @@ exports.deleteTask = catchAsyncError(async (req, res, next) => {
   );
 });
 
+exports.deleteActivityTask = catchAsyncError(async (req, res, next) => {
+  const deleteActivityTask = await activityService.deleteActivityTask(
+    req?.body
+  );
+  sendResponse(
+    res,
+    true,
+    returnMessage("activity", "deleteActivity"),
+    deleteActivityTask,
+    statusCode.success
+  );
+});
+
+exports.updateTaskStatus = catchAsyncError(async (req, res, next) => {
+  const updateTaskStatus = await activityService.updateTaskStatus(
+    req?.body,
+    req.params.id,
+    req?.user
+  );
+  sendResponse(
+    res,
+    true,
+    returnMessage("activity", "updateStatus"),
+    updateTaskStatus,
+    statusCode.success
+  );
+});
 exports.updateStatus = catchAsyncError(async (req, res, next) => {
   const updateStatus = await activityService.statusUpdate(
     req?.body,
@@ -154,17 +181,6 @@ exports.assignedActivity = catchAsyncError(async (req, res, next) => {
     req.user
   );
   sendResponse(res, true, undefined, assigned_activity, 200);
-});
-
-exports.tagList = catchAsyncError(async (req, res, next) => {
-  let tagList = await activityService.tagList(req.body, req.user);
-  sendResponse(
-    res,
-    true,
-    returnMessage("activity", "tagsList"),
-    tagList,
-    statusCode.success
-  );
 });
 
 exports.completionHistory = catchAsyncError(async (req, res, next) => {

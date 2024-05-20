@@ -1,9 +1,10 @@
 const { protect, authorizeRole } = require("../middlewares/authMiddleware");
 const activityController = require("../controllers/activityController");
 const { upload, checkFileSize } = require("../helpers/multer");
-
 const activityRoute = require("express").Router();
 activityRoute.use(protect);
+
+// Task
 activityRoute.post(
   "/create-task",
   checkFileSize,
@@ -12,7 +13,6 @@ activityRoute.post(
 );
 activityRoute.get("/get-status-list", activityController.statusList);
 activityRoute.post("/task-list", activityController.taskList);
-activityRoute.post("/tag-list", activityController.tagList);
 activityRoute.get("/get-task/:id", activityController.fetchTask);
 activityRoute.delete("/delete-task", activityController.deleteTask);
 activityRoute.put(
@@ -21,8 +21,15 @@ activityRoute.put(
   upload.array("attachments"),
   activityController.updateTask
 );
-activityRoute.put("/update-status/:id", activityController.updateStatus);
+activityRoute.post("/add-comment", activityController.addTaskComment);
+activityRoute.get(
+  "/list-comments/:task_id",
+  activityController.listTaskComment
+);
+activityRoute.post("/leave-task", activityController.leaveTask);
+activityRoute.put("/update-status/:id", activityController.updateTaskStatus);
 
+// Call Meeting & Others
 activityRoute.post("/call-meeting", activityController.createCallActivity);
 activityRoute.patch(
   "/update/call-meeting/:activityId",
@@ -30,15 +37,15 @@ activityRoute.patch(
 );
 activityRoute.get("/call-meeting/:activityId", activityController.getActivity);
 activityRoute.post("/list", activityController.getActivities);
+activityRoute.put("/update-status/:id", activityController.updateStatus);
+activityRoute.delete("/delete-activity", activityController.deleteActivityTask);
+
+// Common for Task And Activity
+
+// Others
 activityRoute.post("/leaderboard", activityController.leaderboard);
 activityRoute.post("/assigned_activity", activityController.leaderboard);
 activityRoute.post("/completion_history", activityController.completionHistory);
 activityRoute.get("/competitionStats", activityController.competitionStats);
-activityRoute.post("/add-comment", activityController.addTaskComment);
-activityRoute.get(
-  "/list-comments/:task_id",
-  activityController.listTaskComment
-);
-activityRoute.post("/leave-task", activityController.leaveTask);
 
 module.exports = activityRoute;

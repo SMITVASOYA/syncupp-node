@@ -221,6 +221,7 @@
     "fetchTask": "Task fetched successfully.",
     "updateTask": "Task updated successfully.",
     "deleteTask": "Task deleted successfully.",
+    "deleteActivity": "Activity deleted successfully.",
     "CannotUpdate": "Task cannot be updated.",
     "activityTypeNotFound": "This type of actvity not found.",
     "invalidTime": "End time should be greater than start time.",
@@ -243,7 +244,8 @@
     "completionHistory": "Points history fetched successfully.",
     "commentAdded": "Comment added successfully.",
     "commentFetched": "Comments fetched successfully.",
-    "taskLeave": "Task leave successfully."
+    "taskLeave": "Task leave successfully.",
+    "taskStatusUpdate": "Task status update."
   },
 
   "payment": {

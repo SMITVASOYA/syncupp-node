@@ -43,7 +43,14 @@ exports.updateBoard = catchAsyncError(async (req, res, next) => {
   sendResponse(
     res,
     true,
-    returnMessage("board", "updated"),
+    returnMessage(
+      "board",
+      `${
+        req?.body.only_member_update === "false"
+          ? "updated"
+          : "boardMemberUpdated"
+      }`
+    ),
     null,
     statusCode.success
   );

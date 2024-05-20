@@ -4,6 +4,7 @@ const {
   returnMessage,
   capitalizeFirstLetter,
   boardTemplate,
+  lowercaseFirstLetter,
 } = require("../utils/utils");
 const { ObjectId } = require("mongodb");
 const Authentication = require("../models/authenticationSchema");
@@ -42,7 +43,9 @@ class BoardService {
       payload.members = JSON.parse(members);
       payload.members?.push(user?._id);
       // if (member_agency) payload.members?.push(member_agency?.reference_id);
-      payload.members = [...new Set(payload?.members)];
+      payload.members = [
+        ...new Set(payload?.members?.map((member) => member.toString())),
+      ].map((member) => new ObjectId(member));
 
       const member_objects = payload?.members?.map((member) => ({
         member_id: member,
@@ -109,6 +112,7 @@ class BoardService {
           is_deletable: false,
           sort_order: 1,
           color: resolved_color,
+          key: "pending",
         }),
         Section.create({
           section_name: "In Progress",
@@ -116,6 +120,7 @@ class BoardService {
           is_deletable: false,
           sort_order: 2,
           color: resolved_color,
+          key: "in_progress",
         }),
         Section.create({
           section_name: "Overdue",
@@ -123,12 +128,13 @@ class BoardService {
           is_deletable: false,
           sort_order: 3,
           color: resolved_color,
+          key: "overdue",
         }),
         Section.create({
           section_name: "Completed",
           board_id: new_board?._id,
           is_deletable: false,
-          is_completed: true,
+          key: "completed",
           sort_order: 4,
           color: resolved_color,
         }),
@@ -139,7 +145,7 @@ class BoardService {
         {
           module_name: "board",
           members: payload?.members?.filter((item) => item !== user?._id),
-          project_name: project_name,
+          project_name: lowercaseFirstLetter(project_name),
           created_by_name:
             capitalizeFirstLetter(user?.first_name) +
             " " +
@@ -308,7 +314,7 @@ class BoardService {
         await Board.findByIdAndUpdate(
           board_id,
           {
-            project_name,
+            project_name: lowercaseFirstLetter(project_name),
             description,
             members: updated_members,
             ...(image_path && {
@@ -474,9 +480,8 @@ class BoardService {
             },
           },
           {
-            $unwind: "$members",
+            $unwind: { path: "$members", preserveNullAndEmptyArrays: true },
           },
-
           {
             $project: {
               project_name: 1,
@@ -509,7 +514,7 @@ class BoardService {
     try {
       const { is_pinned, board_id } = payload;
       const updated_board = await Board.updateOne(
-        { _id: board_id, "members.member_id": user?.reference_id },
+        { _id: board_id, "members.member_id": user?._id },
         { $set: { "members.$.is_pinned": is_pinned } },
         { new: true }
       );
@@ -692,7 +697,9 @@ class BoardService {
       if (board_images) {
         board_images.forEach((board) => {
           if (board?.board_image !== null && board.board_image !== undefined) {
-            images.push(board.board_image);
+            if (!images.includes(board.board_image)) {
+              images.push(board.board_image);
+            }
           }
         });
       }
@@ -710,20 +717,21 @@ class BoardService {
       const board_details = await Board.findById(board_id);
 
       if (action_name === "remove") {
-        const task = await Activity.findOne({
-          board_id: board_id,
-          assign_to: { $in: [member_id] },
-        });
-        if (task) {
-          throwError(returnMessage("board", "canNotRemove"));
-        }
+        if (board_details.agency_id.toString() !== member_id.toString()) {
+          const task = await Activity.findOne({
+            board_id: board_id,
+            assign_to: { $in: [member_id] },
+          });
+          if (task) {
+            throwError(returnMessage("board", "canNotRemove"));
+          }
 
-        board_details.members = board_details.members.filter(
-          (member) => member.member_id.toString() !== member_id
-        );
-        await board_details.save();
-      }
-      if (action_name === "add") {
+          board_details.members = board_details.members.filter(
+            (member) => member.member_id.toString() !== member_id
+          );
+          await board_details.save();
+        }
+      } else if (action_name === "add") {
         board_details.members.push({ member_id: member_id, is_pinned: false });
         await board_details.save();
       }

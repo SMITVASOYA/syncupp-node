@@ -81,6 +81,11 @@ exports.capitalizeFirstLetter = (string) => {
   return string?.charAt(0).toUpperCase() + string?.slice(1);
 };
 
+exports.lowercaseFirstLetter = (string) => {
+  if (!string) return "";
+  return string.charAt(0).toLowerCase() + string.slice(1);
+};
+
 exports.validateRequestFields = (payload, fields) => {
   for (const field of fields) {
     if (!payload[field] || payload[field] == " ") {

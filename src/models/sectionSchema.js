@@ -19,9 +19,9 @@ const sectionSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    is_completed: {
-      type: Boolean,
-      default: false,
+    key: {
+      type: String,
+      required: true,
     },
     color: {
       type: String,

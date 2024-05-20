@@ -200,7 +200,7 @@ const getBoard = {
 
 const getBoardList = {
   tags: ["Board"],
-  description: "",
+  description: "sort : [ `newest` , `oldest` , `asc`,`desc`]",
   summary: "Get Board list  ",
   security: [
     {
@@ -229,6 +229,10 @@ const getBoardList = {
               description: "Enter limit number",
               default: 0,
               required: true,
+            },
+            sort: {
+              type: "string",
+              description: "Enter sort by",
             },
           },
         },
@@ -334,6 +338,7 @@ const boardImage = {
     },
   },
 };
+
 const addRemoveUser = {
   tags: ["Board"],
   description: "action_name : [ `add` , `remove`]",

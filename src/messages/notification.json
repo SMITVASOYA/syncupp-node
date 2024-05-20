@@ -41,8 +41,8 @@
       "attendeesMessage": "The ${activity_type} '${title}' has been overdue."
     },
     "activityDueDate": {
-      "clientMessage": "Today is the due date for ${activity_type} '${title}'.",
-      "assignToMessage": "Today is the due date for ${activity_type} '${title}'."
+      "clientMessage": "Today is for ${activity_type} '${title}'.",
+      "assignToMessage": "Today is for ${activity_type} '${title}'."
     },
     "createTask": {
       "clientMessage": "Hi ${client_name}! You have a task titled ${title} due on ${due_date} before ${due_time} for project ${board_name}. Check the agenda. See you there!",
@@ -67,6 +67,10 @@
     "taskInProgress": {
       "clientMessage": "Hi ${client_name}! Your task '${title}' is in progress for project ${board_name}.",
       "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is in progress for project ${board_name}.",
+      "assignByMessage": "Hi ${assigned_by_name}! The task '${title}' is in progress for project ${board_name}."
+    },
+    "taskStatusUpdate": {
+      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you has changed status to '${status}' for the project ${board_name}.",
       "assignByMessage": "Hi ${assigned_by_name}! The task '${title}' is in progress for project ${board_name}."
     },
     "taskCancelled": {
