@@ -15,6 +15,7 @@ const Team_Agency = require("../models/teamAgencySchema");
 const { eventEmitter } = require("../socket");
 const Workspace = require("../models/workspaceSchema");
 const Role_Master = require("../models/masters/roleMasterSchema");
+const Team_Role_Master = require("../models/masters/teamRoleSchema");
 
 // removed the old middleware as of now
 /* exports.protect = catchAsyncErrors(async (req, res, next) => {
@@ -152,6 +153,12 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
     const findUserRole = await Role_Master.findById(userRole?.role);
     req.user["role"] = findUserRole.name;
     req.user["workspace"] = decodedUserData?.workspace;
+    if (findUserRole.name === "team_agency") {
+      const findUserSubRole = await Team_Role_Master.findById(
+        userRole?.sub_role
+      );
+      req.user["sub_role"] = findUserSubRole?.name;
+    }
     next();
   } else {
     return throwError(returnMessage("auth", "unAuthorized"), 401);
@@ -162,4 +169,15 @@ exports.authorizeRole = (requiredRole) => (req, res, next) => {
   if (req?.user?.role?.name !== requiredRole)
     return throwError(returnMessage("auth", "insufficientPermission"), 403);
   next();
+};
+
+exports.authorizeMultipleRoles = (requiredRoles) => (req, res, next) => {
+  if (!Array.isArray(requiredRoles)) {
+    return throwError(returnMessage("auth", "arrayRequired"), 403);
+  }
+  const userRole = req?.user?.role;
+  if (requiredRoles.includes(userRole.toString())) {
+    return next();
+  }
+  return throwError(returnMessage("auth", "insufficientPermission"), 403);
 };

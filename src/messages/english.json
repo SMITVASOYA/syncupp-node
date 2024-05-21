@@ -35,7 +35,8 @@
     "sendRefferalEmail": "Referral email send successfully.",
     "invitationEmailSubject": "Inviation to the Syncupp.",
     "completeProfile": "Complete your profile first to access Syncupp.",
-    "facebookEmailNotFound": "Your email is not linked with facebook."
+    "facebookEmailNotFound": "Your email is not linked with facebook.",
+    "arrayRequired": "Required roles should be an array."
   },
 
   "admin": {

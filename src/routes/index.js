@@ -8,6 +8,7 @@ const teamMemberRoute = require("./teamMemberRoute");
 const invoiceRoute = require("./invoiceRoute");
 const agreementRoute = require("./agreementRoute");
 const activityRoute = require("./activityRoute");
+const taskRoute = require("./taskRoute");
 const boardRoute = require("./boardRoute");
 const paymentRoute = require("./paymentRoute");
 const inquiryRoute = require("./inquiryRoute");
@@ -24,6 +25,7 @@ const workspaceRoute = require("./workspaceRoute");
 const sectionRoute = require("./sectionRoute");
 
 router.use("/activity", activityRoute);
+router.use("/task", taskRoute);
 router.use("/board", boardRoute);
 router.use("/auth", authRoute);
 router.use("/admin", adminRoute);

@@ -16,6 +16,7 @@ const referralRoute = require("./swagger_helper/referral.swagger");
 const boardRoutes = require("./swagger_helper/board.swagger");
 const workspaceRoute = require("./swagger_helper/workspace.swagger");
 const sectionRoutes = require("./swagger_helper/section.swagger");
+const taskRoute = require("./swagger_helper/task.swagger");
 
 const swaggerDoc = {
   openapi: "3.0.0",
@@ -81,6 +82,7 @@ const swaggerDoc = {
     ...boardRoutes,
     ...workspaceRoute,
     ...sectionRoutes,
+    ...taskRoute,
   },
 };
 module.exports = swaggerDoc;

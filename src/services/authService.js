@@ -91,7 +91,7 @@ class AuthService {
 
   tokenRegenerator = (token, workspace_id, user_id) => {
     try {
-      const cleanedToken = token.replace(/^Bearer\s+/i, '');
+      const cleanedToken = token.replace(/^Bearer\s+/i, "");
       const decode = jwt.decode(cleanedToken);
 
       return jwt.sign(
@@ -291,7 +291,10 @@ class AuthService {
         return throwError(returnMessage("user", "userAlreadyExist"));
 
       if (payload?.workspace_name) {
-        const update_workspace_name = payload?.workspace_name?.replace(/\s+/g, '-');
+        const update_workspace_name = payload?.workspace_name?.replace(
+          /\s+/g,
+          "-"
+        );
         await workspaceService.createWorkspace(
           { workspace_name: update_workspace_name },
           user_exist

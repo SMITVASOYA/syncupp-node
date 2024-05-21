@@ -10,8 +10,6 @@ const { ObjectId } = require("mongodb");
 const Authentication = require("../models/authenticationSchema");
 const Board = require("../models/boardSchema");
 const fs = require("fs");
-const Team_Agency = require("../models/teamAgencySchema");
-const Team_Role_Master = require("../models/masters/teamRoleSchema");
 const Activity = require("../models/activitySchema");
 const NotificationService = require("./notificationService");
 const sendEmail = require("../helpers/sendEmail");
@@ -19,30 +17,48 @@ const Workspace = require("../models/workspaceSchema");
 const Section = require("../models/sectionSchema");
 const notificationService = new NotificationService();
 const colorsData = require("../messages/colors.json");
-const colors = colorsData.colors;
+const Role_Master = require("../models/masters/roleMasterSchema");
 
 class BoardService {
   // Add   Board
   addBoard = async (payload, user, image) => {
     try {
       const { project_name, description, members } = payload;
-      // const member_role_id = await Team_Agency.findById(
-      //   user?.reference_id
-      // ).lean();
-      // const member_role_type = await Team_Role_Master.findById(
-      //   member_role_id?.role
-      // ).lean();
-      // const member_agency = await Authentication.findOne({
-      //   _id: member_role_id?.agency_id,
-      // }).lean();
+      if (user?.role === "team_agency" && user?.sub_role !== "admin") {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
 
-      // if (member_role_type?.name !== "admin" && user?.role?.name !== "agency") {
-      //   return throwError(returnMessage("auth", "insufficientPermission"));
-      // }
+      // Set agency id based on login user if user is Team member Admin role then find its agency
+      let agency_id;
+      if (user?.role === "team_agency" && user?.sub_role === "admin") {
+        const workspace_data = await Workspace.findById(user?.workspace).lean();
+        const agency_role_id = await Role_Master.findOne({
+          name: "agency",
+        }).lean();
+        const find_agency = workspace_data?.members?.find(
+          (user) => user.role.toString() === agency_role_id?._id.toString()
+        );
+        agency_id = find_agency?.user_id;
+      } else if (user?.role === "agency") {
+        agency_id = user?._id;
+      }
 
+      // Parse members data
       payload.members = JSON.parse(members);
+
+      // If created by admin the push admin id and agency id in board
       payload.members?.push(user?._id);
-      // if (member_agency) payload.members?.push(member_agency?.reference_id);
+      if (user?.role === "team_agency" && user?.sub_role === "admin") {
+        payload.members?.push(user?._id.toString());
+        payload.members?.push(agency_id.toString());
+      }
+
+      // If created by agency then push agency id in board
+      if (user?.role === "agency") {
+        payload.members?.push(agency_id.toString());
+      }
+
+      // Do not allow duplicate
       payload.members = [
         ...new Set(payload?.members?.map((member) => member.toString())),
       ].map((member) => new ObjectId(member));
@@ -56,6 +72,7 @@ class BoardService {
         return throwError(returnMessage("board", "alreadyExist"));
       }
 
+      // Image upload
       let image_path = false;
       if (image) {
         image_path = "uploads/" + image?.filename;
@@ -68,10 +85,13 @@ class BoardService {
           board_image: payload?.board_image,
         }).lean();
       }
+
+      // Save Board
       const new_board = await Board.create({
         project_name,
         description,
         workspace_id: user.workspace,
+        created_by: user?._id,
         members: member_objects,
         ...((image_path || image_path === "") && {
           board_image: image_path,
@@ -79,39 +99,16 @@ class BoardService {
         ...(is_image_exist && {
           board_image: payload?.board_image,
         }),
-        agency_id: user?._id,
+        agency_id: agency_id,
       });
 
-      // Create Task status for Board
-      const get_random_color = async () => {
-        const color_keys = Object.keys(colors);
-        let random_color_key;
-        let is_color = false;
-
-        do {
-          random_color_key =
-            color_keys[Math.floor(Math.random() * color_keys.length)];
-          const is_color_exist = await Section.findOne({
-            board_id: new_board?._id,
-            color: colors[random_color_key],
-          }).lean();
-
-          if (!is_color_exist) {
-            is_color = true;
-          }
-        } while (!is_color);
-
-        return colors[random_color_key];
-      };
-
-      const resolved_color = await get_random_color();
       await Promise.all([
         Section.create({
           section_name: "Pending",
           board_id: new_board?._id,
           is_deletable: false,
           sort_order: 1,
-          color: resolved_color,
+          color: "#FBF0DE",
           key: "pending",
         }),
         Section.create({
@@ -119,7 +116,7 @@ class BoardService {
           board_id: new_board?._id,
           is_deletable: false,
           sort_order: 2,
-          color: resolved_color,
+          color: "#CBE3FB",
           key: "in_progress",
         }),
         Section.create({
@@ -127,7 +124,7 @@ class BoardService {
           board_id: new_board?._id,
           is_deletable: false,
           sort_order: 3,
-          color: resolved_color,
+          color: "#FFD4C6",
           key: "overdue",
         }),
         Section.create({
@@ -136,7 +133,7 @@ class BoardService {
           is_deletable: false,
           key: "completed",
           sort_order: 4,
-          color: resolved_color,
+          color: "#E4F6D6",
         }),
       ]);
 
@@ -202,32 +199,33 @@ class BoardService {
     try {
       const { project_name, description, members, only_member_update } =
         payload;
-      payload.members = JSON.parse(members);
+
+      // Check Permission
+      if (user?.role === "team_agency" && user?.sub_role !== "admin") {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
 
       const existing_board = await Board.findById(board_id).lean();
 
-      // const member_role_id = await Team_Agency.findById(
-      //   user?.reference_id
-      // ).lean();
-      // const member_role_type = await Team_Role_Master.findById(
-      //   member_role_id?.role
-      // ).lean();
-
-      // if (member_role_type?.name === "admin") {
-      //   const is_include = existing_board?.members
-      //     .map((member) => member?.member_id.toString())
-      //     .includes(user?.reference_id.toString());
-      //   if (!is_include)
-      //     return throwError(returnMessage("auth", "insufficientPermission"));
-      // }
-
-      if (existing_board) {
-        payload?.members?.push(existing_board?.agency_id);
-      }
-      if (!payload.members?.includes(user?._id)) {
-        payload?.members?.push(user?._id);
+      // Check Permission
+      if (user?.role === "team_agency" && user?.sub_role === "admin") {
+        const is_include = existing_board?.members
+          .map((member) => member?.member_id.toString())
+          .includes(user?._id.toString());
+        if (!is_include)
+          return throwError(returnMessage("auth", "insufficientPermission"));
       }
 
+      // Parse members
+      payload.members = JSON.parse(members);
+
+      // If created by admin the push admin id and agency id in board
+      if (user?.role === "team_agency" || user?.role === "agency") {
+        payload?.members?.push(existing_board?.agency_id.toString());
+        payload?.members?.push(existing_board?.created_by.toString());
+      }
+
+      // Do not allow duplicate
       payload.members = [
         ...new Set(payload?.members?.map((member) => member.toString())),
       ].map((member) => new ObjectId(member));
@@ -236,11 +234,6 @@ class BoardService {
       const updated_members = payload?.members?.map((member) => ({
         member_id: member,
       }));
-      const agency_member = { member_id: user?._id };
-
-      if (!payload?.members?.map((member) => member === user?._id)) {
-        updated_members?.push(agency_member);
-      }
 
       // check board name already exists
       const board = await Board.findOne({ project_name: project_name }).lean();
@@ -402,9 +395,10 @@ class BoardService {
       const { skip = 0, limit = 5, all, agency_id, sort } = search_obj;
 
       let query = {
-        ...((user?.role === "client" || user?.role === "team_client") && {
-          agency_id: new ObjectId(agency_id),
-        }),
+        ...((user?.role === "client" || user?.role === "team_client") &&
+          agency_id && {
+            agency_id: new ObjectId(agency_id),
+          }),
       };
 
       if (user) {
@@ -420,7 +414,7 @@ class BoardService {
           {
             $match: {
               ...query,
-              workspace_id: new ObjectId(user.workspace),
+              workspace_id: new ObjectId(user?.workspace),
             },
           },
           {
@@ -491,6 +485,7 @@ class BoardService {
               is_pinned: "$members.is_pinned",
               createdAt: 1,
               workspace_id: 1,
+              created_by: 1,
             },
           },
         ];
@@ -717,7 +712,10 @@ class BoardService {
       const board_details = await Board.findById(board_id);
 
       if (action_name === "remove") {
-        if (board_details.agency_id.toString() !== member_id.toString()) {
+        if (
+          board_details.agency_id.toString() !== member_id.toString() &&
+          board_details.created_by.toString() !== member_id.toString()
+        ) {
           const task = await Activity.findOne({
             board_id: board_id,
             assign_to: { $in: [member_id] },

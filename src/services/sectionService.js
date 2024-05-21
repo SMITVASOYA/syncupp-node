@@ -46,6 +46,7 @@ class sectionService {
         board_id,
         sort_order,
         color: resolved_color,
+        is_deletable: true,
       });
 
       return;

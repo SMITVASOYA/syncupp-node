@@ -67,26 +67,14 @@ exports.updateTask = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
-exports.deleteTask = catchAsyncError(async (req, res, next) => {
-  const deleteTask = await activityService.deleteTask(req?.body);
-  sendResponse(
-    res,
-    true,
-    returnMessage("activity", "deleteTask"),
-    deleteTask,
-    statusCode.success
-  );
-});
 
-exports.deleteActivityTask = catchAsyncError(async (req, res, next) => {
-  const deleteActivityTask = await activityService.deleteActivityTask(
-    req?.body
-  );
+exports.deleteActivity = catchAsyncError(async (req, res, next) => {
+  const deleteActivity = await activityService.deleteActivity(req?.body);
   sendResponse(
     res,
     true,
     returnMessage("activity", "deleteActivity"),
-    deleteActivityTask,
+    deleteActivity,
     statusCode.success
   );
 });
