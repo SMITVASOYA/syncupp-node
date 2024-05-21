@@ -32,7 +32,10 @@ exports.checkContactunique = catchAsyncError(async (req, res, next) => {
 });
 
 exports.getEmailDetails = catchAsyncError(async (req, res, next) => {
-  const user = await authService.getEmailDetails(req.body);
+  const user = await authService.getEmailDetails({
+    ...req.body,
+    token: req?.headers?.authorization || req?.headers?.token || undefined,
+  });
   sendResponse(res, true, undefined, user, statusCode.success);
 });
 

@@ -47,6 +47,7 @@ const authenticationSchema = new mongoose.Schema(
     industry: { type: String },
     address: { type: String },
     profession_role: { type: String },
+    gst: { type: String },
   },
   { timestamps: true }
 );

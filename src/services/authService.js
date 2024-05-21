@@ -91,7 +91,7 @@ class AuthService {
 
   tokenRegenerator = (token, workspace_id, user_id) => {
     try {
-      const cleanedToken = token.replace(/^Bearer\s+/i, '');
+      const cleanedToken = token.replace(/^Bearer\s+/i, "");
       const decode = jwt.decode(cleanedToken);
 
       return jwt.sign(
@@ -291,9 +291,8 @@ class AuthService {
         return throwError(returnMessage("user", "userAlreadyExist"));
 
       if (payload?.workspace_name) {
-        const update_workspace_name = payload?.workspace_name?.replace(/\s+/g, '-');
         await workspaceService.createWorkspace(
-          { workspace_name: update_workspace_name },
+          { workspace_name: payload?.workspace_name?.replace(/\s+/g, "-") },
           user_exist
         );
       }
@@ -449,6 +448,27 @@ class AuthService {
         email,
         is_deleted: false,
       }).lean();
+
+      if (payload?.token) {
+        return {
+          first_name: user?.first_name,
+          last_name: user?.last_name,
+          email: user?.email,
+          status: user?.status,
+          password_set: user?.password ? true : false,
+          is_google_signup: user?.is_google_signup,
+          is_facebook_signup: user?.is_facebook_signup,
+          company_name: user?.company_name,
+          company_website: user?.company_website,
+          gst: user?.gst,
+          contact_number: user?.contact_number,
+          address: user?.address,
+          state: user?.state,
+          city: user?.city,
+          country: user?.country,
+          pincode: user?.pincode,
+        };
+      }
       return {
         email: user?.email,
         status: user?.status,

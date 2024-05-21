@@ -129,10 +129,10 @@ const verifyTeamMember = {
               description: "Enter workspace id",
               required: true,
             },
-            workspace: {
+            accept: {
               type: "boolean",
               required: true,
-              degfault: true,
+              default: true,
             },
           },
         },
@@ -286,9 +286,22 @@ const getAllTeamMember = {
               type: "string",
               description: "Enter value of search",
             },
-            for_client: {
-              type: "boolean",
-              default: false,
+            filter: {
+              type: "object",
+
+              properties: {
+                status: {
+                  type: "string",
+                  description: "Enter status value.",
+                },
+                date: {
+                  type: "object",
+                  properties: {
+                    start_date: { type: "date", default: "DD-MM-YYYY" },
+                    end_date: { type: "date", default: "DD-MM-YYYY" },
+                  },
+                },
+              },
             },
           },
         },

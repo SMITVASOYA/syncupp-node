@@ -12,6 +12,7 @@ const {
   welcomeMail,
   capitalizeFirstLetter,
   clientPasswordSet,
+  templateMaker,
 } = require("../utils/utils");
 const Authentication = require("../models/authenticationSchema");
 const sendEmail = require("../helpers/sendEmail");
@@ -39,258 +40,200 @@ const Workspace = require("../models/workspaceSchema");
 const WorkspaceService = require("./workspaceService");
 const PaymentService = new paymentService();
 const workspaceService = new WorkspaceService();
+const crypto = require("crypto");
 
 class ClientService {
   // create client for the agency
-  createClient = async (payload, agency) => {
+  createClient = async (payload, user) => {
     try {
-      console.log(agency, "agency");
-      // commented as only agency can create the client
-      // if (agency?.role?.name === "team_agency") {
-      //   const team_agency_detail = await Team_Agency.findById(
-      //     agency?.reference_id
-      //   )
-      //     .populate("role", "name")
-      //     .lean();
-      //   if (team_agency_detail?.role?.name === "admin") {
-      //     agency = await Authentication.findOne({
-      //       reference_id: team_agency_detail?.agency_id,
-      //     })
-      //       .populate("role", "role")
-      //       .lean();
-      //     agency.created_by = team_agency_detail?._id;
-      //   }
-      // }
+      const {
+        email,
+        first_name,
+        last_name,
+        contact_number,
+        company_name,
+        company_website,
+        gst,
+        address,
+        country,
+        city,
+        state,
+        pincode,
+      } = payload;
 
-      // if (agency?.role?.name !== "agency")
-      //   return throwError(returnMessage("auth", "insufficientPermission"), 403);
-
-      const { first_name, last_name, email, company_name } = payload;
-      validateRequestFields(payload, [
-        "first_name",
-        "last_name",
-        "email",
-        "company_name",
-      ]);
-
-      if (!validateEmail(email))
-        return throwError(returnMessage("auth", "invalidEmail"));
-
-      const role = await Role_Master.findOne({ name: "client" })
-        .select("_id")
-        .lean();
-
-      // Add client to workspace
-      const workspace_exist = await Workspace.findOne({
-        _id: agency?.workspace,
-      })
+      const workspace_exist = await Workspace.findById(user?.workspace)
         .where("is_deleted")
         .equals(false)
         .lean();
 
-      if (!workspace_exist) {
+      if (!workspace_exist)
         return throwError(
           returnMessage("workspace", "workspaceNotFound"),
           statusCode.notFound
         );
-      }
 
-      const client_exist = await Authentication.findOne({
-        email,
-        is_deleted: false,
-      }).lean();
+      const [client_exist, role, configuration, plan] = await Promise.all([
+        Authentication.findOne({ email, is_deleted: false }).lean(),
+        Role_Master.findOne({ name: "client" }).lean(),
+        Configuration.findOne({}).lean(),
+        // SubscriptionPlan.findById(user?.purchased_plan).lean(),
+      ]);
 
-      if (!client_exist) {
-        // Client in not exist
-        const user_obj = {
-          email: email?.toLowerCase(),
-          first_name,
-          last_name,
-          company_name,
-          name:
-            capitalizeFirstLetter(first_name) +
-            " " +
-            capitalizeFirstLetter(last_name),
-          contact_number: payload?.contact_number,
-          status: "signup_incomplete",
-          address: payload?.address,
-          city: payload?.city,
-          state: payload?.state,
-          country: payload?.country,
-          pincode: payload?.pincode,
-          company_website: payload?.company_website,
-        };
+      // need to work on this later
+      /* if (plan?.plan_type === "unlimited") {
+        const sheets = await SheetManagement.findOne({
+          agency_id: user?.reference_id,
+        }).lean();
 
-        const client = await Authentication.create(user_obj);
-        client.role = role?._id;
-        workspaceService.updateWorkspace(
-          { workspace_id: agency?.workspace },
-          client
-        );
+        if (sheets?.occupied_sheets?.length >= sheets?.total_sheets - 1)
+          return throwError(returnMessage("payment", "maxSheetsAllocated"));
+      } */
 
-        // Send workspace invitaion mail
-        let link = `${
-          process.env.REACT_APP_URL
-        }/client/verify?name=${encodeURIComponent(
-          agency?.first_name + " " + agency?.last_name
-        )}&email=${encodeURIComponent(email)}&workspace=${encodeURIComponent(
-          agency?.workspace
-        )}`;
+      if (client_exist) {
+        // check for the user already exist in the workspace
+        const exist_in_workspace = await Workspace.findOne({
+          "members.user_id": client_exist?._id,
+          is_deleted: false,
+        }).lean();
 
-        // const invitation_text = `${capitalizeFirstLetter(
-        //   agency_details?.first_name
-        // )} ${capitalizeFirstLetter(
-        //   agency_details?.last_name
-        // )} has sent an invitation to you. please click on below button to join Syncupp.`;
-
-        const invitation_mail = invitationEmail(
-          link,
-          user_obj.name,
-          ""
-          // invitation_text
-        );
-        await sendEmail({
-          email,
-          subject: returnMessage("emailTemplate", "invitation"),
-          message: invitation_mail,
-        });
-      } else {
-        // Check - client is already in exist in workspace
-        if (workspace_exist?.members?.length > 0) {
-          const client_already_in_ws = workspace_exist?.members?.findIndex(
-            (member) =>
-              member?.user_id?.toString() == client_exist?._id?.toString()
+        if (exist_in_workspace)
+          return throwError(
+            returnMessage("client", "clientIsAlreadyExistInWorkspace")
           );
-          if (client_already_in_ws !== -1) {
-            return throwError(
-              returnMessage("client", "clientIsAlreadyExistInWorkspace")
-            );
-          }
-        }
 
-        // Client is exist in authentication
-        client_exist.role = role._id;
-        workspaceService.updateWorkspace(
-          { workspace_id: agency?.workspace, agency_id: agency?._id },
-          client_exist
-        );
+        let invitation_token = crypto.randomBytes(16).toString("hex");
+        const link = `${process.env.REACT_APP_URL}/verify?workspace=${
+          workspace_exist?._id
+        }&email=${encodeURIComponent(
+          client_exist?.email
+        )}&token=${invitation_token}&workspace_name=${
+          workspace_exist?.name
+        }&first_name=${client_exist?.first_name}&last_name=${
+          client_exist?.last_name
+        }`;
 
-        // Send invitation main
-        const invitation_mail = invitationEmail("", user_obj.name);
-        await sendEmail({
-          email,
-          subject: returnMessage("emailTemplate", "invitation"),
-          message: invitation_mail,
-        });
-      }
-
-      return;
-
-      // removed because of the payment integration
-      // let link = `${
-      //   process.env.REACT_APP_URL
-      // }/client/verify?name=${encodeURIComponent(
-      //   agency?.first_name + " " + agency?.last_name
-      // )}&email=${encodeURIComponent(email)}&agency=${encodeURIComponent(
-      //   agency?.reference_id
-      // )}`;
-
-      if (!client_exist) {
-        const client_obj = {
-          company_name,
-          company_website: payload?.company_website,
-          address: payload?.address,
-          city: payload?.city,
-          state: payload?.state,
-          country: payload?.country,
-          pincode: payload?.pincode,
-          agency_ids: [
-            {
-              agency_id: agency?.reference_id,
-              status: "payment_pending",
-              created_by: agency?.created_by,
-            },
-          ],
-        };
-        const new_client = await Client.create(client_obj);
-
-        const client_auth_obj = {
-          first_name,
-          last_name,
-          name:
-            capitalizeFirstLetter(first_name) +
+        const email_template = templateMaker("teamInvitaion.html", {
+          REACT_APP_URL: process.env.REACT_APP_URL,
+          SERVER_URL: process.env.SERVER_URL,
+          username:
+            capitalizeFirstLetter(client_exist?.first_name) +
             " " +
-            capitalizeFirstLetter(last_name),
-          email: email?.toLowerCase(),
-          contact_number: payload?.contact_number,
-          role: role?._id,
-          reference_id: new_client?._id,
-          status: "confirm_pending",
-        };
-        await Authentication.create(client_auth_obj);
-      } else {
-        if (client_exist?.role?.name !== "client")
-          return throwError(returnMessage("auth", "emailExist"));
-
-        const client = await Client.findById(client_exist?.reference_id).lean();
-        // const already_exist = client?.agency_ids?.filter(
-        //   (id) => id?.agency_id?.toString() == agency?.reference_id
-        // );
-
-        client?.agency_ids?.forEach((id, index) => {
-          if (
-            id?.agency_id?.toString() == agency?.reference_id &&
-            id?.status === "deleted"
-          ) {
-            client?.agency_ids.splice(index, 1);
-          } else if (
-            id?.agency_id?.toString() == agency?.reference_id.toString() &&
-            id?.status != "deleted"
-          )
-            return throwError(returnMessage("agency", "clientExist"));
-
-          return;
+            capitalizeFirstLetter(client_exist?.last_name),
+          invitation_text: `You are invited to the ${
+            workspace_exist?.name
+          } workspace by ${
+            capitalizeFirstLetter(user?.first_name) +
+            " " +
+            capitalizeFirstLetter(user?.last_name)
+          }. Click on the below link to join the workspace.`,
+          link: link,
+          instagram: configuration?.urls?.instagram,
+          facebook: configuration?.urls?.facebook,
+          privacy_policy: configuration?.urls?.privacy_policy,
         });
 
-        const client_agencies = client?.agency_ids || [];
+        sendEmail({
+          email: client_exist?.email,
+          subject: returnMessage("auth", "invitationEmailSubject"),
+          message: email_template,
+        });
+        const members = [...workspace_exist.members];
+        members.push({
+          user_id: client_exist?._id,
+          role: role_for_auth?._id,
+          sub_role: team_role?._id,
+          invitation_token: invitation_token,
+        });
 
-        const agency_ids = [
-          ...client_agencies,
-          {
-            agency_id: agency?.reference_id,
-            status: "payment_pending",
-            created_by: agency?.created_by,
-          },
-        ];
-
-        await Client.findByIdAndUpdate(
-          client?._id,
-          { agency_ids },
+        await Workspace.findByIdAndUpdate(
+          workspace_exist?._id,
+          { members: members },
           { new: true }
         );
-      }
-      // removed because of the payment is added
-      // const invitation_mail = invitationEmail(link, name);
+        return;
+      } else {
+        if (contact_number) {
+          const unique_contact = await Authentication.findOne({
+            contact_number,
+            is_deleted: false,
+          }).lean();
+          if (unique_contact)
+            return throwError(returnMessage("user", "contactNumberExist"));
+        }
 
-      // await sendEmail({
-      //   email,
-      //   subject: returnMessage("emailTemplate", "invitation"),
-      //   message: invitation_mail,
-      // });
-      const client = await Authentication.findOne({ email })
-        .select("reference_id")
-        .lean();
+        const new_user = await Authentication.create({
+          email,
+          first_name: first_name?.toLowerCase(),
+          last_name: last_name?.toLowerCase(),
+          contact_number,
+          company_name,
+          company_website,
+          address,
+          city,
+          country,
+          state,
+          pincode,
+          gst,
+        });
+        // check for the user already exist in the workspace
+        const exist_in_workspace = await Workspace.findOne({
+          "members.user_id": new_user?._id,
+          is_deleted: false,
+        }).lean();
 
-      if (agency?.status === "free_trial") {
-        await teamMemberService.freeTrialMemberAdd(
-          agency?.reference_id,
-          client?.reference_id
+        if (exist_in_workspace)
+          return throwError(
+            returnMessage("client", "clientIsAlreadyExistInWorkspace")
+          );
+
+        let invitation_token = crypto.randomBytes(16).toString("hex");
+        const link = `${process.env.REACT_APP_URL}/verify?workspace=${
+          workspace_exist?._id
+        }&email=${encodeURIComponent(
+          email
+        )}&token=${invitation_token}&workspace_name=${
+          workspace_exist?.name
+        }&first_name=${first_name}&last_name=${last_name}`;
+
+        const email_template = templateMaker("teamInvitation.html", {
+          REACT_APP_URL: process.env.REACT_APP_URL,
+          SERVER_URL: process.env.SERVER_URL,
+          username:
+            capitalizeFirstLetter(first_name) +
+            " " +
+            capitalizeFirstLetter(last_name),
+          invitation_text: `You are invited to the ${
+            workspace_exist?.name
+          } workspace by ${
+            capitalizeFirstLetter(user?.first_name) +
+            " " +
+            capitalizeFirstLetter(user?.last_name)
+          }. Click on the below link to join the workspace.`,
+          link: link,
+          instagram: configuration?.urls?.instagram,
+          facebook: configuration?.urls?.facebook,
+          privacy_policy: configuration?.urls?.privacy_policy,
+        });
+
+        sendEmail({
+          email: email,
+          subject: returnMessage("auth", "invitationEmailSubject"),
+          message: email_template,
+        });
+        const members = [...workspace_exist.members];
+        members.push({
+          user_id: new_user?._id,
+          role: role?._id,
+          invitation_token: invitation_token,
+        });
+
+        await Workspace.findByIdAndUpdate(
+          workspace_exist?._id,
+          { members: members },
+          { new: true }
         );
+        return;
       }
-      return {
-        ...client,
-        referral_points: 0, // this is set to 0 initially but it will update when the referral module imlement
-      };
     } catch (error) {
       console.log(error);
       logger.error(`Error while creating client: ${error}`);
@@ -415,12 +358,15 @@ class ClientService {
           { new: true }
         );
 
-        await Workspace.updateOne({
-          _id: workspace_id,
-          "members.user_id": user_details?._id
-        }, {
-          $set: {"members.$.status": 'confirmed'}
-        });
+        await Workspace.updateOne(
+          {
+            _id: workspace_id,
+            "members.user_id": user_details?._id,
+          },
+          {
+            $set: { "members.$.status": "confirmed" },
+          }
+        );
         //craete contact id
         // PaymentService.createContact(client_auth);
 
@@ -609,8 +555,8 @@ class ClientService {
             pipeline: [
               {
                 $match: {
-                  $expr: { $in: ["$$client_id", "$members.user_id"] }
-                }
+                  $expr: { $in: ["$$client_id", "$members.user_id"] },
+                },
               },
               {
                 $project: {
@@ -618,29 +564,29 @@ class ClientService {
                     $filter: {
                       input: "$members",
                       as: "member",
-                      cond: { $eq: ["$$member.user_id", "$$client_id"] }
-                    }
-                  }
-                }
+                      cond: { $eq: ["$$member.user_id", "$$client_id"] },
+                    },
+                  },
+                },
               },
               { $unwind: "$members" },
               {
                 $project: {
                   role: "$members.role",
-                  status: "$members.status"
-                }
-              }
+                  status: "$members.status",
+                },
+              },
             ],
-            as: "workspaceRoles"
-          }
+            as: "workspaceRoles",
+          },
         },
         {
           $lookup: {
             from: "role_masters",
             localField: "workspaceRoles.role",
             foreignField: "_id",
-            as: "roleDetails"
-          }
+            as: "roleDetails",
+          },
         },
         {
           $project: {
@@ -652,9 +598,9 @@ class ClientService {
             company_name: 1,
             company_website: 1,
             createdAt: 1,
-            status: {$arrayElemAt: ["$workspaceRoles.status", 0]},
-            role: { $arrayElemAt: ["$roleDetails.name", 0] }
-          }
+            status: { $arrayElemAt: ["$workspaceRoles.status", 0] },
+            role: { $arrayElemAt: ["$roleDetails.name", 0] },
+          },
         },
         { $match: query_obj },
       ];

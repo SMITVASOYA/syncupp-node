@@ -40,6 +40,8 @@ const SubscriptionPlan = require("../models/subscriptionplanSchema");
 const paymentService = require("../services/paymentService");
 const Workspace = require("../models/workspaceSchema");
 const PaymentService = new paymentService();
+const mongoose = require("mongoose");
+
 class TeamMemberService {
   // removed the code to create the team member for the agency
   /*// Add Team Member by agency or client
@@ -125,7 +127,11 @@ class TeamMemberService {
           workspace_exist?._id
         }&email=${encodeURIComponent(
           team_member_exist?.email
-        )}&token=${invitation_token}&workspaceName=${workspace_exist?.name}`;
+        )}&token=${invitation_token}&workspace_name=${
+          workspace_exist?.name
+        }&first_name=${team_member_exist?.first_name}&last_name=${
+          team_member_exist?.last_name
+        }`;
 
         const email_template = templateMaker("teamInvitaion.html", {
           REACT_APP_URL: process.env.REACT_APP_URL,
@@ -198,7 +204,9 @@ class TeamMemberService {
           workspace_exist?._id
         }&email=${encodeURIComponent(
           email
-        )}&token=${invitation_token}&workspaceName=${workspace_exist?.name}`;
+        )}&token=${invitation_token}&workspace_name=${
+          workspace_exist?.name
+        }&first_name=${first_name}&last_name=${last_name}`;
 
         const email_template = templateMaker("teamInvitation.html", {
           REACT_APP_URL: process.env.REACT_APP_URL,
@@ -370,199 +378,6 @@ class TeamMemberService {
       return throwError(error?.message, error?.statusCode);
     }
   };
-
-  /*  // Verify Team Member
-  verify = async (payload) => {
-    try {
-      const {
-        first_name,
-        last_name,
-        email,
-        password,
-        token,
-        agency_id,
-        client_id,
-        redirect,
-      } = payload;
-
-      if (token && !redirect) {
-        // removed because of the payment
-        // const hash_token = crypto
-        //   .createHash("sha256")
-        //   .update(token)
-        //   .digest("hex");
-        const teamMember = await Authentication.findOne({
-          email: email,
-          invitation_token: token,
-          is_deleted: false,
-        });
-
-        if (!teamMember) {
-          return throwError(returnMessage("teamMember", "invalidToken"));
-        }
-        const hash_password = await authService.passwordEncryption({
-          password,
-        });
-
-        const referral_code = await this.referralCodeGenerator();
-        let affiliate_referral_code = await this.referralCodeGenerator();
-
-        teamMember.email = email;
-        teamMember.invitation_token = undefined;
-        teamMember.password = hash_password;
-        teamMember.status = "confirmed";
-        teamMember.referral_code = referral_code;
-        teamMember.affiliate_referral_code = affiliate_referral_code;
-        //creating contact id
-        PaymentService.createContact(teamMember);
-        await teamMember.save();
-        const company_urls = await Configuration.find().lean();
-        let privacy_policy = company_urls[0]?.urls?.privacy_policy;
-
-        let facebook = company_urls[0]?.urls?.facebook;
-
-        let instagram = company_urls[0]?.urls?.instagram;
-        const welcome_mail = welcomeMail(
-          teamMember?.name,
-          privacy_policy,
-          instagram,
-          facebook
-        );
-
-        sendEmail({
-          email: teamMember?.email,
-          subject: returnMessage("emailTemplate", "welcomeMailSubject"),
-          message: welcome_mail,
-        });
-        return;
-      } else if (client_id && client_id !== "") {
-        if (!validateEmail(email))
-          return throwError(returnMessage("auth", "invalidEmail"));
-
-        const team_auth_role = await Role_Master.findOne({
-          name: "team_client",
-        }).lean();
-
-        const client_team_member = await Authentication.findOne({
-          email,
-          role: team_auth_role?._id,
-        }).lean();
-
-        if (!client_team_member)
-          return throwError(
-            returnMessage("auth", "userNotFound"),
-            statusCode.notFound
-          );
-
-        const team_client = await Team_Client.findById(
-          client_team_member?.reference_id
-        ).lean();
-
-        if (!team_client)
-          return throwError(
-            returnMessage("auth", "userNotFound"),
-            statusCode.notFound
-          );
-
-        const agency_id_exist = team_client?.agency_ids.filter(
-          (agency) =>
-            agency?.agency_id.toString() === agency_id &&
-            agency?.status === "pending"
-        );
-
-        if (agency_id_exist.length === 0)
-          return throwError(returnMessage("agency", "agencyNotFound"));
-
-        if (redirect && !(client_team_member && client_team_member?.password)) {
-          await Team_Client.updateOne(
-            { _id: team_client?._id, "agency_ids.agency_id": agency_id },
-            { $set: { "agency_ids.$.status": "confirmed" } },
-            { new: true }
-          );
-          return authService.tokenGenerator(client_team_member);
-        } else {
-          if (client_team_member && client_team_member?.password)
-            return throwError(
-              returnMessage("teamMember", "alreadyVerified"),
-              statusCode.unprocessableEntity
-            );
-
-          const hash_password = await authService.passwordEncryption({
-            password,
-          });
-          await Authentication.findByIdAndUpdate(client_team_member?._id, {
-            first_name,
-            last_name,
-            password: hash_password,
-            status: "confirmed",
-          });
-
-          await Team_Client.updateOne(
-            { _id: team_client?._id, "agency_ids.agency_id": agency_id },
-            { $set: { "agency_ids.$.status": "confirmed" } },
-            { new: true }
-          );
-          const company_urls = await Configuration.find().lean();
-          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
-
-          let facebook = company_urls[0]?.urls?.facebook;
-
-          let instagram = company_urls[0]?.urls?.instagram;
-          const welcome_mail = welcomeMail(
-            client_team_member?.name,
-            privacy_policy,
-            instagram,
-            facebook
-          );
-
-          sendEmail({
-            email: client_team_member?.email,
-            subject: returnMessage("emailTemplate", "welcomeMailSubject"),
-            message: welcome_mail,
-          });
-
-          // ------------------  Notifications ----------------
-          const [clientData, agencyData] = await Promise.all([
-            Authentication.findOne({ reference_id: client_id }).lean(),
-            Authentication.findOne({ reference_id: agency_id }).lean(),
-          ]);
-
-          notificationService.addNotification({
-            module_name: "general",
-            action_name: "teamClientPasswordSet",
-            member_name: client_team_member?.name,
-            client_name: clientData?.first_name + " " + clientData?.last_name,
-            receiver_id: agency_id,
-            client_id: client_id,
-          });
-
-          const teamMemberJoinedTemp = teamMemberPasswordSet({
-            ...client_team_member,
-            member_name:
-              client_team_member.first_name +
-              " " +
-              client_team_member.last_name,
-            client_name: clientData?.first_name + " " + clientData?.last_name,
-          });
-          sendEmail({
-            email: agencyData?.email,
-            subject: returnMessage("emailTemplate", "teamMemberPasswordSet"),
-            message: teamMemberJoinedTemp,
-          });
-
-          // ------------------  Notifications ----------------
-          return authService.tokenGenerator(client_team_member);
-        }
-      }
-      return throwError(
-        returnMessage("teamMember", "invalidVerificationLink"),
-        statusCode.unprocessableEntity
-      );
-    } catch (error) {
-      logger.error(`Error while Team Member verify , ${error}`);
-      return throwError(error?.message, error?.statusCode);
-    }
-  }; */
 
   // verify the workspace invitation and accept or reject
   verify = async (payload) => {
@@ -793,7 +608,8 @@ class TeamMemberService {
     }
   };
 
-  // this function will used for the delete team member only for the agency
+  // removed the delete team member as of now
+  /* // this function will used for the delete team member only for the agency
   deleteMember = async (payload, agency) => {
     try {
       const { teamMemberIds } = payload;
@@ -1069,6 +885,67 @@ class TeamMemberService {
       logger.error(`Error while Team member  delete, ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
+  }; */
+
+  deleteMember = async (payload, user) => {
+    try {
+      const { teamMemberIds } = payload;
+      // pending to implement when we remove the team members and the tasks are assigned and pending set
+      const [workspace, sheet] = await Promise.all([
+        Workspace.findById(user?.workspace).lean(),
+        SheetManagement.findOne({ user_id: user?._id }).lean(),
+      ]);
+
+      if (!sheet) return throwError(returnMessage("default", "default"));
+      const member_details = workspace?.members?.find(
+        (member) => member?.user_id?.toString() === user?._id?.toString()
+      );
+
+      if (workspace?.created_by?.toString() !== user?._id?.toString()) {
+        const sub_role = await Team_Role_Master.findById(
+          member_details?.sub_role
+        ).lean();
+
+        if (
+          sub_role?.name !== "admin" ||
+          workspace?.created_by?.toString() !== user?._id?.toString()
+        )
+          return throwError(
+            returnMessage("auth", "forbidden"),
+            statusCode.forbidden
+          );
+      }
+      // remove the member from the workspace
+      await Workspace.findOneAndUpdate(
+        { _id: user.workspace, "members.user_id": { $in: teamMemberIds } },
+        {
+          $set: {
+            "members.$.status": "deleted",
+            "members.$.invitation_token": undefined,
+          },
+        },
+        { new: true }
+      );
+
+      const updated_sheet = sheet?.occupied_sheets?.filter(
+        (sh) => !teamMemberIds?.includes(sh?.user_id?.toString())
+      );
+
+      SheetManagement.findByIdAndUpdate(
+        sheet?._id,
+        {
+          occupied_sheets: updated_sheet,
+          total_sheets: updated_sheet?.length + 1,
+        },
+        { new: true }
+      );
+      return;
+    } catch (error) {
+      logger.error(
+        `Error while deleting the team member of the agency: ${error}`
+      );
+      return throwError(error?.message, error?.statusCode);
+    }
   };
 
   // Edit Team Member
@@ -1136,198 +1013,6 @@ class TeamMemberService {
     }
   };
 
-  /* // Get all team members by Agency and by client
-  getAllTeam = async (payload, user) => {
-    try {
-      if (!payload?.pagination) {
-        return await this.teamListWithoutPagination(user);
-      }
-      const pagination = paginationObject(payload);
-      let search_obj = {};
-      if (payload?.search && payload?.search !== "") {
-        search_obj["$or"] = [
-          { name: { $regex: payload.search, $options: "i" } },
-          { first_name: { $regex: payload.search, $options: "i" } },
-          { last_name: { $regex: payload.search, $options: "i" } },
-          { email: { $regex: payload.search, $options: "i" } },
-          { contact_number: { $regex: payload.search, $options: "i" } },
-          { status: { $regex: payload.search, $options: "i" } },
-        ];
-      }
-      if (user?.role?.name === "agency" || user?.role?.name === "team_agency") {
-        if (user?.role?.name === "team_agency") {
-          const team_agency_detail = await Team_Agency.findById(
-            user?.reference_id
-          )
-            .populate("role", "name")
-            .lean();
-          if (team_agency_detail?.role?.name === "admin") {
-            user = await Authentication.findOne({
-              reference_id: team_agency_detail?.agency_id,
-            })
-              .populate("role", "name")
-              .lean();
-          }
-        }
-        if (payload?.client_team) {
-          const query_obj = {
-            "agency_ids.agency_id": user?.reference_id,
-            client_id: payload?.client_id,
-            "agency_ids.status": { $ne: "deleted" },
-          };
-
-          const team_clients_ids = await Team_Client.distinct("_id", query_obj);
-
-          const [teams, total_teams] = await Promise.all([
-            Authentication.find({
-              reference_id: { $in: team_clients_ids },
-              is_deleted: false,
-              ...search_obj,
-            })
-              .select(
-                "name first_name last_name email contact_number status createdAt reference_id"
-              )
-              .populate({ path: "reference_id", model: "team_client" })
-              .sort(pagination.sort)
-              .skip(pagination.skip)
-              .limit(pagination.result_per_page)
-              .lean(),
-            Authentication.countDocuments({
-              reference_id: { $in: team_clients_ids },
-              is_deleted: false,
-              ...search_obj,
-            }),
-          ]);
-
-          teams.forEach((team) => {
-            team.name = team?.first_name + " " + team?.last_name;
-            const agency_exists = team?.reference_id?.agency_ids?.find(
-              (ag) => ag?.agency_id?.toString() == user?.reference_id
-            );
-            if (agency_exists) {
-              team["status"] = agency_exists?.status;
-            }
-            delete team?.reference_id?.agency_ids;
-          });
-
-          return {
-            teamMemberList: teams,
-            page_count:
-              Math.ceil(total_teams / pagination.result_per_page) || 0,
-          };
-        }
-        // const team_agency_ids = await Team_Agency.distinct("_id", {
-        //   agency_id: user?.reference_id
-        // });
-        const team_agency_ids = await Team_Agency.distinct("_id", {
-          $or: [
-            { agency_id: user?.reference_id },
-            { created_by: user?.reference_id },
-          ],
-        });
-        const [teams, total_teams] = await Promise.all([
-          Authentication.find({
-            reference_id: { $in: team_agency_ids },
-            is_deleted: false,
-            ...search_obj,
-          })
-            .select(
-              "name first_name last_name email contact_number status createdAt reference_id"
-            )
-            .populate({
-              path: "reference_id",
-              model: "team_agency",
-              populate: {
-                path: "role",
-                model: "team_role_master",
-                select: "name",
-              },
-            })
-            .sort(pagination.sort)
-            .skip(pagination.skip)
-            .limit(pagination.result_per_page)
-            .lean(),
-          Authentication.countDocuments({
-            reference_id: { $in: team_agency_ids },
-            is_deleted: false,
-            ...search_obj,
-          }),
-        ]);
-
-        teams.forEach((team) => {
-          team.name = team?.first_name + " " + team?.last_name;
-        });
-        return {
-          teamMemberList: teams,
-          page_count: Math.ceil(total_teams / pagination.result_per_page) || 0,
-          referral_points: 0, // this wil be change in future when the referral point will be integrate
-        };
-      } else if (
-        user?.role?.name === "client" ||
-        user?.role?.name === "team_client"
-      ) {
-        // this condition will used to give access to team-client as a client
-        if (user?.role?.name === "team_client") {
-          const team_client_detail = await Team_Client.findById(
-            user?.reference_id
-          ).lean();
-          user = await Authentication.findOne({
-            reference_id: team_client_detail.client_id,
-          })
-            .populate("role", "name")
-            .lean();
-        }
-        const team_client_ids = await Team_Client.distinct("_id", {
-          client_id: user?.reference_id,
-          "agency_ids.agency_id": payload?.agency_id,
-        });
-
-        const [teams, total_teams] = await Promise.all([
-          Authentication.find({
-            reference_id: { $in: team_client_ids },
-            is_deleted: false,
-            ...search_obj,
-          })
-            .populate({
-              path: "reference_id",
-              model: "team_client",
-              match: { "agency_ids.agency_id": payload?.agency_id },
-            })
-            .sort(pagination.sort)
-            .skip(pagination.skip)
-            .limit(pagination.result_per_page)
-            .lean(),
-          Authentication.countDocuments({
-            reference_id: { $in: team_client_ids },
-            is_deleted: false,
-            ...search_obj,
-          }),
-        ]);
-
-        teams.forEach((team) => {
-          team.name =
-            capitalizeFirstLetter(team?.first_name) +
-            " " +
-            capitalizeFirstLetter(team?.last_name);
-          if (team?.reference_id?.agency_ids) {
-            return team?.reference_id?.agency_ids.forEach((t) => {
-              if (t?.agency_id?.toString() == payload?.agency_id)
-                return (team.status = t?.status);
-            });
-          }
-        });
-        return {
-          teamMemberList: teams,
-          page_count: Math.ceil(total_teams / pagination.result_per_page) || 0,
-          referral_points: 0, // this wil be change in future when the referral point will be integrate
-        };
-      }
-    } catch (error) {
-      logger.error(`Error while fetching all team members: ${error}`);
-      return throwError(error?.message, error?.statusCode);
-    }
-  }; */
-
   // get the team members by te workspace wise
   getAllTeam = async (payload, user) => {
     try {
@@ -1335,56 +1020,115 @@ class TeamMemberService {
         return await this.teamListWithoutPagination(user);
       }
       const pagination = paginationObject(payload);
-      let search_obj = {};
+      let search_obj = {},
+        filter_obj = {};
       if (payload?.search && payload?.search !== "") {
         search_obj["$or"] = [
-          { first_name: { $regex: payload.search, $options: "i" } },
-          { last_name: { $regex: payload.search, $options: "i" } },
-          { email: { $regex: payload.search, $options: "i" } },
-          { contact_number: { $regex: payload.search, $options: "i" } },
+          { "user.first_name": { $regex: payload.search, $options: "i" } },
+          { "user.last_name": { $regex: payload.search, $options: "i" } },
+          { "user.email": { $regex: payload.search, $options: "i" } },
           { status: { $regex: payload.search, $options: "i" } },
+          { sub_role: { $regex: payload.search, $options: "i" } },
         ];
       }
 
-      const [role, workspace] = await Promise.all([
+      if (payload?.filter) {
+        const { filter } = payload;
+
+        if (filter?.status && filter?.status !== "")
+          filter_obj.status = filter.status;
+
+        if (
+          filter?.date &&
+          filter?.date?.start_date &&
+          filter?.date?.end_date &&
+          filter?.date?.start_date !== "" &&
+          filter?.date?.end_date !== ""
+        ) {
+          const start_date = moment
+            .utc(filter?.date?.start_date, "DD-MM-YYYY")
+            .startOf("day");
+          const end_date = moment
+            .utc(filter?.date?.end_date, "DD-MM-YYYY")
+            .endOf("day");
+          filter_obj["$and"] = [
+            { joining_date: { $gte: new Date(start_date) } },
+            { joining_date: { $lte: new Date(end_date) } },
+          ];
+        }
+      }
+
+      const [role] = await Promise.all([
         Role_Master.findOne({ name: "team_agency" }).select("_id").lean(),
-        Workspace.findById(user?.workspace).lean(),
       ]);
 
-      const members = workspace?.members?.map((member) => {
-        if (member?.role?.toString() === role?._id?.toString())
-          return member?.user_id;
-      });
-
       const aggragate = [
-        { $unwind: { path: "$members", preserveNullAndEmptyArrays: true } },
-        { $match: {} },
+        { $match: { _id: new mongoose.Types.ObjectId(user?.workspace) } },
+        { $unwind: "$members" }, // Unwind the members array
+        { $match: { "members.role": role?._id } }, // Match the role ID
         {
           $lookup: {
-            from: "authentications",
-            localField: "client_id",
-            foreignField: "reference_id",
-            as: "client_Data",
+            from: "authentications", // The collection name of the users
+            localField: "members.user_id",
+            foreignField: "_id",
+            as: "user",
             pipeline: [
               {
                 $project: {
                   name: 1,
                   first_name: 1,
                   last_name: 1,
-                  client_name: {
+                  name: {
                     $concat: ["$first_name", " ", "$last_name"],
                   },
+                  email: 1,
                 },
               },
             ],
           },
         },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } }, // Unwind the user details array
+        {
+          $lookup: {
+            from: "team_role_masters", // The collection name of the sub_roles
+            localField: "members.sub_role",
+            foreignField: "_id",
+            as: "sub_role",
+          },
+        },
+        {
+          $unwind: {
+            path: "$sub_role",
+            preserveNullAndEmptyArrays: true,
+          },
+        }, // Unwind the sub_role details array
+        {
+          $project: {
+            _id: 0,
+            user: "$user", // Get user details
+            sub_role: "$sub_role.name",
+            status: "$members.status",
+            client_id: "$members.client_id",
+            joining_date: "$members.joining_date",
+          },
+        },
+        { $match: filter_obj },
+        { $match: search_obj },
       ];
 
-      return await Authentication.find({ _id: { $in: members }, ...search_obj })
-        .sort(pagination.sort)
-        .skip(pagination.skip)
-        .limit(pagination.result_per_page);
+      const [team_members, total_members] = await Promise.all([
+        Workspace.aggregate(aggragate)
+          .sort(pagination.sort)
+          .skip(pagination.skip)
+          .limit(pagination.result_per_page),
+        Workspace.aggregate(aggragate),
+      ]);
+
+      return {
+        teamMemberList: team_members,
+        page_count:
+          Math.ceil(total_members.length / pagination.result_per_page) || 0,
+      };
     } catch (error) {
       logger.error(`Error while fetching all team members: ${error}`);
       return throwError(error?.message, error?.statusCode);
