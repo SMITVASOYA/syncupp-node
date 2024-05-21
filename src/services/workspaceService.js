@@ -75,6 +75,52 @@ class WorkspaceService {
     }
   };
 
+  updateWorkspace = async (payload, user) => {
+    try {
+      const { workspace_id, agency_id } = payload;
+      const member_obj = {
+        user_id: user?._id,
+        status: "confirm_pending",
+        role: user?.role,
+        joining_date: moment.utc().startOf("day"),
+      };
+
+      // Add in workspace and Increse the sheet count
+      Promise.all([
+        await Workspace.findByIdAndUpdate(
+          {
+            _id: workspace_id,
+          },
+          {
+            $push: {
+              members: member_obj,
+            },
+          },
+          {
+            new: true,
+          }
+        ),
+        await SheetManagement.findOneAndUpdate(
+          { agency_id: agency_id },
+          {
+            $inc: { total_sheets: 1 },
+            $push: {
+              occupied_sheets: {
+                user_id: user?._id,
+                role: user?.role, // Assuming total_sheets should be based on workspace members count
+              },
+            },
+          },
+          { new: true }
+        )
+      ])
+      return;
+    } catch (error) {
+      logger.error(`Error while creating the workspace: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
   workspaces = async (user) => {
     try {
       const [created, invited] = await Promise.all([
