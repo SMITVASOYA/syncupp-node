@@ -41,8 +41,9 @@ const paymentService = require("../services/paymentService");
 const Workspace = require("../models/workspaceSchema");
 const PaymentService = new paymentService();
 class TeamMemberService {
-  // Add Team Member by agency or client
-  addTeamMember = async (payload, user) => {
+  // removed the code to create the team member for the agency
+  /*// Add Team Member by agency or client
+   addTeamMember = async (payload, user) => {
     try {
       validateRequestFields(payload, ["email", "first_name", "last_name"]);
 
@@ -68,7 +69,7 @@ class TeamMemberService {
       logger.error(`Error While adding the Team member: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
-  };
+  }; */
 
   // Add the team member by the Agency it self
   addAgencyTeam = async (payload, user) => {
@@ -88,11 +89,12 @@ class TeamMemberService {
           statusCode.notFound
         );
 
-      const [team_member_exist, team_role, role_for_auth, plan] =
+      const [team_member_exist, team_role, role_for_auth, configuration, plan] =
         await Promise.all([
           Authentication.findOne({ email, is_deleted: false }).lean(),
           Team_Role_Master.findOne({ name: role }).select("_id").lean(),
           Role_Master.findOne({ name: "team_agency" }).lean(),
+          Configuration.findOne({}).lean(),
           // SubscriptionPlan.findById(user?.purchased_plan).lean(),
         ]);
 
@@ -118,34 +120,124 @@ class TeamMemberService {
             returnMessage("workspace", "alreadyExistInWorkspace")
           );
 
-        const email_template = templateMaker("teamInvitaion.html", {});
+        let invitation_token = crypto.randomBytes(16).toString("hex");
+        const link = `${process.env.REACT_APP_URL}?workspace=${
+          workspace_exist?._id
+        }&email=${encodeURIComponent(
+          team_member_exist?.email
+        )}&token=${invitation_token}`;
+
+        const email_template = templateMaker("teamInvitaion.html", {
+          REACT_APP_URL: process.env.REACT_APP_URL,
+          SERVER_URL: process.env.SERVER_URL,
+          username:
+            capitalizeFirstLetter(team_member_exist?.first_name) +
+            " " +
+            capitalizeFirstLetter(team_member_exist?.last_name),
+          invitation_text: `You are invited to the ${
+            workspace_exist?.name
+          } workspace by ${
+            capitalizeFirstLetter(user?.first_name) +
+            " " +
+            capitalizeFirstLetter(user?.last_name)
+          }. Click on the below link to join the workspace.`,
+          link: link,
+          instagram: configuration?.urls?.instagram,
+          facebook: configuration?.urls?.facebook,
+          privacy_policy: configuration?.urls?.privacy_policy,
+        });
+
+        sendEmail({
+          email: team_member_exist?.email,
+          subject: returnMessage("auth", "invitationEmailSubject"),
+          message: email_template,
+        });
+        const members = [...workspace_exist.members];
+        members.push({
+          user_id: team_member_exist?._id,
+          role: role_for_auth?._id,
+          sub_role: team_role?._id,
+          invitation_token: invitation_token,
+        });
+
+        await Workspace.findByIdAndUpdate(
+          workspace_exist?._id,
+          { members: members },
+          { new: true }
+        );
+        return;
       } else {
+        if (contact_number) {
+          const unique_contact = await Authentication.findOne({
+            contact_number,
+            is_deleted: false,
+          }).lean();
+          if (unique_contact)
+            return throwError(returnMessage("user", "contactNumberExist"));
+        }
+
+        const new_user = await Authentication.create({
+          email,
+          first_name: first_name?.toLowerCase(),
+          last_name: last_name?.toLowerCase(),
+          contact_number,
+        });
+        // check for the user already exist in the workspace
+        const exist_in_workspace = await Workspace.findOne({
+          "members.user_id": new_user?._id,
+          is_deleted: false,
+        }).lean();
+
+        if (exist_in_workspace)
+          return throwError(
+            returnMessage("workspace", "alreadyExistInWorkspace")
+          );
+
+        let invitation_token = crypto.randomBytes(16).toString("hex");
+        const link = `${process.env.REACT_APP_URL}?workspace=${
+          workspace_exist?._id
+        }&email=${encodeURIComponent(email)}&token=${invitation_token}`;
+
+        const email_template = templateMaker("teamInvitation.html", {
+          REACT_APP_URL: process.env.REACT_APP_URL,
+          SERVER_URL: process.env.SERVER_URL,
+          username:
+            capitalizeFirstLetter(first_name) +
+            " " +
+            capitalizeFirstLetter(last_name),
+          invitation_text: `You are invited to the ${
+            workspace_exist?.name
+          } workspace by ${
+            capitalizeFirstLetter(user?.first_name) +
+            " " +
+            capitalizeFirstLetter(user?.last_name)
+          }. Click on the below link to join the workspace.`,
+          link: link,
+          instagram: configuration?.urls?.instagram,
+          facebook: configuration?.urls?.facebook,
+          privacy_policy: configuration?.urls?.privacy_policy,
+        });
+
+        sendEmail({
+          email: email,
+          subject: returnMessage("auth", "invitationEmailSubject"),
+          message: email_template,
+        });
+        const members = [...workspace_exist.members];
+        members.push({
+          user_id: new_user?._id,
+          role: role_for_auth?._id,
+          sub_role: team_role?._id,
+          invitation_token: invitation_token,
+        });
+
+        await Workspace.findByIdAndUpdate(
+          workspace_exist?._id,
+          { members: members },
+          { new: true }
+        );
+        return;
       }
-
-      return throwError(returnMessage("teamMember", "emailExist"));
-
-      let invitation_token = crypto.randomBytes(32).toString("hex");
-
-      const team_agency = await Team_Agency.create(team_member_create_query);
-
-      await Authentication.create({
-        first_name,
-        last_name,
-        status: "payment_pending",
-        email: email?.toLowerCase(),
-        reference_id: team_agency?._id,
-        contact_number,
-        invitation_token,
-        role: role_for_auth?._id,
-      });
-
-      if (user?.status === "free_trial") {
-        await this.freeTrialMemberAdd(user?.reference_id, team_agency?._id);
-      }
-      return {
-        reference_id: team_agency?._id,
-        referral_points: 0, // this wil be change in future when the referral point will be integrate
-      };
     } catch (error) {
       logger.error(`Error While adding the Team member by agency: ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -277,7 +369,7 @@ class TeamMemberService {
     }
   };
 
-  // Verify Team Member
+  /*  // Verify Team Member
   verify = async (payload) => {
     try {
       const {
@@ -466,6 +558,72 @@ class TeamMemberService {
       );
     } catch (error) {
       logger.error(`Error while Team Member verify , ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  }; */
+
+  // verify the workspace invitation
+  verify = async (payload) => {
+    try {
+      validateRequestFields(payload, ["workspace", "email", "token"]);
+      const { workspace, email, token } = payload;
+
+      const user_exist = await Authentication.findOne({
+        email,
+        is_deleted: false,
+      }).lean();
+      if (!user_exist)
+        return throwError(
+          returnMessage("user", "userDoesNotExist"),
+          statusCode.notFound
+        );
+
+      const workspace_exist = await Workspace.findById(workspace)
+        .where("is_deleted")
+        .ne(true)
+        .lean();
+
+      if (!workspace_exist)
+        return throwError(returnMessage("workspace", "workspaceNotFound"));
+
+      const member_exist = workspace_exist?.members?.find(
+        (member) =>
+          member?.user_id?.toString() === user_exist?._id?.toString() &&
+          member?.invitation_token === token
+      );
+
+      if (!member_exist)
+        return throwError(returnMessage("workspace", "invitationExpired"));
+
+      await Workspace.findOneAndUpdate(
+        { _id: workspace_exist?._id, "members._id": member_exist?._id },
+        {
+          $set: {
+            "members.$.invitation_token": undefined,
+            "members.$.joining_date": new Date(),
+            "members.$.status": "confirmed",
+          },
+        }
+      );
+      const sheets = await SheetManagement.findOne({
+        user_id: workspace_exist?.created_by,
+      }).lean();
+
+      const occupied_sheets = [...sheets.occupied_sheets];
+
+      occupied_sheets.push({
+        user_id: member_exist?._id,
+        role: member_exist?.role,
+        workspace: workspace_exist?._id,
+      });
+
+      await SheetManagement.findByIdAndUpdate(sheets?._id, {
+        occupied_sheets: occupied_sheets,
+        total_sheets: sheets?.total_sheets + 1,
+      });
+      return;
+    } catch (error) {
+      logger.error(`Error while verify the workspace invitation: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
@@ -973,7 +1131,7 @@ class TeamMemberService {
     }
   };
 
-  // Get all team members by Agency and by client
+  /* // Get all team members by Agency and by client
   getAllTeam = async (payload, user) => {
     try {
       if (!payload?.pagination) {
@@ -1159,6 +1317,71 @@ class TeamMemberService {
           referral_points: 0, // this wil be change in future when the referral point will be integrate
         };
       }
+    } catch (error) {
+      logger.error(`Error while fetching all team members: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  }; */
+
+  // get the team members by te workspace wise
+  getAllTeam = async (payload, user) => {
+    try {
+      if (!payload?.pagination) {
+        return await this.teamListWithoutPagination(user);
+      }
+      const pagination = paginationObject(payload);
+      let search_obj = {};
+      if (payload?.search && payload?.search !== "") {
+        search_obj["$or"] = [
+          { first_name: { $regex: payload.search, $options: "i" } },
+          { last_name: { $regex: payload.search, $options: "i" } },
+          { email: { $regex: payload.search, $options: "i" } },
+          { contact_number: { $regex: payload.search, $options: "i" } },
+          { status: { $regex: payload.search, $options: "i" } },
+        ];
+      }
+
+      const [role, workspace] = await Promise.all([
+        Role_Master.findOne({ name: "team_agency" }).select("_id").lean(),
+        Workspace.findById(user?.workspace).lean(),
+      ]);
+
+      const members = workspace?.members?.map((member) => {
+        if (member?.role?.toString() === role?._id?.toString())
+          return member?.user_id;
+      });
+
+      const aggragate = [
+        { $unwind: { path: "$members", preserveNullAndEmptyArrays: true } },
+        {$match:{
+          
+        }},
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "client_id",
+            foreignField: "reference_id",
+            as: "client_Data",
+            pipeline: [
+              {
+                $project: {
+                  name: 1,
+                  first_name: 1,
+                  last_name: 1,
+                  client_name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ];
+
+      return await Authentication.find({ _id: { $in: members }, ...search_obj })
+        .sort(pagination.sort)
+        .skip(pagination.skip)
+        .limit(pagination.result_per_page);
     } catch (error) {
       logger.error(`Error while fetching all team members: ${error}`);
       return throwError(error?.message, error?.statusCode);

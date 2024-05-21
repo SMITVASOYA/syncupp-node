@@ -376,7 +376,7 @@
                                   >
                                     <a
                                       target="_blank"
-                                      href="${process.env.REACT_APP_URL}"
+                                      href="<%= REACT_APP_URL %>"
                                       style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
@@ -386,7 +386,7 @@
                                         font-size: 14px;
                                       "
                                       ><img
-                                        src="${process.env.SERVER_URL}/template/logo.png"
+                                        src="<%= SERVER_URL %>/template/logo.png"
                                         style="
                                           display: block;
                                           border: 0;
@@ -505,7 +505,7 @@
                                         text-align: center;
                                       "
                                     >
-                                      Hi <span>${username}</span>,&nbsp;
+                                      Hi <span><%= username %></span>,&nbsp;
                                     </h3>
                                     <p
                                       style="
@@ -542,11 +542,11 @@
                                         margin-bottom: 30px;
                                       "
                                     >
-                                      ${invitation_text}
+                                      <%= invitation_text %>
                                     </p>
                                     <a
                                       target="_blank"
-                                      href="${link}"
+                                      href="<%= link %>"
                                       style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
@@ -682,7 +682,7 @@
                                           color: #2d3142;
                                           font-size: 16px;
                                         "
-                                        href="${process.env.REACT_APP_URL}"
+                                        href="<%= REACT_APP_URL %>"
                                       ></a>
                                     </p>
                                   </td>
@@ -815,7 +815,7 @@
                                         >
                                           <a
                                             target="_blank"
-                                            href="${instagram}"
+                                            href="<%= instagram %>"
                                             style="
                                               -webkit-text-size-adjust: none;
                                               -ms-text-size-adjust: none;
@@ -825,7 +825,7 @@
                                               font-size: 14px;
                                             "
                                             ><img
-                                              src="${process.env.SERVER_URL}/template/instagram.png"
+                                              src="<%= SERVER_URL %>/template/instagram.png"
                                               alt="Ig"
                                               title="Instagram"
                                               height="24"
@@ -854,7 +854,7 @@
                                         >
                                           <a
                                             target="_blank"
-                                            href="${facebook}"
+                                            href="<%= facebook %>"
                                             style="
                                               -webkit-text-size-adjust: none;
                                               -ms-text-size-adjust: none;
@@ -864,7 +864,7 @@
                                               font-size: 14px;
                                             "
                                             ><img
-                                              src="${process.env.SERVER_URL}/template/facebook.png"
+                                              src="<%= SERVER_URL %>/template/facebook.png"
                                               alt="Fb"
                                               title="Facebook"
                                               height="24"
@@ -920,7 +920,7 @@
                                           color: #2d3142;
                                           font-size: 13px;
                                         "
-                                        href="${privacy_policy}"
+                                        href="<%= privacy_policy %>"
                                         >Privacy Policy</a
                                       >
                                     </p>

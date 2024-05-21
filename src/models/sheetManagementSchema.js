@@ -22,6 +22,7 @@ const sheetManagementSchema = new mongoose.Schema(
           required: true,
         },
         date: { type: Date, default: new Date() },
+        workspace: { type: mongoose.Schema.ObjectId, ref: "workspaces" },
       },
     ],
   },
