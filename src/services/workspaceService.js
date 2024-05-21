@@ -58,7 +58,7 @@ class WorkspaceService {
       const new_workspace = await Workspace.create(workspace_obj);
 
       if (new_workspace)
-        SheetManagement.findOneAndUpdate(
+        await SheetManagement.findOneAndUpdate(
           { user_id: user?._id },
           {
             user_id: user?._id,

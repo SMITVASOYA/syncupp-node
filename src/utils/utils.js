@@ -6,6 +6,7 @@ const colorsData = require("../messages/colors.json");
 const colors = colorsData.colors;
 const ejs = require("ejs");
 const fs = require("fs");
+const path = require("path");
 
 exports.returnMessage = (module, key, language = "en") => {
   return engMessage[module][key];
@@ -92,6 +93,10 @@ exports.validateRequestFields = (payload, fields) => {
       switch (field) {
         case "title":
           return throwError(`Title is required.`);
+        case "workspace":
+          return throwError(`Workspace is required.`);
+        case "token":
+          return throwError(`Invitation token is required.`);
         case "agenda":
           return throwError(`Agency is required.`);
         case "due_time":
@@ -129,8 +134,11 @@ exports.validateRequestFields = (payload, fields) => {
 };
 
 exports.templateMaker = (file_name, payload) => {
-  const templatePath = path.join(__dirname, "utils/templates", file_name);
-  const templateData = fs.readFileSync(templatePath, "utf-8");
+  console.log(__dirname);
+  const templateData = fs.readFileSync(
+    path.join(__dirname, "templates", file_name),
+    "utf-8"
+  );
   return ejs.render(templateData, payload);
 };
 

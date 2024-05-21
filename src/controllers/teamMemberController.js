@@ -7,22 +7,29 @@ const teamMemberService = new TeamMemberService();
 
 // Team Member add
 exports.add = catchAsyncError(async (req, res, next) => {
-  const team_member = await teamMemberService.addTeamMember(req.body, req.user);
-  let message = returnMessage("teamMember", "teamMemberCreated");
+  await teamMemberService.addAgencyTeam(req.body, req.user);
+
+  /*  let message = returnMessage("teamMember", "teamMemberCreated");
   if (req?.user?.role?.name === "client") {
     message = returnMessage("teamMember", "teamMemberCreatedByClient");
-  }
-  sendResponse(res, true, message, team_member, statusCode.success);
+  } */
+  sendResponse(
+    res,
+    true,
+    returnMessage("workspace", "invitationSend"),
+    {},
+    statusCode.success
+  );
 });
 
 // Team Member Verification
 exports.verify = catchAsyncError(async (req, res, next) => {
-  const verify = await teamMemberService.verify(req.body);
+  await teamMemberService.verify(req.body);
   sendResponse(
     res,
     true,
-    returnMessage("teamMember", "verified"),
-    verify,
+    returnMessage("workspace", "verified"),
+    {},
     statusCode.success
   );
 });
