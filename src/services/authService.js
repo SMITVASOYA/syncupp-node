@@ -437,6 +437,28 @@ class AuthService {
     }
   };
 
+  getEmailDetails = async (payload) => {
+    try {
+      validateRequestFields(payload, ["email"]);
+      const { email } = payload;
+
+      const user = await Authentication.findOne({
+        email,
+        is_deleted: false,
+      }).lean();
+      return {
+        email: user?.email,
+        status: user?.status,
+        password_set: user?.password ? true : false,
+        is_google_signup: user?.is_google_signup,
+        is_facebook_signup: user?.is_facebook_signup,
+      };
+    } catch (error) {
+      logger.error(`Error while checking the unique number: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
   googleSign = async (payload) => {
     try {
       const { signupId } = payload;

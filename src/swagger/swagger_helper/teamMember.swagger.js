@@ -129,6 +129,11 @@ const verifyTeamMember = {
               description: "Enter workspace id",
               required: true,
             },
+            workspace: {
+              type: "boolean",
+              required: true,
+              degfault: true,
+            },
           },
         },
       },

@@ -121,11 +121,11 @@ class TeamMemberService {
           );
 
         let invitation_token = crypto.randomBytes(16).toString("hex");
-        const link = `${process.env.REACT_APP_URL}?workspace=${
+        const link = `${process.env.REACT_APP_URL}/verify?workspace=${
           workspace_exist?._id
         }&email=${encodeURIComponent(
           team_member_exist?.email
-        )}&token=${invitation_token}`;
+        )}&token=${invitation_token}&workspaceName=${workspace_exist?.name}`;
 
         const email_template = templateMaker("teamInvitaion.html", {
           REACT_APP_URL: process.env.REACT_APP_URL,
@@ -194,9 +194,11 @@ class TeamMemberService {
           );
 
         let invitation_token = crypto.randomBytes(16).toString("hex");
-        const link = `${process.env.REACT_APP_URL}?workspace=${
+        const link = `${process.env.REACT_APP_URL}/verify?workspace=${
           workspace_exist?._id
-        }&email=${encodeURIComponent(email)}&token=${invitation_token}`;
+        }&email=${encodeURIComponent(
+          email
+        )}&token=${invitation_token}&workspaceName=${workspace_exist?.name}`;
 
         const email_template = templateMaker("teamInvitation.html", {
           REACT_APP_URL: process.env.REACT_APP_URL,
@@ -562,11 +564,11 @@ class TeamMemberService {
     }
   }; */
 
-  // verify the workspace invitation
+  // verify the workspace invitation and accept or reject
   verify = async (payload) => {
     try {
-      validateRequestFields(payload, ["workspace", "email", "token"]);
-      const { workspace, email, token } = payload;
+      validateRequestFields(payload, ["workspace", "email", "token", "accept"]);
+      const { workspace, email, token, accept } = payload;
 
       const user_exist = await Authentication.findOne({
         email,
@@ -594,33 +596,36 @@ class TeamMemberService {
 
       if (!member_exist)
         return throwError(returnMessage("workspace", "invitationExpired"));
-
+      const status = accept ? "confirmed" : "rejected";
       await Workspace.findOneAndUpdate(
         { _id: workspace_exist?._id, "members._id": member_exist?._id },
         {
           $set: {
             "members.$.invitation_token": undefined,
             "members.$.joining_date": new Date(),
-            "members.$.status": "confirmed",
+            "members.$.status": status,
           },
         }
       );
-      const sheets = await SheetManagement.findOne({
-        user_id: workspace_exist?.created_by,
-      }).lean();
 
-      const occupied_sheets = [...sheets.occupied_sheets];
+      if (accept) {
+        const sheets = await SheetManagement.findOne({
+          user_id: workspace_exist?.created_by,
+        }).lean();
 
-      occupied_sheets.push({
-        user_id: member_exist?._id,
-        role: member_exist?.role,
-        workspace: workspace_exist?._id,
-      });
+        const occupied_sheets = [...sheets.occupied_sheets];
 
-      await SheetManagement.findByIdAndUpdate(sheets?._id, {
-        occupied_sheets: occupied_sheets,
-        total_sheets: sheets?.total_sheets + 1,
-      });
+        occupied_sheets.push({
+          user_id: member_exist?._id,
+          role: member_exist?.role,
+          workspace: workspace_exist?._id,
+        });
+
+        await SheetManagement.findByIdAndUpdate(sheets?._id, {
+          occupied_sheets: occupied_sheets,
+          total_sheets: sheets?.total_sheets + 1,
+        });
+      }
       return;
     } catch (error) {
       logger.error(`Error while verify the workspace invitation: ${error}`);
@@ -1353,9 +1358,7 @@ class TeamMemberService {
 
       const aggragate = [
         { $unwind: { path: "$members", preserveNullAndEmptyArrays: true } },
-        {$match:{
-          
-        }},
+        { $match: {} },
         {
           $lookup: {
             from: "authentications",
