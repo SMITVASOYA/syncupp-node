@@ -38,7 +38,7 @@ const Section = require("../models/sectionSchema");
 const Workspace = require("../models/workspaceSchema");
 const Role_Master = require("../models/masters/roleMasterSchema");
 
-class ActivityService {
+class TaskService {
   createTask = async (payload, user, files) => {
     try {
       let {
@@ -1226,6 +1226,7 @@ class ActivityService {
         priority,
         status,
         board_id,
+        comment,
       } = payload;
 
       const status_check = await Activity.findById(id).populate(
@@ -1307,6 +1308,12 @@ class ActivityService {
         updateTasksPayload,
         { new: true, useFindAndModify: false }
       );
+      const comment_payload = { task_id: id, comment: comment };
+
+      if (comment) {
+        this.addTaskComment(comment_payload, logInUser);
+      }
+
       const current_status = current_activity?.activity_status;
 
       // if (current_status?.toString() !== status?._id.toString()) {
@@ -2207,6 +2214,8 @@ class ActivityService {
             comment: item?.comment,
             user_image: user_data?.profile_image,
             name: user_data?.first_name + " " + user_data?.last_name,
+            first_name: user_data?.first_name,
+            last_name: user_data?.last_name,
             user_id: user_data?._id,
           });
         }
@@ -2238,4 +2247,4 @@ class ActivityService {
   };
 }
 
-module.exports = ActivityService;
+module.exports = TaskService;
