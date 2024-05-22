@@ -1,39 +1,25 @@
-const Activity = require("../models/activitySchema");
-const ActivityStatus = require("../models/masters/activityStatusMasterSchema");
-const ActivityType = require("../models/masters/activityTypeMasterSchema");
+const Task = require("../models/taskSchema");
 const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
 const {
   returnMessage,
   paginationObject,
   getKeywordType,
-  validateRequestFields,
   taskTemplate,
-  activityTemplate,
-  getRandomColor,
   capitalizeFirstLetter,
 } = require("../utils/utils");
 const moment = require("moment");
 const { default: mongoose } = require("mongoose");
 const Team_Agency = require("../models/teamAgencySchema");
-const statusCode = require("../messages/statusCodes.json");
 const sendEmail = require("../helpers/sendEmail");
 const Authentication = require("../models/authenticationSchema");
 const Configuration = require("../models/configurationSchema");
 const Competition_Point = require("../models/competitionPointSchema");
 const NotificationService = require("./notificationService");
-const Agency = require("../models/agencySchema");
-const Activity_Status_Master = require("../models/masters/activityStatusMasterSchema");
 const notificationService = new NotificationService();
-const EventService = require("./eventService");
-const eventService = new EventService();
-const ics = require("ics");
 const fs = require("fs");
-const Activity_Type_Master = require("../models/masters/activityTypeMasterSchema");
 const momentTimezone = require("moment-timezone");
-const Team_Client = require("../models/teamClientSchema");
 const Board = require("../models/boardSchema");
-const { ObjectId } = require("mongoose");
 const Section = require("../models/sectionSchema");
 const Workspace = require("../models/workspaceSchema");
 const Role_Master = require("../models/masters/roleMasterSchema");
@@ -99,9 +85,7 @@ class TaskService {
       } else {
         activity_status = payload?.status;
       }
-      const type = await ActivityType.findOne({ name: "task" }).lean();
-
-      const newTask = new Activity({
+      const newTask = new Task({
         title,
         agenda,
         ...(due_date && due_date !== "null" && { due_time: timeOnly }),
@@ -111,7 +95,6 @@ class TaskService {
           payload?.assign_to[0] && { assign_to: payload?.assign_to }),
         assign_by: user?._id,
         activity_status: activity_status,
-        activity_type: type?._id,
         agency_id,
         attachments: attachments,
         board_id,
@@ -218,23 +201,17 @@ class TaskService {
     try {
       let queryObj;
       if (user?.role === "agency") {
-        const type = await ActivityType.findOne({ name: "task" }).lean();
-
         queryObj = {
           is_deleted: false,
           agency_id: user._id,
-          activity_type: new mongoose.Types.ObjectId(type._id),
         };
       } else if (user?.role === "client") {
-        const type = await ActivityType.findOne({ name: "task" }).lean();
         queryObj = {
           is_deleted: false,
           client_id: user._id,
           agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
-          activity_type: new mongoose.Types.ObjectId(type._id),
         };
       } else if (user?.role === "team_agency") {
-        const type = await ActivityType.findOne({ name: "task" }).lean();
         const teamRole = await Team_Agency.findOne({
           _id: user._id,
         }).populate("role");
@@ -243,22 +220,18 @@ class TaskService {
           queryObj = {
             $or: [{ assign_by: user._id }, { assign_to: user._id }],
             is_deleted: false,
-            activity_type: new mongoose.Types.ObjectId(type._id),
           };
         } else if (teamRole.role.name === "team_member") {
           queryObj = {
             is_deleted: false,
             assign_to: user._id,
-            activity_type: new mongoose.Types.ObjectId(type._id),
           };
         }
       } else if (user?.role === "team_client") {
-        const type = await ActivityType.findOne({ name: "task" }).lean();
         queryObj = {
           is_deleted: false,
           client_id: user._id,
           agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
-          activity_type: new mongoose.Types.ObjectId(type._id),
         };
       }
       const pagination = paginationObject(searchObj);
@@ -371,21 +344,6 @@ class TaskService {
           queryObj["$or"].push({ updatedAt: dateKeyword });
         }
       }
-      // let sort_by = {};
-
-      // if (searchObj?.sort_field === "title") {
-      //   sort_by.title = searchObj.sort_order === "desc" ? -1 : 1;
-      // } else if (searchObj?.sort_field === "due_date") {
-      //   sort_by.due_date = searchObj.sort_order === "desc" ? -1 : 1;
-      // } else if (searchObj?.sort_field === "priority") {
-      //   sort_by.priority = searchObj.sort_order === "desc" ? -1 : 1;
-      // } else if (searchObj?.sort_field === "status") {
-      //   sort_by["status.section_name"] =
-      //     searchObj.sort_order === "desc" ? -1 : 1;
-      // } else {
-      //   sort_by.createdAt = -1;
-      // }
-
       const taskPipeline = [
         {
           $lookup: {
@@ -486,12 +444,12 @@ class TaskService {
         });
       }
 
-      const activity = await Activity.aggregate(taskPipeline)
+      const activity = await Task.aggregate(taskPipeline)
         .sort(pagination.sort)
         .skip(pagination.skip)
         .limit(pagination.result_per_page);
 
-      const totalAgreementsCount = await Activity.aggregate(taskPipeline);
+      const totalAgreementsCount = await Task.aggregate(taskPipeline);
 
       // Calculating total pages
       const pages = Math.ceil(
@@ -512,23 +470,17 @@ class TaskService {
     try {
       let queryObj;
       if (user?.role === "agency") {
-        const type = await ActivityType.findOne({ name: "task" }).lean();
-
         queryObj = {
           is_deleted: false,
           agency_id: user?._id,
-          activity_type: new mongoose.Types.ObjectId(type?._id),
         };
       } else if (user?.role === "client") {
-        const type = await ActivityType.findOne({ name: "task" }).lean();
         queryObj = {
           is_deleted: false,
           client_id: user?._id,
           agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
-          activity_type: new mongoose.Types.ObjectId(type?._id),
         };
       } else if (user?.role === "team_agency") {
-        const type = await ActivityType.findOne({ name: "task" }).lean();
         const teamRole = await Team_Agency.findOne({
           _id: user._id,
         }).populate("role");
@@ -536,21 +488,17 @@ class TaskService {
           queryObj = {
             $or: [{ assign_by: user?._id }, { assign_to: user?._id }],
             is_deleted: false,
-            activity_type: new mongoose.Types.ObjectId(type?._id),
           };
         } else if (teamRole.role.name === "team_member") {
           queryObj = {
             is_deleted: false,
             assign_to: user?._id,
-            activity_type: new mongoose.Types.ObjectId(type?._id),
           };
         }
       } else if (user?.role?.name === "team_client") {
-        const type = await ActivityType.findOne({ name: "task" }).lean();
         queryObj = {
           is_deleted: false,
           client_id: user?._id,
-          activity_type: new mongoose.Types.ObjectId(type?._id),
           agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
         };
       }
@@ -789,7 +737,7 @@ class TaskService {
         );
       }
 
-      const query = Activity.aggregate(taskPipeline).sort({ createdAt: -1 });
+      const query = Task.aggregate(taskPipeline).sort({ createdAt: -1 });
 
       if (searchObj.section_id) {
         query.skip(searchObj.skip).limit(searchObj.limit);
@@ -797,7 +745,7 @@ class TaskService {
 
       const activity = await query;
 
-      const totalAgreementsCount = await Activity.countDocuments(queryObj);
+      const totalAgreementsCount = await Task.countDocuments(queryObj);
 
       // Calculating total pages
       const pages = Math.ceil(
@@ -877,18 +825,6 @@ class TaskService {
           $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
         },
         {
-          $lookup: {
-            from: "activity_type_masters",
-            localField: "activity_type",
-            foreignField: "_id",
-            as: "activity_type",
-            pipeline: [{ $project: { name: 1 } }],
-          },
-        },
-        {
-          $unwind: { path: "$activity_type", preserveNullAndEmptyArrays: true },
-        },
-        {
           $match: {
             _id: new mongoose.Types.ObjectId(id),
             is_deleted: false,
@@ -906,7 +842,6 @@ class TaskService {
             assigned_by_first_name: "$assign_by.first_name",
             assigned_by_last_name: "$assign_by.last_name",
             assigned_by_name: "$assigned_by_name",
-            activity_type: 1,
             attachments: 1,
             internal_info: 1,
             assign_to: "$team_data",
@@ -916,7 +851,7 @@ class TaskService {
           },
         },
       ];
-      const activity = await Activity.aggregate(taskPipeline);
+      const activity = await Task.aggregate(taskPipeline);
 
       return activity;
     } catch (error) {
@@ -928,7 +863,7 @@ class TaskService {
   deleteTask = async (payload, user) => {
     const { taskIdsToDelete } = payload;
     try {
-      await Activity.updateMany(
+      await Task.updateMany(
         { _id: { $in: taskIdsToDelete } },
         { $set: { is_deleted: true } }
       );
@@ -1018,7 +953,7 @@ class TaskService {
           },
         },
       ];
-      const getTask = await Activity.aggregate(pipeline);
+      const getTask = await Task.aggregate(pipeline);
       getTask.forEach(async (task) => {
         const board = await Board.findOne({ _id: task?.board_id }).lean();
         task?.assign_to?.forEach(async (member) => {
@@ -1061,160 +996,6 @@ class TaskService {
     }
   };
 
-  deleteActivityTask = async (payload) => {
-    const { taskIdsToDelete } = payload;
-    try {
-      await Activity.updateMany(
-        { _id: { $in: taskIdsToDelete } },
-        { $set: { is_deleted: true } }
-      );
-
-      const pipeline = [
-        {
-          $lookup: {
-            from: "authentications",
-            localField: "assign_to",
-            foreignField: "reference_id",
-            as: "team_data",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                  first_name: 1,
-                  last_name: 1,
-                  email: 1,
-                  assigned_to_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: { path: "$team_data", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $lookup: {
-            from: "authentications",
-            localField: "assign_by",
-            foreignField: "reference_id",
-            as: "assign_by",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                  first_name: 1,
-                  last_name: 1,
-                  assigned_by_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $lookup: {
-            from: "activity_status_masters",
-            localField: "activity_status",
-            foreignField: "_id",
-            as: "status",
-            pipeline: [{ $project: { name: 1 } }],
-          },
-        },
-        {
-          $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $match: {
-            _id: {
-              $in: taskIdsToDelete.map((id) => new mongoose.Types.ObjectId(id)),
-            },
-          },
-        },
-        {
-          $project: {
-            agenda: 1,
-            status: "$status.name",
-            assigned_by_first_name: "$assign_by.first_name",
-            assigned_by_last_name: "$assign_by.last_name",
-            assigned_to_first_name: "$team_data.first_name",
-            assigned_to_last_name: "$team_data.last_name",
-            assigned_to_name: "$team_data.assigned_to_name",
-            assigned_by_name: "$assign_by.assigned_by_name",
-            client_name: "$client_Data.client_name",
-            column_id: "$status.name",
-            assign_email: "$team_data.email",
-            due_date: 1,
-            due_time: 1,
-            title: 1,
-            assign_to: 1,
-            client_id: 1,
-            board_id: 1,
-          },
-        },
-      ];
-      const getTask = await Activity.aggregate(pipeline);
-      getTask.forEach(async (task) => {
-        const board = await Board.findOne({ _id: task?.board_id }).lean();
-
-        let data = {
-          TaskTitle: "Deleted Task",
-          taskName: task?.title,
-          status: task?.status,
-          assign_by: task?.assigned_by_name,
-          dueDate: moment(task?.due_date)?.format("DD/MM/YYYY"),
-          dueTime: task?.due_time,
-          agginTo_email: task?.assign_email,
-          assignName: task?.assigned_to_name,
-          board_name: board ? board?.project_name : "",
-        };
-        const taskMessage = taskTemplate(data);
-        const clientData = await Authentication.findOne({
-          reference_id: task?.client_id,
-        }).lean();
-        await sendEmail({
-          email: task?.assign_email,
-          subject: returnMessage("activity", "taskDeleted"),
-          message: taskMessage,
-        });
-
-        if (clientData) {
-          await sendEmail({
-            email: clientData?.email,
-            subject: returnMessage("activity", "taskDeleted"),
-            message: taskTemplate({
-              ...data,
-              assignName: clientData.first_name + " " + clientData.last_name,
-            }),
-          });
-        }
-
-        await notificationService.addNotification(
-          {
-            title: task?.title,
-            module_name: "task",
-            activity_type_action: "deleted",
-            activity_type: "task",
-            assign_to: task?.assign_to,
-            client_id: task?.client_id,
-          },
-          task?._id
-        );
-        return;
-      });
-
-      return;
-    } catch (error) {
-      logger.error(`Error while Deleting task, ${error}`);
-      throwError(error?.message, error?.statusCode);
-    }
-  };
-
   updateTask = async (payload, id, files, logInUser) => {
     try {
       let {
@@ -1229,9 +1010,7 @@ class TaskService {
         comment,
       } = payload;
 
-      const status_check = await Activity.findById(id).populate(
-        "activity_status"
-      );
+      const status_check = await Task.findById(id).populate("activity_status");
       if (status_check?.activity_status?.name === "completed") {
         return throwError(returnMessage("activity", "CannotUpdate"));
       }
@@ -1241,7 +1020,7 @@ class TaskService {
         files.forEach((file) => {
           attachments.push("uploads/" + file.filename);
         });
-        const existingFiles = await Activity.findById(id);
+        const existingFiles = await Task.findById(id);
 
         existingFiles &&
           existingFiles?.attachments.map((item) => {
@@ -1257,7 +1036,7 @@ class TaskService {
         var dueDateObject = moment(due_date);
         const duetimeObject = moment(due_date);
 
-        let updatedData = await Activity.findById(id).lean();
+        let updatedData = await Task.findById(id).lean();
         var timeOnly = duetimeObject.format("HH:mm:ss");
 
         const currentDate = moment().startOf("day");
@@ -1289,7 +1068,7 @@ class TaskService {
         payload.assign_to = JSON.parse(assign_to);
       }
 
-      const current_activity = await Activity.findById(id).lean();
+      // const current_activity = await Task.findById(id).lean();
       let updateTasksPayload = {
         title,
         agenda,
@@ -1302,19 +1081,21 @@ class TaskService {
         ...(attachments?.length > 0 && { attachments }),
         priority,
         ...(mark_as_done && mark_as_done === "true" && { mark_as_done: true }),
+        ...(payload?.status &&
+          payload?.status.toString() ===
+            get_complete_status?._id.toString() && { mark_as_done: true }),
       };
-      const updateTasks = await Activity.findByIdAndUpdate(
-        id,
-        updateTasksPayload,
-        { new: true, useFindAndModify: false }
-      );
+      const updateTasks = await Task.findByIdAndUpdate(id, updateTasksPayload, {
+        new: true,
+        useFindAndModify: false,
+      });
       const comment_payload = { task_id: id, comment: comment };
 
       if (comment) {
         this.addTaskComment(comment_payload, logInUser);
       }
 
-      const current_status = current_activity?.activity_status;
+      // const current_status = current_activity?.activity_status;
 
       // if (current_status?.toString() !== status?._id.toString()) {
       //   const referral_data = await Configuration.findOne().lean();
@@ -1331,7 +1112,7 @@ class TaskService {
       //       status?.name === "in_progress" ||
       //       status?.name === "overdue")
       //   ) {
-      //     await Activity.findOneAndUpdate(
+      //     await Task.findOneAndUpdate(
       //       { _id: id },
       //       {
       //         $inc: {
@@ -1417,7 +1198,7 @@ class TaskService {
       //       )?._id.toString() &&
       //       status?.name === "completed")
       //   ) {
-      //     await Activity.findOneAndUpdate(
+      //     await Task.findOneAndUpdate(
       //       { _id: id },
       //       {
       //         $inc: {
@@ -1566,7 +1347,7 @@ class TaskService {
           },
         },
       ];
-      const getTask = await Activity.aggregate(pipeline);
+      const getTask = await Task.aggregate(pipeline);
       const board = await Board.findOne({ _id: getTask[0]?.board_id }).lean();
       payload?.assign_to &&
         payload?.assign_to[0] &&
@@ -1592,13 +1373,6 @@ class TaskService {
               capitalizeFirstLetter(user_data?.last_name),
             board_name: board ? board?.project_name : "",
           };
-
-          let client_data = false;
-          if (payload?.client_id !== "null" && payload?.client_id)
-            client_data = await Authentication.findOne({
-              reference_id: payload?.client_id,
-            }).lean();
-
           const taskMessage = taskTemplate(data);
           sendEmail({
             email: user_data?.email,
@@ -1636,42 +1410,32 @@ class TaskService {
             // -------------- Socket notification end --------------------
           } else if (logInUser?.role === "team_agency") {
             // -------------- Socket notification start --------------------
-
-            const client_data = await Authentication.findOne({
-              reference_id: client_id,
-            });
-
-            const agencyData = await Authentication.findOne({
-              reference_id: getTask[0]?.agency_id,
-            });
-            let taskAction = "update";
-            // For Complete
-
-            if (mark_as_done === "true") taskAction = "completed";
-            await notificationService.addNotification(
-              {
-                ...payload,
-                module_name: "task",
-                activity_type_action: taskAction,
-                activity_type: "task",
-                agenda: agenda,
-                title: title,
-                client_name: client_data
-                  ? client_data.first_name + " " + client_data.last_name
-                  : "",
-                agency_name:
-                  agencyData?.first_name + " " + agencyData?.last_name,
-                agency_id: getTask[0]?.agency_id,
-                assigned_to_name: getTask[0]?.assigned_to_name,
-                due_time: new Date(due_date).toTimeString().split(" ")[0],
-                due_date: new Date(due_date).toLocaleDateString("en-GB"),
-                log_user: "member",
-                board_name: board ? board?.project_name : "",
-                // workspace_id: logInUser?.workspace,
-              },
-              id
-            );
-
+            // const agencyData = await Authentication.findOne({
+            //   _id: getTask[0]?.agency_id,
+            // });
+            // let taskAction = "update";
+            // // For Complete
+            // if (mark_as_done === "true") taskAction = "completed";
+            // await notificationService.addNotification(
+            //   {
+            //     ...payload,
+            //     module_name: "task",
+            //     activity_type_action: taskAction,
+            //     activity_type: "task",
+            //     agenda: agenda,
+            //     title: title,
+            //     agency_name:
+            //       agencyData?.first_name + " " + agencyData?.last_name,
+            //     agency_id: getTask[0]?.agency_id,
+            //     assigned_to_name: getTask[0]?.assigned_to_name,
+            //     due_time: new Date(due_date).toTimeString().split(" ")[0],
+            //     due_date: new Date(due_date).toLocaleDateString("en-GB"),
+            //     log_user: "member",
+            //     board_name: board ? board?.project_name : "",
+            //     // workspace_id: logInUser?.workspace,
+            //   },
+            //   id
+            // );
             // -------------- Socket notification end --------------------
           }
         });
@@ -1687,31 +1451,9 @@ class TaskService {
     try {
       const { status } = payload;
       let update_status = status;
-      // if (status === "completed") {
-      //   update_status = await ActivityStatus.findOne({
-      //     name: "completed",
-      //   }).lean();
-      // } else if (status === "pending") {
-      //   update_status = await ActivityStatus.findOne({
-      //     name: "pending",
-      //   }).lean();
-      // } else if (status === "in_progress") {
-      //   update_status = await ActivityStatus.findOne({
-      //     name: "in_progress",
-      //   }).lean();
-      // } else if (status === "overdue") {
-      //   update_status = await ActivityStatus.findOne({
-      //     name: "overdue",
-      //   }).lean();
-      // } else if (status === "cancel") {
-      //   update_status = await ActivityStatus.findOne({
-      //     name: "cancel",
-      //   }).lean();
-      // }
-      let current_activity = await Activity.findById(id).lean();
-      let current_status = current_activity.activity_status;
-
-      const updateTasks = await Activity.findByIdAndUpdate(
+      // let current_activity = await Task.findById(id).lean();
+      // let current_status = current_activity.activity_status;
+      const updateTasks = await Task.findByIdAndUpdate(
         {
           _id: id,
         },
@@ -1720,7 +1462,7 @@ class TaskService {
         },
         { new: true, useFindAndModify: false }
       );
-      const type = await ActivityType.findOne({ name: "task" }).lean();
+      // const type = await ActivityType.findOne({ name: "task" }).lean();
       // if (
       //   current_status?.toString() !== update_status?.toString() &&
       //   current_activity?.activity_type?.toString() === type?._id?.toString()
@@ -1737,7 +1479,7 @@ class TaskService {
       //       update_status?.name === "in_progress" ||
       //       update_status?.name === "overdue")
       //   ) {
-      //     await Activity.findOneAndUpdate(
+      //     await Task.findOneAndUpdate(
       //       { _id: id },
       //       {
       //         $inc: {
@@ -1829,7 +1571,7 @@ class TaskService {
       //       )?._id?.toString() &&
       //       update_status?.name === "completed")
       //   ) {
-      //     await Activity.findOneAndUpdate(
+      //     await Task.findOneAndUpdate(
       //       { _id: id },
       //       {
       //         $inc: {
@@ -1958,24 +1700,6 @@ class TaskService {
         },
         {
           $lookup: {
-            from: "activity_type_masters",
-            localField: "activity_type",
-            foreignField: "_id",
-            as: "activity_type",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: { path: "$activity_type", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $lookup: {
             from: "sections",
             localField: "activity_status",
             foreignField: "_id",
@@ -2002,7 +1726,6 @@ class TaskService {
             due_date: 1,
             due_time: 1,
             title: 1,
-            activity_type: "$activity_type",
             assign_to: "$team_data",
             assign_by: 1,
             board_id: 1,
@@ -2012,7 +1735,7 @@ class TaskService {
         },
       ];
 
-      const getTask = await Activity.aggregate(pipeline);
+      const getTask = await Task.aggregate(pipeline);
       const [board] = await Promise.all([
         Board.findOne({ _id: getTask[0]?.board_id }).lean(),
       ]);
@@ -2020,77 +1743,75 @@ class TaskService {
       getTask &&
         getTask[0] &&
         getTask[0]?.assign_to?.forEach(async (assignee) => {
-          if (getTask[0].activity_type?.name === "task") {
-            let data = {
-              TaskTitle: "Task status update",
-              taskName: getTask[0]?.title,
-              status: getTask[0]?.status?.section_name,
-              assign_by: getTask[0]?.assigned_by_name,
-              dueDate: moment(getTask[0]?.due_date)?.format("DD/MM/YYYY"),
-              dueTime: getTask[0]?.due_time,
-              agginTo_email: assignee?.email,
-              assignName: assignee?.assigned_to_name,
-              board_name: board ? board?.project_name : "",
-            };
-            const taskMessage = taskTemplate(data);
-            sendEmail({
-              email: assignee?.email,
-              subject: returnMessage("activity", "taskStatusUpdate"),
-              message: taskMessage,
-            });
+          let data = {
+            TaskTitle: "Task status update",
+            taskName: getTask[0]?.title,
+            status: getTask[0]?.status?.section_name,
+            assign_by: getTask[0]?.assigned_by_name,
+            dueDate: moment(getTask[0]?.due_date)?.format("DD/MM/YYYY"),
+            dueTime: getTask[0]?.due_time,
+            agginTo_email: assignee?.email,
+            assignName: assignee?.assigned_to_name,
+            board_name: board ? board?.project_name : "",
+          };
+          const taskMessage = taskTemplate(data);
+          sendEmail({
+            email: assignee?.email,
+            subject: returnMessage("activity", "taskStatusUpdate"),
+            message: taskMessage,
+          });
 
-            if (user?.role === "agency") {
-              //   ----------    Notifications start ----------
-              await notificationService.addNotification(
-                {
-                  assigned_to_name: assignee?.assigned_to_name,
-                  ...getTask[0],
-                  module_name: "task",
-                  assign_to: assignee?._id,
-                  activity_type_action: "statusUpdate",
-                  activity_type: "task",
-                  meeting_start_time: moment(
-                    getTask[0]?.meeting_start_time
-                  ).format("HH:mm"),
-                  due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
-                  board_name: board ? board?.project_name : "",
-                  status: getTask[0]?.status?.section_name,
-                  // workspace_id: user?.workspace,
-                },
-                id
-              );
-              //   ----------    Notifications end ----------
-            } else if (user.role === "team_agency") {
-              const agencyData = await Authentication.findById(
-                getTask[0].assign_by._id
-              );
+          if (user?.role === "agency") {
+            //   ----------    Notifications start ----------
+            await notificationService.addNotification(
+              {
+                assigned_to_name: assignee?.assigned_to_name,
+                ...getTask[0],
+                module_name: "task",
+                assign_to: assignee?._id,
+                activity_type_action: "statusUpdate",
+                activity_type: "task",
+                meeting_start_time: moment(
+                  getTask[0]?.meeting_start_time
+                ).format("HH:mm"),
+                due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
+                board_name: board ? board?.project_name : "",
+                status: getTask[0]?.status?.section_name,
+                // workspace_id: user?.workspace,
+              },
+              id
+            );
+            //   ----------    Notifications end ----------
+          } else if (user.role === "team_agency") {
+            const agencyData = await Authentication.findById(
+              getTask[0].assign_by._id
+            );
 
-              //   ----------    Notifications start ----------
-              await notificationService.addNotification(
-                {
-                  agency_name:
-                    agencyData?.first_name + " " + agencyData?.last_name,
-                  assigned_to_name: assigned_to_name,
-                  ...getTask[0],
-                  module_name: "task",
-                  assign_to: assignee?._id,
-                  log_user: "member",
-                  activity_type_action: "statusUpdate",
-                  activity_type: "task",
-                  meeting_start_time: moment(
-                    getTask[0]?.meeting_start_time
-                  ).format("HH:mm"),
-                  due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
-                  assigned_by_name: getTask[0]?.assigned_by_name,
-                  assign_by: agencyData?._id,
-                  board_name: board ? board?.project_name : "",
-                  status: getTask[0]?.status?.section_name,
-                  // workspace_id: user?.workspace,
-                },
-                id
-              );
-              //   ----------    Notifications end ----------
-            }
+            //   ----------    Notifications start ----------
+            await notificationService.addNotification(
+              {
+                agency_name:
+                  agencyData?.first_name + " " + agencyData?.last_name,
+                assigned_to_name: assigned_to_name,
+                ...getTask[0],
+                module_name: "task",
+                assign_to: assignee?._id,
+                log_user: "member",
+                activity_type_action: "statusUpdate",
+                activity_type: "task",
+                meeting_start_time: moment(
+                  getTask[0]?.meeting_start_time
+                ).format("HH:mm"),
+                due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
+                assigned_by_name: getTask[0]?.assigned_by_name,
+                assign_by: agencyData?._id,
+                board_name: board ? board?.project_name : "",
+                status: getTask[0]?.status?.section_name,
+                // workspace_id: user?.workspace,
+              },
+              id
+            );
+            //   ----------    Notifications end ----------
           }
         });
 
@@ -2112,27 +1833,25 @@ class TaskService {
       const completed = await Section.findOne({
         key: "completed",
       });
-      const overdueActivities = await Activity.find({
+      const overdueActivities = await Task.find({
         due_date: { $lt: currentDate.toDate() },
         activity_status: {
           $nin: [overdue._id, completed._id],
         },
         is_deleted: false,
-      }).populate("activity_type");
+      });
 
       for (const activity of overdueActivities) {
-        if (activity.activity_type.name === "task") {
-          activity.activity_status = overdue._id;
-          await activity.save();
-          activity?.assign_to?.forEach(async (member) => {
-            await notificationService.addNotification({
-              module_name: "task",
-              activity_type_action: "overdue",
-              title: activity.title,
-              assign_to: member,
-            });
+        activity.activity_status = overdue._id;
+        await activity.save();
+        activity?.assign_to?.forEach(async (member) => {
+          await notificationService.addNotification({
+            module_name: "task",
+            activity_type_action: "overdue",
+            title: activity.title,
+            assign_to: member,
           });
-        }
+        });
       }
     } catch (error) {
       logger.error(`Error while Overdue crone Job, ${error}`);
@@ -2151,7 +1870,7 @@ class TaskService {
       const overdue = await Section.findOne({
         key: "overdue",
       });
-      const overdueActivities = await Activity.find({
+      const overdueActivities = await Task.find({
         due_date: {
           $gte: currentDate.toDate(), // Activities with due date greater than or equal to the current date
           $lt: currentDate.add(1, "days").toDate(), // Activities with due date less than the next day
@@ -2160,26 +1879,26 @@ class TaskService {
           $nin: [completed._id, overdue._id],
         },
         is_deleted: false,
-      }).populate("activity_type");
+      });
 
       overdueActivities?.forEach(async (item) => {
-        if (item.activity_type.name !== "task") {
-          await notificationService.addNotification({
-            module_name: "activity",
-            activity_type_action: "dueDateAlert",
-            title: item?.title,
-            activity_type:
-              item?.activity_type.name === "others"
-                ? "activity"
-                : "call meeting",
-          });
-        } else {
-          await notificationService.addNotification({
-            module_name: "task",
-            activity_type_action: "dueDateAlert",
-            title: item?.title,
-          });
-        }
+        // if (item.activity_type.name !== "task") {
+        // await notificationService.addNotification({
+        //   module_name: "activity",
+        //   activity_type_action: "dueDateAlert",
+        //   title: item?.title,
+        //   activity_type:
+        //     item?.activity_type.name === "others"
+        //       ? "activity"
+        //       : "call meeting",
+        // });
+        // } else {
+        await notificationService.addNotification({
+          module_name: "task",
+          activity_type_action: "dueDateAlert",
+          title: item?.title,
+        });
+        // }
       });
     } catch (error) {
       logger.error(`Error while Overdue crone Job PDF, ${error}`);
@@ -2190,7 +1909,7 @@ class TaskService {
   addTaskComment = async (payload, user) => {
     try {
       const { comment, task_id } = payload;
-      const task = await Activity.findById(task_id);
+      const task = await Task.findById(task_id);
 
       task.comments.push({ user_id: user?._id, comment: comment });
       task.save();
@@ -2204,7 +1923,7 @@ class TaskService {
   listTaskComment = async (payload, user) => {
     try {
       const { task_id } = payload;
-      const task = await Activity.findById(task_id);
+      const task = await Task.findById(task_id);
 
       let comments = [];
       if (task && task?.comments?.length > 0) {
@@ -2234,7 +1953,7 @@ class TaskService {
   leaveTask = async (payload, user) => {
     try {
       const { task_id } = payload;
-      const task = await Activity.findById(task_id);
+      const task = await Task.findById(task_id);
       task.assign_to = task?.assign_to.filter(
         (item) => item.toString() !== user._id.toString()
       );
