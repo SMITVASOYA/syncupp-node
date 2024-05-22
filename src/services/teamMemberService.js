@@ -119,6 +119,7 @@ class TeamMemberService {
               status: { $ne: "deleted" },
             },
           },
+          _id: workspace_exist?._id,
           is_deleted: false,
         }).lean();
 
@@ -138,7 +139,7 @@ class TeamMemberService {
           team_member_exist?.last_name
         }`;
 
-        const email_template = templateMaker("teamInvitaion.html", {
+        const email_template = templateMaker("teamInvitation.html", {
           REACT_APP_URL: process.env.REACT_APP_URL,
           SERVER_URL: process.env.SERVER_URL,
           username:
@@ -315,6 +316,7 @@ class TeamMemberService {
               status: { $ne: "deleted" },
             },
           },
+          _id: workspace_exist?._id,
           is_deleted: false,
         }).lean();
 
