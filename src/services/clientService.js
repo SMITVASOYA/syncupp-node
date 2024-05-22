@@ -652,6 +652,7 @@ class ClientService {
             createdAt: 1,
             reference_id: 1,
             contact_number: 1,
+            profile_image: 1,
           },
         },
       ];
@@ -902,6 +903,21 @@ class ClientService {
       const aggrage_array = [
         { $match: { reference_id: { $in: clients }, is_deleted: false } },
         {
+          $lookup: {
+            from: "role_masters",
+            localField: "role",
+            foreignField: "_id",
+            as: "user_type",
+            pipeline: [{ $project: { name: 1 } }],
+          },
+        },
+        {
+          $unwind: {
+            path: "$user_type",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
           $project: {
             first_name: 1,
             last_name: 1,
@@ -910,6 +926,8 @@ class ClientService {
             createdAt: 1,
             reference_id: 1,
             contact_number: 1,
+            profile_image: 1,
+            role: "$user_type.name",
           },
         },
       ];

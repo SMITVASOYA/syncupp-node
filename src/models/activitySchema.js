@@ -9,18 +9,33 @@ const activitySchema = new mongoose.Schema(
       required: true,
     },
     title: { type: String },
+    workspace_id: { type: mongoose.Types.ObjectId },
+    priority: {
+      type: String,
+      enum: ["high", "low", "medium"],
+    },
     agenda: { type: String },
     due_date: { type: Date },
     due_time: { type: String },
-    client_id: {
-      type: mongoose.Types.ObjectId,
-      ref: "client",
-      required: false,
-    },
     internal_info: { type: String },
-    assign_to: { type: mongoose.Types.ObjectId },
+    assign_to: [
+      {
+        type: mongoose.Types.ObjectId,
+      },
+    ],
     assign_by: { type: mongoose.Types.ObjectId },
     agency_id: { type: mongoose.Types.ObjectId },
+    status_history: [
+      {
+        status: {
+          type: mongoose.Types.ObjectId,
+        },
+        active: {
+          default: 0,
+          type: Number,
+        },
+      },
+    ],
     meeting_start_time: { type: Date },
     meeting_end_time: { type: Date },
     recurring_end_date: { type: Date },
@@ -29,23 +44,25 @@ const activitySchema = new mongoose.Schema(
         type: String,
       },
     ],
-    tags: [
-      {
-        name: {
-          type: String,
-        },
-        color: { type: String },
-      },
-    ],
     activity_status: {
       type: mongoose.Types.ObjectId,
-      ref: "activity_status_master",
       required: true,
     },
     is_deleted: { type: Boolean, default: false },
     mark_as_done: { type: Boolean, default: false },
     competition_point: { type: Number, default: 0 },
     attendees: [{ type: mongoose.Types.ObjectId }],
+    comments: [
+      {
+        user_id: { type: mongoose.Types.ObjectId },
+        comment: { type: String },
+      },
+    ],
+    board_id: {
+      type: mongoose.Types.ObjectId,
+      ref: "board",
+      required: true,
+    },
   },
   { timestamps: true }
 );

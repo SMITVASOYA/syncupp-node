@@ -67,17 +67,32 @@ exports.updateTask = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
-exports.deleteTask = catchAsyncError(async (req, res, next) => {
-  const deleteTask = await activityService.deleteTask(req?.body);
+
+exports.deleteActivity = catchAsyncError(async (req, res, next) => {
+  const deleteActivity = await activityService.deleteActivity(req?.body);
   sendResponse(
     res,
     true,
-    returnMessage("activity", "deleteTask"),
-    deleteTask,
+    returnMessage("activity", "deleteActivity"),
+    deleteActivity,
     statusCode.success
   );
 });
 
+exports.updateTaskStatus = catchAsyncError(async (req, res, next) => {
+  const updateTaskStatus = await activityService.updateTaskStatus(
+    req?.body,
+    req.params.id,
+    req?.user
+  );
+  sendResponse(
+    res,
+    true,
+    returnMessage("activity", "updateStatus"),
+    updateTaskStatus,
+    statusCode.success
+  );
+});
 exports.updateStatus = catchAsyncError(async (req, res, next) => {
   const updateStatus = await activityService.statusUpdate(
     req?.body,
@@ -156,21 +171,10 @@ exports.assignedActivity = catchAsyncError(async (req, res, next) => {
   sendResponse(res, true, undefined, assigned_activity, 200);
 });
 
-exports.tagList = catchAsyncError(async (req, res, next) => {
-  let tagList = await activityService.tagList(req.body, req.user);
-  sendResponse(
-    res,
-    true,
-    returnMessage("activity", "tagsList"),
-    tagList,
-    statusCode.success
-  );
-});
-
 exports.completionHistory = catchAsyncError(async (req, res, next) => {
   const completionHistory = await activityService.completionHistory(
-    req.body,
-    req.user
+    req?.body,
+    req?.user
   );
   sendResponse(
     res,
@@ -182,6 +186,41 @@ exports.completionHistory = catchAsyncError(async (req, res, next) => {
 });
 
 exports.competitionStats = catchAsyncError(async (req, res, next) => {
-  const competitionStats = await activityService.competitionStats(req.user);
+  const competitionStats = await activityService.competitionStats(req?.user);
   sendResponse(res, true, undefined, competitionStats, statusCode.success);
+});
+
+exports.addTaskComment = catchAsyncError(async (req, res, next) => {
+  let addTaskComment = await activityService.addTaskComment(
+    req?.body,
+    req?.user
+  );
+  sendResponse(
+    res,
+    true,
+    returnMessage("activity", "commentAdded"),
+    addTaskComment,
+    statusCode.success
+  );
+});
+exports.listTaskComment = catchAsyncError(async (req, res, next) => {
+  let listTaskComment = await activityService.listTaskComment(req?.params);
+  sendResponse(
+    res,
+    true,
+    returnMessage("activity", "commentFetched"),
+    listTaskComment,
+    statusCode.success
+  );
+});
+
+exports.leaveTask = catchAsyncError(async (req, res, next) => {
+  await activityService.leaveTask(req?.body, req?.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("activity", "taskLeave"),
+    null,
+    statusCode.success
+  );
 });

@@ -8,6 +8,8 @@ const teamMemberRoute = require("./teamMemberRoute");
 const invoiceRoute = require("./invoiceRoute");
 const agreementRoute = require("./agreementRoute");
 const activityRoute = require("./activityRoute");
+const taskRoute = require("./taskRoute");
+const boardRoute = require("./boardRoute");
 const paymentRoute = require("./paymentRoute");
 const inquiryRoute = require("./inquiryRoute");
 const affiliateRoute = require("./affiliateRoute");
@@ -20,8 +22,11 @@ const eventRoute = require("./eventRoute");
 const couponRoute = require("./couponRoute");
 const ticketRoute = require("./ticketRoute");
 const workspaceRoute = require("./workspaceRoute");
+const sectionRoute = require("./sectionRoute");
 
 router.use("/activity", activityRoute);
+router.use("/task", taskRoute);
+router.use("/board", boardRoute);
 router.use("/auth", authRoute);
 router.use("/admin", adminRoute);
 router.use("/affiliate", affiliateRoute);
@@ -41,5 +46,6 @@ router.use("/event", eventRoute);
 router.use("/coupon", couponRoute);
 router.use("/ticket", ticketRoute);
 router.use("/workspace", workspaceRoute);
+router.use("/section", sectionRoute);
 
 module.exports = router;

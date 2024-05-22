@@ -1238,6 +1238,22 @@ class TeamMemberService {
             status: { $in: ["confirmed", "free_trial"] },
           },
         },
+
+        {
+          $lookup: {
+            from: "role_masters",
+            localField: "role",
+            foreignField: "_id",
+            as: "user_type",
+            pipeline: [{ $project: { name: 1 } }],
+          },
+        },
+        {
+          $unwind: {
+            path: "$user_type",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
         {
           $project: {
             name: {
@@ -1249,6 +1265,8 @@ class TeamMemberService {
             reference_id: 1,
             createdAt: 1,
             status: 1,
+            profile_image: 1,
+            role: "$user_type.name",
           },
         },
       ];

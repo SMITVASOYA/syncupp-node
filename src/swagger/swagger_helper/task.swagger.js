@@ -1,7 +1,7 @@
-const createActivity = {
-  tags: ["Activity - CRM Panel"],
+const createTask = {
+  tags: ["Task - CRM Panel"],
   description: "",
-  summary: "Create Activity for the call or other type",
+  summary: "Create Task",
   security: [
     {
       bearerAuth: [],
@@ -9,7 +9,7 @@ const createActivity = {
   ],
   requestBody: {
     content: {
-      "application/json": {
+      "multipart/form-data": {
         schema: {
           type: "object",
 
@@ -22,39 +22,43 @@ const createActivity = {
               type: "string",
               required: true,
             },
-            client_id: {
+            board_id: {
+              type: "string",
+              required: true,
+            },
+            priority: {
               type: "string",
               required: true,
             },
             due_date: {
               type: "string",
-              required: true,
             },
             assign_to: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+              example: [32.3046505, 30.6080822],
+            },
+            location: {
+              type: "array",
+              items: {
+                type: "array",
+              },
+              example: [32.3046505, 30.6080822],
+            },
+            status: {
               type: "string",
               required: true,
-            },
-            activity_type: {
-              type: "string",
-              required: true,
-            },
-            meeting_start_time: {
-              type: "string",
-              required: true,
-            },
-            meeting_end_time: {
-              type: "string",
-              required: true,
-            },
-            internal_info: {
-              type: "string",
-            },
-            recurring_end_date: {
-              type: "string",
             },
             mark_as_done: {
               type: "boolean",
               default: false,
+            },
+            attachments: {
+              type: "string",
+              format: "binary",
+              description: "Please attach attachments",
             },
           },
         },
@@ -418,9 +422,9 @@ const leaveTask = {
     },
   },
 };
-const activityRoute = {
-  "/api/v1/activity/call-meeting": {
-    post: createActivity,
+const taskRoute = {
+  "/api/v1/task/create-task": {
+    post: createTask,
   },
   "/api/v1/activity/update/call-meeting/{activityId}": {
     patch: updateActivity,
@@ -445,4 +449,4 @@ const activityRoute = {
   },
 };
 
-module.exports = activityRoute;
+module.exports = taskRoute;

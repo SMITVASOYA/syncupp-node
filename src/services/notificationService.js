@@ -12,6 +12,7 @@ const Admin = require("../models/adminSchema");
 
 class NotificationService {
   // Add Notification
+
   addNotification = async (payload, id) => {
     let { module_name, activity_type_action, client_id, assign_to, agenda } =
       payload;
@@ -36,6 +37,8 @@ class NotificationService {
           message_type = "createCallMeeting";
         else if (activity_type_action === "update")
           message_type = "activityUpdated";
+        else if (activity_type_action === "statusUpdate")
+          message_type = "assignToMessage";
         else if (activity_type_action === "cancel")
           message_type = "activityCancelled";
         else if (activity_type_action === "inProgress")
@@ -192,18 +195,12 @@ class NotificationService {
           message_type = "taskCompleted";
         else if (activity_type_action === "update")
           message_type = "taskUpdated";
+        else if (activity_type_action === "statusUpdate")
+          message_type = "taskStatusUpdate";
         else if (activity_type_action === "deleted") {
           message_type = "taskDeleted";
           type = "deleted";
-        } else if (activity_type_action === "pending")
-          message_type = "taskPending";
-        else if (activity_type_action === "cancel")
-          message_type = "taskCancelled";
-        else if (activity_type_action === "inProgress")
-          message_type = "taskInProgress";
-        else if (activity_type_action === "overdue")
-          message_type = "taskOverdue";
-        else if (activity_type_action === "dueDateAlert")
+        } else if (activity_type_action === "dueDateAlert")
           message_type = "taskDueDate";
         const createAndEmitNotification = async (
           userId,
@@ -242,35 +239,13 @@ class NotificationService {
               message_type,
               "assignToMessage"
             );
-            if (payload.client_id) {
-              await createAndEmitNotification(
-                payload.client_id,
-                message_type,
-                "clientMessage"
-              );
-            }
           } else if (activity_type_action === "update") {
             await createAndEmitNotification(
               payload.agency_id,
               message_type,
               "assignByMessage"
             );
-            if (payload.client_id) {
-              await createAndEmitNotification(
-                payload.client_id,
-                message_type,
-                "clientMessage"
-              );
-            }
           } else {
-            if (payload.client_id) {
-              await createAndEmitNotification(
-                client_id,
-                message_type,
-                "clientMessage"
-              );
-            }
-
             await createAndEmitNotification(
               payload.assign_by,
               message_type,
@@ -278,14 +253,6 @@ class NotificationService {
             );
           }
         } else {
-          if (payload.client_id) {
-            await createAndEmitNotification(
-              client_id,
-              message_type,
-              "clientMessage"
-            );
-          }
-
           await createAndEmitNotification(
             assign_to,
             message_type,
@@ -375,7 +342,6 @@ class NotificationService {
           data_reference_id: id,
           message: message,
         });
-
         eventEmitter(
           "NOTIFICATION",
           await with_unread_count(notification, userId),
@@ -538,6 +504,45 @@ class NotificationService {
             "payment",
             "deleted"
           );
+        }
+      }
+
+      if (payload?.module_name === "board") {
+        if (payload.action_name === "created") {
+          payload?.members &&
+            payload?.members[0] &&
+            payload?.members?.map(async (item) => {
+              await createAndEmitNotification(
+                item,
+                "boardCreated",
+                "board",
+                "board"
+              );
+            });
+        }
+        if (payload.action_name === "updated") {
+          payload?.members &&
+            payload?.members[0] &&
+            payload?.members?.map(async (item) => {
+              await createAndEmitNotification(
+                item,
+                "boardUpdated",
+                "board",
+                "board"
+              );
+            });
+        }
+        if (payload.action_name === "memberRemoved") {
+          payload?.members &&
+            payload?.members[0] &&
+            payload?.members?.map(async (item) => {
+              await createAndEmitNotification(
+                item,
+                "memberRemoved",
+                "board",
+                "deleted"
+              );
+            });
         }
       }
 
