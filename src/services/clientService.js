@@ -92,6 +92,7 @@ class ClientService {
       if (client_exist) {
         // check for the user already exist in the workspace
         const exist_in_workspace = await Workspace.findOne({
+          _id: workspace_exist?._id,
           members: {
             $elemMatch: {
               user_id: client_exist?._id,
@@ -117,7 +118,7 @@ class ClientService {
           client_exist?.last_name
         }`;
 
-        const email_template = templateMaker("teamInvitaion.html", {
+        const email_template = templateMaker("teamInvitation.html", {
           REACT_APP_URL: process.env.REACT_APP_URL,
           SERVER_URL: process.env.SERVER_URL,
           username:
@@ -156,6 +157,14 @@ class ClientService {
         );
         return;
       } else {
+        validateRequestFields(payload, [
+          "first_name",
+          "last_name",
+          "email",
+          "address",
+          "company_name",
+        ]);
+
         if (contact_number) {
           const unique_contact = await Authentication.findOne({
             contact_number,

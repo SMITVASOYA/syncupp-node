@@ -137,12 +137,17 @@ class AuthService {
         (member) => member?.user_id?.toString() === user?._id?.toString()
       );
 
-      const role = await Role_Master.findById(member_details?.role).lean();
+      const [role, sub_role] = await Promise.all([
+        Role_Master.findById(member_details?.role).lean(),
+        Team_Role_Master.findById(member_details?.sub_role).lean(),
+      ]);
+
       return {
         token: new_token,
         workspace: workspace_exist,
         user,
         user_role: role?.name,
+        sub_role: sub_role?.name,
       };
     } catch (error) {
       logger.error(`Error while changing the workspace: ${error}`);
