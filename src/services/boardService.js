@@ -6,7 +6,7 @@ const {
   boardTemplate,
   lowercaseFirstLetter,
 } = require("../utils/utils");
-const { ObjectId } = require("mongodb");
+const { ObjectId } = require("mongoose");
 const Authentication = require("../models/authenticationSchema");
 const Board = require("../models/boardSchema");
 const fs = require("fs");
