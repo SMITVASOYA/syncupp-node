@@ -156,6 +156,14 @@ class ClientService {
         );
         return;
       } else {
+        validateRequestFields(payload, [
+          "first_name",
+          "last_name",
+          "email",
+          "address",
+          "company_name",
+        ]);
+
         if (contact_number) {
           const unique_contact = await Authentication.findOne({
             contact_number,
