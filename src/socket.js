@@ -32,6 +32,8 @@ exports.socket_connection = (http_server) => {
         "http://localhost:5014",
         "http://139.59.15.81:5010",
         "http://134.209.154.30:5010",
+        "http://134.209.154.30:5015",
+        "http://134.209.154.30:5016",
         "http://134.209.154.30",
       ],
       methods: ["GET", "PATCH", "POST", "HEAD", "OPTIONS"],
