@@ -147,6 +147,41 @@ const checkContactunique = {
   },
 };
 
+const getEmailDetails = {
+  tags: ["CRM Panel"],
+  description: "",
+  summary: "Get the Email details.",
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+          properties: {
+            email: {
+              type: "string",
+              descripition: "Enter your email",
+              required: true,
+            },
+          },
+        },
+      },
+    },
+  },
+
+  responses: {
+    200: {
+      descripition: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
 const googleSignIn = {
   tags: ["CRM Panel"],
   description: "Agency Google SignIn",
@@ -671,6 +706,9 @@ const authRoutes = {
   },
   "/api/v1/auth/contact-unique": {
     post: checkContactunique,
+  },
+  "/api/v1/auth/email-check": {
+    post: getEmailDetails,
   },
   "/api/v1/auth/google-signup": {
     post: googleSignIn,

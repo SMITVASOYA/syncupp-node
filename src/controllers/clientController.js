@@ -29,7 +29,7 @@ exports.verifyClient = catchAsyncError(async (req, res, next) => {
 });
 
 exports.deleteClient = catchAsyncError(async (req, res, next) => {
-  if (req.body.client_ids.length === 0)
+  if (req?.body?.client_ids?.length === 0)
     return throwError(returnMessage("default", "default"));
 
   const delete_clients = await clientService.deleteClient(req.body, req.user);

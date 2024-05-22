@@ -6,6 +6,7 @@ const moment = require("moment");
 const { returnMessage, validateRequestFields } = require("../utils/utils");
 const Configuration = require("../models/configurationSchema");
 const Role_Master = require("../models/masters/roleMasterSchema");
+const SheetManagement = require("../models/sheetManagementSchema");
 
 class WorkspaceService {
   createWorkspace = async (payload, user) => {
@@ -33,7 +34,7 @@ class WorkspaceService {
       ]);
 
       if (workspace_name_exist)
-        return throwError(returnMessage("workspace", "nameMissing"));
+        return throwError(returnMessage("workspace", "duplicateWorkspaceName"));
 
       const workspace_obj = {
         name: workspace_name,
@@ -54,7 +55,65 @@ class WorkspaceService {
           .startOf("day")
           .add(configuration?.payment?.free_trial, "days");
       }
-      await Workspace.create(workspace_obj);
+      const new_workspace = await Workspace.create(workspace_obj);
+
+      if (new_workspace)
+        await SheetManagement.findOneAndUpdate(
+          { user_id: user?._id },
+          {
+            user_id: user?._id,
+            total_sheets: 1,
+            occupied_sheets: [],
+          },
+          { upsert: true }
+        );
+
+      return;
+    } catch (error) {
+      logger.error(`Error while creating the workspace: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  updateWorkspace = async (payload, user) => {
+    try {
+      const { workspace_id, agency_id } = payload;
+      const member_obj = {
+        user_id: user?._id,
+        status: "confirm_pending",
+        role: user?.role,
+        joining_date: moment.utc().startOf("day"),
+      };
+
+      // Add in workspace and Increse the sheet count
+      Promise.all([
+        await Workspace.findByIdAndUpdate(
+          {
+            _id: workspace_id,
+          },
+          {
+            $push: {
+              members: member_obj,
+            },
+          },
+          {
+            new: true,
+          }
+        ),
+        await SheetManagement.findOneAndUpdate(
+          { agency_id: agency_id },
+          {
+            $inc: { total_sheets: 1 },
+            $push: {
+              occupied_sheets: {
+                user_id: user?._id,
+                role: user?.role, // Assuming total_sheets should be based on workspace members count
+              },
+            },
+          },
+          { new: true }
+        )
+      ])
       return;
     } catch (error) {
       logger.error(`Error while creating the workspace: ${error}`);

@@ -35,7 +35,8 @@
     "sendRefferalEmail": "Referral email send successfully.",
     "invitationEmailSubject": "Inviation to the Syncupp.",
     "completeProfile": "Complete your profile first to access Syncupp.",
-    "facebookEmailNotFound": "Your email is not linked with facebook."
+    "facebookEmailNotFound": "Your email is not linked with facebook.",
+    "arrayRequired": "Required roles should be an array."
   },
 
   "admin": {
@@ -198,7 +199,9 @@
     "agreementUpdated": "Agreement updated.",
     "agreementAgreed": "Agreement agreed.",
     "newTicketReceived": "New ticket received.",
-    "newTicketSent": "Ticket successfully raised."
+    "newTicketSent": "Ticket successfully raised.",
+    "memberAddedBoard": "You are added in project.",
+    "memberRemovedBoard": "You are removed from project."
   },
 
   "client": {
@@ -207,7 +210,8 @@
     "clientDeleted": "Client deleted successfully.",
     "agenciesFetched": "Agencies fetched successfully.",
     "clientsFetched": "Client list fetched successfully.",
-    "agencyRemovedBeforeVerify": "Agency has removed you. you can not verify."
+    "agencyRemovedBeforeVerify": "Agency has removed you. you can not verify.",
+    "clientIsAlreadyExistInWorkspace": "Client is already exist in workspace"
   },
   "activity": {
     "dateinvalid": "Date must be the present date or a future date.",
@@ -218,6 +222,7 @@
     "fetchTask": "Task fetched successfully.",
     "updateTask": "Task updated successfully.",
     "deleteTask": "Task deleted successfully.",
+    "deleteActivity": "Activity deleted successfully.",
     "CannotUpdate": "Task cannot be updated.",
     "activityTypeNotFound": "This type of actvity not found.",
     "invalidTime": "End time should be greater than start time.",
@@ -237,7 +242,11 @@
     "taskDeleted": "Task deleted Task.",
     "ActivityCannotUpdate": "Activity cannot be updated.",
     "tagsList": "Tags list fetch successfully.",
-    "completionHistory": "Points history fetched successfully."
+    "completionHistory": "Points history fetched successfully.",
+    "commentAdded": "Comment added successfully.",
+    "commentFetched": "Comments fetched successfully.",
+    "taskLeave": "Task leave successfully.",
+    "taskStatusUpdate": "Task status update."
   },
 
   "payment": {
@@ -346,6 +355,20 @@
     "cancleSubject": "Event Cancled."
   },
 
+  "board": {
+    "created": "Board created successfully.",
+    "alreadyExist": "Board name already exists.",
+    "updated": "Board updated successfully.",
+    "listFetched": "Board list fetched successfully.",
+    "boardFetched": "Board fetched successfully.",
+    "boardPinned": "Board pinned successfully.",
+    "membersFetched": "Members fetched successfully.",
+    "canNotRemove": "Cannot remove member associated with task.",
+    "boardImageFetched": "Board images fetched successfully.",
+    "boardMemberUpdated": "Board member list updated successfully.",
+    "userFetched": "Users fetched successfully."
+  },
+
   "chat": {
     "userIdRequired": "Other users' id is required to get messages.",
     "usersListFetched": "List of users fetched successfully.",
@@ -369,7 +392,9 @@
     "userRegistered": "User registered successfully.",
     "userAlreadyExist": "This email is already exist. Please choose another one.",
     "userInactive": "Your account has been suspended by admin. Contact admin.",
-    "contactNumberExist": "Contact number already exist."
+    "contactNumberExist": "Contact number already exist.",
+    "signupIncomplete": "Profile is in-complete. Please complete your profile first.",
+    "userDoesNotExist": "User with this email does not exist."
   },
 
   "workspace": {
@@ -378,7 +403,22 @@
     "nameMissing":"Workspace name is required.",
     "workspacesFetched":"Workspaces fetched successfully.",
     "workspaceNotFound":"Workspace does not exist.",
-    "workspaceRequired":"Workspace id is required."
+    "workspaceRequired":"Workspace id is required.",
+    "alreadyExistInWorkspace":"This user already exist in this workspace.",
+    "invitationSend":"Invitation has been sent.",
+    "invitationExpired":"Your invitation has been expired.",
+    "verified":"You have verified successfully.",
+    "teamMemeberExist":"This member is already exist in tis workspace."
+  },
+  
+  "section": {
+    "created": "Section created successfully.",
+    "updated": "Section updated successfully.",
+    "deleted": "Section deleted successfully.",
+    "fetched": "Section fetched successfully.",
+    "canNotBeCreated": "Section can not be created with same name.",
+    "nameAlreadyExists": "Section name already exists.",
+    "canNotBeDeleted": "Section includes task can not be deleted."
   },
 
   "default": { "default": "Something went wrong." }

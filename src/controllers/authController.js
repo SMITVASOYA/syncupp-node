@@ -31,6 +31,14 @@ exports.checkContactunique = catchAsyncError(async (req, res, next) => {
   sendResponse(res, true, undefined, contact, statusCode.success);
 });
 
+exports.getEmailDetails = catchAsyncError(async (req, res, next) => {
+  const user = await authService.getEmailDetails({
+    ...req.body,
+    token: req?.headers?.authorization || req?.headers?.token || undefined,
+  });
+  sendResponse(res, true, undefined, user, statusCode.success);
+});
+
 exports.changeWorkspace = catchAsyncError(async (req, res, next) => {
   const workspace = await authService.changeWorkspace(
     req.headers.authorization || req.headers.token,
@@ -64,13 +72,10 @@ exports.agencyFacebookSignUp = catchAsyncError(async (req, res, next) => {
 
 exports.login = catchAsyncError(async (req, res, next) => {
   const loggedIn = await authService.login(req.body);
-  return sendResponse(
-    res,
-    true,
-    returnMessage("auth", "loggedIn"),
-    loggedIn,
-    statusCode.success
-  );
+  let message = returnMessage("auth", "loggedIn");
+  if (loggedIn?.user?.status === "signup_incomplete")
+    message = returnMessage("user", "signupIncomplete");
+  return sendResponse(res, true, message, loggedIn, statusCode.success);
 });
 
 exports.forgotPassword = catchAsyncError(async (req, res, next) => {
@@ -126,23 +131,12 @@ exports.citiesList = catchAsyncError(async (req, res, next) => {
 });
 
 exports.getProfile = catchAsyncError(async (req, res, next) => {
-  const user = req?.user;
-  let profile;
-  if (user?.role?.name === "agency") {
-    profile = await agencyService.getAgencyProfile(req.user);
-  } else if (user?.role?.name === "client") {
-    profile = await clientService.getClientDetail(req.user);
-  } else if (
-    user?.role?.name === "team_agency" ||
-    user?.role?.name === "team_client"
-  ) {
-    profile = await teamMemberService.getProfile(req.user);
-  }
+  const user_profile = await authService.getProfile(req.user);
   sendResponse(
     res,
     true,
     returnMessage("auth", "profileFetched"),
-    profile,
+    user_profile,
     statusCode.success
   );
 });

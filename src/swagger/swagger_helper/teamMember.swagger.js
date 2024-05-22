@@ -43,7 +43,7 @@ const loginTeamMember = {
   },
 };
 
-const verifyTeamMember = {
+/* const verifyTeamMember = {
   tags: ["Team Member - CRM Panel"],
   description: "",
   summary: "Team Member Verify Password ",
@@ -101,12 +101,62 @@ const verifyTeamMember = {
       },
     },
   },
+}; */
+
+const verifyTeamMember = {
+  tags: ["Team Member - CRM Panel"],
+  description: "",
+  summary: "Verify workspace member ",
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+
+          properties: {
+            email: {
+              type: "string",
+              description: "Enter email id",
+              required: true,
+            },
+            token: {
+              type: "string",
+              description: "Enter token",
+              required: true,
+            },
+            workspace: {
+              type: "string",
+              description: "Enter workspace id",
+              required: true,
+            },
+            accept: {
+              type: "boolean",
+              required: true,
+              default: true,
+            },
+          },
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
 };
 
 const addTeamMember = {
   tags: ["Team Member - CRM Panel"],
   description: "",
-  summary: "Team Member Forgot Password ",
+  summary: "Add the team member to the workspace.",
   security: [
     {
       bearerAuth: [],
@@ -124,15 +174,19 @@ const addTeamMember = {
               description: "Enter email id",
               required: true,
             },
-            name: {
+            first_name: {
               type: "string",
-              description: "Enter name",
+              description: "Enter first name",
+              required: true,
+            },
+            last_name: {
+              type: "string",
+              description: "Enter last name",
               required: true,
             },
             contact_number: {
               type: "string",
               description: "Enter contact number",
-              required: true,
             },
             role: {
               type: "string",
@@ -232,9 +286,22 @@ const getAllTeamMember = {
               type: "string",
               description: "Enter value of search",
             },
-            for_client: {
-              type: "boolean",
-              default: false,
+            filter: {
+              type: "object",
+
+              properties: {
+                status: {
+                  type: "string",
+                  description: "Enter status value.",
+                },
+                date: {
+                  type: "object",
+                  properties: {
+                    start_date: { type: "date", default: "DD-MM-YYYY" },
+                    end_date: { type: "date", default: "DD-MM-YYYY" },
+                  },
+                },
+              },
             },
           },
         },

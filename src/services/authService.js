@@ -41,12 +41,13 @@ const paymentService = require("../services/paymentService");
 const PaymentService = new paymentService();
 const WorkspaceService = require("../services/workspaceService");
 const Workspace = require("../models/workspaceSchema");
+const Team_Role_Master = require("../models/masters/teamRoleSchema");
 const workspaceService = new WorkspaceService();
 
 class AuthService {
   tokenGenerator = async (payload) => {
     try {
-      let role;
+      let role, sub_role;
       const expiresIn = payload?.rememberMe
         ? process.env.JWT_REMEMBER_EXPIRE
         : process.env.JWT_EXPIRES_IN;
@@ -67,7 +68,10 @@ class AuthService {
           (member) => member?.user_id?.toString() === payload?._id?.toString()
         );
 
-        role = await Role_Master.findById(member_details?.role).lean();
+        [role, sub_role] = await Promise.all([
+          Role_Master.findById(member_details?.role).lean(),
+          Team_Role_Master.findById(member_details?.sub_role).lean(),
+        ]);
       }
 
       const token = jwt.sign(
@@ -81,7 +85,7 @@ class AuthService {
       return {
         token,
         user: payload,
-        workspace: { workspace, role: role?.name },
+        workspace: { workspace, role: role?.name, sub_role: sub_role?.name },
       };
     } catch (error) {
       logger.error(`Error while token generate: ${error}`);
@@ -91,7 +95,9 @@ class AuthService {
 
   tokenRegenerator = (token, workspace_id, user_id) => {
     try {
-      const decode = jwt.decode(token);
+      const cleanedToken = token.replace(/^Bearer\s+/i, "");
+      const decode = jwt.decode(cleanedToken);
+
       return jwt.sign(
         { id: user_id, workspace: workspace_id },
         process.env.JWT_SECRET_KEY,
@@ -177,11 +183,16 @@ class AuthService {
         is_deleted: false,
       }).lean();
 
-      if (user_exist && user_exist?.status === "signup_completed")
+      if (
+        user_exist &&
+        user_exist?.status === "signup_completed" &&
+        user_exist?.contact_number &&
+        user_exist?.no_of_people &&
+        user_exist?.profession_role
+      )
         return throwError(returnMessage("user", "userAlreadyExist"));
 
-      if (user_exist && user_exist?.status === "signup_incomplete")
-        return user_exist;
+      if (user_exist) return user_exist;
 
       if (!payload?.referral_code) {
         payload.referral_code = await this.referralCodeGenerator();
@@ -249,19 +260,16 @@ class AuthService {
         referral_code,
       } = payload;
 
-      validateRequestFields(payload, [
-        "email",
-        "first_name",
-        "last_name",
-        "password",
-      ]);
+      validateRequestFields(payload, ["email", "first_name", "last_name"]);
 
       if (!validateEmail(email))
         return throwError(returnMessage("auth", "invalidEmail"));
 
-      if (!passwordValidation(password))
-        return throwError(returnMessage("auth", "invalidPassword"));
-      password = await this.passwordEncryption({ password });
+      if (password) {
+        if (!passwordValidation(password))
+          return throwError(returnMessage("auth", "invalidPassword"));
+        password = await this.passwordEncryption({ password });
+      }
 
       const user_exist = await Authentication.findOne({
         email,
@@ -288,7 +296,7 @@ class AuthService {
 
       if (payload?.workspace_name) {
         await workspaceService.createWorkspace(
-          { workspace_name: payload?.workspace_name },
+          { workspace_name: payload?.workspace_name?.replace(/\s+/g, "-") },
           user_exist
         );
       }
@@ -304,7 +312,8 @@ class AuthService {
           no_of_people,
           contact_number,
           status: "signup_completed",
-        }
+        },
+        { new: true }
       );
 
       if (!payload?.referral_code) {
@@ -428,6 +437,51 @@ class AuthService {
       let unique_contact = true;
       if (contact_exist) unique_contact = false;
       return { unique_contact };
+    } catch (error) {
+      logger.error(`Error while checking the unique number: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  getEmailDetails = async (payload) => {
+    try {
+      validateRequestFields(payload, ["email"]);
+      const { email } = payload;
+
+      const user = await Authentication.findOne({
+        email,
+        is_deleted: false,
+      })
+        .populate("country city state")
+        .lean();
+
+      if (payload?.token) {
+        return {
+          first_name: user?.first_name,
+          last_name: user?.last_name,
+          email: user?.email,
+          status: user?.status,
+          password_set: user?.password ? true : false,
+          is_google_signup: user?.is_google_signup,
+          is_facebook_signup: user?.is_facebook_signup,
+          company_name: user?.company_name,
+          company_website: user?.company_website,
+          gst: user?.gst,
+          contact_number: user?.contact_number,
+          address: user?.address,
+          state: user?.state,
+          city: user?.city,
+          country: user?.country,
+          pincode: user?.pincode,
+        };
+      }
+      return {
+        email: user?.email,
+        status: user?.status,
+        password_set: user?.password ? true : false,
+        is_google_signup: user?.is_google_signup,
+        is_facebook_signup: user?.is_facebook_signup,
+      };
     } catch (error) {
       logger.error(`Error while checking the unique number: ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -915,6 +969,9 @@ class AuthService {
           returnMessage("auth", "dataNotFound"),
           statusCode.notFound
         );
+
+      if (user_exist?.status === "signup_incomplete")
+        return { user: user_exist };
 
       if (!user_exist?.password)
         return throwError(returnMessage("auth", "incorrectPassword"));
@@ -1476,6 +1533,17 @@ class AuthService {
       logger.error(
         `Error while creating the contact in the glide campaign: ${error}`
       );
+    }
+  };
+
+  getProfile = async (user) => {
+    try {
+      return await Authentication.findById(user?._id)
+        .select("-password")
+        .lean();
+    } catch (error) {
+      logger.error(`Error while fetching the profile: ${error}`);
+      return throwError(error?.message, error?.statusCode);
     }
   };
 }

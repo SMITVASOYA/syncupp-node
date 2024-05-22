@@ -86,7 +86,6 @@ exports.setupNightlyCronJob = async () => {
       .populate("role")
       .lean();
     expiredAccounts.forEach(async (item) => {
-      console.log(item);
       await notificationService.addNotification({
         module_name: "payment",
         action_name: "packageExpiredAlert",

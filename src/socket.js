@@ -52,7 +52,6 @@ exports.socket_connection = (http_server) => {
     // For user joined
     socket.on("ROOM", async (obj) => {
       logger.info(obj.id, 15);
-      console.log(obj.id);
       socket.join(obj.id);
 
       // this is used to fetch the group chat id to join that group chat id so they can receive the group chat messages

@@ -21,6 +21,10 @@ const workspaceSchema = new mongoose.Schema(
           ref: "role_master",
           required: true,
         },
+        sub_role: {
+          type: mongoose.Schema.ObjectId,
+          ref: "team_role_master",
+        },
         status: {
           type: String,
           enum: [
@@ -30,6 +34,8 @@ const workspaceSchema = new mongoose.Schema(
             "inactive",
             "deleted",
             "free_trial",
+            "rejected",
+            "requested",
           ],
           default: "confirm_pending",
         },
