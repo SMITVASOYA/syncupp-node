@@ -41,12 +41,13 @@ const paymentService = require("../services/paymentService");
 const PaymentService = new paymentService();
 const WorkspaceService = require("../services/workspaceService");
 const Workspace = require("../models/workspaceSchema");
+const Team_Role_Master = require("../models/masters/teamRoleSchema");
 const workspaceService = new WorkspaceService();
 
 class AuthService {
   tokenGenerator = async (payload) => {
     try {
-      let role;
+      let role, sub_role;
       const expiresIn = payload?.rememberMe
         ? process.env.JWT_REMEMBER_EXPIRE
         : process.env.JWT_EXPIRES_IN;
@@ -67,7 +68,10 @@ class AuthService {
           (member) => member?.user_id?.toString() === payload?._id?.toString()
         );
 
-        role = await Role_Master.findById(member_details?.role).lean();
+        [role, sub_role] = await Promise.all([
+          Role_Master.findById(member_details?.role).lean(),
+          Team_Role_Master.findById(member_details?.sub_role).lean(),
+        ]);
       }
 
       const token = jwt.sign(
@@ -81,7 +85,7 @@ class AuthService {
       return {
         token,
         user: payload,
-        workspace: { workspace, role: role?.name },
+        workspace: { workspace, role: role?.name, sub_role: sub_role?.name },
       };
     } catch (error) {
       logger.error(`Error while token generate: ${error}`);
@@ -447,7 +451,9 @@ class AuthService {
       const user = await Authentication.findOne({
         email,
         is_deleted: false,
-      }).lean();
+      })
+        .populate("country city state")
+        .lean();
 
       if (payload?.token) {
         return {
@@ -1527,6 +1533,17 @@ class AuthService {
       logger.error(
         `Error while creating the contact in the glide campaign: ${error}`
       );
+    }
+  };
+
+  getProfile = async (user) => {
+    try {
+      return await Authentication.findById(user?._id)
+        .select("-password")
+        .lean();
+    } catch (error) {
+      logger.error(`Error while fetching the profile: ${error}`);
+      return throwError(error?.message, error?.statusCode);
     }
   };
 }

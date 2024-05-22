@@ -113,7 +113,12 @@ class TeamMemberService {
       if (team_member_exist) {
         // check for the user already exist in the workspace
         const exist_in_workspace = await Workspace.findOne({
-          "members.user_id": team_member_exist?._id,
+          members: {
+            $elemMatch: {
+              user_id: team_member_exist?._id,
+              status: { $ne: "deleted" },
+            },
+          },
           is_deleted: false,
         }).lean();
 
@@ -188,16 +193,6 @@ class TeamMemberService {
           last_name: last_name?.toLowerCase(),
           contact_number,
         });
-        // check for the user already exist in the workspace
-        const exist_in_workspace = await Workspace.findOne({
-          "members.user_id": new_user?._id,
-          is_deleted: false,
-        }).lean();
-
-        if (exist_in_workspace)
-          return throwError(
-            returnMessage("workspace", "alreadyExistInWorkspace")
-          );
 
         let invitation_token = crypto.randomBytes(16).toString("hex");
         const link = `${process.env.REACT_APP_URL}/verify?workspace=${
@@ -257,56 +252,203 @@ class TeamMemberService {
   // Add the team member for the particular agency by client
   addClientTeam = async (payload, user) => {
     try {
-      const { email, first_name, last_name, agency_id, contact_number, role } =
-        payload;
-      if (!agency_id || agency_id === "")
-        return throwError(returnMessage("teamMember", "agencyIdRequired"));
+      const {
+        email,
+        first_name,
+        last_name,
+        contact_number,
+        company_name,
+        company_website,
+        gst,
+        address,
+        country,
+        city,
+        state,
+        pincode,
+      } = payload;
 
-      if (!role || role === "")
-        return throwError(returnMessage("teamMember", "roleRequired"));
+      const workspace_exist = await Workspace.findById(user?.workspace)
+        .where("is_deleted")
+        .equals(false)
+        .lean();
 
-      const agency_exist = await Agency.findById(agency_id).lean();
-      if (!agency_exist)
+      if (!workspace_exist)
         return throwError(
-          returnMessage("agency", "agencyNotFound"),
-          statusCode?.notFound
+          returnMessage("workspace", "workspaceNotFound"),
+          statusCode.notFound
         );
 
-      const [team_client_exist, team_role, team_auth_role] = await Promise.all([
-        Authentication.findOne({
-          email,
-          is_deleted: false,
-        })
-          .populate("role", "name")
-          .lean(),
-        Team_Role_Master.findOne({ name: "team_client" }).lean(),
+      const member_details = workspace_exist?.members?.find(
+        (member) => member?.user_id?.toString() === user?._id?.toString()
+      );
+      const user_role = await Role_Master.findById(member_details?.role).lean();
+
+      if (user_role?.name !== "client")
+        return throwError(
+          returnMessage("auth", "forbidden"),
+          statusCode?.forbidden
+        );
+
+      const [client_team_exist, role, configuration, plan] = await Promise.all([
+        Authentication.findOne({ email, is_deleted: false }).lean(),
         Role_Master.findOne({ name: "team_client" }).lean(),
+        Configuration.findOne({}).lean(),
+        // SubscriptionPlan.findById(user?.purchased_plan).lean(),
       ]);
 
-      if (!team_client_exist) {
-        const new_team_client = await Team_Client.create({
-          client_id: user?.reference_id,
-          agency_ids: [
-            { agency_id, status: "requested", created_by: user?.created_by },
-          ],
-          role: team_role?._id,
+      // need to work on this later
+      /* if (plan?.plan_type === "unlimited") {
+        const sheets = await SheetManagement.findOne({
+          agency_id: user?.reference_id,
+        }).lean();
+
+        if (sheets?.occupied_sheets?.length >= sheets?.total_sheets - 1)
+          return throwError(returnMessage("payment", "maxSheetsAllocated"));
+      } */
+
+      if (client_team_exist) {
+        // check for the user already exist in the workspace
+        const exist_in_workspace = await Workspace.findOne({
+          members: {
+            $elemMatch: {
+              user_id: client_team_exist?._id,
+              status: { $ne: "deleted" },
+            },
+          },
+          is_deleted: false,
+        }).lean();
+
+        if (exist_in_workspace)
+          return throwError(returnMessage("workspace", "teamMemeberExist"));
+
+        // as client can create the team member only invitation will be sent later
+        /* let invitation_token = crypto.randomBytes(16).toString("hex");
+        const link = `${process.env.REACT_APP_URL}/verify?workspace=${
+          workspace_exist?._id
+        }&email=${encodeURIComponent(
+          client_exist?.email
+        )}&token=${invitation_token}&workspace_name=${
+          workspace_exist?.name
+        }&first_name=${client_exist?.first_name}&last_name=${
+          client_exist?.last_name
+        }`;
+
+        const email_template = templateMaker("teamInvitaion.html", {
+          REACT_APP_URL: process.env.REACT_APP_URL,
+          SERVER_URL: process.env.SERVER_URL,
+          username:
+            capitalizeFirstLetter(client_exist?.first_name) +
+            " " +
+            capitalizeFirstLetter(client_exist?.last_name),
+          invitation_text: `You are invited to the ${
+            workspace_exist?.name
+          } workspace by ${
+            capitalizeFirstLetter(user?.first_name) +
+            " " +
+            capitalizeFirstLetter(user?.last_name)
+          }. Click on the below link to join the workspace.`,
+          link: link,
+          instagram: configuration?.urls?.instagram,
+          facebook: configuration?.urls?.facebook,
+          privacy_policy: configuration?.urls?.privacy_policy,
         });
 
-        const newMember = await Authentication.create({
-          first_name,
-          last_name,
-          name:
+        sendEmail({
+          email: client_exist?.email,
+          subject: returnMessage("auth", "invitationEmailSubject"),
+          message: email_template,
+        }); */
+
+        const members = [...workspace_exist.members];
+        members.push({
+          user_id: client_team_exist?._id,
+          role: role?._id,
+          client_id: user?._id,
+        });
+
+        await Workspace.findByIdAndUpdate(
+          workspace_exist?._id,
+          { members: members },
+          { new: true }
+        );
+        return;
+      } else {
+        if (contact_number) {
+          const unique_contact = await Authentication.findOne({
+            contact_number,
+            is_deleted: false,
+          }).lean();
+          if (unique_contact)
+            return throwError(returnMessage("user", "contactNumberExist"));
+        }
+
+        const new_user = await Authentication.create({
+          email,
+          first_name: first_name?.toLowerCase(),
+          last_name: last_name?.toLowerCase(),
+          contact_number,
+          company_name,
+          company_website,
+          address,
+          city,
+          country,
+          state,
+          pincode,
+          gst,
+        });
+
+        // as client can create the team member only
+        /* let invitation_token = crypto.randomBytes(16).toString("hex");
+        const link = `${process.env.REACT_APP_URL}/verify?workspace=${
+          workspace_exist?._id
+        }&email=${encodeURIComponent(
+          email
+        )}&token=${invitation_token}&workspace_name=${
+          workspace_exist?.name
+        }&first_name=${first_name}&last_name=${last_name}`;
+
+        const email_template = templateMaker("teamInvitation.html", {
+          REACT_APP_URL: process.env.REACT_APP_URL,
+          SERVER_URL: process.env.SERVER_URL,
+          username:
             capitalizeFirstLetter(first_name) +
             " " +
             capitalizeFirstLetter(last_name),
-          email: email?.toLowerCase(),
-          contact_number,
-          role: team_auth_role?._id,
-          reference_id: new_team_client?._id,
-          status: "confirm_pending",
+          invitation_text: `You are invited to the ${
+            workspace_exist?.name
+          } workspace by ${
+            capitalizeFirstLetter(user?.first_name) +
+            " " +
+            capitalizeFirstLetter(user?.last_name)
+          }. Click on the below link to join the workspace.`,
+          link: link,
+          instagram: configuration?.urls?.instagram,
+          facebook: configuration?.urls?.facebook,
+          privacy_policy: configuration?.urls?.privacy_policy,
         });
 
-        // ------------------  Notifications ----------------
+        sendEmail({
+          email: email,
+          subject: returnMessage("auth", "invitationEmailSubject"),
+          message: email_template,
+        }); */
+
+        const members = [...workspace_exist.members];
+        members.push({
+          user_id: new_user?._id,
+          role: role?._id,
+          client_id: user?._id,
+        });
+
+        await Workspace.findByIdAndUpdate(
+          workspace_exist?._id,
+          { members: members },
+          { new: true }
+        );
+        return;
+      }
+      // notification is pending to integrate and we will do it later
+      /*         // ------------------  Notifications ----------------
 
         await notificationService.addNotification({
           module_name: "general",
@@ -335,44 +477,7 @@ class TeamMemberService {
         });
 
         // ------------------  Notifications ----------------
-
-        return;
-      } else {
-        if (team_client_exist?.role?.name !== "team_client")
-          return throwError(returnMessage("auth", "emailExist"));
-
-        const team_member = await Team_Client.findById(
-          team_client_exist?.reference_id
-        ).lean();
-
-        team_member?.agency_ids?.forEach((agency, index) => {
-          if (
-            agency?.agency_id.toString() === agency_id &&
-            (agency?.status === "requested" || agency?.status === "confirmed")
-          ) {
-            return throwError(
-              returnMessage("teamMember", "agencyIdAlreadyExists")
-            );
-          } else {
-            team_member?.agency_ids.splice(index, 1);
-          }
-        });
-
-        const agency_ids = [
-          ...team_member.agency_ids,
-          { agency_id, status: "requested", created_by: user?.created_by },
-        ];
-
-        await Team_Client.findByIdAndUpdate(
-          team_client_exist?.reference_id,
-          {
-            agency_ids,
-          },
-          { new: true }
-        );
-      }
-
-      return;
+ */
     } catch (error) {
       logger.error(`Error While adding the Team member by client: ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -489,119 +594,54 @@ class TeamMemberService {
 
   // getMember Team Member
 
-  getMember = async (user_id, memberId) => {
+  getMember = async (member_id, user) => {
     try {
-      const teamMemberInfo = await Authentication.findOne(
-        {
-          _id: user_id,
-          is_deleted: false,
+      const workspace = await Workspace.findOne({
+        _id: user?.workspace,
+        members: {
+          $elemMatch: { user_id: member_id, status: { $ne: "deleted" } },
         },
-        { password: 0 }
-      )
-        .populate({
-          path: "role",
-          model: "role_master",
-          select: "-createdAt -updatedAt",
-        })
-        .lean();
+        is_deleted: false,
+      }).lean();
 
-      let memberOf;
-      let teamMemberSchemaName;
-      if (teamMemberInfo.role.name === "agency") {
-        memberOf = "agency_id";
-        teamMemberSchemaName = "team_agencies";
+      if (!workspace)
+        return throwError(
+          returnMessage("teamMember", "teamMemberNotFound"),
+          statusCode.notFound
+        );
+
+      const logged_user = workspace?.members?.find(
+        (member) => member?.user_id?.toString() === user?._id?.toString()
+      );
+
+      if (workspace?.created_by?.toString() !== user?._id?.toString()) {
+        const sub_role = await Team_Role_Master.findById(
+          logged_user?.sub_role
+        ).lean();
+
+        if (
+          sub_role?.name !== "admin" ||
+          workspace?.created_by?.toString() !== user?._id?.toString()
+        )
+          return throwError(
+            returnMessage("auth", "forbidden"),
+            statusCode.forbidden
+          );
       }
-      if (
-        teamMemberInfo.role.name === "client" ||
-        teamMemberInfo.role.name === "team_client" // this will use for the team cleint to provide the same access as a client
-      ) {
-        memberOf = "client_id";
-        teamMemberSchemaName = "team_clients";
-      }
-      if (teamMemberInfo.role.name === "team_agency") {
-        memberOf = "agency_id";
-        teamMemberSchemaName = "team_agencies";
-      }
 
-      const pipeLine = [
-        {
-          $match: {
-            _id: new ObjectId(memberId),
-            is_deleted: false,
-          },
-        },
+      const member_detail = workspace?.members?.find(
+        (member) => member?.user_id?.toString() === member_id?.toString()
+      );
+      const [member_auth, sub_role] = await Promise.all([
+        Authentication.findById(member_id)
+          .select("first_name last_name email contact_number")
+          .lean(),
+        Team_Role_Master.findById(member_detail?.sub_role)
+          .select("name")
+          .lean(),
+      ]);
 
-        {
-          $lookup: {
-            from: "role_masters",
-            localField: "role",
-            foreignField: "_id",
-            as: "user_type",
-            pipeline: [{ $project: { name: 1 } }],
-          },
-        },
-        {
-          $addFields: {
-            log_after_match: "$$ROOT", // Create a new field for logging
-          },
-        },
-        {
-          $unwind: { path: "$user_type", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $lookup: {
-            from: teamMemberSchemaName,
-            localField: "reference_id",
-            foreignField: "_id",
-            as: "member_data",
-            pipeline: [{ $project: { role: 1, [memberOf]: 1 } }],
-          },
-        },
-        {
-          $unwind: { path: "$member_data", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $lookup: {
-            from: "team_role_masters",
-            localField: "member_data.role",
-            foreignField: "_id",
-            as: "member_role",
-            pipeline: [{ $project: { name: 1 } }],
-          },
-        },
-
-        {
-          $project: {
-            _id: 1,
-            email: 1,
-            user_type: "$user_type.name",
-            [memberOf]: "$member_data." + memberOf,
-            reference_id: 1,
-            createdAt: 1,
-            updatedAt: 1,
-            first_name: 1,
-            last_name: 1,
-            contact_number: 1,
-            image_url: 1,
-            status: 1,
-            name: { $concat: ["$first_name", " ", "$last_name"] },
-            contact_number: 1,
-            member_role: {
-              $cond: {
-                if: { $eq: [{ $size: "$member_role" }, 0] },
-                then: "$$REMOVE",
-                else: { $arrayElemAt: ["$member_role", 0] },
-              },
-            },
-          },
-        },
-      ];
-
-      const teamMember = await Authentication.aggregate(pipeLine);
-      if (!teamMember) {
-        return throwError(returnMessage("teamMember", "invalidId"));
-      }
-      return teamMember;
+      return { ...member_auth, role: sub_role?.name };
     } catch (error) {
       logger.error(`Error while get team member, ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -952,7 +992,36 @@ class TeamMemberService {
 
   editMember = async (payload, team_member_id, user) => {
     try {
-      const team_member_exist = await Authentication.findById(team_member_id)
+      const { role } = payload;
+      const [workspace, sub_role] = await Promise.all([
+        Workspace.findById(user?.workspace).lean(),
+        Team_Role_Master.findOne({ name: role }).lean(),
+      ]);
+
+      if (workspace?.created_by?.toString() !== user?._id?.toString()) {
+        const sub_role = await Team_Role_Master.findById(
+          member_details?.sub_role
+        ).lean();
+
+        if (
+          sub_role?.name !== "admin" ||
+          workspace?.created_by?.toString() !== user?._id?.toString()
+        )
+          return throwError(
+            returnMessage("auth", "forbidden"),
+            statusCode.forbidden
+          );
+      }
+
+      await Workspace.findOneAndUpdate(
+        {
+          _id: user?.workspace,
+          "members.user_id": team_member_id,
+        },
+        { $set: { "members.$.sub_role": sub_role } }
+      );
+
+      /* const team_member_exist = await Authentication.findById(team_member_id)
         .populate("role", "name")
         .where("is_deleted")
         .ne(true)
@@ -1006,7 +1075,7 @@ class TeamMemberService {
           },
           { new: true }
         );
-      }
+      } */
     } catch (error) {
       logger.error(`Error while Team member Edit, ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -1065,7 +1134,12 @@ class TeamMemberService {
       const aggragate = [
         { $match: { _id: new mongoose.Types.ObjectId(user?.workspace) } },
         { $unwind: "$members" }, // Unwind the members array
-        { $match: { "members.role": role?._id } }, // Match the role ID
+        {
+          $match: {
+            "members.role": role?._id,
+            "members.status": { $ne: "deleted" },
+          },
+        },
         {
           $lookup: {
             from: "authentications", // The collection name of the users
@@ -1329,58 +1403,58 @@ class TeamMemberService {
     }
   };
 
-  // reject the client team member
-  rejectTeamMember = async (payload, agency) => {
-    try {
-      if (agency?.role?.name !== "agency")
-        return throwError(returnMessage("auth", "insufficientPermission"), 403);
+  // // reject the client team member
+  // rejectTeamMember = async (payload, agency) => {
+  //   try {
+  //     if (agency?.role?.name !== "agency")
+  //       return throwError(returnMessage("auth", "insufficientPermission"), 403);
 
-      let team_member_exist,
-        status = "rejected";
+  //     let team_member_exist,
+  //       status = "rejected";
 
-      if (payload?.status === "accept") status = "confirmed";
+  //     if (payload?.status === "accept") status = "confirmed";
 
-      // if (agency?.role?.name === "team_agency") {
-      //   const team_agency_detail = await Team_Agency.findById(
-      //     agency?.reference_id
-      //   )
-      //     .populate("role", "name")
-      //     .lean();
-      //   if (team_agency_detail?.role?.name === "admin") {
-      //     agency = await Authentication.findOne({
-      //       reference_id: team_agency_detail.agency_id,
-      //     }).lean();
-      //   }
-      // }
+  //     // if (agency?.role?.name === "team_agency") {
+  //     //   const team_agency_detail = await Team_Agency.findById(
+  //     //     agency?.reference_id
+  //     //   )
+  //     //     .populate("role", "name")
+  //     //     .lean();
+  //     //   if (team_agency_detail?.role?.name === "admin") {
+  //     //     agency = await Authentication.findOne({
+  //     //       reference_id: team_agency_detail.agency_id,
+  //     //     }).lean();
+  //     //   }
+  //     // }
 
-      team_member_exist = await Team_Client.findOne({
-        _id: payload?.id,
-        "agency_ids.agency_id": agency?.reference_id,
-        "agency_ids.status": "requested",
-      }).lean();
+  //     team_member_exist = await Team_Client.findOne({
+  //       _id: payload?.id,
+  //       "agency_ids.agency_id": agency?.reference_id,
+  //       "agency_ids.status": "requested",
+  //     }).lean();
 
-      if (!team_member_exist)
-        return throwError(
-          returnMessage("teamMember", "teamMemberNotFound"),
-          statusCode?.notFound
-        );
+  //     if (!team_member_exist)
+  //       return throwError(
+  //         returnMessage("teamMember", "teamMemberNotFound"),
+  //         statusCode?.notFound
+  //       );
 
-      await Team_Client.updateOne(
-        { _id: payload?.id, "agency_ids.agency_id": agency?.reference_id },
-        { $set: { "agency_ids.$.status": status } },
-        { new: true }
-      );
+  //     await Team_Client.updateOne(
+  //       { _id: payload?.id, "agency_ids.agency_id": agency?.reference_id },
+  //       { $set: { "agency_ids.$.status": status } },
+  //       { new: true }
+  //     );
 
-      if (payload?.status === "accept") {
-        await this.freeTrialMemberAdd(agency?.reference_id, payload?.id);
-      }
+  //     if (payload?.status === "accept") {
+  //       await this.freeTrialMemberAdd(agency?.reference_id, payload?.id);
+  //     }
 
-      return;
-    } catch (error) {
-      logger.error(`Error while rejecting the team member by agency: ${error}`);
-      return throwError(error?.message, error?.statusCode);
-    }
-  };
+  //     return;
+  //   } catch (error) {
+  //     logger.error(`Error while rejecting the team member by agency: ${error}`);
+  //     return throwError(error?.message, error?.statusCode);
+  //   }
+  // };
 
   // this function will used for the delete team member only for the client team
   deleteClientMember = async (payload) => {
@@ -1884,6 +1958,17 @@ class TeamMemberService {
     } catch (error) {
       logger.error(`Error while free trial member add: ${error}`);
       return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // below function is used to approve or reject the team member of the client
+  approveOrReject = async (member_id, user) => {
+    try {
+    } catch (error) {
+      logger.error(
+        `Error while approve or reject the client team member: ${error}`
+      );
+      return throwError(error?.messa);
     }
   };
 }

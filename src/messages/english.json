@@ -385,7 +385,8 @@
     "alreadyExistInWorkspace":"This user already exist in this workspace.",
     "invitationSend":"Invitation has been sent.",
     "invitationExpired":"Your invitation has been expired.",
-    "verified":"You have verified successfully."
+    "verified":"You have verified successfully.",
+    "teamMemeberExist":"This member is already exist in tis workspace."
   },
 
   "default": { "default": "Something went wrong." }

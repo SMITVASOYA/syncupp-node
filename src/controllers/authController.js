@@ -131,23 +131,12 @@ exports.citiesList = catchAsyncError(async (req, res, next) => {
 });
 
 exports.getProfile = catchAsyncError(async (req, res, next) => {
-  const user = req?.user;
-  let profile;
-  if (user?.role?.name === "agency") {
-    profile = await agencyService.getAgencyProfile(req.user);
-  } else if (user?.role?.name === "client") {
-    profile = await clientService.getClientDetail(req.user);
-  } else if (
-    user?.role?.name === "team_agency" ||
-    user?.role?.name === "team_client"
-  ) {
-    profile = await teamMemberService.getProfile(req.user);
-  }
+  const user_profile = await authService.getProfile(req.user);
   sendResponse(
     res,
     true,
     returnMessage("auth", "profileFetched"),
-    profile,
+    user_profile,
     statusCode.success
   );
 });

@@ -47,11 +47,10 @@ exports.login = catchAsyncError(async (req, res, next) => {
 });
 
 //  Get one Team Member
-
 exports.getMember = catchAsyncError(async (req, res, next) => {
   const teamMember = await teamMemberService.getMember(
-    req?.user?._id,
-    req?.params?.id
+    req?.params?.id,
+    req.user
   );
   sendResponse(
     res,

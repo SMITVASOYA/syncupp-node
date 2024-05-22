@@ -129,7 +129,6 @@ exports.validateRequestFields = (payload, fields) => {
 };
 
 exports.templateMaker = (file_name, payload) => {
-  console.log(__dirname);
   const templateData = fs.readFileSync(
     path.join(__dirname, "templates", file_name),
     "utf-8"

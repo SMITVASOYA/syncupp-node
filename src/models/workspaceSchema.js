@@ -35,6 +35,7 @@ const workspaceSchema = new mongoose.Schema(
             "deleted",
             "free_trial",
             "rejected",
+            "requested",
           ],
           default: "confirm_pending",
         },

@@ -92,7 +92,12 @@ class ClientService {
       if (client_exist) {
         // check for the user already exist in the workspace
         const exist_in_workspace = await Workspace.findOne({
-          "members.user_id": client_exist?._id,
+          members: {
+            $elemMatch: {
+              user_id: client_exist?._id,
+              status: { $ne: "deleted" },
+            },
+          },
           is_deleted: false,
         }).lean();
 
@@ -140,8 +145,7 @@ class ClientService {
         const members = [...workspace_exist.members];
         members.push({
           user_id: client_exist?._id,
-          role: role_for_auth?._id,
-          sub_role: team_role?._id,
+          role: role?._id,
           invitation_token: invitation_token,
         });
 
@@ -175,16 +179,6 @@ class ClientService {
           pincode,
           gst,
         });
-        // check for the user already exist in the workspace
-        const exist_in_workspace = await Workspace.findOne({
-          "members.user_id": new_user?._id,
-          is_deleted: false,
-        }).lean();
-
-        if (exist_in_workspace)
-          return throwError(
-            returnMessage("client", "clientIsAlreadyExistInWorkspace")
-          );
 
         let invitation_token = crypto.randomBytes(16).toString("hex");
         const link = `${process.env.REACT_APP_URL}/verify?workspace=${
@@ -498,225 +492,120 @@ class ClientService {
   };
 
   // Get the client ist for the Agency
-  clientList = async (payload, agency) => {
+  clientList = async (payload, user) => {
     try {
-      // if (agency?.role?.name === "team_agency") {
-      //   const team_agency_detail = await Team_Agency.findById(
-      //     agency?.reference_id
-      //   )
-      //     .populate("role", "name")
-      //     .lean();
-      //   if (team_agency_detail?.role?.name === "admin") {
-      //     agency = await Authentication.findOne({
-      //       reference_id: team_agency_detail?.agency_id,
-      //     })
-      //       .populate("role", "name")
-      //       .lean();
-      //   }
-      // }
-
-      // if (!payload?.pagination && !payload?.for_activity)
-      //   return await this.clientListWithoutPagination(agency);
-
-      // if (!payload?.pagination && payload?.for_activity)
-      //   return await this.clientListWithoutPaginationForActivity(agency);
-
-      // if (
-      //   payload.sort_field &&
-      //   (payload.sort_field === "company_name" ||
-      //     payload.sort_field === "company_website")
-      // ) {
-      //   payload.sort_field = `reference_id.${payload.sort_field}`;
-      // }
       const pagination = paginationObject(payload);
 
-      const role = await Role_Master.findOne({ name: "client" })
-        .select("_id")
-        .lean();
+      let search_obj = {},
+        filter_obj = {};
+      if (payload?.search && payload?.search !== "") {
+        search_obj["$or"] = [
+          { "user.first_name": { $regex: payload.search, $options: "i" } },
+          { "user.last_name": { $regex: payload.search, $options: "i" } },
+          { "user.email": { $regex: payload.search, $options: "i" } },
+          { status: { $regex: payload.search, $options: "i" } },
+          { sub_role: { $regex: payload.search, $options: "i" } },
+        ];
+      }
 
-      console.log(agency, "agency");
+      if (payload?.filter) {
+        const { filter } = payload;
 
-      const workspace = await Workspace.findById({
-        _id: agency?.workspace,
-      }).lean();
+        if (filter?.status && filter?.status !== "")
+          filter_obj.status = filter.status;
 
-      let client_ids = workspace?.members
-        ?.filter((member) => member?.role?.toString() === role?._id?.toString())
-        ?.map((member) => member?.user_id);
+        if (
+          filter?.date &&
+          filter?.date?.start_date &&
+          filter?.date?.end_date &&
+          filter?.date?.start_date !== "" &&
+          filter?.date?.end_date !== ""
+        ) {
+          const start_date = moment
+            .utc(filter?.date?.start_date, "DD-MM-YYYY")
+            .startOf("day");
+          const end_date = moment
+            .utc(filter?.date?.end_date, "DD-MM-YYYY")
+            .endOf("day");
+          filter_obj["$and"] = [
+            { joining_date: { $gte: new Date(start_date) } },
+            { joining_date: { $lte: new Date(end_date) } },
+          ];
+        }
+      }
 
-      const query_obj = {};
+      const [client_role, client_team_role] = await Promise.all([
+        Role_Master.findOne({ name: "client" }).select("_id").lean(),
+        Role_Master.findOne({ name: "team_client" }).select("_id").lean(),
+      ]);
 
-      const aggrage_array = [
-        { $match: { _id: { $in: client_ids }, is_deleted: false } },
+      const aggragate = [
+        { $match: { _id: new mongoose.Types.ObjectId(user?.workspace) } },
+        { $unwind: "$members" }, // Unwind the members array
+        {
+          $match: {
+            $or: [
+              { "members.role": client_role?._id },
+              { "members.role": client_team_role?._id },
+            ],
+            "members.status": { $ne: "deleted" },
+          },
+        },
         {
           $lookup: {
-            from: "workspaces",
-            let: { client_id: "$_id" },
+            from: "authentications", // The collection name of the users
+            localField: "members.user_id",
+            foreignField: "_id",
+            as: "user",
             pipeline: [
               {
-                $match: {
-                  $expr: { $in: ["$$client_id", "$members.user_id"] },
-                },
-              },
-              {
                 $project: {
-                  members: {
-                    $filter: {
-                      input: "$members",
-                      as: "member",
-                      cond: { $eq: ["$$member.user_id", "$$client_id"] },
-                    },
+                  first_name: 1,
+                  last_name: 1,
+                  name: {
+                    $concat: ["$first_name", " ", "$last_name"],
                   },
-                },
-              },
-              { $unwind: "$members" },
-              {
-                $project: {
-                  role: "$members.role",
-                  status: "$members.status",
+                  email: 1,
+                  company_name: 1,
+                  company_website: 1,
                 },
               },
             ],
-            as: "workspaceRoles",
           },
         },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } }, // Unwind the user details array
         {
           $lookup: {
-            from: "role_masters",
-            localField: "workspaceRoles.role",
+            from: "role_masters", // The collection name of the sub_roles
+            localField: "members.role",
             foreignField: "_id",
-            as: "roleDetails",
+            as: "role",
           },
         },
         {
+          $unwind: { path: "$role", preserveNullAndEmptyArrays: true },
+        }, // Unwind the sub_role details array
+        {
           $project: {
-            first_name: 1,
-            last_name: 1,
-            email: 1,
-            name: { $concat: ["$first_name", " ", "$last_name"] },
-            contact_number: 1,
-            company_name: 1,
-            company_website: 1,
-            createdAt: 1,
-            status: { $arrayElemAt: ["$workspaceRoles.status", 0] },
-            role: { $arrayElemAt: ["$roleDetails.name", 0] },
+            _id: 0,
+            user: "$user", // Get user details
+            role: "$role.name",
+            status: "$members.status",
+            client_id: "$members.client_id",
+            joining_date: "$members.joining_date",
           },
         },
-        { $match: query_obj },
+        { $match: filter_obj },
+        { $match: search_obj },
       ];
 
-      // const clients_ids = await Client.distinct("_id", {
-      //   agency_ids: {
-      //     $elemMatch: {
-      //       agency_id: agency?.reference_id,
-      //       status: { $ne: "deleted" },
-      //     },
-      //   },
-      // }).lean();
-
-      // if (payload?.search && payload?.search !== " ") {
-      //   query_obj["$or"] = [
-      //     {
-      //       first_name: { $regex: payload.search, $options: "i" },
-      //     },
-      //     {
-      //       last_name: { $regex: payload.search, $options: "i" },
-      //     },
-      //     {
-      //       email: { $regex: payload.search, $options: "i" },
-      //     },
-      //     {
-      //       name: { $regex: payload.search, $options: "i" },
-      //     },
-      //     {
-      //       contact_number: { $regex: payload.search, $options: "i" },
-      //     },
-      //     {
-      //       "reference_id.company_name": {
-      //         $regex: payload.search,
-      //         $options: "i",
-      //       },
-      //     },
-      //     {
-      //       "reference_id.company_website": {
-      //         $regex: payload.search,
-      //         $options: "i",
-      //       },
-      //     },
-      //     {
-      //       $and: [
-      //         { "reference_id.agency_ids.$.agency_id": agency?.reference_id },
-      //         {
-      //           "reference_id.agency_ids.$.status": {
-      //             $regex: payload.search,
-      //             $options: "i",
-      //           },
-      //         },
-      //       ],
-      //     },
-      //   ];
-      // }
-
-      // const aggrage_array = [
-      //   { $match: { reference_id: { $in: clients_ids }, is_deleted: false } },
-      //   {
-      //     $lookup: {
-      //       from: "clients",
-      //       localField: "reference_id",
-      //       foreignField: "_id",
-      //       as: "reference_id",
-      //       pipeline: [
-      //         {
-      //           $project: {
-      //             company_name: 1,
-      //             company_website: 1,
-      //             agency_ids: 1,
-      //             _id: 1,
-      //           },
-      //         },
-      //       ],
-      //     },
-      //   },
-      //   {
-      //     $unwind: { path: "$reference_id", preserveNullAndEmptyArrays: true },
-      //   },
-      //   {
-      //     $project: {
-      //       first_name: 1,
-      //       last_name: 1,
-      //       email: 1,
-      //       name: { $concat: ["$first_name", " ", "$last_name"] },
-      //       contact_number: 1,
-      //       createdAt: 1,
-      //       reference_id: {
-      //         company_name: 1,
-      //         company_website: 1,
-      //         agency_ids: 1,
-      //         _id: 1,
-      //       },
-      //     },
-      //   },
-      //   { $match: query_obj },
-      // ];
-
       const [clients, totalClients] = await Promise.all([
-        Authentication.aggregate(aggrage_array)
+        Workspace.aggregate(aggragate)
           .sort(pagination.sort)
           .skip(pagination.skip)
           .limit(pagination.result_per_page),
-        Authentication.aggregate(aggrage_array),
+        Workspace.aggregate(aggragate),
       ]);
-
-      // clients.forEach((client) => {
-      //   const agency_exists = client?.reference_id?.agency_ids?.find(
-      //     (ag) => ag?.agency_id?.toString() == agency?.reference_id
-      //   );
-      //   if (agency_exists) {
-      //     client["status"] = agency_exists?.status;
-      //     client.agency = agency_exists;
-      //   }
-      //   delete client?.reference_id?.agency_ids;
-      // });
 
       return {
         clients,
@@ -814,18 +703,14 @@ class ClientService {
 
   getClientDetail = async (client) => {
     try {
-      const [client_auth, client_data] = await Promise.all([
+      const [client_auth] = await Promise.all([
         Authentication.findById(client?._id)
           .select("-password -reset_password_token")
-          .lean(),
-        Client.findById(client?.reference_id)
-          .select("-agency_ids")
           .populate("city", "name")
           .populate("country", "name")
           .populate("state", "name")
           .lean(),
       ]);
-      client_auth["client"] = client_data;
       return client_auth;
     } catch (error) {
       logger.error(`Error while fetching client detail: ${error}`);
