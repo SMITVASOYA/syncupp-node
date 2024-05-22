@@ -58,7 +58,7 @@ exports.updateTask = catchAsyncError(async (req, res, next) => {
 });
 
 exports.deleteTask = catchAsyncError(async (req, res, next) => {
-  const deleteTask = await taskService.deleteTask(req?.body);
+  const deleteTask = await taskService.deleteTask(req?.body, req?.user);
   sendResponse(
     res,
     true,
@@ -94,7 +94,10 @@ exports.addTaskComment = catchAsyncError(async (req, res, next) => {
   );
 });
 exports.listTaskComment = catchAsyncError(async (req, res, next) => {
-  let listTaskComment = await taskService.listTaskComment(req?.params);
+  let listTaskComment = await taskService.listTaskComment(
+    req?.params,
+    req?.user
+  );
   sendResponse(
     res,
     true,

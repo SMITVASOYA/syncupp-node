@@ -2,9 +2,9 @@ const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
 const { returnMessage } = require("../utils/utils");
 const Section = require("../models/sectionSchema");
-const colorsData = require("../messages/colors.json");
+const colorsData = require("../messages/colorsCombinations.json");
 const Activity = require("../models/activitySchema");
-const colors = colorsData.colors;
+const colors = colorsData;
 
 class sectionService {
   // Add   Section
@@ -19,25 +19,60 @@ class sectionService {
       if (is_exist) {
         return throwError(returnMessage("section", "canNotBeCreated"));
       }
+      // const get_random_color = async () => {
+      //   const color_keys = Object.keys(colors);
+      //   let random_color_key;
+      //   let is_color = false;
+
+      //   do {
+      //     random_color_key =
+      //       color_keys[Math.floor(Math.random() * color_keys.length)];
+      //     const is_color_exist = await Section.findOne({
+      //       board_id: board_id,
+      //       color: ,
+      //       text_color:,
+      //     }).lean();
+
+      //     if (!is_color_exist) {
+      //       is_color = true;
+      //     }
+      //   } while (!is_color);
+
+      //   return colors[random_color_key];
+      // };
+
       const get_random_color = async () => {
-        const color_keys = Object.keys(colors);
-        let random_color_key;
-        let is_color = false;
+        try {
+          // Get an array of color keys
+          const color_keys = Object.keys(colors);
 
-        do {
-          random_color_key =
-            color_keys[Math.floor(Math.random() * color_keys.length)];
-          const is_color_exist = await Section.findOne({
-            board_id: board_id,
-            color: colors[random_color_key],
-          }).lean();
+          let random_color_key;
+          let is_color = false;
 
-          if (!is_color_exist) {
-            is_color = true;
-          }
-        } while (!is_color);
+          do {
+            // Select a random color key
+            random_color_key =
+              color_keys[Math.floor(Math.random() * color_keys.length)];
 
-        return colors[random_color_key];
+            // Check if the selected color combination exists in the database
+            const is_color_exist = await Section.findOne({
+              board_id: board_id,
+              color: colors[random_color_key].color,
+              text_color: colors[random_color_key].test_color,
+            }).lean();
+
+            // If the color combination doesn't exist, set is_color to true to exit the loop
+            if (!is_color_exist) {
+              is_color = true;
+            }
+          } while (!is_color);
+          console.log(colors[random_color_key]);
+          // Return the selected color combination
+          return colors[random_color_key];
+        } catch (error) {
+          console.error("Error occurred while fetching random color:", error);
+          return null;
+        }
       };
 
       const resolved_color = await get_random_color();
@@ -45,7 +80,8 @@ class sectionService {
         section_name,
         board_id,
         sort_order,
-        color: resolved_color,
+        color: resolved_color?.color,
+        test_color: resolved_color?.test_color,
         is_deletable: true,
       });
 
@@ -100,6 +136,7 @@ class sectionService {
       throwError(error?.message, error?.statusCode);
     }
   };
+
   // GET  Section
   getSection = async (payload) => {
     try {

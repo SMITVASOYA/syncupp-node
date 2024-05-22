@@ -21,9 +21,12 @@ const sectionSchema = new mongoose.Schema(
     },
     key: {
       type: String,
-      required: true,
     },
     color: {
+      type: String,
+      required: true,
+    },
+    test_color: {
       type: String,
       required: true,
     },

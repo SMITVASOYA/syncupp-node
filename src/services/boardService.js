@@ -67,7 +67,9 @@ class BoardService {
         member_id: member,
       }));
 
-      const board = await Board.findOne({ project_name: project_name }).lean();
+      const board = await Board.findOne({
+        project_name: lowercaseFirstLetter(project_name),
+      }).lean();
       if (board) {
         return throwError(returnMessage("board", "alreadyExist"));
       }
@@ -88,7 +90,7 @@ class BoardService {
 
       // Save Board
       const new_board = await Board.create({
-        project_name,
+        project_name: lowercaseFirstLetter(project_name),
         description,
         workspace_id: user.workspace,
         created_by: user?._id,
@@ -102,54 +104,56 @@ class BoardService {
         agency_id: agency_id,
       });
 
-      await Promise.all([
-        Section.create({
-          section_name: "Pending",
-          board_id: new_board?._id,
-          is_deletable: false,
-          sort_order: 1,
-          color: "#FBF0DE",
-          key: "pending",
-        }),
-        Section.create({
+      await Section.create({
+        section_name: "Pending",
+        board_id: new_board?._id,
+        is_deletable: false,
+        sort_order: 1,
+        color: "#FBF0DE",
+        key: "pending",
+        test_color: "#8C6825",
+      }),
+        await Section.create({
           section_name: "In Progress",
           board_id: new_board?._id,
           is_deletable: false,
           sort_order: 2,
           color: "#CBE3FB",
           key: "in_progress",
+          test_color: "#43688D",
         }),
-        Section.create({
+        await Section.create({
           section_name: "Overdue",
           board_id: new_board?._id,
           is_deletable: false,
           sort_order: 3,
           color: "#FFD4C6",
           key: "overdue",
+          test_color: "#AC2D2D",
         }),
-        Section.create({
+        await Section.create({
           section_name: "Completed",
           board_id: new_board?._id,
           is_deletable: false,
           key: "completed",
           sort_order: 4,
           color: "#E4F6D6",
+          test_color: "#527C31",
         }),
-      ]);
-
-      // ------------- Notifications -------------
-      await notificationService.addNotification(
-        {
-          module_name: "board",
-          members: payload?.members?.filter((item) => item !== user?._id),
-          project_name: lowercaseFirstLetter(project_name),
-          created_by_name:
-            capitalizeFirstLetter(user?.first_name) +
-            " " +
-            capitalizeFirstLetter(user?.last_name),
-        },
-        new_board?._id
-      );
+        // ------------- Notifications -------------
+        await notificationService.addNotification(
+          {
+            module_name: "board",
+            // workspace_id: user?.workspace,
+            members: payload?.members?.filter((item) => item !== user?._id),
+            project_name: lowercaseFirstLetter(project_name),
+            created_by_name:
+              capitalizeFirstLetter(user?.first_name) +
+              " " +
+              capitalizeFirstLetter(user?.last_name),
+          },
+          new_board?._id
+        );
 
       const member_send_mail = payload?.members?.filter(
         (item) => item !== user?._id
@@ -236,7 +240,9 @@ class BoardService {
       }));
 
       // check board name already exists
-      const board = await Board.findOne({ project_name: project_name }).lean();
+      const board = await Board.findOne({
+        project_name: lowercaseFirstLetter(project_name),
+      }).lean();
       if (
         board &&
         board?._id.toString() !== new ObjectId(board_id).toString()
@@ -345,6 +351,7 @@ class BoardService {
         await notificationService.addNotification(
           {
             module_name: "board",
+            workspace_id: user?.workspace,
             action_name: action,
             members: member_list?.filter(
               (item) => !elementsToRemove.includes(item)
@@ -546,18 +553,26 @@ class BoardService {
         },
         {
           $lookup: {
-            from: "role_masters",
-            localField: "member.role",
+            from: "workspaces",
+            localField: "member._id",
             foreignField: "_id",
-            as: "status_name",
+            as: "member_workspaces",
           },
         },
         {
           $unwind: {
-            path: "$status_name",
+            path: "$member_workspaces",
             preserveNullAndEmptyArrays: true,
           },
         },
+
+        {
+          $unwind: {
+            path: "$member_workspaces.members",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+
         {
           $project: {
             _id: 0,
@@ -584,6 +599,9 @@ class BoardService {
             },
             role: "$status_name.name",
             id: "$member._id",
+            first_name: "$member.first_name",
+            last_name: "$member.last_name",
+            profile_image: "$member.profile_image",
           },
         },
       ];
@@ -624,7 +642,6 @@ class BoardService {
             preserveNullAndEmptyArrays: true,
           },
         },
-
         {
           $lookup: {
             from: "role_masters",
