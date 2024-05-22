@@ -6,7 +6,7 @@ const {
   boardTemplate,
   lowercaseFirstLetter,
 } = require("../utils/utils");
-const { ObjectId } = require("mongoose");
+const mongoose = require("mongoose");
 const Authentication = require("../models/authenticationSchema");
 const Board = require("../models/boardSchema");
 const fs = require("fs");
@@ -61,7 +61,7 @@ class BoardService {
       // Do not allow duplicate
       payload.members = [
         ...new Set(payload?.members?.map((member) => member.toString())),
-      ].map((member) => new ObjectId(member));
+      ].map((member) => new mongoose.Types.ObjectId(member));
 
       const member_objects = payload?.members?.map((member) => ({
         member_id: member,
@@ -232,7 +232,7 @@ class BoardService {
       // Do not allow duplicate
       payload.members = [
         ...new Set(payload?.members?.map((member) => member.toString())),
-      ].map((member) => new ObjectId(member));
+      ].map((member) => new mongoose.Types.ObjectId(member));
 
       // Add agency_id to members if not already included
       const updated_members = payload?.members?.map((member) => ({
@@ -245,7 +245,8 @@ class BoardService {
       }).lean();
       if (
         board &&
-        board?._id.toString() !== new ObjectId(board_id).toString()
+        board?._id.toString() !==
+          new mongoose.Types.ObjectId(board_id).toString()
       ) {
         return throwError(returnMessage("board", "alreadyExist"));
       }
@@ -399,12 +400,13 @@ class BoardService {
 
   listBoards = async (search_obj, user) => {
     try {
+      console.log(user);
       const { skip = 0, limit = 5, all, agency_id, sort } = search_obj;
 
       let query = {
         ...((user?.role === "client" || user?.role === "team_client") &&
           agency_id && {
-            agency_id: new ObjectId(agency_id),
+            agency_id: new mongoose.Types.ObjectId(agency_id),
           }),
       };
 
@@ -421,7 +423,7 @@ class BoardService {
           {
             $match: {
               ...query,
-              workspace_id: new ObjectId(user?.workspace),
+              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
             },
           },
           {
@@ -459,12 +461,12 @@ class BoardService {
             project_name: -1,
           };
         }
-
+        console.log(query);
         const pipeline = [
           {
             $match: {
               ...query,
-              workspace_id: new ObjectId(user?.workspace),
+              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
             },
           },
           {
@@ -474,7 +476,10 @@ class BoardService {
                   input: "$members",
                   as: "member",
                   cond: {
-                    $eq: ["$$member.member_id", new ObjectId(user?._id)],
+                    $eq: [
+                      "$$member.member_id",
+                      new mongoose.Types.ObjectId(user?._id),
+                    ],
                   },
                 },
               },
@@ -531,7 +536,7 @@ class BoardService {
     try {
       const pipeline = [
         {
-          $match: { _id: new ObjectId(board_id) },
+          $match: { _id: new mongoose.Types.ObjectId(board_id) },
         },
         {
           $unwind: "$members",
@@ -617,7 +622,7 @@ class BoardService {
     try {
       const pipeline = [
         {
-          $match: { _id: new ObjectId(user.workspace) },
+          $match: { _id: new mongoose.Types.ObjectId(user.workspace) },
         },
 
         {
