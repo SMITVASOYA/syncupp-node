@@ -362,6 +362,7 @@
     "listFetched": "Board list fetched successfully.",
     "boardFetched": "Board fetched successfully.",
     "boardPinned": "Board pinned successfully.",
+    "boardUnPinned": "Board unpinned successfully.",
     "membersFetched": "Members fetched successfully.",
     "canNotRemove": "Cannot remove member associated with task.",
     "boardImageFetched": "Board images fetched successfully.",
@@ -399,18 +400,18 @@
 
   "workspace": {
     "workspaceAlreadyCreated": "You can create only one workspace.",
-    "duplicateWorkspaceName":"This workspace name already exist. Please choose another one.",
-    "nameMissing":"Workspace name is required.",
-    "workspacesFetched":"Workspaces fetched successfully.",
-    "workspaceNotFound":"Workspace does not exist.",
-    "workspaceRequired":"Workspace id is required.",
-    "alreadyExistInWorkspace":"This user already exist in this workspace.",
-    "invitationSend":"Invitation has been sent.",
-    "invitationExpired":"Your invitation has been expired.",
-    "verified":"You have verified successfully.",
-    "teamMemeberExist":"This member is already exist in tis workspace."
+    "duplicateWorkspaceName": "This workspace name already exist. Please choose another one.",
+    "nameMissing": "Workspace name is required.",
+    "workspacesFetched": "Workspaces fetched successfully.",
+    "workspaceNotFound": "Workspace does not exist.",
+    "workspaceRequired": "Workspace id is required.",
+    "alreadyExistInWorkspace": "This user already exist in this workspace.",
+    "invitationSend": "Invitation has been sent.",
+    "invitationExpired": "Your invitation has been expired.",
+    "verified": "You have verified successfully.",
+    "teamMemeberExist": "This member is already exist in tis workspace."
   },
-  
+
   "section": {
     "created": "Section created successfully.",
     "updated": "Section updated successfully.",
