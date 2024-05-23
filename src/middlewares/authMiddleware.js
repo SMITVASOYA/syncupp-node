@@ -145,15 +145,15 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
     if (!user) return throwError(returnMessage("auth", "unAuthorized"), 401);
     req.user = user;
     const workspace = await Workspace.findById(
-      decodedUserData.workspace
+      decodedUserData?.workspace
     ).lean();
     const userRole = workspace.members.find(
       (item) => item?.user_id?.toString() === decodedUserData?.id?.toString()
     );
     const findUserRole = await Role_Master.findById(userRole?.role).lean();
-    req.user["role"] = findUserRole.name;
+    req.user["role"] = findUserRole?.name;
     req.user["workspace"] = decodedUserData?.workspace;
-    if (findUserRole.name === "team_agency") {
+    if (findUserRole?.name === "team_agency") {
       const findUserSubRole = await Team_Role_Master.findById(
         userRole?.sub_role
       ).lean();
