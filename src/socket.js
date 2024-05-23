@@ -62,8 +62,8 @@ exports.socket_connection = (http_server) => {
       });
       group_ids.forEach((group_id) => socket.join(group_id.toString()));
       // for the Online status
-      await Authentication.findOneAndUpdate(
-        { reference_id: obj?.id },
+      await Authentication.findByIdAndUpdate(
+        obj?.id,
         { is_online: true },
         { new: true }
       );

@@ -2,16 +2,13 @@ const Chat = require("../models/chatSchema");
 const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
 const Authentication = require("../models/authenticationSchema");
-const Client = require("../models/clientSchema");
-const Team_Client = require("../models/teamClientSchema");
-const Team_Agency = require("../models/teamAgencySchema");
 const Notification = require("../models/notificationSchema");
-const { default: mongoose } = require("mongoose");
+const mongoose = require("mongoose");
 const { returnMessage } = require("../utils/utils");
-const Group_Chat = require("../models/groupChatSchema");
 const { eventEmitter } = require("../socket");
 const path = require("path");
 const fs = require("fs");
+const Workspace = require("../models/workspaceSchema");
 class ChatService {
   // this function is used to get hte history between 2 users
   chatHistory = async (payload, user) => {
@@ -25,6 +22,7 @@ class ChatService {
         ];
       }
       const chats = await Chat.find({
+        workspace_id: user?.workspace,
         $or: [
           {
             $and: [
@@ -71,7 +69,7 @@ class ChatService {
           $lookup: {
             from: "authentications",
             localField: "reactions.user",
-            foreignField: "reference_id",
+            foreignField: "_id",
             as: "reactions.user",
             pipeline: [
               {
@@ -85,14 +83,12 @@ class ChatService {
             ],
           },
         },
-
         {
           $unwind: {
             path: "$reactions.user",
             preserveNullAndEmptyArrays: true,
           },
         },
-
         {
           $project: {
             first_name: "$reactions.user.first_name",
@@ -136,225 +132,24 @@ class ChatService {
   // this function is used to fetched the all of the users where we have started the chat
   fetchUsersList = async (payload, user) => {
     try {
-      // below loop is used to get the unique users list where user had chat
+      const workspace = await Workspace.findById(user?.workspace).lean();
 
-      if (user?.role?.name === "agency") {
-        return await this.fetchUsersListForAgency(payload, user);
-      } else if (user?.role?.name === "client") {
-        return await this.fetchUsersListForClients(payload, user);
-      } else if (user?.role?.name === "team_agency") {
-        return await this.fetchUsersListForTeamAgency(payload, user);
-      } else if (user?.role?.name === "team_client") {
-        return await this.fetchUsersListForTeamClient(payload, user);
-      }
-    } catch (error) {
-      logger.error(`Error while fetching the users list: ${error}`);
-      return throwError(error?.message, error?.statusCode);
-    }
-  };
-
-  fetchUsersListForAgency = async (payload, user) => {
-    try {
-      let ids;
-      if (payload?.for === "client") {
-        const [clients_id, team_clients_id] = await Promise.all([
-          Client.distinct("_id", {
-            agency_ids: {
-              $elemMatch: {
-                agency_id: user?.reference_id,
-                status: "active",
-              },
-            },
-          }).lean(),
-          Team_Client.distinct("_id", {
-            agency_ids: {
-              $elemMatch: {
-                agency_id: user?.reference_id,
-                status: "confirmed",
-              },
-            },
-          }).lean(),
-        ]);
-        // combined the client and team client ids to get the email and name
-        ids = [...clients_id, ...team_clients_id];
-      } else if (payload?.for === "team") {
-        const team_agency_id = await Team_Agency.distinct("_id", {
-          agency_id: user?.reference_id,
-        }).lean();
-
-        ids = [...team_agency_id];
-      }
-      return await this.fetchChatusers(user, ids, payload);
-
-      // commented because of the duplicate code
-      // const [unread_messages, users] = await Promise.all([
-      //   Notification.find({
-      //     user_id: { $in: chat_users_ids },
-      //     type: "chat",
-      //     is_read: false,
-      //   }).lean(),
-      //   Authentication.find({
-      //     reference_id: { $in: chat_users_ids },
-      //     status: "confirmed",
-      //   })
-      //     .select("name first_name last_name email")
-      //     .lean(),
-      // ]);
-
-      // // it will used to get is there any messages that are un-seen
-      // users.forEach((usr) => {
-      //   const unread = unread_messages.some(
-      //     (noti) =>
-      //       noti?.from_user?.toString() === usr?.reference_id?.toString() &&
-      //       noti?.user_id?.toString() === user?.reference_id?.toString()
-      //   );
-
-      //   if (unread) user.unread = true;
-      //   else user.unread = false;
-
-      //   return;
-      // });
-
-      // return users;
-    } catch (error) {
-      logger.error(
-        `Error while fetching users list for the agency only: ${error}`
-      );
-      return throwError(error?.message, error?.statusCode);
-    }
-  };
-
-  fetchUsersListForClients = async (payload, user) => {
-    try {
-      let ids;
-      const client = await Client.findById(user?.reference_id).lean();
-      const agency_ids = client?.agency_ids?.map((agency) => {
-        if (agency?.status !== "pending") return agency?.agency_id;
+      const members_ids = workspace?.members?.map((member) => {
+        if (
+          member?.user_id?.toString() !== user?._id?.toString() &&
+          member?.status === "confirmed"
+        )
+          return member?.user_id;
       });
-      if (payload?.for === "agency") {
-        const team_agency_ids = await Team_Agency.distinct("_id", {
-          agency_id: { $in: agency_ids },
-        }).lean();
-        ids = [...agency_ids, ...team_agency_ids];
-      } else if (payload?.for === "team") {
-        // removed the agency team members from the combined
-        // const [team_agency_ids, team_client_ids] = await Promise.all([
-        //   Team_Agency.distinct("_id", {
-        //     agency_id: { $in: agency_ids },
-        //   }).lean(),
-        //   Team_Client.distinct("_id", { client_id: user?.reference_id }).lean(),
-        // ]);
-        // ids = [...team_agency_ids, ...team_client_ids];
 
-        const team_client_ids = await Team_Client.distinct("_id", {
-          client_id: user?.reference_id,
-        }).lean();
-
-        ids = [...team_client_ids];
-      }
-      return await this.fetchChatusers(user, ids, payload);
-    } catch (error) {
-      logger.error(
-        `Error while fetching users list for the Client only: ${error}`
-      );
-      return throwError(error?.message, error?.statusCode);
-    }
-  };
-
-  fetchUsersListForTeamAgency = async (payload, user) => {
-    try {
-      let ids = [];
-      const team_agency_detail = await Team_Agency.findById(
-        user?.reference_id
-      ).lean();
-      if (payload?.for === "team") {
-        const team_agency_ids = await Team_Agency.distinct("_id", {
-          agency_id: team_agency_detail?.agency_id,
-          _id: { $ne: team_agency_detail._id },
-        }).lean();
-        ids = [...team_agency_ids];
-        ids.push(team_agency_detail.agency_id);
-      } else if (payload?.for === "client") {
-        const [clients_id, team_clients_id] = await Promise.all([
-          Client.distinct("_id", {
-            agency_ids: {
-              $elemMatch: {
-                agency_id: team_agency_detail?.agency_id,
-                status: "active",
-              },
-            },
-          }).lean(),
-          Team_Client.distinct("_id", {
-            agency_ids: {
-              $elemMatch: {
-                agency_id: team_agency_detail?.agency_id,
-                status: "confirmed",
-              },
-            },
-          }).lean(),
-        ]);
-
-        ids = [...clients_id, ...team_clients_id];
-      }
-      return await this.fetchChatusers(user, ids, payload);
-    } catch (error) {
-      logger.error(
-        `Error while fetching users list for the team agency only: ${error}`
-      );
-      return throwError(error?.message, error?.statusCode);
-    }
-  };
-
-  fetchUsersListForTeamClient = async (payload, user) => {
-    try {
-      let ids = [];
-      const team_client_detail = await Team_Client.findById(
-        user?.reference_id
-      ).lean();
-
-      if (payload?.for === "team") {
-        const team_client_ids = await Team_Client.distinct("_id", {
-          client_id: team_client_detail?.client_id,
-          _id: { $ne: team_client_detail._id },
-        }).lean();
-        ids = [...team_client_ids];
-        ids.push(team_client_detail.client_id);
-      } else if (payload?.for === "agency") {
-        const agency_ids = team_client_detail?.agency_ids?.map((agency) => {
-          if (agency?.status !== "pending") return agency?.agency_id;
-        });
-
-        const team_agency_ids = await Team_Agency.distinct("_id", {
-          agency_id: { $in: agency_ids },
-        }).lean();
-
-        ids = [...agency_ids, ...team_agency_ids];
-      }
-      return await this.fetchChatusers(user, ids, payload);
-    } catch (error) {
-      logger.error(
-        `Error while fetching users list for the Team client only: ${error}`
-      );
-      return throwError(error?.message, error?.statusCode);
-    }
-  };
-
-  // below function is used for the fetch the all users list based on the last message and notification of unread messages
-  fetchChatusers = async (user, ids, payload) => {
-    try {
       const chats = await Chat.find({
+        workspace_id: workspace?._id,
         $or: [
           {
-            $and: [
-              { from_user: user?.reference_id },
-              { to_user: { $in: ids } },
-            ],
+            $and: [{ from_user: user?._id }, { to_user: { $in: members_ids } }],
           },
           {
-            $and: [
-              { from_user: { $in: ids } },
-              { to_user: user?.reference_id },
-            ],
+            $and: [{ from_user: { $in: members_ids } }, { to_user: user?._id }],
           },
         ],
         is_deleted: false,
@@ -365,13 +160,11 @@ class ChatService {
       let chat_users_ids = [];
       const last_message = [];
       chats?.forEach((chat) => {
-        if (chat?.from_user?.toString() === user?.reference_id?.toString()) {
+        if (chat?.from_user?.toString() === user?._id?.toString()) {
           chat_users_ids.push(chat?.to_user?.toString());
           last_message.push(chat);
           return;
-        } else if (
-          chat?.to_user?.toString() === user?.reference_id?.toString()
-        ) {
+        } else if (chat?.to_user?.toString() === user?._id?.toString()) {
           chat_users_ids.push(chat?.from_user?.toString());
           last_message.push(chat);
           return;
@@ -379,7 +172,7 @@ class ChatService {
         return;
       });
 
-      ids?.forEach((id) => {
+      members_ids?.forEach((id) => {
         if (!chat_users_ids.includes(id?.toString()))
           chat_users_ids.push(id?.toString());
       });
@@ -387,64 +180,52 @@ class ChatService {
       chat_users_ids = chat_users_ids.map(
         (id) => new mongoose.Types.ObjectId(id)
       );
-      let agencyObj = {
-        reference_id: { $in: chat_users_ids },
-        status: { $in: ["confirmed", "free_trial"] },
-      };
-      let queryObj = {};
+
+      let queryObj = { _id: { $in: chat_users_ids }, is_deleted: false };
+
       if (payload?.search && payload?.search !== "") {
-        queryObj = {
-          $or: [
-            {
-              name: {
-                $regex: payload.search.toLowerCase(),
-                $options: "i",
-              },
+        queryObj["$or"] = [
+          {
+            name: { $regex: payload.search.toLowerCase(), $options: "i" },
+          },
+          {
+            first_name: {
+              $regex: payload.search.toLowerCase(),
+              $options: "i",
             },
-            {
-              first_name: {
-                $regex: payload.search.toLowerCase(),
-                $options: "i",
-              },
+          },
+          {
+            last_name: {
+              $regex: payload.search.toLowerCase(),
+              $options: "i",
             },
-            {
-              last_name: {
-                $elemMatch: {
-                  $regex: payload.search.toLowerCase(),
-                  $options: "i",
-                },
-              },
-            },
-          ],
-        };
+          },
+        ];
       }
+
       const chatPipeline = [
-        {
-          $match: agencyObj,
-        },
         {
           $match: queryObj,
         },
-
         {
           $project: {
             first_name: 1,
             last_name: 1,
             image_url: 1,
-            name: 1,
+            name: { $concat: ["$first_name", " ", "$last_name"] },
             email: 1,
             is_online: 1,
-            created_by: 1,
-            reference_id: 1,
+            _id: 1,
             profile_image: 1,
             createdAt: 1,
             updatedAt: 1,
           },
         },
       ];
+
       const [unread_messages, users] = await Promise.all([
         Notification.find({
-          user_id: user?.reference_id,
+          user_id: user?._id,
           from_user: { $in: chat_users_ids },
           type: "chat",
           is_read: false,
@@ -456,18 +237,18 @@ class ChatService {
       users?.forEach((usr) => {
         const unread = unread_messages.some(
           (noti) =>
-            noti?.from_user?.toString() === usr?.reference_id?.toString() &&
-            noti?.user_id?.toString() === user?.reference_id?.toString()
+            noti?.from_user?.toString() === usr?._id?.toString() &&
+            noti?.user_id?.toString() === user?._id?.toString()
         );
         if (unread) usr["unread"] = true;
         else usr["unread"] = false;
 
         const last_chat = last_message.find(
           (message) =>
-            (message?.from_user?.toString() == user?.reference_id?.toString() &&
-              message?.to_user?.toString() == usr?.reference_id?.toString()) ||
-            (message?.to_user?.toString() == user?.reference_id?.toString() &&
-              message?.from_user?.toString() == usr?.reference_id?.toString())
+            (message?.from_user?.toString() == user?._id?.toString() &&
+              message?.to_user?.toString() == usr?._id?.toString()) ||
+            (message?.to_user?.toString() == user?._id?.toString() &&
+              message?.from_user?.toString() == usr?._id?.toString())
         );
 
         if (last_chat) usr["last_message_date"] = last_chat?.createdAt;
@@ -478,7 +259,7 @@ class ChatService {
 
       return users;
     } catch (error) {
-      logger.error(`Error while fetching chat users: ${error}`);
+      logger.error(`Error while fetching the users list: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
@@ -486,6 +267,7 @@ class ChatService {
   uploadImage = async (payload, file) => {
     try {
       const chat_obj = {
+        workspace_id: payload?.workspace_id,
         from_user: payload?.from_user,
         message_type: "image",
       };
@@ -501,10 +283,8 @@ class ChatService {
         receivers = [payload?.from_user, payload?.to_user];
       } else if (payload?.group_id) {
         chat_obj.group_id = payload?.group_id;
-        user_detail = await Authentication.findOne({
-          reference_id: payload?.from_user,
-        })
-          .select("first_name last_name reference_id profile_image")
+        user_detail = await Authentication.findById(payload?.from_user)
+          .select("first_name last_name profile_image")
           .lean();
         event_name = "GROUP_RECEIVED_IMAGE";
         receivers = payload?.group_id;
@@ -512,11 +292,7 @@ class ChatService {
 
       let new_message = await Chat.create(chat_obj);
       new_message = new_message.toJSON();
-      const socket_obj = {
-        ...new_message,
-        user_detail,
-        user_type: payload?.user_type,
-      };
+      const socket_obj = { ...new_message, user_detail };
 
       eventEmitter(event_name, socket_obj, receivers);
       return;
@@ -529,6 +305,7 @@ class ChatService {
   uploadDocument = async (payload, file) => {
     try {
       const chat_obj = {
+        workspace_id: payload?.workspace_id,
         from_user: payload?.from_user,
         message_type: "document",
       };
@@ -544,10 +321,8 @@ class ChatService {
         receivers = [payload?.from_user, payload?.to_user];
       } else if (payload?.group_id) {
         chat_obj.group_id = payload?.group_id;
-        user_detail = await Authentication.findOne({
-          reference_id: payload?.from_user,
-        })
-          .select("first_name last_name reference_id profile_image")
+        user_detail = await Authentication.findById(payload?.from_user)
+          .select("first_name last_name profile_image")
           .lean();
         event_name = "GROUP_RECEIVED_DOCUMENT";
         receivers = payload?.group_id;
@@ -555,11 +330,7 @@ class ChatService {
 
       let new_message = await Chat.create(chat_obj);
       new_message = new_message.toJSON();
-      const socket_obj = {
-        ...new_message,
-        user_detail,
-        user_type: payload?.user_type,
-      };
+      const socket_obj = { ...new_message, user_detail };
 
       eventEmitter(event_name, socket_obj, receivers);
 
@@ -573,6 +344,7 @@ class ChatService {
   uploadAudio = async (payload, file) => {
     try {
       const chat_obj = {
+        workspace_id: payload?.workspace_id,
         from_user: payload?.from_user,
         message_type: "audio",
       };
@@ -604,9 +376,7 @@ class ChatService {
         receivers = [payload?.from_user, payload?.to_user];
       } else if (payload?.group_id) {
         chat_obj.group_id = payload?.group_id;
-        user_detail = await Authentication.findOne({
-          reference_id: payload?.from_user,
-        })
+        user_detail = await Authentication.findById(payload?.from_user)
           .select("first_name last_name reference_id")
           .lean();
         event_name = "GROUP_RECEIVED_AUDIO";
@@ -615,11 +385,7 @@ class ChatService {
 
       let new_message = await Chat.create(chat_obj);
       new_message = new_message.toJSON();
-      const socket_obj = {
-        ...new_message,
-        user_detail,
-        user_type: payload?.user_type,
-      };
+      const socket_obj = { ...new_message, user_detail };
 
       eventEmitter(event_name, socket_obj, receivers);
 
@@ -636,7 +402,8 @@ class ChatService {
     return parts[parts.length - 1];
   };
 
-  FetchLatestChat = async (payload, user) => {
+  // removed as this is not a part of the second phase
+  /*  FetchLatestChat = async (payload, user) => {
     try {
       const { limit } = payload;
       const notifications = await Notification.find({
@@ -654,7 +421,6 @@ class ChatService {
         {
           $match: { _id: { $in: chatIds } },
         },
-
         {
           $lookup: {
             from: "authentications",
@@ -682,14 +448,12 @@ class ChatService {
             ],
           },
         },
-
         {
           $unwind: {
             path: "$from_user",
             preserveNullAndEmptyArrays: true,
           },
         },
-
         {
           $project: {
             first_name: "$from_user.first_name",
@@ -922,7 +686,7 @@ class ChatService {
       logger.error(`Error while fetch lastest chats: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
-  };
+  }; */
 }
 
 module.exports = ChatService;

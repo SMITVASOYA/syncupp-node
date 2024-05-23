@@ -74,7 +74,8 @@ exports.uploadAudio = catchAsyncError(async (req, res, next) => {
   sendResponse(res, true, undefined, {}, 200);
 });
 
-exports.fetchLatestChat = catchAsyncError(async (req, res, next) => {
+// removed as this is not a part of the 2nd phase
+/* exports.fetchLatestChat = catchAsyncError(async (req, res, next) => {
   const latest_chat_history = await chatService.FetchLatestChat(
     req.body,
     req.user
@@ -86,4 +87,4 @@ exports.fetchLatestChat = catchAsyncError(async (req, res, next) => {
     latest_chat_history,
     statusCode.success
   );
-});
+}); */

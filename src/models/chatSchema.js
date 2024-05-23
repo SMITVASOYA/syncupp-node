@@ -3,9 +3,13 @@ const { crm_connection } = require("../config/connection");
 
 const chat_schema = new mongoose.Schema(
   {
-    from_user: { type: mongoose.Schema.Types.ObjectId, required: true },
-    to_user: { type: mongoose.Schema.Types.ObjectId },
-    group_id: { type: mongoose.Schema.Types.ObjectId },
+    from_user: {
+      type: mongoose.Types.ObjectId,
+      ref: "authentication",
+      required: true,
+    },
+    to_user: { type: mongoose.Schema.Types.ObjectId, ref: "authentication" },
+    group_id: { type: mongoose.Schema.Types.ObjectId, ref: "group_chat" },
     message: { type: String },
     is_deleted: { type: Boolean, default: false },
     image_url: { type: String },
@@ -18,10 +22,15 @@ const chat_schema = new mongoose.Schema(
     audio_url: { type: String },
     reactions: [
       {
-        user: { type: mongoose.Schema.Types.ObjectId, required: true },
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "authentication",
+          required: true,
+        },
         emoji: { type: String, required: true },
       },
     ],
+    workspace_id: { type: mongoose.Schema.Types.ObjectId, ref: "workspaces" },
   },
   { timestamps: true }
 );

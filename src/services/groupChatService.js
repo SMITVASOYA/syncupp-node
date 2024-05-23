@@ -1,9 +1,6 @@
 const { throwError } = require("../helpers/errorUtil");
 const logger = require("../logger");
-const Authentication = require("../models/authenticationSchema");
-const Client = require("../models/clientSchema");
-const Team_Agency = require("../models/teamAgencySchema");
-const Team_Client = require("../models/teamClientSchema");
+
 const {
   returnMessage,
   returnNotification,
@@ -15,57 +12,74 @@ const Notification = require("../models/notificationSchema.js");
 const Chat = require("../models/chatSchema.js");
 const statusCode = require("../messages/statusCodes.json");
 const { default: mongoose } = require("mongoose");
+const Workspace = require("../models/workspaceSchema.js");
 
 class GroupChatService {
-  // this function is used to fetch the users list to create the group
-  // Agency can create Group with Client and Agency Team member
-  // Client can create Group with Agency and Client Team member
-  // Agency can create Group internally with Agency Team member
-  // Client can create Group internally with Client Team member
-
-  usersList = async (user) => {
+  usersList = async (payload, user) => {
     try {
-      let member_ids;
-      if (user?.role?.name === "agency") {
-        const [clients, agency_teams] = await Promise.all([
-          Client.distinct("_id", {
-            "agency_ids.agency_id": user?.reference_id,
-            "agency_ids.status": "active",
-          }),
-          Team_Agency.distinct("_id", {
-            agency_id: user?.reference_id,
-            is_deleted: false,
-          }),
-        ]);
-
-        member_ids = [...clients, ...agency_teams];
-      } else if (user?.role?.name === "client") {
-        const [client_details, client_teams] = await Promise.all([
-          Client.findById(user?.reference_id).lean(),
-          Team_Client.distinct("_id", { client_id: user?.reference_id }),
-        ]);
-
-        const agency_ids = [];
-
-        client_details?.agency_ids?.forEach((agency) => {
-          if (agency?.status === "active") {
-            agency_ids.push(agency?.agency_id);
-            return;
-          }
-          return;
-        });
-
-        member_ids = [...agency_ids, ...client_teams];
+      if (payload?.search && payload?.search !== "") {
+        search_obj["$or"] = [
+          { "user.first_name": { $regex: payload.search, $options: "i" } },
+          { "user.last_name": { $regex: payload.search, $options: "i" } },
+          { "user.email": { $regex: payload.search, $options: "i" } },
+        ];
       }
-
-      return await Authentication.find({
-        reference_id: { $in: member_ids },
-        is_deleted: false,
-        status: { $in: ["confirmed", "free_trial"] },
-      })
-        .populate("role", "name")
-        .select("first_name last_name email role reference_id")
-        .lean();
+      return await Workspace.aggregate([
+        { $match: { _id: new mongoose.Types.ObjectId(user?.workspace) } },
+        { $unwind: "$members" }, // Unwind the members array
+        {
+          $match: {
+            "members.status": "confirmed",
+            "members.user_id": { $ne: user?._id },
+          },
+        },
+        {
+          $lookup: {
+            from: "authentications", // The collection name of the users
+            localField: "members.user_id",
+            foreignField: "_id",
+            as: "user",
+            pipeline: [
+              {
+                $project: {
+                  first_name: 1,
+                  last_name: 1,
+                  name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                  email: 1,
+                  profile_image: 1,
+                },
+              },
+            ],
+          },
+        },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } }, // Unwind the user details array
+        {
+          $lookup: {
+            from: "role_masters", // The collection name of the sub_roles
+            localField: "members.role",
+            foreignField: "_id",
+            as: "role",
+          },
+        },
+        {
+          $unwind: { path: "$role", preserveNullAndEmptyArrays: true },
+        }, // Unwind the role details array
+        {
+          $project: {
+            _id: 1,
+            user_id: "$user._id",
+            first_name: "$user.first_name",
+            last_name: "$user.last_name",
+            name: "$user.name",
+            email: "$user.email",
+            profile_image: "$user.profile_image",
+            role: "$role.name",
+          },
+        },
+        { $match: search_obj },
+      ]);
     } catch (error) {
       logger.error(
         `Error While fetching the users list for the Group: ${error?.message}`
@@ -168,7 +182,8 @@ class GroupChatService {
         };
       }
       const group_ids = await Group_Chat.find({
-        members: { $in: [user?.reference_id] },
+        workspace_id: user?.workspace,
+        members: { $in: [user?._id] },
         is_deleted: false,
         ...queryObj,
       }).sort({ createdAt: -1 });
@@ -179,12 +194,13 @@ class GroupChatService {
 
       const [chat_messages, notifications] = await Promise.all([
         Chat.find({
+          workspace_id: user?.workspace,
           group_id: { $in: unique_groups_ids },
           is_deleted: false,
         }).sort({ createdAt: -1 }),
         Notification.find({
           type: "group",
-          user_id: user?.reference_id,
+          user_id: user?._id,
           group_id: { $in: unique_groups_ids },
           is_read: false,
           is_deleted: false,
@@ -239,11 +255,11 @@ class GroupChatService {
   chatHistory = async (payload, user) => {
     try {
       await Notification.updateMany(
-        { group_id: payload?.group_id, user_id: user?.reference_id },
+        { group_id: payload?.group_id, user_id: user?._id },
         { $set: { is_read: true } }
       );
       const pending_notification = await Notification.countDocuments({
-        user_id: user?.reference_id,
+        user_id: user?._id,
         is_read: false,
       });
 
@@ -252,8 +268,9 @@ class GroupChatService {
         {
           un_read_count: pending_notification,
         },
-        user?.reference_id
+        user?._id
       );
+
       return await Chat.aggregate([
         {
           $match: {
@@ -265,14 +282,13 @@ class GroupChatService {
           $lookup: {
             from: "authentications",
             localField: "from_user",
-            foreignField: "reference_id",
+            foreignField: "_id",
             as: "user_detail",
             pipeline: [
               {
                 $project: {
                   first_name: 1,
                   last_name: 1,
-                  reference_id: 1,
                   profile_image: 1,
                   _id: 1,
                 },
@@ -286,12 +302,11 @@ class GroupChatService {
         {
           $unwind: { path: "$reactions", preserveNullAndEmptyArrays: true },
         },
-
         {
           $lookup: {
             from: "authentications", // Collection name of your user model
             localField: "reactions.user",
-            foreignField: "reference_id",
+            foreignField: "_id",
             as: "reactions.user",
             pipeline: [
               {
@@ -311,7 +326,6 @@ class GroupChatService {
             preserveNullAndEmptyArrays: true,
           },
         },
-
         {
           $project: {
             first_name: "$reactions.user.first_name",
@@ -363,7 +377,7 @@ class GroupChatService {
     try {
       const group_exist = await Group_Chat.findOne({
         _id: payload?.group_id,
-        created_by: user?.reference_id,
+        created_by: user?._id,
         is_deleted: false,
       }).lean();
       if (!group_exist)
@@ -375,7 +389,7 @@ class GroupChatService {
       group_exist.members = group_exist?.members?.map((member) =>
         member?.toString()
       );
-      payload.members.push(user?.reference_id?.toString());
+      payload.members.push(user?._id?.toString());
       payload.members = [...new Set(payload?.members)];
 
       const new_users = [];
@@ -409,7 +423,7 @@ class GroupChatService {
 
         const notification_obj = {
           data_reference_id: updated_group?._id,
-          from_user: user?.reference_id,
+          from_user: user?._id,
           type: "group",
         };
 
@@ -428,7 +442,7 @@ class GroupChatService {
         );
 
         new_users.forEach(async (member) => {
-          if (member === user?.reference_id) return;
+          if (member === user?._id) return;
 
           notification_obj.user_id = member;
           notification_obj.message = notification_message;
@@ -473,7 +487,7 @@ class GroupChatService {
             from: "authentications",
             let: { members: "$members" },
             pipeline: [
-              { $match: { $expr: { $in: ["$reference_id", "$$members"] } } },
+              { $match: { $expr: { $in: ["$_id", "$$members"] } } },
               {
                 $lookup: {
                   from: "role_masters",
