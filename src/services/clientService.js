@@ -91,16 +91,11 @@ class ClientService {
 
       if (client_exist) {
         // check for the user already exist in the workspace
-        const exist_in_workspace = await Workspace.findOne({
-          _id: workspace_exist?._id,
-          members: {
-            $elemMatch: {
-              user_id: client_exist?._id,
-              status: { $ne: "deleted" },
-            },
-          },
-          is_deleted: false,
-        }).lean();
+        const exist_in_workspace = workspace_exist?.members?.find(
+          (member) =>
+            member?.user_id?.toString() === client_exist?._id?.toString() &&
+            member?.status !== "deleted"
+        );
 
         if (exist_in_workspace)
           return throwError(

@@ -112,16 +112,11 @@ class TeamMemberService {
 
       if (team_member_exist) {
         // check for the user already exist in the workspace
-        const exist_in_workspace = await Workspace.findOne({
-          members: {
-            $elemMatch: {
-              user_id: team_member_exist?._id,
-              status: { $ne: "deleted" },
-            },
-          },
-          _id: workspace_exist?._id,
-          is_deleted: false,
-        }).lean();
+        const exist_in_workspace = workspace_exist?.members?.find(
+          (member) =>
+            member?.user_id?.toString() ===
+              team_member_exist?._id?.toString() && member?.status !== "deleted"
+        );
 
         if (exist_in_workspace)
           return throwError(
@@ -289,10 +284,9 @@ class TeamMemberService {
           statusCode?.forbidden
         );
 
-      const [client_team_exist, role, configuration, plan] = await Promise.all([
+      const [client_team_exist, role, plan] = await Promise.all([
         Authentication.findOne({ email, is_deleted: false }).lean(),
         Role_Master.findOne({ name: "team_client" }).lean(),
-        Configuration.findOne({}).lean(),
         // SubscriptionPlan.findById(user?.purchased_plan).lean(),
       ]);
 
@@ -308,19 +302,13 @@ class TeamMemberService {
 
       if (client_team_exist) {
         // check for the user already exist in the workspace
-        const exist_in_workspace = await Workspace.findOne({
-          members: {
-            $elemMatch: {
-              user_id: client_team_exist?._id,
-              $or: [
-                { status: { $ne: "deleted" } },
-                { status: { $ne: "rejected" } },
-              ],
-            },
-          },
-          _id: workspace_exist?._id,
-          is_deleted: false,
-        }).lean();
+        const exist_in_workspace = workspace_exist?.members?.find(
+          (member) =>
+            member?.user_id?.toString() ===
+              client_team_exist?._id?.toString() &&
+            member?.status !== "deleted" &&
+            member?.status !== "rejected"
+        );
 
         if (exist_in_workspace)
           return throwError(returnMessage("workspace", "teamMemeberExist"));
