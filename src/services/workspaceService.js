@@ -126,7 +126,9 @@ class WorkspaceService {
       const [created, invited] = await Promise.all([
         Workspace.find({ created_by: user?._id, is_deleted: false }).lean(),
         Workspace.find({
-          "members.user_id": user?._id,
+          members: {
+            $elemMatch: { user_id: user?._id, status: { $ne: "deleted" } },
+          },
           is_deleted: false,
           created_by: { $ne: user?._id },
         })
