@@ -136,17 +136,28 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
       process.env.JWT_SECRET_KEY
     );
 
-    const user = await Authentication.findById(decodedUserData.id)
-      .where("is_deleted")
-      .equals("false")
-      .select("-password")
-      .lean();
+    const [user, workspace] = await Promise.all([
+      Authentication.findById(decodedUserData.id)
+        .where("is_deleted")
+        .equals("false")
+        .select("-password")
+        .lean(),
+      Workspace.findOne({
+        _id: decodedUserData?.workspace,
+        is_deleted: false,
+        members: {
+          $elemMatch: {
+            user_id: decodedUserData.id,
+            status: { $ne: "deleted" },
+          },
+        },
+      }).lean(),
+    ]);
 
-    if (!user) return throwError(returnMessage("auth", "unAuthorized"), 401);
+    if (!user || !workspace)
+      return throwError(returnMessage("auth", "unAuthorized"), 401);
+
     req.user = user;
-    const workspace = await Workspace.findById(
-      decodedUserData?.workspace
-    ).lean();
     const userRole = workspace?.members?.find(
       (item) => item?.user_id?.toString() === decodedUserData?.id?.toString()
     );

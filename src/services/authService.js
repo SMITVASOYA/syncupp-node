@@ -57,7 +57,9 @@ class AuthService {
       }).lean();
       if (!workspace) {
         workspace = await Workspace.findOne({
-          "members.user_id": payload?._id,
+          members: {
+            $elemMatch: { user_id: payload?._id, status: { $ne: "deleted" } },
+          },
           is_deleted: false,
         })
           .sort({ "members.joining_date": -1 })
