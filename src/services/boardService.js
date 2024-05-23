@@ -10,7 +10,7 @@ const mongoose = require("mongoose");
 const Authentication = require("../models/authenticationSchema");
 const Board = require("../models/boardSchema");
 const fs = require("fs");
-const Activity = require("../models/activitySchema");
+const Task = require("../models/taskSchema");
 const NotificationService = require("./notificationService");
 const sendEmail = require("../helpers/sendEmail");
 const Workspace = require("../models/workspaceSchema");
@@ -271,7 +271,7 @@ class BoardService {
           .includes(String(member?.member_id));
         if (!is_include) {
           removed_member.push(member?.member_id);
-          const task = await Activity.findOne({
+          const task = await Task.findOne({
             board_id: board_id,
             assign_to: { $in: [member?.member_id] },
           });
@@ -738,7 +738,7 @@ class BoardService {
           board_details.agency_id.toString() !== member_id.toString() &&
           board_details.created_by.toString() !== member_id.toString()
         ) {
-          const task = await Activity.findOne({
+          const task = await Task.findOne({
             board_id: board_id,
             assign_to: { $in: [member_id] },
           });
