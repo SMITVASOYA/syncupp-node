@@ -4518,42 +4518,48 @@ exports.invoiceTemplate = (invoiceData) => {
                                         text-align: right;
                                         ">
                                     <li></li>
-                                    <li>${
+                                    <li style="text-transform: capitalize;">${
+                                      invoiceData?.from?.agency_full_name
+                                        ? invoiceData?.from?.agency_full_name +
+                                          ","
+                                        : "-"
+                                    }</li>
+                                    <li style="text-transform: capitalize;">${
                                       invoiceData?.from?.company_name
                                         ? invoiceData?.from?.company_name + ","
-                                        : `&nbsp;`
+                                        : "-"
                                     }</li>
 
-                                    <li>
+                                    <li style="text-transform: capitalize;">
                                     ${
                                       invoiceData?.from?.address
                                         ? invoiceData?.from?.address + ","
-                                        : `&nbsp;`
+                                        : "-"
                                     }${
     invoiceData?.from?.city?.name
       ? invoiceData?.from?.city?.name + ","
       : `&nbsp;`
   }
                                     </li>
-                                    <li>${
+                                    <li style="text-transform: capitalize;">${
                                       invoiceData?.from?.state?.name
                                         ? invoiceData?.from?.state?.name + ","
-                                        : `&nbsp;`
+                                        : "-"
                                     } ${
     invoiceData?.from?.pincode ? invoiceData?.from?.pincode + "," : `&nbsp;`
   }</li>
-                                    <li>${
+                                    <li style="text-transform: capitalize;">${
                                       invoiceData?.from?.country?.name
                                         ? invoiceData?.from?.country?.name + ","
-                                        : `&nbsp;`
+                                        : "-"
                                     }</li>
-                                    <li>
+                                    <li >
                                       <span style="font-weight: bold;">M :</span>
                                        ${
                                          invoiceData?.from?.contact_number
                                            ? invoiceData?.from?.contact_number +
                                              ","
-                                           : `&nbsp;`
+                                           : "-"
                                        }
                                     </li>
                                   </ul>
@@ -4606,36 +4612,34 @@ exports.invoiceTemplate = (invoiceData) => {
                                                                                 font-size: 14px;
                                                                                 text-align: left;
                                                                                 ">
-                                          <li>${
+                                          <li style="text-transform: capitalize;">${
                                             invoiceData?.to?.client_full_name
                                               ? invoiceData?.to
                                                   ?.client_full_name + ","
-                                              : `&nbsp;`
+                                              : "-"
                                           }</li>
                                          
 
-                                          <li>
-                                          ${
-                                            invoiceData?.to?.address ?? `&nbsp;`
-                                          }${
-    invoiceData?.to?.city?.name ? invoiceData?.to?.city?.name + "," : `&nbsp;`
+                                          <li style="text-transform: capitalize;">
+                                          ${invoiceData?.to?.address ?? "-"}${
+    invoiceData?.to?.city?.name ? invoiceData?.to?.city?.name + "," : "-"
   }
                                           </li>
-                                          <li>${
+                                          <li style="text-transform: capitalize;">${
                                             invoiceData?.to?.state?.name
                                               ? invoiceData?.to?.state?.name +
                                                 ","
-                                              : `&nbsp;`
+                                              : "-"
                                           } ${
-    invoiceData?.to?.pincode ? invoiceData?.to?.pincode + "," : `&nbsp;`
+    invoiceData?.to?.pincode ? invoiceData?.to?.pincode + "," : "-"
   }</li>
-                                          <li>${
+                                          <li style="text-transform: capitalize;">${
                                             invoiceData?.to?.country?.name
                                               ? invoiceData?.to?.country?.name +
                                                 ","
-                                              : `&nbsp;`
+                                              : "-"
                                           }</li>
-                                          <li>
+                                          <li style="text-transform: capitalize;">
                                             <span style="font-weight: bold;">M :</span>
                                            ${
                                              invoiceData?.to?.contact_number

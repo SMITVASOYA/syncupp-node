@@ -4,9 +4,10 @@ const { crm_connection } = require("../config/connection");
 const invoiceSchema = new mongoose.Schema(
   {
     invoice_number: { type: String, required: true },
-    client_id: { type: mongoose.Types.ObjectId, ref: "client", required: true },
+    client_id: { type: mongoose.Types.ObjectId, ref: "authentication" },
     due_date: { type: Date, required: true },
     invoice_date: { type: Date, required: true },
+    invoice_logo: { type: String },
     status: {
       type: mongoose.Types.ObjectId,
       ref: "invoice_status_master",
@@ -14,7 +15,12 @@ const invoiceSchema = new mongoose.Schema(
     },
     agency_id: {
       type: mongoose.Types.ObjectId,
-      ref: "agency",
+      ref: "authentication",
+      required: true,
+    },
+    workspace_id: {
+      type: mongoose.Types.ObjectId,
+      ref: "workspace",
       required: true,
     },
 

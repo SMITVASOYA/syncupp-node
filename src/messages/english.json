@@ -158,7 +158,7 @@
     "downloadPDF": "Download PDF successfully.",
     "invoiceSubject": "Your Invoice - ",
     "invoiceOverdue": "Your Invoice date overdue - ",
-    "invoicePaid": "Invoice paid - ",
+    "invoicePaid": "Invoice status updated",
     "invalidDueDate": "Invoice due date should not be less than invoice date.",
     "currencyListFetched": "Currency list fetched.",
     "currencyAdded": "Currency added."
