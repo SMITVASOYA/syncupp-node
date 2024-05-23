@@ -112,8 +112,8 @@ class WorkspaceService {
             },
           },
           { new: true }
-        )
-      ])
+        ),
+      ]);
       return;
     } catch (error) {
       logger.error(`Error while creating the workspace: ${error}`);
@@ -134,7 +134,7 @@ class WorkspaceService {
           .lean(),
       ]);
       const workspaces = [...created, ...invited];
-      workspaces[0].default_workspace = true;
+      if (workspaces.length > 0) workspaces[0].default_workspace = true;
       return workspaces;
     } catch (error) {
       logger.error(`Error while fetching the workspaces: ${error}`);

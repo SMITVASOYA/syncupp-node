@@ -168,8 +168,7 @@ class TeamMemberService {
         // need to remove the user if the user is added before and deleted
         workspace_exist.members = workspace_exist?.members?.filter(
           (member) =>
-            member?.user_id?.toString() !== team_member_exist?._id &&
-            member?.status === "deleted"
+            member?.user_id?.toString() !== team_member_exist?._id?.toString()
         );
 
         const members = [...workspace_exist.members];
@@ -240,9 +239,7 @@ class TeamMemberService {
 
         // need to remove the user if the user is added before and deleted
         workspace_exist.members = workspace_exist?.members?.filter(
-          (member) =>
-            member?.user_id?.toString() !== new_user?._id &&
-            member?.status === "deleted"
+          (member) => member?.user_id?.toString() !== new_user?._id?.toString()
         );
         const members = [...workspace_exist.members];
         members.push({
@@ -368,8 +365,7 @@ class TeamMemberService {
         // need to remove the user if the user is added before and deleted
         workspace_exist.members = workspace_exist?.members?.filter(
           (member) =>
-            member?.user_id?.toString() !== client_team_exist?._id &&
-            (member?.status === "deleted" || member?.status === "rejected")
+            member?.user_id?.toString() !== client_team_exist?._id?.toString()
         );
         const members = [...workspace_exist.members];
         members.push({
@@ -439,9 +435,7 @@ class TeamMemberService {
         }); */
 
         workspace_exist.members = workspace_exist?.members?.filter(
-          (member) =>
-            member?.user_id?.toString() !== new_user?._id &&
-            (member?.status === "deleted" || member?.status === "rejected")
+          (member) => member?.user_id?.toString() !== new_user?._id?.toString()
         );
         const members = [...workspace_exist.members];
         members.push({
@@ -528,15 +522,17 @@ class TeamMemberService {
       if (!member_exist)
         return throwError(returnMessage("workspace", "invitationExpired"));
       const status = accept ? "confirmed" : "rejected";
+
       await Workspace.findOneAndUpdate(
-        { _id: workspace_exist?._id, "members.user_id": member_exist?._id },
+        { _id: workspace_exist?._id, "members.user_id": member_exist?.user_id },
         {
           $set: {
-            "members.$.invitation_token": undefined,
+            "members.$.invitation_token": null,
             "members.$.joining_date": new Date(),
             "members.$.status": status,
           },
-        }
+        },
+        { new: true }
       );
 
       if (accept) {

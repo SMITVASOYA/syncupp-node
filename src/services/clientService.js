@@ -146,8 +146,7 @@ class ClientService {
         // need to remove the user if the user is added before and deleted
         workspace_exist.members = workspace_exist?.members?.filter(
           (member) =>
-            member?.user_id?.toString() !== client_exist?._id &&
-            member?.status === "deleted"
+            member?.user_id?.toString() !== client_exist?._id?.toString()
         );
 
         const members = [...workspace_exist.members];
@@ -233,9 +232,7 @@ class ClientService {
 
         // need to remove the user if the user is added before and deleted
         workspace_exist.members = workspace_exist?.members?.filter(
-          (member) =>
-            member?.user_id?.toString() !== new_user?._id &&
-            member?.status === "deleted"
+          (member) => member?.user_id?.toString() !== new_user?._id?.toString()
         );
 
         const members = [...workspace_exist.members];

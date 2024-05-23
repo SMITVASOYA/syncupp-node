@@ -147,7 +147,7 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
     const workspace = await Workspace.findById(
       decodedUserData?.workspace
     ).lean();
-    const userRole = workspace.members.find(
+    const userRole = workspace?.members?.find(
       (item) => item?.user_id?.toString() === decodedUserData?.id?.toString()
     );
     const findUserRole = await Role_Master.findById(userRole?.role).lean();
