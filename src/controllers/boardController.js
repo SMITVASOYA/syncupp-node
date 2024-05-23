@@ -76,7 +76,10 @@ exports.changePinStatus = catchAsyncError(async (req, res, next) => {
   sendResponse(
     res,
     true,
-    returnMessage("board", "boardPinned"),
+    returnMessage(
+      "board",
+      req?.body?.is_pinned ? "boardPinned" : "boardUnPinned"
+    ),
     null,
     statusCode.success
   );

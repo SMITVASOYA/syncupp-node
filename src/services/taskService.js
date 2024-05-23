@@ -208,8 +208,8 @@ class TaskService {
       } else if (user?.role === "client") {
         queryObj = {
           is_deleted: false,
-          client_id: user._id,
-          agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
+          assign_to: user?._id,
+          // agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
         };
       } else if (user?.role === "team_agency") {
         const teamRole = await Team_Agency.findOne({
@@ -230,8 +230,8 @@ class TaskService {
       } else if (user?.role === "team_client") {
         queryObj = {
           is_deleted: false,
-          client_id: user._id,
-          agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
+          // client_id: user._id,
+          // agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
         };
       }
       const pagination = paginationObject(searchObj);
@@ -266,7 +266,7 @@ class TaskService {
         if (searchObj?.filter === "my_task") {
           filter["$match"] = {
             ...filter["$match"],
-            assign_to: { $in: user?._id },
+            assign_to: user?._id,
           };
         }
         // Filter for tasks due this week
@@ -1451,14 +1451,28 @@ class TaskService {
     try {
       const { status } = payload;
       let update_status = status;
-      // let current_activity = await Task.findById(id).lean();
+      let current_activity = await Task.findById(id).lean();
       // let current_status = current_activity.activity_status;
+
+      const check_existing_status = await Section.findOne({
+        _id: current_activity?.activity_status,
+      }).lean();
+
+      if (check_existing_status?.key === "completed") {
+        return throwError(returnMessage("activity", "CannotUpdate"));
+      }
+
+      const get_complete_status = await Section.findOne({
+        _id: update_status,
+        key: "completed",
+      }).lean();
       const updateTasks = await Task.findByIdAndUpdate(
         {
           _id: id,
         },
         {
           activity_status: update_status,
+          ...(get_complete_status && { mark_as_done: true }),
         },
         { new: true, useFindAndModify: false }
       );
