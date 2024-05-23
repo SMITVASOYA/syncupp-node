@@ -366,6 +366,7 @@ class TeamMemberService {
           user_id: client_team_exist?._id,
           role: role?._id,
           client_id: user?._id,
+          status: "requested",
         });
 
         await Workspace.findByIdAndUpdate(
@@ -440,6 +441,7 @@ class TeamMemberService {
           user_id: new_user?._id,
           role: role?._id,
           client_id: user?._id,
+          status: "requested",
         });
 
         await Workspace.findByIdAndUpdate(
@@ -520,7 +522,7 @@ class TeamMemberService {
         return throwError(returnMessage("workspace", "invitationExpired"));
       const status = accept ? "confirmed" : "rejected";
       await Workspace.findOneAndUpdate(
-        { _id: workspace_exist?._id, "members._id": member_exist?._id },
+        { _id: workspace_exist?._id, "members.user_id": member_exist?._id },
         {
           $set: {
             "members.$.invitation_token": undefined,
@@ -990,6 +992,70 @@ class TeamMemberService {
     }
   };
 
+  // this is only used to delete the client team member
+  deleteMemberByClient = async (payload, user) => {
+    try {
+      const { teamMemberIds } = payload;
+      // pending to implement when we remove the team members and the tasks are assigned and pending set
+      const workspace = await Workspace.findById(user?.workspace).lean();
+
+      const member_details = workspace?.members?.find(
+        (member) => member?.user_id?.toString() === user?._id?.toString()
+      );
+
+      const [role, sheet] = await Promise.all([
+        Role_Master.findById(member_details?.role).lean(),
+        SheetManagement.findOne({ user_id: workspace?.created_by }).lean(),
+      ]);
+      if (role?.name !== "client")
+        return throwError(
+          returnMessage("auth", "forbidden"),
+          statusCode.forbidden
+        );
+      if (!sheet) return throwError(returnMessage("default", "default"));
+
+      // remove the member from the workspace
+      await Workspace.findOneAndUpdate(
+        {
+          _id: user.workspace,
+          "members.user_id": { $in: teamMemberIds },
+          "members.client_id": user?._id,
+        },
+        {
+          $set: {
+            "members.$.status": "deleted",
+            "members.$.invitation_token": undefined,
+          },
+        },
+        { new: true }
+      );
+
+      const updated_members_id = workspace?.members?.map((member) => {
+        if (member?.client_id?.toString() === user?._id?.toString())
+          return member?._id;
+      });
+      const updated_sheet = sheet?.occupied_sheets?.filter(
+        (sh) => !updated_members_id?.includes(sh?.user_id?.toString())
+      );
+
+      SheetManagement.findByIdAndUpdate(
+        sheet?._id,
+        {
+          occupied_sheets: updated_sheet,
+          total_sheets: updated_sheet?.length + 1,
+        },
+        { new: true }
+      );
+
+      return;
+    } catch (error) {
+      logger.error(
+        `Error while deleting the team member of the agency: ${error}`
+      );
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
   // Edit Team Member
 
   editMember = async (payload, team_member_id, user) => {
@@ -1084,12 +1150,12 @@ class TeamMemberService {
     }
   };
 
-  // get the team members by te workspace wise
+  // get the team members by the workspace wise only for the team member
   getAllTeam = async (payload, user) => {
     try {
-      if (!payload?.pagination) {
-        return await this.teamListWithoutPagination(user);
-      }
+      // if (!payload?.pagination) {
+      //   return await this.teamListWithoutPagination(user);
+      // }
       const pagination = paginationObject(payload);
       let search_obj = {},
         filter_obj = {};
@@ -1129,18 +1195,33 @@ class TeamMemberService {
         }
       }
 
-      const [role] = await Promise.all([
-        Role_Master.findOne({ name: "team_agency" }).select("_id").lean(),
-      ]);
+      const query_obj = {};
+      const { user_role, sub_role } =
+        await authService.getRoleSubRoleInWorkspace(user);
+
+      let role_name;
+      if (
+        user_role === "agency" ||
+        (user_role === "team_agency" && sub_role === "admin")
+      )
+        role_name = "team_agency";
+      else if (user_role === "client") {
+        role_name = "team_client";
+        query_obj["members.client_id"] = user?._id;
+      }
+
+      const role = await Role_Master.findOne({ name: role_name })
+        .select("_id")
+        .lean();
+
+      query_obj["members.role"] = role?._id;
+      query_obj["members.status"] = { $ne: "deleted" };
 
       const aggragate = [
         { $match: { _id: new mongoose.Types.ObjectId(user?.workspace) } },
         { $unwind: "$members" }, // Unwind the members array
         {
-          $match: {
-            "members.role": role?._id,
-            "members.status": { $ne: "deleted" },
-          },
+          $match: query_obj,
         },
         {
           $lookup: {
@@ -1982,13 +2063,114 @@ class TeamMemberService {
   };
 
   // below function is used to approve or reject the team member of the client
-  approveOrReject = async (member_id, user) => {
+  approveOrReject = async (payload, member_id, user) => {
     try {
+      /* We required the Notification integration if the member approves or reject
+      we need to check for the user is assigned to any pending tasks or not
+      we need to manage the subscription on accept or reject */
+      const { status } = payload;
+
+      const [workspace, client_member_detail, configuration] =
+        await Promise.all([
+          Workspace.findOne({
+            members: {
+              $elemMatch: {
+                user_id: member_id,
+                $and: [{ status: { $ne: "deleted" } }, { status: "requested" }],
+              },
+            },
+            _id: user?.workspace,
+            is_deleted: false,
+          }).lean(),
+          Authentication.findById(member_id).lean(),
+          Configuration.findOne().lean(),
+        ]);
+
+      if (!workspace || !client_member_detail)
+        return throwError(returnMessage("teamMember", "teamMemberNotFound"));
+
+      const member_details = workspace?.members?.find(
+        (member) => member?.user_id?.toString() === user?._id?.toString()
+      );
+
+      if (workspace?.created_by?.toString() !== user?._id?.toString()) {
+        const sub_role = await Team_Role_Master.findById(
+          member_details?.sub_role
+        ).lean();
+
+        if (
+          sub_role?.name !== "admin" ||
+          workspace?.created_by?.toString() !== user?._id?.toString()
+        )
+          return throwError(
+            returnMessage("auth", "forbidden"),
+            statusCode.forbidden
+          );
+      }
+
+      if (status === "accept") {
+        let invitation_token = crypto.randomBytes(16).toString("hex");
+        const link = `${process.env.REACT_APP_URL}/verify?workspace=${
+          workspace?._id
+        }&email=${encodeURIComponent(
+          client_member_detail?.email
+        )}&token=${invitation_token}&workspace_name=${
+          workspace_exist?.name
+        }&first_name=${client_member_detail?.first_name}&last_name=${
+          client_member_detail?.last_name
+        }`;
+
+        const email_template = templateMaker("teamInvitation.html", {
+          REACT_APP_URL: process.env.REACT_APP_URL,
+          SERVER_URL: process.env.SERVER_URL,
+          username:
+            capitalizeFirstLetter(client_member_detail?.first_name) +
+            " " +
+            capitalizeFirstLetter(client_member_detail?.last_name),
+          invitation_text: `You are invited to the ${
+            workspace_exist?.name
+          } workspace by ${
+            capitalizeFirstLetter(user?.first_name) +
+            " " +
+            capitalizeFirstLetter(user?.last_name)
+          }. Click on the below link to join the workspace.`,
+          link: link,
+          instagram: configuration?.urls?.instagram,
+          facebook: configuration?.urls?.facebook,
+          privacy_policy: configuration?.urls?.privacy_policy,
+        });
+
+        sendEmail({
+          email: client_member_detail?.email,
+          subject: returnMessage("auth", "invitationEmailSubject"),
+          message: email_template,
+        });
+
+        await Workspace.findOneAndUpdate(
+          { _id: workspace?._id, "members.user_id": member_id },
+          {
+            $set: {
+              "members.$.invitation_token": invitation_token,
+              "members.$.status": "confirm_pending",
+            },
+          }
+        );
+      } else if (status === "reject") {
+        await Workspace.findOneAndUpdate(
+          { _id: workspace?._id, "members.user_id": member_id },
+          {
+            $set: {
+              "members.$.status": "rejected",
+            },
+          }
+        );
+      }
+      return;
     } catch (error) {
       logger.error(
         `Error while approve or reject the client team member: ${error}`
       );
-      return throwError(error?.messa);
+      return throwError(error?.message, error?.statusCode);
     }
   };
 }

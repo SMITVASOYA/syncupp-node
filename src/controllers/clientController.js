@@ -5,6 +5,8 @@ const { sendResponse } = require("../utils/sendResponse");
 const { returnMessage } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const { throwError } = require("../helpers/errorUtil");
+const TeamMemberService = require("../services/teamMemberService");
+const teamMemberService = new TeamMemberService();
 
 exports.createClient = catchAsyncError(async (req, res, next) => {
   const client = await clientService.createClient(req.body, req.user);
@@ -86,6 +88,17 @@ exports.getAgencies = catchAsyncError(async (req, res, next) => {
     true,
     returnMessage("client", "agenciesFetched"),
     agencies,
+    statusCode.success
+  );
+});
+
+exports.addClientTeam = catchAsyncError(async (req, res, next) => {
+  await teamMemberService.addClientTeam(req.body, req.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("teamMember", "teamMemberCreatedByClient"),
+    {},
     statusCode.success
   );
 });

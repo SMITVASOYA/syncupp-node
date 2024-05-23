@@ -1159,7 +1159,7 @@ class AuthService {
         instagram
       );
 
-      await sendEmail({
+      sendEmail({
         email,
         subject: returnMessage("emailTemplate", "forgotPasswordSubject"),
         message: forgot_email_template,
@@ -1548,6 +1548,28 @@ class AuthService {
         .lean();
     } catch (error) {
       logger.error(`Error while fetching the profile: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  getRoleSubRoleInWorkspace = async (user) => {
+    try {
+      const workspace = await Workspace.findById(user?.workspace).lean();
+      const member_details = workspace?.members?.find(
+        (member) => member?.user_id?.toString() === user?._id?.toString()
+      );
+      const [role, sub_role] = await Promise.all([
+        Role_Master.findById(member_details?.role).select("name").lean(),
+        Team_Role_Master.findById(member_details?.sub_role)
+          .select("name")
+          .lean(),
+      ]);
+
+      return { user_role: role?.name, sub_role: sub_role?.name };
+    } catch (error) {
+      logger.error(
+        `Error while gettign the role and subrole in the workspace: ${error}`
+      );
       return throwError(error?.message, error?.statusCode);
     }
   };
