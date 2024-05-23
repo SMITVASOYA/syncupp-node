@@ -102,3 +102,14 @@ exports.addClientTeam = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+exports.deleteTeamMember = catchAsyncError(async (req, res, next) => {
+  await teamMemberService.deleteMemberByClient(req.body, req.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("teamMember", "deleted"),
+    {},
+    statusCode.success
+  );
+});

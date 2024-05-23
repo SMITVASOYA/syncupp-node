@@ -143,6 +143,13 @@ class ClientService {
           subject: returnMessage("auth", "invitationEmailSubject"),
           message: email_template,
         });
+        // need to remove the user if the user is added before and deleted
+        workspace_exist.members = workspace_exist?.members?.filter(
+          (member) =>
+            member?.user_id?.toString() !== client_exist?._id &&
+            member?.status === "deleted"
+        );
+
         const members = [...workspace_exist.members];
         members.push({
           user_id: client_exist?._id,
@@ -223,6 +230,14 @@ class ClientService {
           subject: returnMessage("auth", "invitationEmailSubject"),
           message: email_template,
         });
+
+        // need to remove the user if the user is added before and deleted
+        workspace_exist.members = workspace_exist?.members?.filter(
+          (member) =>
+            member?.user_id?.toString() !== new_user?._id &&
+            member?.status === "deleted"
+        );
+
         const members = [...workspace_exist.members];
         members.push({
           user_id: new_user?._id,

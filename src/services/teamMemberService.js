@@ -164,6 +164,14 @@ class TeamMemberService {
           subject: returnMessage("auth", "invitationEmailSubject"),
           message: email_template,
         });
+
+        // need to remove the user if the user is added before and deleted
+        workspace_exist.members = workspace_exist?.members?.filter(
+          (member) =>
+            member?.user_id?.toString() !== team_member_exist?._id &&
+            member?.status === "deleted"
+        );
+
         const members = [...workspace_exist.members];
         members.push({
           user_id: team_member_exist?._id,
@@ -229,6 +237,13 @@ class TeamMemberService {
           subject: returnMessage("auth", "invitationEmailSubject"),
           message: email_template,
         });
+
+        // need to remove the user if the user is added before and deleted
+        workspace_exist.members = workspace_exist?.members?.filter(
+          (member) =>
+            member?.user_id?.toString() !== new_user?._id &&
+            member?.status === "deleted"
+        );
         const members = [...workspace_exist.members];
         members.push({
           user_id: new_user?._id,
@@ -253,20 +268,7 @@ class TeamMemberService {
   // Add the team member for the particular agency by client
   addClientTeam = async (payload, user) => {
     try {
-      const {
-        email,
-        first_name,
-        last_name,
-        contact_number,
-        company_name,
-        company_website,
-        gst,
-        address,
-        country,
-        city,
-        state,
-        pincode,
-      } = payload;
+      const { email, first_name, last_name, contact_number } = payload;
 
       const workspace_exist = await Workspace.findById(user?.workspace)
         .where("is_deleted")
@@ -313,7 +315,10 @@ class TeamMemberService {
           members: {
             $elemMatch: {
               user_id: client_team_exist?._id,
-              status: { $ne: "deleted" },
+              $or: [
+                { status: { $ne: "deleted" } },
+                { status: { $ne: "rejected" } },
+              ],
             },
           },
           _id: workspace_exist?._id,
@@ -360,7 +365,12 @@ class TeamMemberService {
           subject: returnMessage("auth", "invitationEmailSubject"),
           message: email_template,
         }); */
-
+        // need to remove the user if the user is added before and deleted
+        workspace_exist.members = workspace_exist?.members?.filter(
+          (member) =>
+            member?.user_id?.toString() !== client_team_exist?._id &&
+            (member?.status === "deleted" || member?.status === "rejected")
+        );
         const members = [...workspace_exist.members];
         members.push({
           user_id: client_team_exist?._id,
@@ -390,14 +400,6 @@ class TeamMemberService {
           first_name: first_name?.toLowerCase(),
           last_name: last_name?.toLowerCase(),
           contact_number,
-          company_name,
-          company_website,
-          address,
-          city,
-          country,
-          state,
-          pincode,
-          gst,
         });
 
         // as client can create the team member only
@@ -436,6 +438,11 @@ class TeamMemberService {
           message: email_template,
         }); */
 
+        workspace_exist.members = workspace_exist?.members?.filter(
+          (member) =>
+            member?.user_id?.toString() !== new_user?._id &&
+            (member?.status === "deleted" || member?.status === "rejected")
+        );
         const members = [...workspace_exist.members];
         members.push({
           user_id: new_user?._id,
@@ -2063,12 +2070,12 @@ class TeamMemberService {
   };
 
   // below function is used to approve or reject the team member of the client
-  approveOrReject = async (payload, member_id, user) => {
+  approveOrReject = async (payload, user) => {
     try {
       /* We required the Notification integration if the member approves or reject
       we need to check for the user is assigned to any pending tasks or not
       we need to manage the subscription on accept or reject */
-      const { status } = payload;
+      const { status, member_id } = payload;
 
       const [workspace, client_member_detail, configuration] =
         await Promise.all([
@@ -2115,7 +2122,7 @@ class TeamMemberService {
         }&email=${encodeURIComponent(
           client_member_detail?.email
         )}&token=${invitation_token}&workspace_name=${
-          workspace_exist?.name
+          workspace?.name
         }&first_name=${client_member_detail?.first_name}&last_name=${
           client_member_detail?.last_name
         }`;
@@ -2128,7 +2135,7 @@ class TeamMemberService {
             " " +
             capitalizeFirstLetter(client_member_detail?.last_name),
           invitation_text: `You are invited to the ${
-            workspace_exist?.name
+            workspace?.name
           } workspace by ${
             capitalizeFirstLetter(user?.first_name) +
             " " +
