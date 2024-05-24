@@ -137,7 +137,7 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
     );
 
     const [user, workspace] = await Promise.all([
-      Authentication.findById(decodedUserData.id)
+      Authentication.findById(decodedUserData?.id)
         .where("is_deleted")
         .equals("false")
         .select("-password")
@@ -147,7 +147,7 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
         is_deleted: false,
         members: {
           $elemMatch: {
-            user_id: decodedUserData.id,
+            user_id: decodedUserData?.id,
             status: { $ne: "deleted" },
           },
         },
@@ -158,18 +158,9 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
       return throwError(returnMessage("auth", "unAuthorized"), 401);
 
     req.user = user;
-    const userRole = workspace?.members?.find(
-      (item) => item?.user_id?.toString() === decodedUserData?.id?.toString()
-    );
-    const findUserRole = await Role_Master.findById(userRole?.role).lean();
-    req.user["role"] = findUserRole?.name;
+
     req.user["workspace"] = decodedUserData?.workspace;
-    if (findUserRole?.name === "team_agency") {
-      const findUserSubRole = await Team_Role_Master.findById(
-        userRole?.sub_role
-      ).lean();
-      req.user["sub_role"] = findUserSubRole?.name;
-    }
+
     next();
   } else {
     return throwError(returnMessage("auth", "unAuthorized"), 401);
@@ -182,11 +173,11 @@ exports.authorizeRole = (requiredRole) => (req, res, next) => {
   next();
 };
 
-exports.authorizeMultipleRoles = (requiredRoles) => (req, res, next) => {
+exports.authorizeMultipleRoles = (user, requiredRoles) => (req, res, next) => {
   if (!Array.isArray(requiredRoles)) {
     return throwError(returnMessage("auth", "arrayRequired"), 403);
   }
-  const userRole = req?.user?.role;
+  const userRole = user?.role;
   if (requiredRoles.includes(userRole.toString())) {
     return next();
   }

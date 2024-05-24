@@ -18,11 +18,22 @@ const Section = require("../models/sectionSchema");
 const notificationService = new NotificationService();
 const colorsData = require("../messages/colors.json");
 const Role_Master = require("../models/masters/roleMasterSchema");
+const AuthService = require("../services/authService");
+const authService = new AuthService();
 
 class BoardService {
   // Add   Board
   addBoard = async (payload, user, image) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+      if (
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.user_role !== "team_agency"
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
       const { project_name, description, members } = payload;
       if (user?.role === "team_agency" && user?.sub_role !== "admin") {
         return throwError(returnMessage("auth", "insufficientPermission"));
@@ -201,6 +212,16 @@ class BoardService {
   // Update   Board
   updateBoard = async (payload, board_id, user, image) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+      if (
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.user_role !== "team_agency"
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
       const { project_name, description, members, only_member_update } =
         payload;
 
@@ -400,7 +421,6 @@ class BoardService {
 
   listBoards = async (search_obj, user) => {
     try {
-      console.log(user);
       const { skip = 0, limit = 5, all, agency_id, sort } = search_obj;
 
       let query = {
@@ -461,7 +481,6 @@ class BoardService {
             project_name: -1,
           };
         }
-        console.log(query);
         const pipeline = [
           {
             $match: {
@@ -620,6 +639,16 @@ class BoardService {
 
   allUserList = async (user) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+      if (
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.user_role !== "team_agency"
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
       const pipeline = [
         {
           $match: { _id: new mongoose.Types.ObjectId(user.workspace) },
@@ -705,6 +734,16 @@ class BoardService {
 
   fetchBoardImages = async (user) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+      if (
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.user_role !== "team_agency"
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
       const board_images = await Board.find({
         workspace_id: user?.workspace,
       })
@@ -727,8 +766,17 @@ class BoardService {
     }
   };
 
-  addRemoveMember = async (payload) => {
+  addRemoveMember = async (payload, user) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+      if (
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.user_role !== "team_agency"
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
       const { board_id, member_id, action_name } = payload;
 
       const board_details = await Board.findById(board_id);
