@@ -202,6 +202,19 @@ exports.addCurrency = catchAsyncError(async (req, res, next) => {
   );
 });
 
+// Currency Add
+
+exports.uploadLogo = catchAsyncError(async (req, res, next) => {
+  await invoiceService.uploadLogo(req?.user, req?.file);
+  sendResponse(
+    res,
+    true,
+    returnMessage("invoice", "logoUploaded"),
+    null,
+    statusCode.success
+  );
+});
+
 // Get InvoiceInformation ------   AGENCY API
 
 exports.getInvoiceInformation = catchAsyncError(async (req, res, next) => {

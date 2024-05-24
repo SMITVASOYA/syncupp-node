@@ -1432,6 +1432,38 @@ class InvoiceService {
     }
   };
 
+  // Upload logo
+  uploadLogo = async (user, logo) => {
+    try {
+      if (logo) {
+        const is_exist = await Setting.findOne({
+          workspace_id: user?.workspace,
+        }).lean();
+
+        if (is_exist) {
+          fs.unlink(`./src/public/${is_exist?.invoice?.logo}`, (err) => {
+            if (err) {
+              logger.error(`Error while unlinking the documents: ${err}`);
+            }
+          });
+        }
+
+        const image_path = "uploads/" + logo?.filename;
+        await Setting.findOneAndUpdate(
+          { workspace_id: user?.workspace },
+          {
+            invoice: { logo: image_path },
+          },
+          { upsert: true }
+        );
+      }
+      return;
+    } catch (error) {
+      logger.error(`Error while Upload image , ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
   // GET Invoice information like address , company name pin etc before creating.  ------   AGENCY API
   // getInvoiceInformation = async (payload, user) => {
   //   try {
