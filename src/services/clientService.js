@@ -91,16 +91,11 @@ class ClientService {
 
       if (client_exist) {
         // check for the user already exist in the workspace
-        const exist_in_workspace = await Workspace.findOne({
-          _id: workspace_exist?._id,
-          members: {
-            $elemMatch: {
-              user_id: client_exist?._id,
-              status: { $ne: "deleted" },
-            },
-          },
-          is_deleted: false,
-        }).lean();
+        const exist_in_workspace = workspace_exist?.members?.find(
+          (member) =>
+            member?.user_id?.toString() === client_exist?._id?.toString() &&
+            member?.status !== "deleted"
+        );
 
         if (exist_in_workspace)
           return throwError(
@@ -143,6 +138,12 @@ class ClientService {
           subject: returnMessage("auth", "invitationEmailSubject"),
           message: email_template,
         });
+        // need to remove the user if the user is added before and deleted
+        workspace_exist.members = workspace_exist?.members?.filter(
+          (member) =>
+            member?.user_id?.toString() !== client_exist?._id?.toString()
+        );
+
         const members = [...workspace_exist.members];
         members.push({
           user_id: client_exist?._id,
@@ -223,6 +224,12 @@ class ClientService {
           subject: returnMessage("auth", "invitationEmailSubject"),
           message: email_template,
         });
+
+        // need to remove the user if the user is added before and deleted
+        workspace_exist.members = workspace_exist?.members?.filter(
+          (member) => member?.user_id?.toString() !== new_user?._id?.toString()
+        );
+
         const members = [...workspace_exist.members];
         members.push({
           user_id: new_user?._id,

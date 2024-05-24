@@ -10,40 +10,22 @@ taskRoute.use(protect);
 // Task
 taskRoute.post(
   "/create-task",
-  authorizeMultipleRoles(["agency", "team_agency"]),
   checkFileSize,
   upload.array("attachments"),
   taskController.addTask
 );
 taskRoute.post("/task-list", taskController.taskList);
 taskRoute.get("/get-task/:id", taskController.fetchTask);
-taskRoute.delete(
-  "/delete-task",
-  authorizeMultipleRoles(["agency", "team_agency"]),
-  taskController.deleteTask
-);
+taskRoute.delete("/delete-task", taskController.deleteTask);
 taskRoute.put(
   "/update-task/:id",
-  authorizeMultipleRoles(["agency", "team_agency"]),
   checkFileSize,
   upload.array("attachments"),
   taskController.updateTask
 );
-taskRoute.post(
-  "/add-comment",
-  authorizeMultipleRoles(["agency", "team_agency"]),
-  taskController.addTaskComment
-);
+taskRoute.post("/add-comment", taskController.addTaskComment);
 taskRoute.get("/list-comments/:task_id", taskController.listTaskComment);
-taskRoute.post(
-  "/leave-task",
-  authorizeMultipleRoles(["agency", "team_agency"]),
-  taskController.leaveTask
-);
-taskRoute.put(
-  "/update-status/:id",
-  authorizeMultipleRoles(["agency", "team_agency"]),
-  taskController.updateTaskStatus
-);
+taskRoute.post("/leave-task", taskController.leaveTask);
+taskRoute.put("/update-status/:id", taskController.updateTaskStatus);
 
 module.exports = taskRoute;

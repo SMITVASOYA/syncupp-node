@@ -112,8 +112,8 @@ class WorkspaceService {
             },
           },
           { new: true }
-        )
-      ])
+        ),
+      ]);
       return;
     } catch (error) {
       logger.error(`Error while creating the workspace: ${error}`);
@@ -126,7 +126,9 @@ class WorkspaceService {
       const [created, invited] = await Promise.all([
         Workspace.find({ created_by: user?._id, is_deleted: false }).lean(),
         Workspace.find({
-          "members.user_id": user?._id,
+          members: {
+            $elemMatch: { user_id: user?._id, status: { $ne: "deleted" } },
+          },
           is_deleted: false,
           created_by: { $ne: user?._id },
         })
@@ -134,7 +136,7 @@ class WorkspaceService {
           .lean(),
       ]);
       const workspaces = [...created, ...invited];
-      workspaces[0].default_workspace = true;
+      if (workspaces.length > 0) workspaces[0].default_workspace = true;
       return workspaces;
     } catch (error) {
       logger.error(`Error while fetching the workspaces: ${error}`);

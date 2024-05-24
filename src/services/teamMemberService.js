@@ -112,16 +112,11 @@ class TeamMemberService {
 
       if (team_member_exist) {
         // check for the user already exist in the workspace
-        const exist_in_workspace = await Workspace.findOne({
-          members: {
-            $elemMatch: {
-              user_id: team_member_exist?._id,
-              status: { $ne: "deleted" },
-            },
-          },
-          _id: workspace_exist?._id,
-          is_deleted: false,
-        }).lean();
+        const exist_in_workspace = workspace_exist?.members?.find(
+          (member) =>
+            member?.user_id?.toString() ===
+              team_member_exist?._id?.toString() && member?.status !== "deleted"
+        );
 
         if (exist_in_workspace)
           return throwError(
@@ -164,6 +159,13 @@ class TeamMemberService {
           subject: returnMessage("auth", "invitationEmailSubject"),
           message: email_template,
         });
+
+        // need to remove the user if the user is added before and deleted
+        workspace_exist.members = workspace_exist?.members?.filter(
+          (member) =>
+            member?.user_id?.toString() !== team_member_exist?._id?.toString()
+        );
+
         const members = [...workspace_exist.members];
         members.push({
           user_id: team_member_exist?._id,
@@ -229,6 +231,11 @@ class TeamMemberService {
           subject: returnMessage("auth", "invitationEmailSubject"),
           message: email_template,
         });
+
+        // need to remove the user if the user is added before and deleted
+        workspace_exist.members = workspace_exist?.members?.filter(
+          (member) => member?.user_id?.toString() !== new_user?._id?.toString()
+        );
         const members = [...workspace_exist.members];
         members.push({
           user_id: new_user?._id,
@@ -253,20 +260,7 @@ class TeamMemberService {
   // Add the team member for the particular agency by client
   addClientTeam = async (payload, user) => {
     try {
-      const {
-        email,
-        first_name,
-        last_name,
-        contact_number,
-        company_name,
-        company_website,
-        gst,
-        address,
-        country,
-        city,
-        state,
-        pincode,
-      } = payload;
+      const { email, first_name, last_name, contact_number } = payload;
 
       const workspace_exist = await Workspace.findById(user?.workspace)
         .where("is_deleted")
@@ -290,10 +284,9 @@ class TeamMemberService {
           statusCode?.forbidden
         );
 
-      const [client_team_exist, role, configuration, plan] = await Promise.all([
+      const [client_team_exist, role, plan] = await Promise.all([
         Authentication.findOne({ email, is_deleted: false }).lean(),
         Role_Master.findOne({ name: "team_client" }).lean(),
-        Configuration.findOne({}).lean(),
         // SubscriptionPlan.findById(user?.purchased_plan).lean(),
       ]);
 
@@ -309,16 +302,13 @@ class TeamMemberService {
 
       if (client_team_exist) {
         // check for the user already exist in the workspace
-        const exist_in_workspace = await Workspace.findOne({
-          members: {
-            $elemMatch: {
-              user_id: client_team_exist?._id,
-              status: { $ne: "deleted" },
-            },
-          },
-          _id: workspace_exist?._id,
-          is_deleted: false,
-        }).lean();
+        const exist_in_workspace = workspace_exist?.members?.find(
+          (member) =>
+            member?.user_id?.toString() ===
+              client_team_exist?._id?.toString() &&
+            member?.status !== "deleted" &&
+            member?.status !== "rejected"
+        );
 
         if (exist_in_workspace)
           return throwError(returnMessage("workspace", "teamMemeberExist"));
@@ -360,7 +350,11 @@ class TeamMemberService {
           subject: returnMessage("auth", "invitationEmailSubject"),
           message: email_template,
         }); */
-
+        // need to remove the user if the user is added before and deleted
+        workspace_exist.members = workspace_exist?.members?.filter(
+          (member) =>
+            member?.user_id?.toString() !== client_team_exist?._id?.toString()
+        );
         const members = [...workspace_exist.members];
         members.push({
           user_id: client_team_exist?._id,
@@ -390,14 +384,6 @@ class TeamMemberService {
           first_name: first_name?.toLowerCase(),
           last_name: last_name?.toLowerCase(),
           contact_number,
-          company_name,
-          company_website,
-          address,
-          city,
-          country,
-          state,
-          pincode,
-          gst,
         });
 
         // as client can create the team member only
@@ -436,6 +422,9 @@ class TeamMemberService {
           message: email_template,
         }); */
 
+        workspace_exist.members = workspace_exist?.members?.filter(
+          (member) => member?.user_id?.toString() !== new_user?._id?.toString()
+        );
         const members = [...workspace_exist.members];
         members.push({
           user_id: new_user?._id,
@@ -521,15 +510,17 @@ class TeamMemberService {
       if (!member_exist)
         return throwError(returnMessage("workspace", "invitationExpired"));
       const status = accept ? "confirmed" : "rejected";
+
       await Workspace.findOneAndUpdate(
-        { _id: workspace_exist?._id, "members.user_id": member_exist?._id },
+        { _id: workspace_exist?._id, "members.user_id": member_exist?.user_id },
         {
           $set: {
-            "members.$.invitation_token": undefined,
+            "members.$.invitation_token": null,
             "members.$.joining_date": new Date(),
             "members.$.status": status,
           },
-        }
+        },
+        { new: true }
       );
 
       if (accept) {
@@ -2063,12 +2054,12 @@ class TeamMemberService {
   };
 
   // below function is used to approve or reject the team member of the client
-  approveOrReject = async (payload, member_id, user) => {
+  approveOrReject = async (payload, user) => {
     try {
       /* We required the Notification integration if the member approves or reject
       we need to check for the user is assigned to any pending tasks or not
       we need to manage the subscription on accept or reject */
-      const { status } = payload;
+      const { status, member_id } = payload;
 
       const [workspace, client_member_detail, configuration] =
         await Promise.all([
@@ -2115,7 +2106,7 @@ class TeamMemberService {
         }&email=${encodeURIComponent(
           client_member_detail?.email
         )}&token=${invitation_token}&workspace_name=${
-          workspace_exist?.name
+          workspace?.name
         }&first_name=${client_member_detail?.first_name}&last_name=${
           client_member_detail?.last_name
         }`;
@@ -2128,7 +2119,7 @@ class TeamMemberService {
             " " +
             capitalizeFirstLetter(client_member_detail?.last_name),
           invitation_text: `You are invited to the ${
-            workspace_exist?.name
+            workspace?.name
           } workspace by ${
             capitalizeFirstLetter(user?.first_name) +
             " " +

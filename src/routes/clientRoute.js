@@ -26,4 +26,6 @@ clientRoute.post(
   clientController.addClientTeam
 );
 
+clientRoute.delete("/delete", clientController.deleteTeamMember);
+
 module.exports = clientRoute;

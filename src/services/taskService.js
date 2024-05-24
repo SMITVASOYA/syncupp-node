@@ -23,10 +23,22 @@ const Board = require("../models/boardSchema");
 const Section = require("../models/sectionSchema");
 const Workspace = require("../models/workspaceSchema");
 const Role_Master = require("../models/masters/roleMasterSchema");
+const AuthService = require("../services/authService");
+const authService = new AuthService();
 
 class TaskService {
   createTask = async (payload, user, files) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+      if (
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.user_role !== "team_agency"
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
       let {
         title,
         agenda,
@@ -196,6 +208,10 @@ class TaskService {
   };
 
   taskList = async (searchObj, user) => {
+    const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+    user["role"] = user_role_data?.user_role;
+    user["sub_role"] = user_role_data?.sub_role;
+
     if (!searchObj.pagination)
       return await this.taskListWithOutPaination(searchObj, user);
     try {
@@ -212,26 +228,21 @@ class TaskService {
           // agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
         };
       } else if (user?.role === "team_agency") {
-        const teamRole = await Team_Agency.findOne({
-          _id: user._id,
-        }).populate("role");
-
-        if (teamRole?.role?.name === "admin") {
+        if (user?.sub_role === "admin") {
           queryObj = {
-            $or: [{ assign_by: user._id }, { assign_to: user._id }],
+            $or: [{ assign_by: user?._id }, { assign_to: user?._id }],
             is_deleted: false,
           };
-        } else if (teamRole.role.name === "team_member") {
+        } else if (user?.sub_role === "team_member") {
           queryObj = {
             is_deleted: false,
-            assign_to: user._id,
+            assign_to: user?._id,
           };
         }
       } else if (user?.role === "team_client") {
         queryObj = {
           is_deleted: false,
-          // client_id: user._id,
-          // agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
+          assign_to: user?._id,
         };
       }
       const pagination = paginationObject(searchObj);
@@ -477,29 +488,24 @@ class TaskService {
       } else if (user?.role === "client") {
         queryObj = {
           is_deleted: false,
-          client_id: user?._id,
-          agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
+          assign_to: user?._id,
         };
       } else if (user?.role === "team_agency") {
-        const teamRole = await Team_Agency.findOne({
-          _id: user._id,
-        }).populate("role");
-        if (teamRole?.role === "admin") {
+        if (user?.sub_role === "admin") {
           queryObj = {
             $or: [{ assign_by: user?._id }, { assign_to: user?._id }],
             is_deleted: false,
           };
-        } else if (teamRole.role.name === "team_member") {
+        } else if (user?.sub_role === "team_member") {
           queryObj = {
             is_deleted: false,
             assign_to: user?._id,
           };
         }
-      } else if (user?.role?.name === "team_client") {
+      } else if (user?.role === "team_client") {
         queryObj = {
           is_deleted: false,
-          client_id: user?._id,
-          agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
+          assign_to: user?._id,
         };
       }
       const filter = {
@@ -762,8 +768,12 @@ class TaskService {
     }
   };
 
-  getTaskById = async (id) => {
+  getTaskById = async (id, user) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+
       const taskPipeline = [
         {
           $lookup: {
@@ -863,6 +873,16 @@ class TaskService {
   deleteTask = async (payload, user) => {
     const { taskIdsToDelete } = payload;
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+      if (
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.user_role !== "team_agency"
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
       await Task.updateMany(
         { _id: { $in: taskIdsToDelete } },
         { $set: { is_deleted: true } }
@@ -998,6 +1018,18 @@ class TaskService {
 
   updateTask = async (payload, id, files, logInUser) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(
+        logInUser
+      );
+      logInUser["role"] = user_role_data?.user_role;
+      logInUser["sub_role"] = user_role_data?.sub_role;
+      if (
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.user_role !== "team_agency"
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
       let {
         title,
         agenda,
@@ -1449,6 +1481,16 @@ class TaskService {
 
   updateTaskStatus = async (payload, id, user) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+      if (
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.user_role !== "team_agency"
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
       const { status } = payload;
       let update_status = status;
       let current_activity = await Task.findById(id).lean();
@@ -1922,6 +1964,16 @@ class TaskService {
 
   addTaskComment = async (payload, user) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+      if (
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.user_role !== "team_agency"
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
       const { comment, task_id } = payload;
       const task = await Task.findById(task_id);
 
@@ -1966,6 +2018,16 @@ class TaskService {
 
   leaveTask = async (payload, user) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+      if (
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.user_role !== "team_agency"
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
       const { task_id } = payload;
       const task = await Task.findById(task_id);
       task.assign_to = task?.assign_to.filter(
