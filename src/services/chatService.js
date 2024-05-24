@@ -402,7 +402,7 @@ class ChatService {
   getAllDocuments = async (payload, user) => {
     try {
       const pagination = paginationObject(payload);
-      const query_obj = { workspace_id: user?.workspace };
+      const query_obj = { workspace_id: user?.workspace, is_deleted: false };
       const search_obj = {};
       if (payload?.document_type === "images") {
         query_obj["message_type"] = "image";
