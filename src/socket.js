@@ -761,10 +761,16 @@ exports.socket_connection = (http_server) => {
         group_detail.members = group_detail?.members?.map((member) =>
           member?.toString()
         );
-        io.to(group_detail.members).emit("GROUP_MESSGAE_DELETED", {
-          message: returnMessage("chat", "messageDeleted"),
-          _id: payload?.chat_id,
-        });
+
+        this.eventEmitter(
+          "GROUP_MESSGAE_DELETED",
+          {
+            message: returnMessage("chat", "messageDeleted"),
+            _id: payload?.chat_id,
+          },
+          group_detail.members,
+          message?.workspace_id
+        );
       } catch (error) {
         logger.error(`Error while deleting the message: ${error}`);
         return throwError(error?.message, error?.statusCode);
