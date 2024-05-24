@@ -491,19 +491,19 @@ class InvoiceService {
             },
           },
           {
-            "customerInfo.first_name": {
+            "customer_info.first_name": {
               $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
           },
           {
-            "customerInfo.last_name": {
+            "customer_info.last_name": {
               $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
           },
           {
-            "customerInfo.client_fullName": {
+            "customer_info.client_fullName": {
               $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
@@ -522,7 +522,7 @@ class InvoiceService {
 
       if (searchObj?.client_name && searchObj?.client_name !== "") {
         const clientId = new mongoose.Types.ObjectId(searchObj?.client_name); // Convert string to ObjectId
-        queryObj["customerInfo.reference_id"] = clientId;
+        queryObj["customer_info._id"] = clientId;
       }
       if (searchObj.status_name && searchObj.status_name !== "") {
         queryObj["status.name"] = {
@@ -530,7 +530,6 @@ class InvoiceService {
           $options: "i",
         };
       }
-
       const pagination = paginationObject(searchObj);
       const pipeLine = [
         {
@@ -1089,7 +1088,7 @@ class InvoiceService {
             },
           },
           {
-            "statusArray.name": {
+            "status_array.name": {
               $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
