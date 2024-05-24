@@ -21,54 +21,55 @@ const storage = multer.diskStorage({
     if (!fs.existsSync(img_dir)) {
       fs.mkdirSync(img_dir, { recursive: true });
     }
-    if (file.mimetype.startsWith("image/")) {
+    if (file?.mimetype?.startsWith("image/")) {
       cb(null, img_dir);
-    } else if (file.mimetype.startsWith("application/pdf")) {
+    } else if (file?.mimetype?.startsWith("application/pdf")) {
       cb(null, img_dir);
     } else if (
-      file.mimetype.startsWith(
+      file?.mimetype?.startsWith(
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       ) ||
-      file.mimetype.startsWith("application/vnd.ms-excel")
+      file?.mimetype?.startsWith("application/vnd.ms-excel")
     ) {
       cb(null, img_dir);
-    } else if (file.mimetype.startsWith("video/")) {
+    } else if (file?.mimetype?.startsWith("video/")) {
       cb(null, img_dir);
-    } else if (file.mimetype.startsWith("text/")) {
+    } else if (file?.mimetype?.startsWith("text/")) {
       cb(null, img_dir);
-    } else if (file.mimetype.startsWith("text/csv")) {
+    } else if (file?.mimetype?.startsWith("text/csv")) {
       cb(null, img_dir);
-    } else if (file.mimetype.startsWith("image/svg+xml")) {
+    } else if (file?.mimetype?.startsWith("image/svg+xml")) {
       cb(null, img_dir);
-    } else if (file.mimetype.startsWith("image/gif")) {
+    } else if (file?.mimetype?.startsWith("image/gif")) {
       cb(null, img_dir);
-    } else if (file.mimetype.startsWith("application/x-rar-compressed")) {
+    } else if (file?.mimetype?.startsWith("application/x-rar-compressed")) {
       cb(null, img_dir);
     } else if (
-      file.mimetype.startsWith(
+      file?.mimetype?.startsWith(
         "application/vnd.openxmlformats-officedocument.presentationml.presentation"
       ) ||
-      file.mimetype.startsWith("application/vnd.ms-powerpoint")
+      file?.mimetype?.startsWith("application/vnd.ms-powerpoint")
     ) {
       cb(null, img_dir);
-    } else if (file.mimetype === "application/zip") {
+    } else if (file?.mimetype === "application/zip") {
       cb(null, img_dir);
     } else if (
-      file.mimetype.startsWith("application/msword") ||
-      file.mimetype.startsWith(
+      file?.mimetype?.startsWith("application/msword") ||
+      file?.mimetype?.startsWith(
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       )
     ) {
       cb(null, img_dir);
-    } else if (file.mimetype === "audio/webm") {
+    } else if (file?.mimetype === "audio/webm") {
       cb(null, img_dir);
     }
   },
 
   filename: (req, file, cb) => {
-    const extension = file.originalname.split(".").pop() || undefined;
+    const extension = file?.originalname?.split(".")?.pop();
     const fileName = Date.now() + "." + extension;
     req.fileName = fileName;
+    req.originalname = file?.originalname || undefined;
     cb(null, fileName);
   },
 });
@@ -93,9 +94,10 @@ const storage2 = multer.memoryStorage({
 
       fs.writeFileSync("audio.wav", buffer);
     } else {
-      const extension = file.originalname.split(".").pop() || undefined;
+      const extension = file?.originalname?.split(".")?.pop();
       const fileName = Date.now() + "." + extension;
       req.fileName = fileName;
+
       cb(null, fileName);
     }
   },
@@ -141,7 +143,7 @@ const upload = multer({
       ".gif",
     ];
 
-    const fileExt = path.extname(file.originalname).toLowerCase();
+    const fileExt = path.extname(file?.originalname).toLowerCase();
     if (!allowedExtensions.includes(fileExt)) {
       const error = new Error(
         `Only ${allowedExtensions.toString()} files are allowed.`

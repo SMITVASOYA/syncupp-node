@@ -31,7 +31,7 @@ exports.chatHistory = catchAsyncError(async (req, res, next) => {
 
 // this will use to fetch the users list for the group chat
 exports.fetchUsers = catchAsyncError(async (req, res, next) => {
-  const users = await groupChatService.usersList(req.user);
+  const users = await groupChatService.usersList(req.body, req.user);
   sendResponse(res, true, undefined, users, 200);
 });
 
@@ -61,20 +61,26 @@ exports.getGroup = catchAsyncError(async (req, res, next) => {
 });
 
 exports.uploadImage = catchAsyncError(async (req, res, next) => {
-  await chatService.uploadImage(req.body, req.file);
+  await chatService.uploadImage(req.body, req.file, req.user);
   sendResponse(res, true, undefined, {}, 200);
 });
 
 exports.uploadDocument = catchAsyncError(async (req, res, next) => {
-  await chatService.uploadDocument(req.body, req.file);
+  await chatService.uploadDocument(req.body, req.file, req.user);
   sendResponse(res, true, undefined, {}, 200);
 });
 exports.uploadAudio = catchAsyncError(async (req, res, next) => {
-  await chatService.uploadAudio(req.body, req.file);
+  await chatService.uploadAudio(req.body, req.file, req.user);
   sendResponse(res, true, undefined, {}, 200);
 });
 
-exports.fetchLatestChat = catchAsyncError(async (req, res, next) => {
+exports.getAllDocuments = catchAsyncError(async (req, res, next) => {
+  const documents = await chatService.getAllDocuments(req.body, req.user);
+  sendResponse(res, true, undefined, documents, 200);
+});
+
+// removed as this is not a part of the 2nd phase
+/* exports.fetchLatestChat = catchAsyncError(async (req, res, next) => {
   const latest_chat_history = await chatService.FetchLatestChat(
     req.body,
     req.user
@@ -86,4 +92,4 @@ exports.fetchLatestChat = catchAsyncError(async (req, res, next) => {
     latest_chat_history,
     statusCode.success
   );
-});
+}); */

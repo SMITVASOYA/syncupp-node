@@ -491,19 +491,19 @@ class InvoiceService {
             },
           },
           {
-            "customerInfo.first_name": {
+            "customer_info.first_name": {
               $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
           },
           {
-            "customerInfo.last_name": {
+            "customer_info.last_name": {
               $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
           },
           {
-            "customerInfo.client_fullName": {
+            "customer_info.client_fullName": {
               $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
@@ -522,7 +522,7 @@ class InvoiceService {
 
       if (searchObj?.client_name && searchObj?.client_name !== "") {
         const clientId = new mongoose.Types.ObjectId(searchObj?.client_name); // Convert string to ObjectId
-        queryObj["customerInfo.reference_id"] = clientId;
+        queryObj["customer_info._id"] = clientId;
       }
       if (searchObj.status_name && searchObj.status_name !== "") {
         queryObj["status.name"] = {
@@ -530,7 +530,6 @@ class InvoiceService {
           $options: "i",
         };
       }
-
       const pagination = paginationObject(searchObj);
       const pipeLine = [
         {
@@ -1089,7 +1088,7 @@ class InvoiceService {
             },
           },
           {
-            "statusArray.name": {
+            "status_array.name": {
               $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
@@ -1428,6 +1427,38 @@ class InvoiceService {
       });
     } catch (error) {
       logger.error(`Error while Currency list Invoice, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // Upload logo
+  uploadLogo = async (user, logo) => {
+    try {
+      if (logo) {
+        const is_exist = await Setting.findOne({
+          workspace_id: user?.workspace,
+        }).lean();
+
+        if (is_exist) {
+          fs.unlink(`./src/public/${is_exist?.invoice?.logo}`, (err) => {
+            if (err) {
+              logger.error(`Error while unlinking the documents: ${err}`);
+            }
+          });
+        }
+
+        const image_path = "uploads/" + logo?.filename;
+        await Setting.findOneAndUpdate(
+          { workspace_id: user?.workspace },
+          {
+            invoice: { logo: image_path },
+          },
+          { upsert: true }
+        );
+      }
+      return;
+    } catch (error) {
+      logger.error(`Error while Upload image , ${error}`);
       throwError(error?.message, error?.statusCode);
     }
   };

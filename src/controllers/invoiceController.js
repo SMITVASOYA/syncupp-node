@@ -8,6 +8,7 @@ const Team_Role_Master = require("../models/masters/teamRoleSchema");
 const invoiceService = new InvoiceService();
 const AuthService = require("../services/authService");
 const Workspace = require("../models/workspaceSchema");
+const Role_Master = require("../models/masters/roleMasterSchema");
 const authService = new AuthService();
 
 // Add Clients ------   AGENCY API
@@ -70,13 +71,13 @@ exports.updateInvoice = catchAsyncError(async (req, res, next) => {
 exports.getAllInvoice = catchAsyncError(async (req, res, next) => {
   let invoicesList;
   const user_role_data = await authService.getRoleSubRoleInWorkspace(req?.user);
-  if (user_role_data?.user_role === "agency") {
-    invoicesList = await invoiceService?.getAllInvoice(req?.body, req?.user);
-  } else if (
-    user_role_data?.user_role === "agency" &&
+  if (
+    user_role_data?.user_role === "team_agency" &&
     user_role_data?.sub_role === "admin"
   ) {
-    const workspace_data = await Workspace.findById(user?.workspace).lean();
+    const workspace_data = await Workspace.findById(
+      req?.user?.workspace
+    ).lean();
     const agency_role_id = await Role_Master.findOne({
       name: "agency",
     }).lean();
@@ -86,8 +87,10 @@ exports.getAllInvoice = catchAsyncError(async (req, res, next) => {
     agency_id = find_agency?.user_id;
     invoicesList = await invoiceService.getAllInvoice(req?.body, {
       _id: find_agency?.user_id,
-      workspace: user?.workspace,
+      workspace: req?.user?.workspace,
     });
+  } else if (user_role_data?.user_role === "agency") {
+    invoicesList = await invoiceService?.getAllInvoice(req?.body, req?.user);
   } else if (user_role_data?.user_role === "client") {
     invoicesList = await invoiceService.getClientInvoice(req.body, req?.user);
   }
@@ -198,6 +201,19 @@ exports.addCurrency = catchAsyncError(async (req, res, next) => {
     true,
     returnMessage("invoice", "currencyAdded"),
     list,
+    statusCode.success
+  );
+});
+
+// Currency Add
+
+exports.uploadLogo = catchAsyncError(async (req, res, next) => {
+  await invoiceService.uploadLogo(req?.user, req?.file);
+  sendResponse(
+    res,
+    true,
+    returnMessage("invoice", "logoUploaded"),
+    null,
     statusCode.success
   );
 });

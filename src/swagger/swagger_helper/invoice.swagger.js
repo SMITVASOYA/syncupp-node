@@ -522,6 +522,47 @@ const downloadInvoice = {
     },
   },
 };
+const uploadImage = {
+  tags: ["Invoice"],
+  description: "",
+  summary: "Upload logo",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+  requestBody: {
+    content: {
+      "multipart/form-data": {
+        schema: {
+          type: "object",
+
+          properties: {
+            invoice_logo: {
+              type: "string",
+              format: "binary",
+              description: "Please invoice logo",
+              required: false,
+            },
+          },
+        },
+      },
+    },
+  },
+
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
 
 const invoiceRoutes = {
   "/api/v1/invoice/get-clients": {
@@ -552,6 +593,9 @@ const invoiceRoutes = {
   },
   "/api/v1/invoice/download-invoice": {
     post: downloadInvoice,
+  },
+  "/api/v1/invoice/upload-logo": {
+    post: uploadImage,
   },
 };
 

@@ -36,5 +36,11 @@ invoiceRoute.get(
   "/download-invoice/:invoice_id",
   invoiceController.downloadPdf
 );
+invoiceRoute.post(
+  "/upload-logo",
+  checkProfileSize,
+  upload.single("invoice_logo"),
+  invoiceController.uploadLogo
+);
 
 module.exports = invoiceRoute;

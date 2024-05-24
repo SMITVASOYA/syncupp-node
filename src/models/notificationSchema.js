@@ -3,7 +3,7 @@ const { crm_connection } = require("../config/connection");
 
 const notificationSchema = new mongoose.Schema(
   {
-    user_id: { type: mongoose.Types.ObjectId },
+    user_id: { type: mongoose.Types.ObjectId, ref: "authentication" },
     type: {
       type: String,
       enum: [
@@ -26,10 +26,10 @@ const notificationSchema = new mongoose.Schema(
     message: { type: String },
     is_read: { type: Boolean, default: false },
     is_deleted: { type: Boolean, default: false },
-    from_user: { type: mongoose.Types.ObjectId },
+    from_user: { type: mongoose.Types.ObjectId, ref: "authentication" },
     user_type: { type: String },
     group_id: { type: mongoose.Types.ObjectId },
-    workspace_id: { type: mongoose.Types.ObjectId },
+    workspace_id: { type: mongoose.Types.ObjectId, ref: "workspaces" },
   },
   { timestamps: true }
 );
