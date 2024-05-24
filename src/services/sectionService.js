@@ -66,7 +66,6 @@ class sectionService {
               is_color = true;
             }
           } while (!is_color);
-          console.log(colors[random_color_key]);
           // Return the selected color combination
           return colors[random_color_key];
         } catch (error) {

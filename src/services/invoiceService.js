@@ -401,7 +401,7 @@ class InvoiceService {
               status: getInvoiceStatus,
               currency,
               memo,
-              invoice_number,
+              invoice_number: `INV-${invoice_number}`,
               ...(image_path && { invoice_logo: image_path }),
             },
           }
@@ -431,7 +431,6 @@ class InvoiceService {
         workspace_id: new mongoose.Types.ObjectId(user?.workspace),
         ...(client_id && { client_id: new mongoose.Types.ObjectId(client_id) }),
       };
-      console.log(searchObj?.start_date);
       if (
         searchObj?.start_date !== null &&
         searchObj?.end_date !== null &&
@@ -446,7 +445,6 @@ class InvoiceService {
       // Add date range conditions for invoice date and due date
 
       if (searchObj?.start_date && searchObj?.end_date) {
-        console.log("1");
         queryObj.$and = [
           {
             $or: [
@@ -466,15 +464,11 @@ class InvoiceService {
           },
         ];
       } else if (searchObj?.start_date) {
-        console.log("2");
-
         queryObj.$or = [
           { invoice_date: { $gte: new Date(searchObj?.start_date) } },
           { due_date: { $gte: new Date(searchObj?.start_date) } },
         ];
       } else if (searchObj?.end_date) {
-        console.log("3");
-
         queryObj.$or = [
           { invoice_date: { $lte: new Date(searchObj?.end_date) } },
           { due_date: { $lte: new Date(searchObj?.end_date) } },
@@ -536,7 +530,6 @@ class InvoiceService {
           $options: "i",
         };
       }
-      console.log(queryObj);
 
       const pagination = paginationObject(searchObj);
       const pipeLine = [
@@ -1234,9 +1227,7 @@ class InvoiceService {
         const client_details = await Authentication.findOne({
           _id: invoice?.client_id,
         });
-        console.log(client_details);
         if (client_details) {
-          console.log("client_details");
           const company_urls = await Configuration.find().lean();
           // Use a template or format the invoice message accordingly
           const formatted_inquiry_email = invoiceTemplate({
@@ -1276,7 +1267,6 @@ class InvoiceService {
       ) {
         if (invoice_data[0]?.to?._id) {
           // ----------------  Notification start    -----------------
-          console.log("1");
 
           await notificationService.addNotification(
             {
@@ -1299,7 +1289,6 @@ class InvoiceService {
 
           if (invoice[0]?.to?._id) {
             // ----------------  Notification start    -----------------
-            console.log("2");
 
             await notificationService?.addNotification(
               {
@@ -1320,7 +1309,6 @@ class InvoiceService {
           if (client_details) {
             const company_urls = await Configuration.find().lean();
             // Use a template or format the invoice message accordingly
-            console.log(invoice[0]);
             const formatted_inquiry_email = invoiceTemplate({
               ...invoice[0],
               invoice_date: moment(invoice[0]?.invoice_date).format(
@@ -1330,7 +1318,6 @@ class InvoiceService {
               facebook: company_urls[0]?.urls?.facebook,
               instagram: company_urls[0]?.urls?.instagram,
             });
-            console.log("3");
             sendEmail({
               email: client_details?.email,
               subject:

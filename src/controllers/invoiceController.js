@@ -135,7 +135,6 @@ exports.deleteInvoice = catchAsyncError(async (req, res, next) => {
 exports.updateStatusInvoice = catchAsyncError(async (req, res, next) => {
   const user_role_data = await authService.getRoleSubRoleInWorkspace(req?.user);
   if (user_role_data?.user_role === "agency") {
-    console.log("edfefefef");
     await invoiceService.updateStatusInvoice(
       req?.body,
       req?.params?.id,
