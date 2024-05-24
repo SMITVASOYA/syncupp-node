@@ -53,17 +53,23 @@ exports.socket_connection = (http_server) => {
 
     // For user joined
     socket.on("ROOM", async (obj) => {
-      logger.info(obj.id, 15);
-      socket.join(obj.id);
+      logger.info(`User: ${obj.id}, workspace: ${obj?.workspace_id}`, 15);
+      socket.join(obj?.workspace_id + "." + obj?.id);
 
       // this is used to fetch the group chat id to join that group chat id so they can receive the group chat messages
       let group_ids = await Group_Chat.distinct("_id", {
         members: { $in: [obj.id] },
+        workspace_id: obj?.workspace_id,
       });
-      group_ids.forEach((group_id) => socket.join(group_id.toString()));
+
+      group_ids.forEach((group_id) => {
+        const group_join_id =
+          obj?.workspace_id?.toString() + "." + group_id?.toString();
+        socket.join(group_join_id);
+      });
       // for the Online status
-      await Authentication.findOneAndUpdate(
-        { reference_id: obj?.id },
+      await Authentication.findByIdAndUpdate(
+        obj?.id,
         { is_online: true },
         { new: true }
       );
@@ -91,12 +97,17 @@ exports.socket_connection = (http_server) => {
     socket.on("SEND_MESSAGE", async (payload) => {
       try {
         console.log("SEND_MESSAGE");
-        const { from_user, to_user, message, user_type } = payload;
+        const { from_user, to_user, message, workspace_id } = payload;
+
+        // this is used to send and recieve the message because of the workspace changes
+        const sender = workspace_id?.toString() + "." + from_user?.toString();
+        const receiver = workspace_id?.toString() + "." + to_user?.toString();
 
         const new_chat = await Chat.create({
           from_user,
           to_user,
           message,
+          workspace_id,
         });
 
         // commenting for the better optimised solution
@@ -110,24 +121,25 @@ exports.socket_connection = (http_server) => {
         // });
 
         // emiting the message to the sender to solve multiple device synchronous
-        io.to(from_user).emit("RECEIVED_MESSAGE", {
+
+        io.to(sender).emit("RECEIVED_MESSAGE", {
           from_user,
           to_user,
           message,
           createdAt: new_chat.createdAt,
           _id: new_chat?._id,
-          user_type,
           message_type: new_chat?.message_type,
+          workspace_id,
         });
 
-        socket.to(to_user).emit("RECEIVED_MESSAGE", {
+        socket.to(receiver).emit("RECEIVED_MESSAGE", {
           from_user,
           to_user,
           message,
           createdAt: new_chat.createdAt,
           _id: new_chat?._id,
-          user_type,
           message_type: new_chat?.message_type,
+          workspace_id,
         });
       } catch (error) {
         logger.error(`Error while sending the message: ${error}`);
@@ -147,12 +159,13 @@ exports.socket_connection = (http_server) => {
           type: "chat",
           is_read: false,
           is_deleted: false,
+          workspace_id: payload?.workspace_id,
         });
 
         if (!notification_exist) {
-          const sender_detail = await Authentication.findOne({
-            reference_id: payload?.from_user,
-          })
+          const sender_detail = await Authentication.findById(
+            payload?.from_user
+          )
             .select("first_name last_name profile_image")
             .lean();
           let notification_message = returnNotification("chat", "newMessage");
@@ -168,7 +181,7 @@ exports.socket_connection = (http_server) => {
             from_user: payload?.from_user,
             data_reference_id: payload?._id,
             message: notification_message,
-            user_type: payload?.user_type,
+            workspace_id: payload?.workspace_id,
           });
 
           const pending_notification = await Notification.countDocuments({
@@ -176,7 +189,11 @@ exports.socket_connection = (http_server) => {
             is_read: false,
           });
 
-          const user_id = payload?.to_user?.toString();
+          const user_id =
+            payload?.workspace_id?.toString() +
+            "." +
+            payload?.to_user?.toString();
+
           io.to(user_id).emit("NOTIFICATION", {
             notification,
             un_read_count: pending_notification,
@@ -232,10 +249,17 @@ exports.socket_connection = (http_server) => {
         }
 
         await Chat.findByIdAndUpdate(payload?.chat_id, { is_deleted: true });
-        io.to([
-          payload?.from_user.toString(),
-          payload?.to_user.toString(),
-        ]).emit("MESSGAE_DELETED", {
+
+        const sender =
+          message?.workspace_id?.toString() +
+          "." +
+          payload?.from_user?.toString();
+        const receiver =
+          message?.workspace_id?.toString() +
+          "." +
+          payload?.to_user?.toString();
+
+        io.to([sender, receiver]).emit("MESSGAE_DELETED", {
           message: returnMessage("chat", "messageDeleted"),
           _id: payload?.chat_id,
         });
@@ -437,16 +461,17 @@ exports.socket_connection = (http_server) => {
     socket.on("GROUP_SEND_MESSAGE", async (payload) => {
       try {
         console.log("GROUP_SEND_MESSAGE");
-        const { from_user, group_id, message } = payload;
+        const { from_user, group_id, message, workspace_id } = payload;
 
         const [new_chat, user_detail, group_detail] = await Promise.all([
           Chat.create({
             from_user,
             group_id,
             message,
+            workspace_id,
           }),
-          Authentication.findOne({ reference_id: from_user })
-            .select("first_name last_name reference_id profile_image")
+          Authentication.findById(from_user)
+            .select("first_name last_name profile_image")
             .lean(),
           Group_Chat.findById(group_id).lean(),
         ]);
@@ -463,7 +488,9 @@ exports.socket_connection = (http_server) => {
         //   members: group_detail?.members,
         // });
 
-        io.to(group_id).emit("GROUP_RECEIVED_MESSAGE", {
+        const group_sender =
+          workspace_id?.toString() + "." + group_id?.toString();
+        io.to(group_sender).emit("GROUP_RECEIVED_MESSAGE", {
           from_user,
           group_id,
           message,
@@ -472,6 +499,7 @@ exports.socket_connection = (http_server) => {
           message_type: new_chat?.message_type,
           user_detail,
           members: group_detail?.members,
+          workspace_id,
         });
       } catch (error) {
         logger.error(`Error while sending the in the group: ${error}`);
@@ -494,6 +522,7 @@ exports.socket_connection = (http_server) => {
             type: "group",
             is_read: false,
             is_deleted: false,
+            workspace_id: payload?.workspace_id,
           });
 
           if (!notification_exist) {
@@ -512,6 +541,7 @@ exports.socket_connection = (http_server) => {
               user_id: member,
               data_reference_id: payload?._id,
               message: notification_message,
+              workspace_id: payload?.workspace_id,
             });
 
             const pending_notification = await Notification.countDocuments({
@@ -519,8 +549,10 @@ exports.socket_connection = (http_server) => {
               group_id: payload?.group_id,
               user_id: member,
               is_read: false,
+              workspace_id: payload?.workspace_id,
             });
-            const member_id = member?.toString();
+            const member_id =
+              payload?.workspace_id?.toString() + "." + member?.toString();
             io.to(member_id).emit("NOTIFICATION", {
               notification,
               un_read_count: pending_notification,
@@ -741,18 +773,15 @@ exports.socket_connection = (http_server) => {
 
     socket.on("REACTION_MESSAGE", async (payload) => {
       try {
-        const { chat_id, reaction, from_user, to_user } = payload;
+        const { chat_id, reaction, from_user, to_user, workspace_id } = payload;
 
         // Find the message by ID in one-to-one chat
         const messages = await Chat.findById(chat_id);
 
-        if (!messages) {
-          // Handle error: Message not found
-          return returnMessage("chat", "MessageNotOFund");
-        }
+        if (!messages) return returnMessage("chat", "MessageNotOFund");
 
         const existingReactionIndex = messages?.reactions?.findIndex(
-          (reaction) => reaction.user.toString() === from_user.toString()
+          (reaction) => reaction?.user?.toString() === from_user?.toString()
         );
         if (existingReactionIndex !== -1) {
           // Update existing reaction
@@ -824,7 +853,7 @@ exports.socket_connection = (http_server) => {
             $lookup: {
               from: "authentications", // Collection name of your user model
               localField: "reactions.user",
-              foreignField: "reference_id",
+              foreignField: "_id",
               as: "reactions.user",
               pipeline: [
                 {
@@ -832,7 +861,7 @@ exports.socket_connection = (http_server) => {
                     first_name: 1,
                     last_name: 1,
                     profile_image: 1,
-                    reference_id: 1,
+                    _id: 1,
                   },
                 },
               ],
@@ -881,14 +910,13 @@ exports.socket_connection = (http_server) => {
         ]);
 
         // Broadcast the new reaction to other users in the chat room
-        io.to(from_user).emit("RECEIVED_REACTION", {
-          message: message[0],
-        });
+
+        const sender = workspace_id?.toString() + "." + from_user?.toString();
+        const receiver = workspace_id?.toString() + "." + to_user?.toString();
+        io.to(sender).emit("RECEIVED_REACTION", { message: message[0] });
 
         // Emit event to sender for real-time update
-        socket.to(to_user).emit("RECEIVED_REACTION", {
-          message: message[0],
-        });
+        socket.to(receiver).emit("RECEIVED_REACTION", { message: message[0] });
       } catch (error) {
         // Handle error
         console.error("Error while reacting to  message:", error);
@@ -897,21 +925,19 @@ exports.socket_connection = (http_server) => {
 
     socket.on("GROUP_REACTION_MESSAGE", async (payload) => {
       try {
-        const { chat_id, reaction, group_id, from_user } = payload;
+        const { chat_id, reaction, group_id, from_user, workspace_id } =
+          payload;
 
         const [user_detail] = await Promise.all([
-          Authentication.findOne({ reference_id: from_user })
-            .select("first_name last_name reference_id")
+          Authentication.findById(from_user)
+            .select("first_name last_name")
             .lean(),
         ]);
 
         // Find the message by ID in group chat
         const messages = await Chat.findById(chat_id);
 
-        if (!messages) {
-          // Handle error: Message not found
-          return returnMessage("chat", "MessageNotOFund");
-        }
+        if (!messages) return returnMessage("chat", "MessageNotOFund");
 
         const existingReactionIndex = messages?.reactions?.findIndex(
           (reaction) => reaction?.user?.toString() === from_user?.toString()
@@ -937,7 +963,7 @@ exports.socket_connection = (http_server) => {
             $lookup: {
               from: "authentications", // Collection name of your user model
               localField: "reactions.user",
-              foreignField: "reference_id",
+              foreignField: "_id",
               as: "reactions.user",
               pipeline: [
                 {
@@ -945,7 +971,7 @@ exports.socket_connection = (http_server) => {
                     first_name: 1,
                     last_name: 1,
                     profile_image: 1,
-                    reference_id: 1,
+                    _id: 1,
                   },
                 },
               ],
@@ -994,8 +1020,10 @@ exports.socket_connection = (http_server) => {
             },
           },
         ]);
+        const group_send =
+          workspace_id?.toString() + "." + group_id?.toString();
 
-        io.to(group_id).emit("GROUP_RECEIVED_REACTION", {
+        io.to(group_send).emit("GROUP_RECEIVED_REACTION", {
           ...message_obj[0],
           user_detail,
         });
@@ -1007,15 +1035,12 @@ exports.socket_connection = (http_server) => {
 
     socket.on("REACTION_DELETE", async (payload) => {
       try {
-        const { chat_id, from_user, to_user } = payload;
+        const { chat_id, from_user, to_user, workspace_id } = payload;
 
         // Find the message by ID
         const messages = await Chat.findById(chat_id);
 
-        if (!messages) {
-          // Handle error: Message not found
-          return returnMessage("chat", "MessageNotFound");
-        }
+        if (!messages) return returnMessage("chat", "MessageNotFound");
 
         // Find the index of the reaction by the user ID
         const existingReactionIndex = messages.reactions.findIndex(
@@ -1041,7 +1066,7 @@ exports.socket_connection = (http_server) => {
             $lookup: {
               from: "authentications", // Collection name of your user model
               localField: "reactions.user",
-              foreignField: "reference_id",
+              foreignField: "_id",
               as: "reactions.user",
               pipeline: [
                 {
@@ -1049,7 +1074,7 @@ exports.socket_connection = (http_server) => {
                     first_name: 1,
                     last_name: 1,
                     profile_image: 1,
-                    reference_id: 1,
+                    _id: 1,
                   },
                 },
               ],
@@ -1098,14 +1123,12 @@ exports.socket_connection = (http_server) => {
         ]);
 
         // Broadcast the new reaction to other users in the chat room
-        io.to(from_user).emit("RECEIVED_REACTION", {
-          message: message[0],
-        });
+        const sender = workspace_id?.toString() + "." + from_user?.toString();
+        const receiver = workspace_id?.toString() + "." + to_user?.toString();
+        io.to(sender).emit("RECEIVED_REACTION", { message: message[0] });
 
         // Emit event to sender for real-time update
-        socket.to(to_user).emit("RECEIVED_REACTION", {
-          message: message[0],
-        });
+        socket.to(receiver).emit("RECEIVED_REACTION", { message: message[0] });
       } catch (error) {
         // Handle error
         console.error("Error while reacting to message:", error);
@@ -1114,29 +1137,26 @@ exports.socket_connection = (http_server) => {
 
     socket.on("GROUP_REACTION_DELETE", async (payload) => {
       try {
-        const { chat_id, from_user, group_id } = payload;
+        const { chat_id, from_user, group_id, workspace_id } = payload;
 
         const [user_detail] = await Promise.all([
-          Authentication.findOne({ reference_id: from_user })
-            .select("first_name last_name reference_id")
+          Authentication.findById(from_user)
+            .select("first_name last_name")
             .lean(),
         ]);
         // Find the message by ID
         const messages = await Chat.findById(chat_id);
 
-        if (!messages) {
-          // Handle error: Message not found
-          return returnMessage("chat", "MessageNotFound");
-        }
+        if (!messages) return returnMessage("chat", "MessageNotFound");
 
         // Find the index of the reaction by the user ID
         const existingReactionIndex = messages.reactions.findIndex(
-          (reaction) => reaction.user.toString() === from_user.toString()
+          (reaction) => reaction?.user?.toString() === from_user?.toString()
         );
 
         if (existingReactionIndex !== -1) {
           // Delete the reaction of the particular user
-          messages?.reactions.splice(existingReactionIndex, 1);
+          messages?.reactions?.splice(existingReactionIndex, 1);
         }
 
         // Save the updated message
@@ -1152,7 +1172,7 @@ exports.socket_connection = (http_server) => {
             $lookup: {
               from: "authentications", // Collection name of your user model
               localField: "reactions.user",
-              foreignField: "reference_id",
+              foreignField: "_id",
               as: "reactions.user",
               pipeline: [
                 {
@@ -1209,7 +1229,10 @@ exports.socket_connection = (http_server) => {
             },
           },
         ]);
-        io.to(group_id).emit("GROUP_RECEIVED_REACTION", {
+
+        const group_sender =
+          workspace_id?.toString() + "." + group_id?.toString();
+        io.to(group_sender).emit("GROUP_RECEIVED_REACTION", {
           ...message_obj[0],
           user_detail,
         });
@@ -1221,15 +1244,15 @@ exports.socket_connection = (http_server) => {
   });
 };
 
-exports.eventEmitter = (event_name, payload, user_id) => {
+exports.eventEmitter = (event_name, payload, user_id, workspace_id) => {
   try {
     if (Array.isArray(user_id)) {
       user_id.forEach((user_id) => {
-        user_id = user_id?.toString();
+        user_id = workspace_id?.toString() + "." + user_id?.toString();
         io.to(user_id).emit(event_name, payload);
       });
     } else {
-      user_id = user_id?.toString();
+      user_id = workspace_id?.toString() + "." + user_id?.toString();
       io.to(user_id).emit(event_name, payload);
     }
   } catch (error) {
