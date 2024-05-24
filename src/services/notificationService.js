@@ -314,6 +314,7 @@ class NotificationService {
             type: "invoice",
             data_reference_id: id,
             message: message,
+            workspace_id: payload?.workspace_id,
           });
 
           eventEmitter(

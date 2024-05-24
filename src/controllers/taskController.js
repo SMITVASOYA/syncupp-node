@@ -7,7 +7,7 @@ const taskService = new TaskService();
 
 exports.addTask = catchAsyncError(async (req, res, next) => {
   const createTask = await taskService.createTask(
-    req.body,
+    req?.body,
     req?.user,
     req?.files
   );
@@ -21,7 +21,7 @@ exports.addTask = catchAsyncError(async (req, res, next) => {
 });
 
 exports.taskList = catchAsyncError(async (req, res, next) => {
-  let taskList = await taskService.taskList(req.body, req.user);
+  let taskList = await taskService.taskList(req?.body, req?.user);
   sendResponse(
     res,
     true,
@@ -32,7 +32,7 @@ exports.taskList = catchAsyncError(async (req, res, next) => {
 });
 
 exports.fetchTask = catchAsyncError(async (req, res, next) => {
-  const fetchTask = await taskService.getTaskById(req?.params?.id);
+  const fetchTask = await taskService.getTaskById(req?.params?.id, req?.user);
   sendResponse(
     res,
     true,
@@ -43,7 +43,7 @@ exports.fetchTask = catchAsyncError(async (req, res, next) => {
 });
 exports.updateTask = catchAsyncError(async (req, res, next) => {
   const updateTask = await taskService.updateTask(
-    req.body,
+    req?.body,
     req?.params?.id,
     req?.files,
     req?.user
@@ -71,7 +71,7 @@ exports.deleteTask = catchAsyncError(async (req, res, next) => {
 exports.updateTaskStatus = catchAsyncError(async (req, res, next) => {
   const updateTaskStatus = await taskService.updateTaskStatus(
     req?.body,
-    req.params.id,
+    req?.params?.id,
     req?.user
   );
   sendResponse(

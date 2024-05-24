@@ -4,8 +4,7 @@ const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
 const { returnMessage, invoiceTemplate } = require("../utils/utils");
 const Client = require("../models/clientSchema");
-const { ObjectId } = require("mongoose");
-
+const mongoose = require("mongoose");
 const { calculateInvoice, calculateAmount } = require("./commonSevice");
 const { paginationObject, getKeywordType } = require("../utils/utils");
 const statusCode = require("../messages/english.json");
@@ -17,79 +16,68 @@ const notificationService = new NotificationService();
 const moment = require("moment");
 const Currency = require("../models/masters/currencyListSchema");
 const Configuration = require("../models/configurationSchema");
+const Workspace = require("../models/workspaceSchema");
+const Role_Master = require("../models/masters/roleMasterSchema");
+const Setting = require("../models/settingSchema");
+const AuthService = require("../services/authService");
+const authService = new AuthService();
+const fs = require("fs");
 
 class InvoiceService {
   // Get Client list  ------   AGENCY API
   getClients = async (user) => {
-    const { reference_id } = user;
     try {
+      const client_data = await Role_Master.findOne({ name: "client" }).lean();
+      const team_client_data = await Role_Master.findOne({
+        name: "team_client",
+      }).lean();
       const pipeline = [
         {
-          $match: {
-            "agency_ids.agency_id": reference_id,
-            "agency_ids.status": {
-              $in: ["active", "inactive"],
-            },
+          $match: { _id: new mongoose.Types.ObjectId(user?.workspace) },
+        },
+
+        {
+          $unwind: {
+            path: "$members",
+            preserveNullAndEmptyArrays: true,
           },
         },
+
         {
           $lookup: {
             from: "authentications",
-            localField: "_id",
-            foreignField: "reference_id",
-            as: "clientInfo",
-            pipeline: [
-              {
-                $project: {
-                  first_name: 1,
-                  last_name: 1,
-                  name: 1,
-                  contact_number: 1,
-                  client_full_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
+            localField: "members.user_id",
+            foreignField: "_id",
+            as: "user_details",
           },
         },
-        {
-          $unwind: { path: "$clientInfo", preserveNullAndEmptyArrays: true },
-        },
 
+        {
+          $unwind: {
+            path: "$user_details",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
         {
           $lookup: {
-            from: "clients",
-            localField: "_id",
+            from: "role_masters",
+            localField: "members.role",
             foreignField: "_id",
-            as: "clientData",
-            pipeline: [
-              {
-                $project: {
-                  _id: 1,
-                  company_name: 1,
-                  address: 1,
-                  industry: 1,
-                  no_of_people: 1,
-                  pincode: 1,
-                  city: 1,
-                  country: 1,
-                  state: 1,
-                },
-              },
-            ],
+            as: "status_name",
           },
         },
-
         {
-          $unwind: { path: "$clientData", preserveNullAndEmptyArrays: true },
+          $unwind: {
+            path: "$status_name",
+            preserveNullAndEmptyArrays: true,
+          },
         },
         {
           $lookup: {
             from: "state_masters",
-            localField: "clientData.state",
+            localField: "client_data.state",
             foreignField: "_id",
-            as: "clientState",
+            as: "client_state",
             pipeline: [
               {
                 $project: {
@@ -102,12 +90,12 @@ class InvoiceService {
         },
 
         {
-          $unwind: { path: "$clientState", preserveNullAndEmptyArrays: true },
+          $unwind: { path: "$client_state", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
             from: "city_masters",
-            localField: "clientData.city",
+            localField: "client_data.city",
             foreignField: "_id",
             as: "clientCity",
             pipeline: [
@@ -127,7 +115,7 @@ class InvoiceService {
         {
           $lookup: {
             from: "country_masters",
-            localField: "clientData.country",
+            localField: "client_data.country",
             foreignField: "_id",
             as: "clientCountry",
             pipeline: [
@@ -146,67 +134,61 @@ class InvoiceService {
         },
 
         {
+          $match: {
+            $or: [
+              {
+                "status_name._id": new mongoose.Types.ObjectId(
+                  client_data?._id
+                ),
+              },
+              {
+                "status_name._id": new mongoose.Types.ObjectId(
+                  team_client_data?._id
+                ),
+              },
+            ],
+          },
+        },
+
+        {
           $project: {
-            _id: "$clientData._id",
-            company_name: "$clientData.company_name",
-            first_name: "$clientInfo.first_name",
-            last_name: "$clientInfo.last_name",
-            client_full_name: "$clientInfo.client_full_name",
-            contact_number: "$clientInfo.contact_number",
-            address: "$clientData.address",
-            industry: "$clientData.industry",
-            no_of_people: "$clientData.no_of_people",
-            pincode: "$clientData.pincode",
+            _id: 0,
+            role: "$status_name.name",
+            _id: "$user_details._id",
+            profile_image: "$user_details.profile_image",
+            first_name: "$user_details.first_name",
+            last_name: "$user_details.last_name",
+            company_name: "$user_details.company_name",
+            contact_number: "$user_details.contact_number",
+            address: "$user_details.address",
+            industry: "$user_details.industry",
+            no_of_people: "$user_details.no_of_people",
+            pincode: "$user_details.pincode",
+            email: "$user_details.email",
             city: "$clientCity",
             state: "$clientState",
             country: "$clientCountry",
+            client_full_name: {
+              $concat: [
+                "$user_details.first_name",
+                " ",
+                "$user_details.last_name",
+              ],
+            },
           },
         },
       ];
-      const findClient = await Client.aggregate(pipeline);
+      const client_list = await Workspace.aggregate(pipeline);
 
-      return findClient;
+      return client_list;
     } catch (error) {
       logger.error(`Error while fetching agencies: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
 
-  // GET Invoice information like address , company name pin etc before creating.  ------   AGENCY API
-  getInvoiceInformation = async (payload, user) => {
-    try {
-      const { client_id } = payload;
-      const getClientData = await Client.findOne(
-        {
-          _id: client_id,
-        },
-        {
-          agency_ids: 0,
-          createdAt: 0,
-          updatedAt: 0,
-          __v: 0,
-          company_website: 0,
-          title: 0,
-        }
-      )
-        .populate("city", "name")
-        .populate("state", "name")
-        .populate("country", "name")
-        .lean();
-      const getClientInfo = await Authentication.findOne(
-        { reference_id: client_id },
-        { contact_number: 1 }
-      ).lean();
-
-      return { ...getClientData, contact_number: getClientInfo.contact_number };
-    } catch (error) {
-      logger.error(`Error while Get Invoice information, ${error}`);
-      throwError(error?.message, error?.statusCode);
-    }
-  };
-
   // Add   Invoice    ------   AGENCY API
-  addInvoice = async (payload, user) => {
+  addInvoice = async (payload, user, logo) => {
     try {
       const {
         due_date,
@@ -219,11 +201,16 @@ class InvoiceService {
         memo,
       } = payload;
 
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      if (user_role_data?.user_role !== "agency") {
+        return throwError(returnMessage("auth", "insufficientPermission"), 403);
+      }
+
       if (due_date < invoice_date) {
         return throwError(returnMessage("invoice", "invalidDueDate"));
       }
 
-      const invoiceItems = invoice_content;
+      const invoiceItems = JSON.parse(invoice_content);
       calculateAmount(invoiceItems);
 
       let newInvoiceNumber;
@@ -231,7 +218,7 @@ class InvoiceService {
       // If invoice_number is not provided, generate a new one based on count
       if (!invoice_number) {
         let invoiceCount = await Invoice.countDocuments({
-          agency_id: user.reference_id,
+          agency_id: user?._id,
         });
 
         // Generate a new invoice number and ensure it's unique
@@ -240,14 +227,14 @@ class InvoiceService {
           newInvoiceNumber = `INV-${invoiceCount}`;
           var existingInvoice = await Invoice.findOne({
             invoice_number: newInvoiceNumber,
-            agency_id: user.reference_id,
+            agency_id: user?._id,
           });
         } while (existingInvoice);
       } else {
-        newInvoiceNumber = invoice_number;
+        newInvoiceNumber = `INV-${invoice_number}`;
         const isInvoice = await Invoice.findOne({
           invoice_number: newInvoiceNumber,
-          agency_id: user.reference_id,
+          agency_id: user?._id,
         });
         if (isInvoice) {
           return throwError(returnMessage("invoice", "invoiceNumberExists"));
@@ -258,7 +245,7 @@ class InvoiceService {
 
       // Update Invoice status
       let getInvoiceStatus;
-      if (sent === true) {
+      if (sent === "true") {
         getInvoiceStatus = await Invoice_Status_Master.findOne({
           name: "unpaid",
         });
@@ -268,6 +255,22 @@ class InvoiceService {
         });
       }
 
+      const invoice_setting_data = await Setting.findOne({
+        workspace_id: user?.workspace,
+      }).lean();
+      let image_path = false;
+      if (logo) {
+        image_path = "uploads/" + logo?.filename;
+        if (!invoice_setting_data?.invoice?.logo) {
+          await Setting.findOneAndUpdate(
+            { workspace_id: user?.workspace },
+            { invoice: { logo: image_path } },
+            { new: true }
+          );
+        }
+      } else {
+        image_path = invoice_setting_data?.invoice?.logo;
+      }
       var invoice = await Invoice.create({
         due_date,
         invoice_number: newInvoiceNumber,
@@ -275,16 +278,20 @@ class InvoiceService {
         total,
         sub_total,
         invoice_content: invoiceItems,
-        client_id,
+        ...(client_id && { client_id: client_id }),
         currency,
+        workspace_id: user?.workspace,
         memo,
-        agency_id: user.reference_id,
-        status: getInvoiceStatus._id,
+        agency_id: user?._id,
+        status: getInvoiceStatus?._id,
+        ...(image_path && {
+          invoice_logo: image_path,
+        }),
       });
 
-      if (sent === true) {
-        const payload = { invoice_id: invoice._id };
-        await this.sendInvoice(payload, "create");
+      if (sent === "true") {
+        const payload = { invoice_id: invoice?._id };
+        await this.sendInvoice(payload, "create", user?.workspace);
       }
 
       return invoice;
@@ -294,92 +301,218 @@ class InvoiceService {
     }
   };
 
+  // Update Invoice   ------   AGENCY API
+  updateInvoice = async (payload, invoiceIdToUpdate, user, logo) => {
+    try {
+      const {
+        due_date,
+        invoice_content,
+        client_id,
+        invoice_date,
+        sent,
+        currency,
+        memo,
+        invoice_number,
+      } = payload;
+
+      // Check Permission
+      const user_role_data = await authService?.getRoleSubRoleInWorkspace(user);
+      if (user_role_data?.user_role !== "agency") {
+        return throwError(returnMessage("auth", "insufficientPermission"), 403);
+      }
+
+      // Check invoice number already exists
+      const draftKey = await Invoice_Status_Master.findOne({
+        name: "draft",
+      }).lean();
+      const isInvoice = await Invoice.findOne({
+        invoice_number: `INV-${invoice_number}`,
+        agency_id: user?._id,
+        status: { $ne: draftKey?._id },
+      }).lean();
+
+      if (isInvoice) {
+        return throwError(returnMessage("invoice", "invoiceNumberExists"));
+      }
+
+      if (due_date < invoice_date) {
+        return throwError(returnMessage("invoice", "invalidDueDate"));
+      }
+
+      const invoice = await Invoice.findById(invoiceIdToUpdate)
+        .populate("status")
+        .lean();
+
+      if (invoice.status.name === "draft") {
+        if (sent === "true") {
+          var getInvoiceStatus = await Invoice_Status_Master.findOne({
+            name: "unpaid",
+          }).lean();
+        }
+
+        // For invoice calculation
+        const invoiceItems = JSON.parse(invoice_content);
+        calculateAmount(invoiceItems);
+        const { total, sub_total } = calculateInvoice(invoiceItems);
+
+        const invoice_setting_data = await Setting.findOne({
+          workspace_id: user?.workspace,
+        }).lean();
+
+        // For update Image
+        let image_path = false;
+        if (logo) {
+          image_path = "uploads/" + logo?.filename;
+          if (!invoice_setting_data?.invoice?.logo) {
+            await Setting.findOneAndUpdate(
+              { workspace_id: user?.workspace },
+              { invoice: { logo: image_path } },
+              { new: true }
+            );
+          }
+        }
+
+        // For delete Image
+        if (
+          logo &&
+          invoice_setting_data?.invoice?.logo !== invoice?.invoice_logo
+        ) {
+          invoice?.invoice_logo &&
+            fs.unlink(`./src/public/${invoice?.invoice_logo}`, (err) => {
+              if (err) {
+                logger.error(`Error while unlinking the documents: ${err}`);
+              }
+            });
+        }
+        await Invoice.updateOne(
+          { _id: invoiceIdToUpdate },
+          {
+            $set: {
+              total,
+              sub_total,
+              due_date,
+              invoice_content: invoiceItems,
+              ...(!client_id || client_id === "null" || client_id === undefined
+                ? {
+                    client_id: null,
+                  }
+                : { client_id: client_id }),
+              invoice_date,
+              status: getInvoiceStatus,
+              currency,
+              memo,
+              invoice_number: `INV-${invoice_number}`,
+              ...(image_path && { invoice_logo: image_path }),
+            },
+          }
+        );
+
+        if (sent === "true") {
+          const payload = { invoice_id: invoice?._id };
+          await this.sendInvoice(payload, "create", user?.workspace);
+        }
+      } else {
+        return throwError(returnMessage("invoice", "canNotUpdate"));
+      }
+      return true;
+    } catch (error) {
+      logger.error(`Error while updating Invoice, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
   // GET All Invoice    ------   AGENCY API
-  getAllInvoice = async (searchObj, user_id) => {
+  getAllInvoice = async (searchObj, user) => {
     try {
       const { client_id } = searchObj;
       const queryObj = {
         is_deleted: false,
-        agency_id: user_id,
-        ...(client_id && { client_id: new ObjectId(client_id) }),
+        agency_id: new mongoose.Types.ObjectId(user?._id),
+        workspace_id: new mongoose.Types.ObjectId(user?.workspace),
+        ...(client_id && { client_id: new mongoose.Types.ObjectId(client_id) }),
       };
-
-      if (searchObj?.start_date !== null && searchObj?.end_date !== null) {
+      if (
+        searchObj?.start_date !== null &&
+        searchObj?.end_date !== null &&
+        searchObj?.start_date !== undefined &&
+        searchObj?.start_date !== undefined
+      ) {
         const parsedEndDate = moment.utc(searchObj?.end_date, "DD/MM/YYYY");
         const parsedStartDate = moment.utc(searchObj?.start_date, "DD/MM/YYYY");
         searchObj.start_date = parsedStartDate.utc();
         searchObj.end_date = parsedEndDate.utc();
       }
       // Add date range conditions for invoice date and due date
-      if (searchObj.start_date && searchObj.end_date) {
+
+      if (searchObj?.start_date && searchObj?.end_date) {
         queryObj.$and = [
           {
             $or: [
               {
                 invoice_date: {
-                  $gte: new Date(searchObj.start_date),
-                  $lte: new Date(searchObj.end_date),
+                  $gte: new Date(searchObj?.start_date),
+                  $lte: new Date(searchObj?.end_date),
                 },
               },
               {
                 due_date: {
-                  $gte: new Date(searchObj.start_date),
-                  $lte: new Date(searchObj.end_date),
+                  $gte: new Date(searchObj?.start_date),
+                  $lte: new Date(searchObj?.end_date),
                 },
               },
             ],
           },
         ];
-      } else if (searchObj.start_date) {
+      } else if (searchObj?.start_date) {
         queryObj.$or = [
-          { invoice_date: { $gte: new Date(searchObj.start_date) } },
-          { due_date: { $gte: new Date(searchObj.start_date) } },
+          { invoice_date: { $gte: new Date(searchObj?.start_date) } },
+          { due_date: { $gte: new Date(searchObj?.start_date) } },
         ];
-      } else if (searchObj.end_date) {
+      } else if (searchObj?.end_date) {
         queryObj.$or = [
-          { invoice_date: { $lte: new Date(searchObj.end_date) } },
-          { due_date: { $lte: new Date(searchObj.end_date) } },
+          { invoice_date: { $lte: new Date(searchObj?.end_date) } },
+          { due_date: { $lte: new Date(searchObj?.end_date) } },
         ];
       }
 
-      if (searchObj.search && searchObj.search !== "") {
+      if (searchObj?.search && searchObj?.search !== "") {
         queryObj["$or"] = [
           {
             invoice_number: {
-              $regex: searchObj.search.toLowerCase(),
+              $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
           },
 
           {
             "status.name": {
-              $regex: searchObj.search.toLowerCase(),
+              $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
           },
           {
             "customerInfo.first_name": {
-              $regex: searchObj.search.toLowerCase(),
+              $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
           },
           {
             "customerInfo.last_name": {
-              $regex: searchObj.search.toLowerCase(),
+              $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
           },
           {
             "customerInfo.client_fullName": {
-              $regex: searchObj.search.toLowerCase(),
+              $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
           },
         ];
 
-        const keywordType = getKeywordType(searchObj.search);
+        const keywordType = getKeywordType(searchObj?.search);
         if (keywordType === "number") {
-          const numericKeyword = parseFloat(searchObj.search);
+          const numericKeyword = parseFloat(searchObj?.search);
 
           queryObj["$or"].push({
             total: numericKeyword,
@@ -387,8 +520,8 @@ class InvoiceService {
         }
       }
 
-      if (searchObj.client_name && searchObj.client_name !== "") {
-        const clientId = new ObjectId(searchObj.client_name); // Convert string to ObjectId
+      if (searchObj?.client_name && searchObj?.client_name !== "") {
+        const clientId = new mongoose.Types.ObjectId(searchObj?.client_name); // Convert string to ObjectId
         queryObj["customerInfo.reference_id"] = clientId;
       }
       if (searchObj.status_name && searchObj.status_name !== "") {
@@ -417,8 +550,8 @@ class InvoiceService {
           $lookup: {
             from: "authentications",
             localField: "client_id",
-            foreignField: "reference_id",
-            as: "customerInfo",
+            foreignField: "_id",
+            as: "customer_info",
             pipeline: [
               {
                 $project: {
@@ -435,14 +568,14 @@ class InvoiceService {
           },
         },
         {
-          $unwind: { path: "$customerInfo", preserveNullAndEmptyArrays: true },
+          $unwind: { path: "$customer_info", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
-            from: "clients",
+            from: "authentications",
             localField: "client_id",
             foreignField: "_id",
-            as: "customerData",
+            as: "customer_data",
             pipeline: [
               {
                 $project: {
@@ -453,7 +586,7 @@ class InvoiceService {
           },
         },
         {
-          $unwind: { path: "$customerData", preserveNullAndEmptyArrays: true },
+          $unwind: { path: "$customer_data", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
@@ -483,15 +616,15 @@ class InvoiceService {
             invoice_number: 1,
             invoice_date: 1,
             due_date: 1,
-            first_name: "$customerInfo.first_name",
-            last_name: "$customerInfo.last_name",
-            company_name: "$customerData.company_name",
+            first_name: "$customer_info.first_name",
+            last_name: "$customer_info.last_name",
+            company_name: "$customer_data.company_name",
             status: "$status.name",
-            client_full_name: "$customerInfo.client_fullName",
+            client_full_name: "$customer_info.client_fullName",
             total: 1,
             createdAt: 1,
             updatedAt: 1,
-            client_id: "$customerInfo.reference_id",
+            client_id: "$customer_info._id",
             currency_symbol: "$currency_name.symbol",
             currency_name: "$currency_name.name",
             memo: 1,
@@ -520,19 +653,19 @@ class InvoiceService {
 
   // GET Invoice   ------   Client and Agency API
 
-  getInvoice = async (invoiceId) => {
+  getInvoice = async (invoice_id) => {
     try {
       const invoice = await Invoice.aggregate([
         {
-          $match: { _id: new ObjectId(invoiceId) },
+          $match: { _id: new mongoose.Types.ObjectId(invoice_id) },
         },
 
         {
           $lookup: {
             from: "authentications",
             localField: "client_id",
-            foreignField: "reference_id",
-            as: "clientInfo",
+            foreignField: "_id",
+            as: "client_info",
             pipeline: [
               {
                 $project: {
@@ -551,14 +684,14 @@ class InvoiceService {
         },
 
         {
-          $unwind: { path: "$clientInfo", preserveNullAndEmptyArrays: true },
+          $unwind: { path: "$client_info", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
             from: "authentications",
             localField: "agency_id",
-            foreignField: "reference_id",
-            as: "agencyInfo",
+            foreignField: "_id",
+            as: "agency_info",
             pipeline: [
               {
                 $project: {
@@ -577,26 +710,26 @@ class InvoiceService {
         },
 
         {
-          $unwind: { path: "$agencyInfo", preserveNullAndEmptyArrays: true },
+          $unwind: { path: "$agency_info", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
             from: "invoice_status_masters",
             localField: "status",
             foreignField: "_id",
-            as: "statusData",
+            as: "status_data",
             pipeline: [{ $project: { name: 1 } }],
           },
         },
         {
-          $unwind: { path: "$statusData", preserveNullAndEmptyArrays: true },
+          $unwind: { path: "$status_data", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
-            from: "clients",
+            from: "authentications",
             localField: "client_id",
             foreignField: "_id",
-            as: "clientData",
+            as: "client_data",
             pipeline: [
               {
                 $project: {
@@ -613,14 +746,14 @@ class InvoiceService {
         },
 
         {
-          $unwind: { path: "$clientData", preserveNullAndEmptyArrays: true },
+          $unwind: { path: "$client_data", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
             from: "state_masters",
-            localField: "clientData.state",
+            localField: "client_data.state",
             foreignField: "_id",
-            as: "clientState",
+            as: "client_state",
             pipeline: [
               {
                 $project: {
@@ -632,14 +765,14 @@ class InvoiceService {
         },
 
         {
-          $unwind: { path: "$clientState", preserveNullAndEmptyArrays: true },
+          $unwind: { path: "$client_state", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
             from: "city_masters",
-            localField: "clientData.city",
+            localField: "client_data.city",
             foreignField: "_id",
-            as: "clientCity",
+            as: "client_city",
             pipeline: [
               {
                 $project: {
@@ -651,14 +784,14 @@ class InvoiceService {
         },
 
         {
-          $unwind: { path: "$clientCity", preserveNullAndEmptyArrays: true },
+          $unwind: { path: "$client_city", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
             from: "country_masters",
-            localField: "clientData.country",
+            localField: "client_data.country",
             foreignField: "_id",
-            as: "clientCountry",
+            as: "client_country",
             pipeline: [
               {
                 $project: {
@@ -670,14 +803,17 @@ class InvoiceService {
         },
 
         {
-          $unwind: { path: "$clientCountry", preserveNullAndEmptyArrays: true },
+          $unwind: {
+            path: "$client_country",
+            preserveNullAndEmptyArrays: true,
+          },
         },
         {
           $lookup: {
             from: "agencies",
             localField: "agency_id",
             foreignField: "_id",
-            as: "agencyData",
+            as: "agency_data",
 
             pipeline: [
               {
@@ -695,12 +831,12 @@ class InvoiceService {
         },
 
         {
-          $unwind: { path: "$agencyData", preserveNullAndEmptyArrays: true },
+          $unwind: { path: "$agency_data", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
             from: "state_masters",
-            localField: "agencyData.state",
+            localField: "agency_data.state",
             foreignField: "_id",
             as: "agencyState",
             pipeline: [
@@ -719,7 +855,7 @@ class InvoiceService {
         {
           $lookup: {
             from: "city_masters",
-            localField: "agencyData.city",
+            localField: "agency_data.city",
             foreignField: "_id",
             as: "agencyCity",
             pipeline: [
@@ -738,7 +874,7 @@ class InvoiceService {
         {
           $lookup: {
             from: "country_masters",
-            localField: "agencyData.country",
+            localField: "agency_data.country",
             foreignField: "_id",
             as: "agencyCountry",
             pipeline: [
@@ -779,34 +915,35 @@ class InvoiceService {
             _id: 1,
             invoice_number: 1,
             invoice_date: 1,
+            invoice_logo: 1,
             due_date: 1,
-            status: "$statusData.name",
+            status: "$status_data.name",
             from: {
-              _id: "$agencyData._id",
-              first_name: "$agencyInfo.first_name",
-              last_name: "$agencyInfo.last_name",
-              agency_full_name: "$agencyInfo.agency_full_name",
-              contact_number: "$agencyInfo.contact_number",
-              company_name: "$agencyData.company_name",
-              address: "$agencyData.address",
-              pincode: "$agencyData.pincode",
+              _id: "$agency_data._id",
+              first_name: "$agency_info.first_name",
+              last_name: "$agency_info.last_name",
+              agency_full_name: "$agency_info.agency_full_name",
+              contact_number: "$agency_info.contact_number",
+              company_name: "$agency_data.company_name",
+              address: "$agency_data.address",
+              pincode: "$agency_data.pincode",
               state: "$agencyState",
               city: "$agencyCity",
               country: "$agencyCountry",
             },
 
             to: {
-              _id: "$clientData._id",
-              first_name: "$clientInfo.first_name",
-              last_name: "$clientInfo.last_name",
-              client_full_name: "$clientInfo.client_full_name",
-              contact_number: "$clientInfo.contact_number",
-              company_name: "$clientData.company_name",
-              address: "$clientData.address",
-              pincode: "$clientData.pincode",
-              state: "$clientState",
-              city: "$clientCity",
-              country: "$clientCountry",
+              _id: "$client_data._id",
+              first_name: "$client_info.first_name",
+              last_name: "$client_info.last_name",
+              client_full_name: "$client_info.client_full_name",
+              contact_number: "$client_info.contact_number",
+              company_name: "$client_data.company_name",
+              address: "$client_data.address",
+              pincode: "$client_data.pincode",
+              state: "$client_state",
+              city: "$client_city",
+              country: "$client_country",
             },
 
             invoice_content: 1,
@@ -829,109 +966,30 @@ class InvoiceService {
     }
   };
 
-  // Update Invoice   ------   AGENCY API
-  updateInvoice = async (payload, invoiceIdToUpdate, user) => {
-    try {
-      const {
-        due_date,
-        invoice_content,
-        client_id,
-        invoice_date,
-        sent,
-        currency,
-        memo,
-        invoice_number,
-      } = payload;
-
-      const draftKey = await Invoice_Status_Master.findOne({ name: "draft" });
-
-      const isInvoice = await Invoice.findOne({
-        invoice_number: invoice_number,
-        agency_id: user.reference_id,
-        status: { $ne: draftKey?._id },
-      });
-
-      if (isInvoice) {
-        return throwError(returnMessage("invoice", "invoiceNumberExists"));
-      }
-
-      if (due_date < invoice_date) {
-        return throwError(returnMessage("invoice", "invalidDueDate"));
-      }
-
-      const invoice = await Invoice.findById(invoiceIdToUpdate).populate(
-        "status"
-      );
-
-      if (invoice.status.name === "draft") {
-        if (due_date || invoice_content || client_id || invoice_date) {
-          if (sent === true) {
-            var getInvoiceStatus = await Invoice_Status_Master.findOne({
-              name: "unpaid",
-            });
-          }
-
-          const invoiceItems = invoice_content;
-          calculateAmount(invoiceItems);
-          const { total, sub_total } = calculateInvoice(invoiceItems);
-
-          await Invoice.updateOne(
-            { _id: invoiceIdToUpdate },
-            {
-              $set: {
-                total,
-                sub_total,
-                due_date,
-                invoice_content: invoiceItems,
-                client_id,
-                invoice_date,
-                status: getInvoiceStatus,
-                currency,
-                memo,
-                invoice_number,
-              },
-            }
-          );
-
-          if (sent === true) {
-            const payload = { invoice_id: invoice._id };
-            await this.sendInvoice(payload, "create");
-          }
-        }
-      } else {
-        return throwError(returnMessage("invoice", "canNotUpdate"));
-      }
-      return true;
-    } catch (error) {
-      logger.error(`Error while updating Invoice, ${error}`);
-      throwError(error?.message, error?.statusCode);
-    }
-  };
-
   // Update Status Invoice   ------   AGENCY API
-  updateStatusInvoice = async (payload, invoiceIdToUpdate) => {
+  updateStatusInvoice = async (payload, invoiceIdToUpdate, user) => {
     try {
       const { status } = payload;
 
       if (status === "unpaid") {
         const payload = { invoice_id: invoiceIdToUpdate };
-        await this.sendInvoice(payload, "updateStatusUnpaid");
+        await this.sendInvoice(payload, "updateStatusUnpaid", user?.workspace);
       }
 
       if (status === "unpaid" || status === "paid" || status === "overdue") {
         // Get Invoice status
-        const getInvoiceStatus = await Invoice_Status_Master.findOne({
+        const get_invoice_status = await Invoice_Status_Master.findOne({
           name: status,
-        });
+        }).lean();
         await Invoice.updateOne(
           { _id: invoiceIdToUpdate },
-          { $set: { status: getInvoiceStatus._id } }
+          { $set: { status: get_invoice_status?._id } }
         );
       }
 
       if (status === "paid") {
         const payload = { invoice_id: invoiceIdToUpdate };
-        await this.sendInvoice(payload, "updateStatusPaid");
+        await this.sendInvoice(payload, "updateStatusPaid", user?.workspace);
       }
       return true;
     } catch (error) {
@@ -972,38 +1030,39 @@ class InvoiceService {
   };
 
   // GET All Invoice    ------   CLient API
-  getClientInvoice = async (searchObj, user_id) => {
+  getClientInvoice = async (searchObj, user) => {
     try {
-      const { agency_id } = searchObj;
-      if (!agency_id) {
-        return throwError(returnMessage("invoice", "agencyIdRequired"));
-      }
       const queryObj = {
         is_deleted: false,
-        client_id: user_id,
-        agency_id: new ObjectId(agency_id),
+        client_id: new mongoose.Types.ObjectId(user?._id),
+        workspace_id: new mongoose.Types.ObjectId(user?.workspace),
       };
-      if (searchObj?.start_date !== null && searchObj?.end_date !== null) {
+      if (
+        searchObj?.start_date !== null &&
+        searchObj?.end_date !== null &&
+        searchObj?.start_date !== undefined &&
+        searchObj?.start_date !== undefined
+      ) {
         const parsedStartDate = moment.utc(searchObj?.start_date, "DD/MM/YYYY");
         searchObj.start_date = parsedStartDate.utc();
         const parsedEndDate = moment.utc(searchObj?.end_date, "DD/MM/YYYY");
         searchObj.end_date = parsedEndDate.utc();
       }
       // Add date range conditions for invoice date and due date
-      if (searchObj.start_date && searchObj.end_date) {
+      if (searchObj?.start_date && searchObj?.end_date) {
         queryObj.$and = [
           {
             $or: [
               {
                 invoice_date: {
-                  $gte: new Date(searchObj.start_date),
-                  $lte: new Date(searchObj.end_date),
+                  $gte: new Date(searchObj?.start_date),
+                  $lte: new Date(searchObj?.end_date),
                 },
               },
               {
                 due_date: {
-                  $gte: new Date(searchObj.start_date),
-                  $lte: new Date(searchObj.end_date),
+                  $gte: new Date(searchObj?.start_date),
+                  $lte: new Date(searchObj?.end_date),
                 },
               },
             ],
@@ -1011,44 +1070,44 @@ class InvoiceService {
         ];
       } else if (searchObj.start_date) {
         queryObj.$or = [
-          { invoice_date: { $gte: new Date(searchObj.start_date) } },
-          { due_date: { $gte: new Date(searchObj.start_date) } },
+          { invoice_date: { $gte: new Date(searchObj?.start_date) } },
+          { due_date: { $gte: new Date(searchObj?.start_date) } },
         ];
       } else if (searchObj.end_date) {
         queryObj.$or = [
-          { invoice_date: { $lte: new Date(searchObj.end_date) } },
-          { due_date: { $lte: new Date(searchObj.end_date) } },
+          { invoice_date: { $lte: new Date(searchObj?.end_date) } },
+          { due_date: { $lte: new Date(searchObj?.end_date) } },
         ];
       }
 
-      if (searchObj.search && searchObj.search !== "") {
+      if (searchObj?.search && searchObj?.search !== "") {
         queryObj["$or"] = [
           {
             invoice_number: {
-              $regex: searchObj.search.toLowerCase(),
+              $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
           },
           {
             "statusArray.name": {
-              $regex: searchObj.search.toLowerCase(),
+              $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
           },
         ];
 
-        const keywordType = getKeywordType(searchObj.search);
+        const keywordType = getKeywordType(searchObj?.search);
         if (keywordType === "number") {
-          const numericKeyword = parseFloat(searchObj.search);
+          const numericKeyword = parseFloat(searchObj?.search);
           queryObj["$or"].push({
             total: numericKeyword,
           });
         }
       }
 
-      if (searchObj.status_name && searchObj.status_name !== "") {
+      if (searchObj?.status_name && searchObj?.status_name !== "") {
         queryObj["status.name"] = {
-          $regex: searchObj.status_name.toLowerCase(),
+          $regex: searchObj?.status_name.toLowerCase(),
           $options: "i",
         };
       }
@@ -1060,12 +1119,12 @@ class InvoiceService {
             from: "invoice_status_masters",
             localField: "status",
             foreignField: "_id",
-            as: "statusArray",
+            as: "status_array",
             pipeline: [{ $project: { name: 1 } }],
           },
         },
         {
-          $unwind: { path: "$statusArray", preserveNullAndEmptyArrays: true },
+          $unwind: { path: "$status_array", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
@@ -1089,7 +1148,7 @@ class InvoiceService {
 
         {
           $match: {
-            "statusArray.name": { $ne: "draft" }, // Exclude documents with status "draft"
+            "status_array.name": { $ne: "draft" }, // Exclude documents with status "draft"
           },
         },
         {
@@ -1102,7 +1161,7 @@ class InvoiceService {
             client_id: 1,
             due_date: 1,
             invoice_date: 1,
-            status: "$statusArray.name",
+            status: "$status_array.name",
             agency_id: 1,
             sub_total: 1,
             total: 1,
@@ -1136,10 +1195,10 @@ class InvoiceService {
 
   // Send Invoice
 
-  sendInvoice = async (payload, type) => {
+  sendInvoice = async (payload, type, workspace_id) => {
     try {
       let notification;
-      let invoiceData;
+      let invoice_data;
 
       const { invoice_id } = payload;
 
@@ -1150,108 +1209,124 @@ class InvoiceService {
         })
           .populate("client_id")
           .populate("agency_id")
-          .populate("status");
+          .populate("status")
+          .lean();
 
-        if (invoice.status.name === "draft") {
+        if (invoice?.status?.name === "draft") {
           notification = true;
-          const getInvoiceStatus = await Invoice_Status_Master.findOne({
+          const get_invoice_status = await Invoice_Status_Master.findOne({
             name: "unpaid",
-          });
+          }).lean();
           await Invoice.updateOne(
             { _id: invoice_id },
-            { $set: { status: getInvoiceStatus._id } }
+            { $set: { status: get_invoice_status?._id } }
           );
         }
-        invoiceData = await this.getInvoice(invoice_id);
+        invoice_data = await this.getInvoice(invoice_id);
 
-        const clientDetails = await Authentication.findOne({
-          reference_id: invoice.client_id,
+        const client_details = await Authentication.findOne({
+          _id: invoice?.client_id,
         });
-        const company_urls = await Configuration.find().lean();
-        // Use a template or format the invoice message accordingly
-        const formattedInquiryEmail = invoiceTemplate({
-          ...invoiceData[0],
-          invoice_date: moment(invoiceData[0]?.invoice_date).format(
-            "DD-MM-YYYY"
-          ),
-          privacy_policy: company_urls[0]?.urls?.privacy_policy,
-          facebook: company_urls[0]?.urls?.facebook,
-          instagram: company_urls[0]?.urls?.instagram,
-        });
-        let invoiceSubject = "invoiceSubject";
-        if (type === "updateStatusPaid") invoiceSubject = "invoicePaid";
-        if (type === "create") invoiceSubject = "invoiceCreated";
-        if (type === "updateStatusUnpaid") invoiceSubject = "invoiceCreated";
-
-        await sendEmail({
-          email: clientDetails?.email,
-          subject:
-            returnMessage("invoice", invoiceSubject) + invoice?.invoice_number,
-          message: formattedInquiryEmail,
-        });
-      }
-      if (
-        (invoiceData &&
-          invoiceData[0]?.status === "unpaid" &&
-          type === "create") ||
-        notification ||
-        (invoiceData &&
-          invoiceData[0]?.status === "unpaid" &&
-          type === "updateStatusUnpaid") ||
-        (invoiceData &&
-          invoiceData[0]?.status === "paid" &&
-          type === "updateStatusPaid")
-      ) {
-        // ----------------  Notification start    -----------------
-        await notificationService.addNotification(
-          {
-            receiver_name: invoiceData[0]?.to.client_full_name,
-            sender_name: invoiceData[0]?.from.agency_full_name,
-            receiver_id: invoiceData[0]?.to._id,
-            invoice_number: invoiceData[0]?.invoice_number,
-            module_name: "invoice",
-            action_type: type,
-          },
-          invoiceData[0]?._id
-        );
-        // ----------------  Notification end    -----------------
-      }
-      if (Array.isArray(payload) && type === "overdue") {
-        payload.forEach(async (invoiceId) => {
-          const invoice = await this.getInvoice(invoiceId);
-          // ----------------  Notification start    -----------------
-          await notificationService.addNotification(
-            {
-              receiver_name: invoice[0]?.to.client_full_name,
-              sender_name: invoice[0]?.from.agency_full_name,
-              receiver_id: invoice[0]?.to._id,
-              invoice_number: invoice[0]?.invoice_number,
-              module_name: "invoice",
-              action_type: "overdue",
-            },
-            invoiceId
-          );
-
-          const clientDetails = await Authentication.findOne({
-            reference_id: invoice[0]?.to?._id,
-          });
+        if (client_details) {
           const company_urls = await Configuration.find().lean();
           // Use a template or format the invoice message accordingly
-          const formattedInquiryEmail = invoiceTemplate({
-            ...invoice[0],
-            invoice_date: moment(invoice[0]?.invoice_date).format("DD-MM-YYYY"),
+          const formatted_inquiry_email = invoiceTemplate({
+            ...invoice_data[0],
+            invoice_date: moment(invoice_data[0]?.invoice_date).format(
+              "DD-MM-YYYY"
+            ),
             privacy_policy: company_urls[0]?.urls?.privacy_policy,
             facebook: company_urls[0]?.urls?.facebook,
             instagram: company_urls[0]?.urls?.instagram,
           });
+          let invoiceSubject = "invoiceSubject";
+          if (type === "updateStatusPaid") invoiceSubject = "invoicePaid";
+          if (type === "create") invoiceSubject = "invoiceCreated";
+          if (type === "updateStatusUnpaid") invoiceSubject = "invoicePaid";
 
           await sendEmail({
-            email: clientDetails?.email,
+            email: client_details?.email,
             subject:
-              returnMessage("invoice", "invoiceOverdue") +
-              invoice[0]?.invoice_number,
-            message: formattedInquiryEmail,
+              returnMessage("invoice", invoiceSubject) +
+              invoice?.invoice_number,
+            message: formatted_inquiry_email,
           });
+        }
+      }
+      if (
+        (invoice_data &&
+          invoice_data[0]?.status === "unpaid" &&
+          type === "create") ||
+        notification ||
+        (invoice_data &&
+          invoice_data[0]?.status === "unpaid" &&
+          type === "updateStatusUnpaid") ||
+        (invoice_data &&
+          invoice_data[0]?.status === "paid" &&
+          type === "updateStatusPaid")
+      ) {
+        if (invoice_data[0]?.to?._id) {
+          // ----------------  Notification start    -----------------
+
+          await notificationService.addNotification(
+            {
+              receiver_name: invoice_data[0]?.to?.client_full_name,
+              sender_name: invoice_data[0]?.from?.agency_full_name,
+              receiver_id: invoice_data[0]?.to?._id,
+              invoice_number: invoice_data[0]?.invoice_number,
+              module_name: "invoice",
+              action_type: type,
+              workspace_id: workspace_id,
+            },
+            invoice_data[0]?._id
+          );
+          // ----------------  Notification end    -----------------
+        }
+      }
+      if (Array.isArray(payload) && type === "overdue") {
+        payload.forEach(async (invoice_id) => {
+          const invoice = await this.getInvoice(invoice_id);
+
+          if (invoice[0]?.to?._id) {
+            // ----------------  Notification start    -----------------
+
+            await notificationService?.addNotification(
+              {
+                receiver_name: invoice[0]?.to?.client_full_name,
+                sender_name: invoice[0]?.from?.agency_full_name,
+                receiver_id: invoice[0]?.to?._id,
+                invoice_number: invoice[0]?.invoice_number,
+                module_name: "invoice",
+                action_type: "overdue",
+                workspace_id: workspace_id,
+              },
+              invoice_id
+            );
+          }
+          const client_details = await Authentication.findOne({
+            _id: invoice[0]?.to?._id,
+          });
+          if (client_details) {
+            const company_urls = await Configuration.find().lean();
+            // Use a template or format the invoice message accordingly
+            const formatted_inquiry_email = invoiceTemplate({
+              ...invoice[0],
+              invoice_date: moment(invoice[0]?.invoice_date).format(
+                "DD-MM-YYYY"
+              ),
+              privacy_policy: company_urls[0]?.urls?.privacy_policy,
+              facebook: company_urls[0]?.urls?.facebook,
+              instagram: company_urls[0]?.urls?.instagram,
+            });
+            sendEmail({
+              email: client_details?.email,
+              subject:
+                returnMessage("invoice", "invoiceOverdue") +
+                invoice[0]?.invoice_number,
+              message: formatted_inquiry_email,
+            });
+          }
+
           // ----------------  Notification end    -----------------
         });
       }
@@ -1356,6 +1431,39 @@ class InvoiceService {
       throwError(error?.message, error?.statusCode);
     }
   };
+
+  // GET Invoice information like address , company name pin etc before creating.  ------   AGENCY API
+  // getInvoiceInformation = async (payload, user) => {
+  //   try {
+  //     const { client_id } = payload;
+  //     const getClientData = await Client.findOne(
+  //       {
+  //         _id: client_id,
+  //       },
+  //       {
+  //         agency_ids: 0,
+  //         createdAt: 0,
+  //         updatedAt: 0,
+  //         __v: 0,
+  //         company_website: 0,
+  //         title: 0,
+  //       }
+  //     )
+  //       .populate("city", "name")
+  //       .populate("state", "name")
+  //       .populate("country", "name")
+  //       .lean();
+  //     const getClientInfo = await Authentication.findOne(
+  //       { reference_id: client_id },
+  //       { contact_number: 1 }
+  //     ).lean();
+
+  //     return { ...getClientData, contact_number: getClientInfo.contact_number };
+  //   } catch (error) {
+  //     logger.error(`Error while Get Invoice information, ${error}`);
+  //     throwError(error?.message, error?.statusCode);
+  //   }
+  // };
 }
 
 module.exports = InvoiceService;
