@@ -12,7 +12,6 @@ exports.addAgreementValidator = [
     .withMessage(validationMessage.agreement.titleRequired)
     .isLength({ max: 100 }) // specify the maximum length for the title
     .withMessage(validationMessage.general.titleLength),
-  body("receiver").not().isEmpty().withMessage("Receiver name required"),
   body("agreement_content")
     .not()
     .isEmpty()

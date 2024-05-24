@@ -14,7 +14,7 @@ const agreementService = new AgreementService();
 
 exports.addAgreement = catchAsyncError(async (req, res, next) => {
   const addedAgreement = await agreementService.addAgreement(
-    req.body,
+    req?.body,
     req?.user
   );
   sendResponse(

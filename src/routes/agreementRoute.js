@@ -9,7 +9,6 @@ agreementRoute.use(protect);
 // Agency Agreement API
 agreementRoute.post(
   "/add-agreement",
-  authorizeRole("agency"),
   agreementValidator.addAgreementValidator,
   validatorFunc,
   agreementController.addAgreement
