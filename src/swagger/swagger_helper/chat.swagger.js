@@ -111,6 +111,7 @@ const getDocuments = {
               description: "Enter value of search",
             },
             group_id: { type: "String" },
+            to_user: { type: "String" },
             document_type: { type: "String", default: "images" },
           },
         },

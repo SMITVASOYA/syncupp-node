@@ -31,7 +31,7 @@ exports.chatHistory = catchAsyncError(async (req, res, next) => {
 
 // this will use to fetch the users list for the group chat
 exports.fetchUsers = catchAsyncError(async (req, res, next) => {
-  const users = await groupChatService.usersList(req.user);
+  const users = await groupChatService.usersList(req.body, req.user);
   sendResponse(res, true, undefined, users, 200);
 });
 

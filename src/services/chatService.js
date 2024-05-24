@@ -25,16 +25,10 @@ class ChatService {
         workspace_id: user?.workspace,
         $or: [
           {
-            $and: [
-              { from_user: user?.reference_id },
-              { to_user: payload?.to_user },
-            ],
+            $and: [{ from_user: user?._id }, { to_user: payload?.to_user }],
           },
           {
-            $and: [
-              { from_user: payload?.to_user },
-              { to_user: user?.reference_id },
-            ],
+            $and: [{ from_user: payload?.to_user }, { to_user: user?._id }],
           },
         ],
         is_deleted: false,
@@ -44,7 +38,7 @@ class ChatService {
         .lean();
       const aggregatedChats = await this.aggregateChats(chats);
       await Notification.updateMany(
-        { user_id: user?.reference_id, from_user: payload?.to_user },
+        { user_id: user?._id, from_user: payload?.to_user },
         { $set: { is_read: true } }
       );
       return aggregatedChats;
@@ -77,7 +71,7 @@ class ChatService {
                   first_name: 1,
                   last_name: 1,
                   profile_image: 1,
-                  reference_id: 1,
+                  _id: 1,
                 },
               },
             ],
@@ -106,6 +100,7 @@ class ChatService {
             _id: 1,
             to_user: 1,
             from_user: 1,
+            original_file_name: 1,
           },
         },
         {
@@ -410,7 +405,7 @@ class ChatService {
       const query_obj = { workspace_id: user?.workspace };
       const search_obj = {};
       if (payload?.document_type === "images") {
-        query_obj["message_type"] = "images";
+        query_obj["message_type"] = "image";
       } else if (payload?.document_type === "documents") {
         query_obj["message_type"] = "document";
       }
@@ -423,6 +418,16 @@ class ChatService {
       if (payload?.group_id) {
         query_obj["group_id"] = payload?.group_id;
       }
+
+      if (payload?.to_user)
+        query_obj["$or"] = [
+          {
+            $and: [{ from_user: user?._id }, { to_user: payload?.to_user }],
+          },
+          {
+            $and: [{ to_user: user?._id }, { from_user: payload?.to_user }],
+          },
+        ];
 
       const [documents, total_documents] = await Promise.all([
         Chat.find({ ...query_obj, ...search_obj })

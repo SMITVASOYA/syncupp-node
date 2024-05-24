@@ -54,7 +54,7 @@ exports.socket_connection = (http_server) => {
     // For user joined
     socket.on("ROOM", async (obj) => {
       logger.info(`User: ${obj.id}, workspace: ${obj?.workspace_id}`, 15);
-      socket.join(obj.id);
+      socket.join(obj?.workspace_id + "." + obj?.id);
 
       // this is used to fetch the group chat id to join that group chat id so they can receive the group chat messages
       let group_ids = await Group_Chat.distinct("_id", {
@@ -62,9 +62,11 @@ exports.socket_connection = (http_server) => {
         workspace_id: obj?.workspace_id,
       });
 
-      group_ids.forEach((group_id) =>
-        socket.join(obj?.workspace_id + "." + group_id.toString())
-      );
+      group_ids.forEach((group_id) => {
+        const group_join_id =
+          obj?.workspace_id?.toString() + "." + group_id?.toString();
+        socket.join(group_join_id);
+      });
       // for the Online status
       await Authentication.findByIdAndUpdate(
         obj?.id,
@@ -486,7 +488,9 @@ exports.socket_connection = (http_server) => {
         //   members: group_detail?.members,
         // });
 
-        io.to(workspace_id + "." + group_id).emit("GROUP_RECEIVED_MESSAGE", {
+        const group_sender =
+          workspace_id?.toString() + "." + group_id?.toString();
+        io.to(group_sender).emit("GROUP_RECEIVED_MESSAGE", {
           from_user,
           group_id,
           message,

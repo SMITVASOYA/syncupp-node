@@ -50,6 +50,7 @@ class GroupChatService {
                   },
                   email: 1,
                   profile_image: 1,
+                  _id: 1,
                 },
               },
             ],
@@ -69,7 +70,6 @@ class GroupChatService {
         }, // Unwind the role details array
         {
           $project: {
-            _id: 1,
             user_id: "$user._id",
             first_name: "$user.first_name",
             last_name: "$user.last_name",
@@ -92,8 +92,8 @@ class GroupChatService {
   //   this is used for the create the group
   createGroupChat = async (payload, user) => {
     try {
-      if (user?.role?.name !== "agency" && user?.role?.name !== "client")
-        return throwError(returnMessage("chat", "insufficientPermission"));
+      // if (user?.role?.name !== "agency" && user?.role?.name !== "client")
+      //   return throwError(returnMessage("chat", "insufficientPermission"));
 
       let { group_name, members } = payload;
       if (members.length === 0)
@@ -348,6 +348,7 @@ class GroupChatService {
             to_user: 1,
             from_user: 1,
             user_detail: 1,
+            original_file_name: 1,
           },
         },
         {
