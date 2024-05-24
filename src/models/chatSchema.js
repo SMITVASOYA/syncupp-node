@@ -31,6 +31,7 @@ const chat_schema = new mongoose.Schema(
       },
     ],
     workspace_id: { type: mongoose.Schema.Types.ObjectId, ref: "workspaces" },
+    original_file_name: { type: String },
   },
   { timestamps: true }
 );

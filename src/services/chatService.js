@@ -4,7 +4,7 @@ const { throwError } = require("../helpers/errorUtil");
 const Authentication = require("../models/authenticationSchema");
 const Notification = require("../models/notificationSchema");
 const mongoose = require("mongoose");
-const { returnMessage } = require("../utils/utils");
+const { returnMessage, paginationObject } = require("../utils/utils");
 const { eventEmitter } = require("../socket");
 const path = require("path");
 const fs = require("fs");
@@ -264,16 +264,17 @@ class ChatService {
     }
   };
 
-  uploadImage = async (payload, file) => {
+  uploadImage = async (payload, file, user) => {
     try {
       const chat_obj = {
-        workspace_id: payload?.workspace_id,
+        workspace_id: user?.workspace,
         from_user: payload?.from_user,
         message_type: "image",
       };
 
       if (file) {
         chat_obj.image_url = file?.filename;
+        chat_obj.original_file_name = file?.originalname;
       }
 
       let user_detail, event_name, receivers;
@@ -294,7 +295,7 @@ class ChatService {
       new_message = new_message.toJSON();
       const socket_obj = { ...new_message, user_detail };
 
-      eventEmitter(event_name, socket_obj, receivers);
+      eventEmitter(event_name, socket_obj, receivers, user?.workspace);
       return;
     } catch (error) {
       logger.error(`Error while uploading the image: ${error}`);
@@ -302,16 +303,17 @@ class ChatService {
     }
   };
 
-  uploadDocument = async (payload, file) => {
+  uploadDocument = async (payload, file, user) => {
     try {
       const chat_obj = {
-        workspace_id: payload?.workspace_id,
+        workspace_id: user?.workspace,
         from_user: payload?.from_user,
         message_type: "document",
       };
 
       if (file) {
         chat_obj.document_url = file?.filename;
+        chat_obj.original_file_name = file?.originalname;
       }
 
       let user_detail, event_name, receivers;
@@ -332,7 +334,7 @@ class ChatService {
       new_message = new_message.toJSON();
       const socket_obj = { ...new_message, user_detail };
 
-      eventEmitter(event_name, socket_obj, receivers);
+      eventEmitter(event_name, socket_obj, receivers, user?.workspace);
 
       return;
     } catch (error) {
@@ -341,10 +343,10 @@ class ChatService {
     }
   };
   // upload audio and change blob inot mp3 file
-  uploadAudio = async (payload, file) => {
+  uploadAudio = async (payload, file, user) => {
     try {
       const chat_obj = {
-        workspace_id: payload?.workspace_id,
+        workspace_id: user?.workspace,
         from_user: payload?.from_user,
         message_type: "audio",
       };
@@ -387,7 +389,7 @@ class ChatService {
       new_message = new_message.toJSON();
       const socket_obj = { ...new_message, user_detail };
 
-      eventEmitter(event_name, socket_obj, receivers);
+      eventEmitter(event_name, socket_obj, receivers, user?.workspace);
 
       return;
     } catch (error) {
@@ -400,6 +402,59 @@ class ChatService {
     const parts = filePath.split(/[\\/]/);
     // Return the last part of the split array, which should be the filename
     return parts[parts.length - 1];
+  };
+
+  getAllDocuments = async (payload, user) => {
+    try {
+      const pagination = paginationObject(payload);
+      const query_obj = { workspace_id: user?.workspace };
+      const search_obj = {};
+      if (payload?.document_type === "images") {
+        query_obj["message_type"] = "images";
+      } else if (payload?.document_type === "documents") {
+        query_obj["message_type"] = "document";
+      }
+
+      if (payload?.search && payload?.search !== "") {
+        search_obj["$or"] = [
+          { original_file_name: { $regex: payload.search, $options: "i" } },
+        ];
+      }
+      if (payload?.group_id) {
+        query_obj["group_id"] = payload?.group_id;
+      }
+
+      const [documents, total_documents] = await Promise.all([
+        Chat.find({ ...query_obj, ...search_obj })
+          .sort(pagination.sort)
+          .skip(pagination.skip)
+          .limit(pagination.result_per_page)
+          .lean(),
+        Chat.find({ ...query_obj, ...search_obj }).lean(),
+      ]);
+
+      const docs = [];
+      documents.forEach((doc) => {
+        if (doc?.message_type === "image")
+          docs.push({
+            image: doc?.image_url,
+            original_file_name: doc?.original_file_name,
+          });
+        else if (doc?.message_type === "document")
+          docs.push({
+            document: doc?.document_url,
+            original_file_name: doc?.original_file_name,
+          });
+      });
+      return {
+        docs,
+        page_count:
+          Math.ceil(total_documents.length / pagination.result_per_page) || 0,
+      };
+    } catch (error) {
+      logger.error(`Error while getting all documents: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
   };
 
   // removed as this is not a part of the second phase

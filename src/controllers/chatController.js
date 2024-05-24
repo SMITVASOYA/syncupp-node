@@ -61,17 +61,22 @@ exports.getGroup = catchAsyncError(async (req, res, next) => {
 });
 
 exports.uploadImage = catchAsyncError(async (req, res, next) => {
-  await chatService.uploadImage(req.body, req.file);
+  await chatService.uploadImage(req.body, req.file, req.user);
   sendResponse(res, true, undefined, {}, 200);
 });
 
 exports.uploadDocument = catchAsyncError(async (req, res, next) => {
-  await chatService.uploadDocument(req.body, req.file);
+  await chatService.uploadDocument(req.body, req.file, req.user);
   sendResponse(res, true, undefined, {}, 200);
 });
 exports.uploadAudio = catchAsyncError(async (req, res, next) => {
-  await chatService.uploadAudio(req.body, req.file);
+  await chatService.uploadAudio(req.body, req.file, req.user);
   sendResponse(res, true, undefined, {}, 200);
+});
+
+exports.getAllDocuments = catchAsyncError(async (req, res, next) => {
+  const documents = await chatService.getAllDocuments(req.body, req.user);
+  sendResponse(res, true, undefined, documents, 200);
 });
 
 // removed as this is not a part of the 2nd phase

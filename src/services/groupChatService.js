@@ -17,6 +17,7 @@ const Workspace = require("../models/workspaceSchema.js");
 class GroupChatService {
   usersList = async (payload, user) => {
     try {
+      const search_obj = {};
       if (payload?.search && payload?.search !== "") {
         search_obj["$or"] = [
           { "user.first_name": { $regex: payload.search, $options: "i" } },
@@ -29,8 +30,8 @@ class GroupChatService {
         { $unwind: "$members" }, // Unwind the members array
         {
           $match: {
-            "members.status": "confirmed",
             "members.user_id": { $ne: user?._id },
+            "members.status": "confirmed",
           },
         },
         {
@@ -100,20 +101,21 @@ class GroupChatService {
 
       if (!group_name || group_name === "")
         return throwError(returnMessage("chat", "groupNameRequired"));
-      members.push(user.reference_id.toString());
+      members.push(user?._id?.toString());
       members = [...new Set(members)];
 
       const new_group = await Group_Chat.create({
-        created_by: user?.reference_id,
+        created_by: user?._id,
         members,
         group_name,
+        workspace_id: user?.workspace,
       });
 
-      emitEvent("GROUP_CREATED", new_group, members);
+      eventEmitter("GROUP_CREATED", new_group, members, user?.workspace);
 
       const notification_obj = {
         data_reference_id: new_group?._id,
-        from_user: user?.reference_id,
+        from_user: user?._id,
         type: "group",
       };
 
@@ -132,7 +134,7 @@ class GroupChatService {
       );
 
       members.forEach(async (member) => {
-        if (member === user?.reference_id?.toString()) return;
+        if (member === user?._id?.toString()) return;
 
         notification_obj.user_id = member;
         notification_obj.message = notification_message;
@@ -148,7 +150,8 @@ class GroupChatService {
             notification: notification_obj,
             un_read_count: pending_notification,
           },
-          member
+          member,
+          user?.workspace
         );
         return;
       });
@@ -268,7 +271,8 @@ class GroupChatService {
         {
           un_read_count: pending_notification,
         },
-        user?._id
+        user?._id,
+        user?.workspace
       );
 
       return await Chat.aggregate([
@@ -414,12 +418,27 @@ class GroupChatService {
         { new: true }
       );
 
-      emitEvent("REMOVED_FROM_GROUP", updated_group, removed_users);
+      eventEmitter(
+        "REMOVED_FROM_GROUP",
+        updated_group,
+        removed_users,
+        user?.workspace
+      );
 
-      emitEvent("GROUP_UPDATED", updated_group, existing_users);
+      eventEmitter(
+        "GROUP_UPDATED",
+        updated_group,
+        existing_users,
+        user?.workspace
+      );
 
       if (new_users.length > 0) {
-        emitEvent("GROUP_CREATED", updated_group, new_users);
+        eventEmitter(
+          "GROUP_CREATED",
+          updated_group,
+          new_users,
+          user?.workspace
+        );
 
         const notification_obj = {
           data_reference_id: updated_group?._id,
@@ -460,7 +479,8 @@ class GroupChatService {
               notification: notification_obj,
               un_read_count: pending_notification,
             },
-            member
+            member,
+            user?.workspace
           );
           return;
         });
