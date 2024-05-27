@@ -27,9 +27,6 @@ agreementRoute.get("/download-pdf/:id", agreementController.downloadPdf);
 
 // Client Agreement API
 
-// agreementRoute.post("/get-all-agreement", agreementController.getAllAgreement);
-// agreementRoute.get("/get-agreement/:id", agreementController.getAgreement);
-
 agreementRoute.put(
   "/update-agreement-status/:id",
   agreementController.updateAgreementStatus

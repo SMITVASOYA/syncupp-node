@@ -44,7 +44,7 @@ exports.getAllAgreement = catchAsyncError(async (req, res, next) => {
   } else if (user_role_data?.user_role === "client") {
     agreements = await agreementService.getAllClientAgreement(
       req?.body,
-      req?.user?._id
+      req?.user
     );
   } else if (
     user_role_data?.user_role === "team_agency" &&
@@ -198,22 +198,6 @@ exports.downloadPdf = catchAsyncError(async (req, res, next) => {
     true,
     returnMessage("agreement", "downloadPDF"),
     downloadPdf,
-    statusCode.success
-  );
-});
-
-// get All Agreement
-
-exports.getAllClientAgreement = catchAsyncError(async (req, res, next) => {
-  const agreements = await agreementService.getAllClientAgreement(
-    req?.body,
-    req?.user
-  );
-  sendResponse(
-    res,
-    true,
-    returnMessage("agreement", "getAllAgreement"),
-    agreements,
     statusCode.success
   );
 });

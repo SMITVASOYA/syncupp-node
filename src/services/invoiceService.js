@@ -384,7 +384,6 @@ class InvoiceService {
               }
             });
         }
-        console.log(client_id);
         await Invoice.updateOne(
           { _id: invoiceIdToUpdate },
           {
@@ -1108,8 +1107,8 @@ class InvoiceService {
       }
 
       if (searchObj?.status_name && searchObj?.status_name !== "") {
-        queryObj["status.name"] = {
-          $regex: searchObj?.status_name.toLowerCase(),
+        queryObj["status_array.name"] = {
+          $regex: `^${searchObj?.status_name.trim()}$`,
           $options: "i",
         };
       }
