@@ -28,9 +28,9 @@ class InvoiceService {
   getClients = async (user) => {
     try {
       const client_data = await Role_Master.findOne({ name: "client" }).lean();
-      const team_client_data = await Role_Master.findOne({
-        name: "team_client",
-      }).lean();
+      // const team_client_data = await Role_Master.findOne({
+      //   name: "team_client",
+      // }).lean();
       const pipeline = [
         {
           $match: { _id: new mongoose.Types.ObjectId(user?.workspace) },
@@ -141,11 +141,11 @@ class InvoiceService {
                   client_data?._id
                 ),
               },
-              {
-                "status_name._id": new mongoose.Types.ObjectId(
-                  team_client_data?._id
-                ),
-              },
+              // {
+              //   "status_name._id": new mongoose.Types.ObjectId(
+              //     team_client_data?._id
+              //   ),
+              // },
             ],
           },
         },
@@ -278,7 +278,7 @@ class InvoiceService {
         total,
         sub_total,
         invoice_content: invoiceItems,
-        ...(client_id && { client_id: client_id }),
+        ...(client_id && client_id !== "undefined" && { client_id: client_id }),
         currency,
         workspace_id: user?.workspace,
         memo,
@@ -384,6 +384,7 @@ class InvoiceService {
               }
             });
         }
+        console.log(client_id);
         await Invoice.updateOne(
           { _id: invoiceIdToUpdate },
           {
@@ -392,7 +393,9 @@ class InvoiceService {
               sub_total,
               due_date,
               invoice_content: invoiceItems,
-              ...(!client_id || client_id === "null" || client_id === undefined
+              ...(!client_id ||
+              client_id === "null" ||
+              client_id === "undefined"
                 ? {
                     client_id: null,
                   }
@@ -474,7 +477,6 @@ class InvoiceService {
           { due_date: { $lte: new Date(searchObj?.end_date) } },
         ];
       }
-
       if (searchObj?.search && searchObj?.search !== "") {
         queryObj["$or"] = [
           {
@@ -524,12 +526,13 @@ class InvoiceService {
         const clientId = new mongoose.Types.ObjectId(searchObj?.client_name); // Convert string to ObjectId
         queryObj["customer_info._id"] = clientId;
       }
-      if (searchObj.status_name && searchObj.status_name !== "") {
+      if (searchObj.status_name && searchObj.status_name.trim() !== "") {
         queryObj["status.name"] = {
-          $regex: searchObj.status_name.toLowerCase(),
-          $options: "i",
+          $regex: `^${searchObj.status_name.trim()}$`,
+          $options: "i", // Case-insensitive match
         };
       }
+
       const pagination = paginationObject(searchObj);
       const pipeLine = [
         {
