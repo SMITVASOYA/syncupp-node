@@ -184,7 +184,6 @@ class AgreementService {
   getAllAgreement = async (searchObj, user_id) => {
     try {
       const { client_id } = searchObj;
-      console.log(client_id, "wfefefeg");
       const queryObj = {
         is_deleted: false,
         agency_id: user_id,
@@ -240,7 +239,6 @@ class AgreementService {
           queryObj["$or"].push({ due_date: dateKeyword });
         }
       }
-      console.log(queryObj);
       const pagination = paginationObject(searchObj);
       const aggregationPipeline = [
         filter,
