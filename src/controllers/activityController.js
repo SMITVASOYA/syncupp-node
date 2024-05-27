@@ -5,18 +5,27 @@ const ActivityService = require("../services/activityService");
 const { sendResponse } = require("../utils/sendResponse");
 const activityService = new ActivityService();
 
-exports.addTask = catchAsyncError(async (req, res, next) => {
-  const createTask = await activityService.createTask(
-    req.body,
-    req?.user,
-    req?.files
+exports.createCallActivity = catchAsyncError(async (req, res, next) => {
+  await activityService.createCallMeeting(req?.body, req?.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("activity", "activityCreated"),
+    {},
+    200
+  );
+});
+
+exports.getActivity = catchAsyncError(async (req, res, next) => {
+  const activity = await activityService.getActivityById(
+    req?.params?.activityId
   );
   sendResponse(
     res,
     true,
-    returnMessage("activity", "createTask"),
-    createTask,
-    statusCode.success
+    returnMessage("activity", "activityFetched"),
+    activity,
+    200
   );
 });
 
@@ -27,43 +36,6 @@ exports.statusList = catchAsyncError(async (req, res, next) => {
     true,
     returnMessage("activity", "statusList"),
     statusList,
-    statusCode.success
-  );
-});
-
-exports.taskList = catchAsyncError(async (req, res, next) => {
-  let taskList = await activityService.taskList(req.body, req.user);
-  sendResponse(
-    res,
-    true,
-    returnMessage("activity", "taskList"),
-    taskList,
-    statusCode.success
-  );
-});
-
-exports.fetchTask = catchAsyncError(async (req, res, next) => {
-  const fetchTask = await activityService.getTaskById(req?.params?.id);
-  sendResponse(
-    res,
-    true,
-    returnMessage("activity", "fetchTask"),
-    fetchTask,
-    statusCode.success
-  );
-});
-exports.updateTask = catchAsyncError(async (req, res, next) => {
-  const updateTask = await activityService.updateTask(
-    req.body,
-    req?.params?.id,
-    req?.files,
-    req?.user
-  );
-  sendResponse(
-    res,
-    true,
-    returnMessage("activity", "updateTask"),
-    updateTask,
     statusCode.success
   );
 });
@@ -79,52 +51,27 @@ exports.deleteActivity = catchAsyncError(async (req, res, next) => {
   );
 });
 
-exports.updateTaskStatus = catchAsyncError(async (req, res, next) => {
-  const updateTaskStatus = await activityService.updateTaskStatus(
-    req?.body,
-    req.params.id,
-    req?.user
-  );
-  sendResponse(
-    res,
-    true,
-    returnMessage("activity", "updateStatus"),
-    updateTaskStatus,
-    statusCode.success
-  );
-});
 exports.updateStatus = catchAsyncError(async (req, res, next) => {
   const updateStatus = await activityService.statusUpdate(
     req?.body,
-    req.params.id,
+    req?.params?.id,
     req?.user
   );
   sendResponse(
     res,
     true,
-    returnMessage("activity", "updateStatus"),
+    returnMessage("activity", "activityStatusUpdated"),
     updateStatus,
     statusCode.success
-  );
-});
-
-exports.createCallActivity = catchAsyncError(async (req, res, next) => {
-  await activityService.createCallMeeting(req.body, req.user);
-  sendResponse(
-    res,
-    true,
-    returnMessage("activity", "activityCreated"),
-    {},
-    200
   );
 });
 
 // this will help to update the details of the activity not the status
 exports.updateCallActivity = catchAsyncError(async (req, res, next) => {
   await activityService.updateActivity(
-    req.params.activityId,
-    req.body,
-    req.user
+    req?.params?.activityId,
+    req?.body,
+    req?.user
   );
   sendResponse(
     res,
@@ -135,19 +82,8 @@ exports.updateCallActivity = catchAsyncError(async (req, res, next) => {
   );
 });
 
-exports.getActivity = catchAsyncError(async (req, res, next) => {
-  const activity = await activityService.getActivity(req.params.activityId);
-  sendResponse(
-    res,
-    true,
-    returnMessage("activity", "activityUpdated"),
-    activity,
-    200
-  );
-});
-
 exports.getActivities = catchAsyncError(async (req, res, next) => {
-  const activities = await activityService.getActivities(req.body, req.user);
+  const activities = await activityService.getActivities(req?.body, req?.user);
   sendResponse(
     res,
     true,
@@ -158,15 +94,15 @@ exports.getActivities = catchAsyncError(async (req, res, next) => {
 });
 
 exports.leaderboard = catchAsyncError(async (req, res, next) => {
-  const leaderboard = await activityService.leaderboard(req.body, req.user);
+  const leaderboard = await activityService.leaderboard(req?.body, req?.user);
   sendResponse(res, true, undefined, leaderboard, 200);
 });
 
 // this function is used for the get the status of the attendees
 exports.assignedActivity = catchAsyncError(async (req, res, next) => {
   const assigned_activity = await activityService.checkAnyActivitiesAssingend(
-    req.body,
-    req.user
+    req?.body,
+    req?.user
   );
   sendResponse(res, true, undefined, assigned_activity, 200);
 });
@@ -188,39 +124,4 @@ exports.completionHistory = catchAsyncError(async (req, res, next) => {
 exports.competitionStats = catchAsyncError(async (req, res, next) => {
   const competitionStats = await activityService.competitionStats(req?.user);
   sendResponse(res, true, undefined, competitionStats, statusCode.success);
-});
-
-exports.addTaskComment = catchAsyncError(async (req, res, next) => {
-  let addTaskComment = await activityService.addTaskComment(
-    req?.body,
-    req?.user
-  );
-  sendResponse(
-    res,
-    true,
-    returnMessage("activity", "commentAdded"),
-    addTaskComment,
-    statusCode.success
-  );
-});
-exports.listTaskComment = catchAsyncError(async (req, res, next) => {
-  let listTaskComment = await activityService.listTaskComment(req?.params);
-  sendResponse(
-    res,
-    true,
-    returnMessage("activity", "commentFetched"),
-    listTaskComment,
-    statusCode.success
-  );
-});
-
-exports.leaveTask = catchAsyncError(async (req, res, next) => {
-  await activityService.leaveTask(req?.body, req?.user);
-  sendResponse(
-    res,
-    true,
-    returnMessage("activity", "taskLeave"),
-    null,
-    statusCode.success
-  );
 });

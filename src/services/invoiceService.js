@@ -1108,12 +1108,13 @@ class InvoiceService {
       }
 
       if (searchObj?.status_name && searchObj?.status_name !== "") {
-        queryObj["status.name"] = {
-          $regex: searchObj?.status_name.toLowerCase(),
+        queryObj["status_array.name"] = {
+          $regex: `^${searchObj?.status_name.trim()}$`,
           $options: "i",
         };
       }
 
+      console.log(queryObj);
       const pagination = paginationObject(searchObj);
       const pipeLine = [
         {

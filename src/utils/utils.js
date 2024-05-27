@@ -101,14 +101,8 @@ exports.validateRequestFields = (payload, fields) => {
           return throwError(`Agency is required.`);
         case "due_time":
           return throwError(`Due time is required.`);
-        case "client_id":
-          return throwError(`Client detail is required.`);
         case "due_date":
           return throwError(`Due date is required.`);
-        case "assign_to":
-          return throwError(`Assignee is required.`);
-        case "activity_type":
-          return throwError(`Activity type is required.`);
         case "contact_number":
           return throwError(`Contact number is required.`);
         case "token":

@@ -3,66 +3,50 @@ const { crm_connection } = require("../config/connection");
 
 const activitySchema = new mongoose.Schema(
   {
-    activity_type: {
-      type: mongoose.Types.ObjectId,
-      ref: "activity_type_master",
-      required: true,
-    },
     title: { type: String },
-    workspace_id: { type: mongoose.Types.ObjectId },
-    priority: {
-      type: String,
-      enum: ["high", "low", "medium"],
+    workspace_id: {
+      type: mongoose.Types.ObjectId,
+      ref: "workspace",
+      required: true,
     },
     agenda: { type: String },
     due_date: { type: Date },
-    due_time: { type: String },
     internal_info: { type: String },
-    assign_to: [
-      {
-        type: mongoose.Types.ObjectId,
-      },
-    ],
-    assign_by: { type: mongoose.Types.ObjectId },
-    agency_id: { type: mongoose.Types.ObjectId },
-    status_history: [
-      {
-        status: {
-          type: mongoose.Types.ObjectId,
-        },
-        active: {
-          default: 0,
-          type: Number,
-        },
-      },
-    ],
+    google_meet_link: { type: String },
+    created_by: { type: mongoose.Types.ObjectId, required: true },
     meeting_start_time: { type: Date },
     meeting_end_time: { type: Date },
     recurring_end_date: { type: Date },
-    attachments: [
-      {
-        type: String,
-      },
-    ],
+    all_day: { type: Boolean, default: false },
+    alert_time: { type: Number },
+    alert_time_unit: {
+      type: String,
+      enum: ["h", "min"],
+    },
     activity_status: {
       type: mongoose.Types.ObjectId,
+      ref: "activity_status_master",
       required: true,
     },
     is_deleted: { type: Boolean, default: false },
-    mark_as_done: { type: Boolean, default: false },
-    competition_point: { type: Number, default: 0 },
-    attendees: [{ type: mongoose.Types.ObjectId }],
-    comments: [
+    attendees: [
       {
-        user_id: { type: mongoose.Types.ObjectId },
-        comment: { type: String },
+        type: mongoose.Types.ObjectId,
+        ref: "authentications",
       },
     ],
-    board_id: {
-      type: mongoose.Types.ObjectId,
-      ref: "board",
-      required: true,
-    },
+    // competition_point: { type: Number, default: 0 },
+    // status_history: [
+    //   {
+    //     status: {
+    //       type: mongoose.Types.ObjectId,
+    //     },
+    //     active: {
+    //       default: 0,
+    //       type: Number,
+    //     },
+    //   },
+    // ],
   },
   { timestamps: true }
 );

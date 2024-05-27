@@ -235,6 +235,7 @@
     "callScheduled": "Call meeting is scheduled successfully.",
     "activityCreated": "Activity created successfully.",
     "activityUpdated": "Activity updated successfully.",
+    "activityFetched": "Activity fetched successfully.",
     "activityListFetched": "Activities list fetch successfully.",
     "startEnddateRequired": "start and end dates are required for the filter.",
     "invalidDate": "End date should be greater than start date.",
@@ -247,7 +248,8 @@
     "commentAdded": "Comment added successfully.",
     "commentFetched": "Comments fetched successfully.",
     "taskLeave": "Task leave successfully.",
-    "taskStatusUpdate": "Task status update."
+    "taskStatusUpdate": "Task status update.",
+    "activityStatusUpdated": "Activity Status updated successfully."
   },
 
   "payment": {
