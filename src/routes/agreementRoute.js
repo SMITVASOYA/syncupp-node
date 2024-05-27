@@ -15,33 +15,20 @@ agreementRoute.post(
 );
 agreementRoute.post("/get-all-agreement", agreementController.getAllAgreement);
 agreementRoute.get("/get-agreement/:id", agreementController.getAgreement);
-agreementRoute.post(
-  "/delete-agreement",
-  authorizeRole("agency"),
-  agreementController.deleteAgreement
-);
+agreementRoute.post("/delete-agreement", agreementController.deleteAgreement);
 agreementRoute.put(
   "/update-agreement/:id",
-  authorizeRole("agency"),
   agreementValidator.updateAgreementValidator,
   validatorFunc,
   agreementController.updateAgreement
 );
-agreementRoute.post(
-  "/send-agreement",
-  authorizeRole("agency"),
-  agreementController.sendAgreement
-);
-agreementRoute.get(
-  "/download-pdf/:id",
-  // authorizeRole("agency"),
-  agreementController.downloadPdf
-);
+agreementRoute.post("/send-agreement", agreementController.sendAgreement);
+agreementRoute.get("/download-pdf/:id", agreementController.downloadPdf);
 
 // Client Agreement API
 
-agreementRoute.post("/get-all-agreement", agreementController.getAllAgreement);
-agreementRoute.get("/get-agreement/:id", agreementController.getAgreement);
+// agreementRoute.post("/get-all-agreement", agreementController.getAllAgreement);
+// agreementRoute.get("/get-agreement/:id", agreementController.getAgreement);
 
 agreementRoute.put(
   "/update-agreement-status/:id",

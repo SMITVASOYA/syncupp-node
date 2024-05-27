@@ -2,10 +2,6 @@ const { body } = require("express-validator");
 const validationMessage = require("../messages/valiation.json");
 
 exports.addAgreementValidator = [
-  body("client_id")
-    .not()
-    .isEmpty()
-    .withMessage(validationMessage.agreement.clientIdReuired),
   body("title")
     .not()
     .isEmpty()

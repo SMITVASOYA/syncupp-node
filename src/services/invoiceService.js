@@ -28,9 +28,9 @@ class InvoiceService {
   getClients = async (user) => {
     try {
       const client_data = await Role_Master.findOne({ name: "client" }).lean();
-      const team_client_data = await Role_Master.findOne({
-        name: "team_client",
-      }).lean();
+      // const team_client_data = await Role_Master.findOne({
+      //   name: "team_client",
+      // }).lean();
       const pipeline = [
         {
           $match: { _id: new mongoose.Types.ObjectId(user?.workspace) },
@@ -141,11 +141,11 @@ class InvoiceService {
                   client_data?._id
                 ),
               },
-              {
-                "status_name._id": new mongoose.Types.ObjectId(
-                  team_client_data?._id
-                ),
-              },
+              // {
+              //   "status_name._id": new mongoose.Types.ObjectId(
+              //     team_client_data?._id
+              //   ),
+              // },
             ],
           },
         },
@@ -278,7 +278,7 @@ class InvoiceService {
         total,
         sub_total,
         invoice_content: invoiceItems,
-        ...(client_id && { client_id: client_id }),
+        ...(client_id && client_id !== "undefined" && { client_id: client_id }),
         currency,
         workspace_id: user?.workspace,
         memo,
@@ -384,6 +384,7 @@ class InvoiceService {
               }
             });
         }
+        console.log(client_id);
         await Invoice.updateOne(
           { _id: invoiceIdToUpdate },
           {
@@ -392,7 +393,9 @@ class InvoiceService {
               sub_total,
               due_date,
               invoice_content: invoiceItems,
-              ...(!client_id || client_id === "null" || client_id === undefined
+              ...(!client_id ||
+              client_id === "null" ||
+              client_id === "undefined"
                 ? {
                     client_id: null,
                   }
