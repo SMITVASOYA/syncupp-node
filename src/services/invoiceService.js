@@ -477,7 +477,6 @@ class InvoiceService {
           { due_date: { $lte: new Date(searchObj?.end_date) } },
         ];
       }
-
       if (searchObj?.search && searchObj?.search !== "") {
         queryObj["$or"] = [
           {
@@ -527,12 +526,13 @@ class InvoiceService {
         const clientId = new mongoose.Types.ObjectId(searchObj?.client_name); // Convert string to ObjectId
         queryObj["customer_info._id"] = clientId;
       }
-      if (searchObj.status_name && searchObj.status_name !== "") {
+      if (searchObj.status_name && searchObj.status_name.trim() !== "") {
         queryObj["status.name"] = {
-          $regex: searchObj.status_name.toLowerCase(),
-          $options: "i",
+          $regex: `^${searchObj.status_name.trim()}$`,
+          $options: "i", // Case-insensitive match
         };
       }
+
       const pagination = paginationObject(searchObj);
       const pipeLine = [
         {
