@@ -19,6 +19,7 @@ const {
   returnNotification,
   seatRemoved,
   paymentAboutToExpire,
+  templateMaker,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const crypto = require("crypto");
@@ -46,6 +47,7 @@ const fs = require("fs");
 const Affiliate = require("../models/affiliateSchema");
 const Payout = require("../models/payoutSchema");
 const Notification = require("../models/notificationSchema");
+const Workspace = require("../models/workspaceSchema");
 class PaymentService {
   constructor() {
     this.razorpayApi = axios.create({
@@ -105,24 +107,30 @@ class PaymentService {
 
   subscription = async (payload, user) => {
     try {
-      if (user?.role?.name !== "agency")
+      if (
+        user?.workspace_detail?.created_by?.toString() !== user?._id?.toString()
+      )
         return throwError(
           returnMessage("auth", "forbidden"),
           statusCode.forbidden
         );
 
+      const member_details = user?.workspace_detail?.members?.find(
+        (member) => member?.user_id?.toString() === user?._id?.toString()
+      );
+
       if (
         (user?.subscription_id && user?.subscribe_date) ||
-        user?.status !== "payment_pending"
+        member_details?.status !== "payment_pending"
       )
         return throwError(returnMessage("payment", "alreadyPaid"));
 
-      if (user?.status === "free_trial")
+      if (user?.workspace_detail?.trial_end_date)
         return throwError(returnMessage("payment", "freeTrialOn"));
 
       const [plan, sheets] = await Promise.all([
         SubscriptionPlan.findById(payload?.plan_id).lean(),
-        SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
+        SheetManagement.findOne({ user_id: user?._id }).lean(),
       ]);
 
       if (!plan || !plan?.active)
@@ -153,23 +161,6 @@ class PaymentService {
       //   fail_existing: 0,
       // });
 
-      // removed as this is no use now
-      // const emails = [
-      //   "laksh@neuroidmedia.com",
-      //   "saurabh@growmedico.com",
-      //   "imshubham026@gmail.com",
-      //   "vijaysujanani@hotmail.com",
-      //   "tanjirouedits7@gmail.com",
-      //   "fullstacktridhya@gmail.com",
-      // ];
-      // if (emails.includes(user?.email)) {
-      //   const sheets = await SheetManagement.findOne({
-      //     agency_id: user?.reference_id,
-      //   }).lean();
-      //   subscription_obj.quantity = sheets.total_sheets;
-      //   subscription_obj.start_at = undefined;
-      // }
-
       const { data } = await this.razorpayApi.post(
         "/subscriptions",
         subscription_obj
@@ -190,9 +181,10 @@ class PaymentService {
             ? plan?.amount * 1
             : plan?.amount * (sheets?.total_sheets || 1),
         currency: plan?.currency,
-        agency_id: user?.reference_id,
+        agency_id: user?._id,
         email: user?.email,
         contact_number: user?.contact_number,
+        workspace: user?.workspace_detail?._id,
       };
     } catch (error) {
       logger.error(`Error while creating subscription: ${error}`);
@@ -264,38 +256,35 @@ class PaymentService {
           const plan_id = payload?.subscription?.entity?.plan_id;
           const quantity = payload?.subscription?.entity?.quantity;
 
-          const [agency_details, payment_history, plan] = await Promise.all([
+          const [user_detail, plan] = await Promise.all([
             Authentication.findOne({ subscription_id }).lean(),
-            PaymentHistory.findOne({ subscription_id }).lean(),
             SubscriptionPlan.findOne({ plan_id }).lean(),
           ]);
 
-          if (!agency_details) return;
+          // removed as of now as this has no meaning
+          /* if (!agency_details) return;
           let first_time = false;
-          if (!payment_history) first_time = true;
+          if (!payment_history) first_time = true; */
 
           if (plan?.plan_type === "unlimited") {
-            await SheetManagement.findOneAndUpdate(
-              {
-                agency_id: agency_details?.reference_id,
-              },
-              { total_sheets: plan?.seat }
-            );
+            await SheetManagement.findByIdAndUpdate(user_detail?._id, {
+              total_sheets: plan?.seat,
+            });
           }
 
           await Promise.all([
             PaymentHistory.create({
-              agency_id: agency_details?.reference_id,
+              agency_id: user_detail?._id,
               amount,
               subscription_id,
               currency,
               payment_id,
-              first_time,
               plan_id,
               quantity,
             }),
-            Authentication.findByIdAndUpdate(agency_details?._id, {
+            Authentication.findByIdAndUpdate(user_detail?._id, {
               purchased_plan: plan?._id,
+              subscribe_date: moment().format("YYYY-MM-DD").toString(),
             }),
           ]);
 
@@ -309,13 +298,24 @@ class PaymentService {
           if (agency_details && agency_details?.subscription_halted) {
             await Authentication.findByIdAndUpdate(agency_details?._id, {
               subscription_halted: undefined,
-              status: "confirmed",
             });
+            await Workspace.findOneAndUpdate(
+              {
+                created_by: agency_details?._id,
+                "members.user_id": agency_details?._id,
+              },
+              {
+                $set: {
+                  "members.$.status": "confirmed",
+                  trial_end_date: undefined,
+                },
+              }
+            );
           }
 
           await Affiliate_Referral.findOneAndUpdate(
             {
-              referred_to: agency_details?.reference_id,
+              referred_to: agency_details?._id,
               status: "inactive",
             },
             {
@@ -328,19 +328,15 @@ class PaymentService {
           );
 
           let affilate_detail = await Affiliate_Referral.findOne({
-            referred_to: agency_details?.reference_id,
+            referred_to: agency_details?._id,
             status: "active",
           }).lean();
-          console.log(affilate_detail);
-          const affiliateCheck = await Affiliate.findOne({
-            _id: affilate_detail.referred_by,
-          }).lean();
-          console.log(affiliateCheck);
-          const crmAffiliate = await Authentication.findOne({
-            reference_id: affilate_detail.referred_by,
-          }).lean();
-
-          const referral_data = await Configuration.findOne().lean();
+          const [affiliateCheck, crmAffiliate, configuration] =
+            await Promise.all([
+              Affiliate.findById(affilate_detail?.referred_by).lean(),
+              Authentication.findById(affilate_detail?.referred_by).lean(),
+              Configuration.findOne().lean(),
+            ]);
 
           if (affiliateCheck) {
             await Affiliate.findOneAndUpdate(
@@ -357,8 +353,8 @@ class PaymentService {
             );
           }
           if (crmAffiliate) {
-            await Authentication.findOneAndUpdate(
-              { reference_id: crmAffiliate.reference_id },
+            await Authentication.findByIdAndUpdate(
+              crmAffiliate?._id,
               {
                 $inc: {
                   affiliate_point:
@@ -612,11 +608,15 @@ class PaymentService {
       //   user.subscription_id = agency_data?.subscription_id;
       // }
 
-      if (user?.status === "free_trial")
+      if (user?.workspace_detail?.trial_end_date)
         return throwError(returnMessage("payment", "freeTrialOn"));
 
+      const member_details = user?.workspace_detail?.members?.find(
+        (member) => member?.user_id?.toString() === user?._id?.toString()
+      );
+
       if (
-        user?.status === "payment_pending" ||
+        member_details?.status === "payment_pending" ||
         !user?.subscribe_date ||
         !user?.subscription_id
       )
@@ -625,10 +625,7 @@ class PaymentService {
       if (!payload?.user_id)
         return throwError(returnMessage("payment", "userIdRequried"));
 
-      const agency_exist = await this.checkAgencyExist(
-        payload?.user_id,
-        user?.reference_id
-      );
+      const agency_exist = this.checkAgencyExist(payload?.user_id, user);
 
       if (!agency_exist) return throwError(returnMessage("default", "default"));
 
@@ -642,7 +639,7 @@ class PaymentService {
 
       if (plan?.plan_type === "unlimited") {
         const sheets = await SheetManagement.findOne({
-          agency_id: user?.reference_id,
+          user_id: user?._id,
         }).lean();
 
         // this is used if the users has selected unlimited plan wants to add the user even after the occupied
@@ -698,9 +695,10 @@ class PaymentService {
         amount: prorate_value,
         currency: plan?.currency,
         user_id: payload?.user_id,
-        agency_id: user?.reference_id,
+        agency_id: user?._id,
         email: user?.email,
         contact_number: user?.contact_number,
+        workspace: user?.workspace_detail?._id,
       };
     } catch (error) {
       console.log(JSON.stringify(error));
@@ -713,7 +711,7 @@ class PaymentService {
     }
   };
 
-  verifySignature = async (payload) => {
+  verifySignature = async (payload, user) => {
     try {
       const { razorpay_payment_id, razorpay_order_id, razorpay_signature } =
         payload;
@@ -731,24 +729,19 @@ class PaymentService {
         expected_signature_1 === razorpay_signature ||
         expected_signature_2 === razorpay_signature
       ) {
-        const status_change = await this.statusChange(payload);
+        const status_change = await this.statusChange(payload, user);
         // if (!status_change.success) return { success: false };
 
-        // ---------------------- Notification ----------------------
+        // need to work on later
+        /*         // ---------------------- Notification ----------------------
         let userData;
         if (payload?.user_id) {
-          userData = await Authentication.findOne({
-            reference_id: payload?.user_id,
-          })
-            .populate("role")
-            .lean();
+          userData = await Authentication.findById(payload?.user_id).lean();
         }
 
-        const agencyData = await Authentication.findOne({
-          reference_id: payload?.agency_id,
-        })
-          .populate("role")
-          .lean();
+        const agencyData = await Authentication.findById(
+          payload?.agency_id
+        ).lean();
 
         if (userData && payload.agency_id) {
           await notificationService.addNotification({
@@ -783,10 +776,9 @@ class PaymentService {
         }
 
         // ---------------------- Notification ----------------------
-
+ */
         return {
           success: true,
-          message: status_change?.message,
           data: status_change?.data,
         };
       }
@@ -805,56 +797,17 @@ class PaymentService {
   };
 
   // this function is used to check the agency is exist when doing the custompayment(single payment)
-  checkAgencyExist = async (user_id, agency_id) => {
+  checkAgencyExist = (user_id, agency) => {
     try {
-      const user_exist = await Authentication.findOne({
-        reference_id: user_id,
-      })
-        .populate("role", "name")
-        .lean();
+      const user_exist = agency?.workspace_detail?.members?.find(
+        (member) =>
+          member?.user_id?.toString() === user_id?.toString() &&
+          member?.status === "payment_pending"
+      );
 
-      if (!user_exist)
-        return throwError(
-          returnMessage("auth", "userNotFound"),
-          statusCode?.notFound
-        );
+      if (!user_exist) return false;
 
-      if (user_exist?.role?.name === "client") {
-        const client_exist = await Client.findOne({
-          agency_ids: {
-            $elemMatch: {
-              agency_id,
-              status: "payment_pending",
-            },
-          },
-        });
-
-        if (!client_exist) return false;
-        return true;
-      } else if (user_exist?.role?.name === "team_agency") {
-        const team_agency_exist = await Team_Agency.findOne({
-          agency_id,
-        }).lean();
-        if (
-          !team_agency_exist ||
-          user_exist?.status === "confirmed" ||
-          user_exist?.status !== "payment_pending"
-        )
-          return false;
-        return true;
-      } else if (user_exist?.role?.name === "team_client") {
-        const team_client_exist = await Team_Client.findOne({
-          agency_ids: {
-            $elemMatch: {
-              agency_id,
-              status: "requested",
-            },
-          },
-        });
-        if (!team_client_exist) return false;
-        return true;
-      }
-      return false;
+      return true;
     } catch (error) {
       console.log(JSON.stringify(error));
 
@@ -864,7 +817,7 @@ class PaymentService {
   };
 
   // create the payemnt history and change the status based on that
-  statusChange = async (payload) => {
+  statusChange = async (payload, user) => {
     try {
       const {
         agency_id,
@@ -874,22 +827,32 @@ class PaymentService {
         razorpay_order_id,
         currency,
         razorpay_payment_id,
+        workspace_id,
       } = payload;
       if (payload?.agency_id && !payload?.user_id) {
-        await Authentication.findOneAndUpdate(
-          { reference_id: agency_id },
+        const updated_agency_detail = await Authentication.findByIdAndUpdate(
+          agency_id,
           {
-            status: "confirmed",
             subscribe_date: moment().format("YYYY-MM-DD").toString(),
           },
           { new: true }
         );
 
-        let updated_agency_detail = await Authentication.findOne({
-          reference_id: agency_id,
-        })
-          .populate("role", "name")
-          .lean();
+        await Workspace.findOneAndUpdate(
+          {
+            _id: workspace_id,
+            created_by: agency_id,
+            "members.user_id": agency_id,
+            is_deleted: false,
+          },
+          {
+            $set: {
+              "members.$.status": "confirmed",
+              trial_end_date: undefined,
+            },
+          }
+        );
+
         // commenting to create the payment history by the webhook
         // await PaymentHistory.create({
         //   agency_id,
@@ -899,15 +862,19 @@ class PaymentService {
         //   payment_id: razorpay_payment_id,
         // });
 
-        await SheetManagement.findOneAndUpdate(
-          { agency_id },
-          {
-            agency_id,
-            total_sheets: 1,
-            occupied_sheets: [],
-          },
-          { upsert: true }
-        );
+        const sheets = await SheetManagement.findOne({
+          user_id: agency_id,
+        }).lean();
+        if (!sheets)
+          await SheetManagement.findOneAndUpdate(
+            { user_id: agency_id },
+            {
+              user_id: agency_id,
+              total_sheets: 1,
+              occupied_sheets: [],
+            },
+            { upsert: true }
+          );
         // updated_agency_detail = updated_agency_detail.toJSON();
         delete updated_agency_detail?.password;
         delete updated_agency_detail?.is_google_signup;
@@ -919,192 +886,86 @@ class PaymentService {
           data: { user: updated_agency_detail },
         };
       } else if (payload?.agency_id && payload?.user_id) {
-        const [agency_details, user_details, sheets] = await Promise.all([
-          Authentication.findOne({
-            reference_id: agency_id,
-          }).lean(),
-          Authentication.findOne({
-            reference_id: payload?.user_id,
-          })
-            .populate("role", "name")
-            .lean(),
-          SheetManagement.findOne({ agency_id }).lean(),
+        const [
+          agency_details,
+          user_details,
+          sheets,
+          workspace_exist,
+          configuration,
+        ] = await Promise.all([
+          Authentication.findById(agency_id).lean(),
+          Authentication.findById(payload?.user_id).lean(),
+          SheetManagement.findOne({ user_id: agency_id }).lean(),
+          Workspace.findById(workspace_id).lean(),
+          Configuration.findOne().lean(),
         ]);
-        // const agency_details = await Authentication.findOne({
-        //   reference_id: agency_id,
-        // }).lean();
-        // const user_details = await Authentication.findOne({
-        //   reference_id: payload?.user_id,
-        // })
-        //   .populate("role", "name")
-        //   .lean();
-        // const sheets = await SheetManagement.findOne({ agency_id }).lean();
-        if (!sheets) return { success: false };
 
-        if (user_details?.role?.name === "client") {
-          let link = `${
-            process.env.REACT_APP_URL
-          }/client/verify?name=${encodeURIComponent(
-            capitalizeFirstLetter(agency_details?.first_name) +
-              " " +
-              capitalizeFirstLetter(agency_details?.last_name)
-          )}&email=${encodeURIComponent(
-            user_details?.email
-          )}&agency=${encodeURIComponent(agency_details?.reference_id)}`;
+        const member_detail = workspace_exist?.members?.find(
+          (member) =>
+            member?.user_id?.toString() === user_details?._id?.toString()
+        );
 
-          const invitation_text = `${capitalizeFirstLetter(
-            agency_details?.first_name
-          )} ${capitalizeFirstLetter(
-            agency_details?.last_name
-          )} has sent an invitation to you. please click on below button to join Syncupp.`;
-          const company_urls = await Configuration.find().lean();
-          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
+        let invitation_token = crypto.randomBytes(16).toString("hex");
+        const link = `${process.env.REACT_APP_URL}/verify?workspace=${
+          workspace_exist?._id
+        }&email=${encodeURIComponent(
+          user_details?.email
+        )}&token=${invitation_token}&workspace_name=${
+          workspace_exist?.name
+        }&first_name=${user_details?.first_name}&last_name=${
+          user_details?.last_name
+        }`;
 
-          let facebook = company_urls[0]?.urls?.facebook;
-
-          let instagram = company_urls[0]?.urls?.instagram;
-          const invitation_mail = invitationEmail(
-            link,
+        const email_template = templateMaker("teamInvitation.html", {
+          REACT_APP_URL: process.env.REACT_APP_URL,
+          SERVER_URL: process.env.SERVER_URL,
+          username:
             capitalizeFirstLetter(user_details?.first_name) +
-              " " +
-              capitalizeFirstLetter(user_details?.last_name),
-            invitation_text,
-            privacy_policy,
-            facebook,
-            instagram
-          );
-
-          await sendEmail({
-            email: user_details?.email,
-            subject: returnMessage("emailTemplate", "invitation"),
-            message: invitation_mail,
-          });
-          await Client.updateOne(
-            { _id: user_id, "agency_ids.agency_id": agency_id },
-            { $set: { "agency_ids.$.status": "pending" } },
-            { new: true }
-          );
-        } else if (user_details?.role?.name === "team_agency") {
-          const link = `${process.env.REACT_APP_URL}/team/verify?agency=${
+            " " +
+            capitalizeFirstLetter(user_details?.last_name),
+          invitation_text: `You are invited to the ${
+            workspace_exist?.name
+          } workspace by ${
             capitalizeFirstLetter(agency_details?.first_name) +
             " " +
             capitalizeFirstLetter(agency_details?.last_name)
-          }&agencyId=${agency_details?.reference_id}&email=${encodeURIComponent(
-            user_details?.email
-          )}&token=${user_details?.invitation_token}&redirect=false`;
+          }. Click on the below link to join the workspace.`,
+          link: link,
+          instagram: configuration?.urls?.instagram,
+          facebook: configuration?.urls?.facebook,
+          privacy_policy: configuration?.urls?.privacy_policy,
+        });
 
-          const invitation_text = `${capitalizeFirstLetter(
-            agency_details?.first_name
-          )} ${capitalizeFirstLetter(
-            agency_details?.last_name
-          )} has sent an invitation to you. please click on below button to join Syncupp.`;
-          const company_urls = await Configuration.find().lean();
-          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
-
-          let facebook = company_urls[0]?.urls?.facebook;
-
-          let instagram = company_urls[0]?.urls?.instagram;
-          const invitation_template = invitationEmail(
-            link,
-            capitalizeFirstLetter(user_details?.first_name) +
-              " " +
-              capitalizeFirstLetter(user_details?.last_name),
-            invitation_text,
-            privacy_policy,
-            facebook,
-            instagram
-          );
-
-          await Authentication.findByIdAndUpdate(user_details?._id, {
-            status: "confirm_pending",
-          });
-
-          await sendEmail({
-            email: user_details?.email,
-            subject: returnMessage("emailTemplate", "invitation"),
-            message: invitation_template,
-          });
-        } else if (user_details?.role?.name === "team_client") {
-          const team_client_detail = await Team_Client.findById(
-            user_details.reference_id
-          ).lean();
-
-          const link = `${process.env.REACT_APP_URL}/team/verify?agency=${
-            capitalizeFirstLetter(agency_details?.first_name) +
-            " " +
-            capitalizeFirstLetter(agency_details?.last_name)
-          }&agencyId=${agency_details?.reference_id}&email=${encodeURIComponent(
-            user_details?.email
-          )}&clientId=${team_client_detail.client_id}`;
-          const invitation_text = `${capitalizeFirstLetter(
-            agency_details?.first_name
-          )} ${capitalizeFirstLetter(
-            agency_details?.last_name
-          )} has sent an invitation to you. please click on below button to join Syncupp.`;
-          const company_urls = await Configuration.find().lean();
-          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
-
-          let facebook = company_urls[0]?.urls?.facebook;
-
-          let instagram = company_urls[0]?.urls?.instagram;
-          const invitation_template = invitationEmail(
-            link,
-            user_details?.first_name + " " + user_details?.last_name,
-            invitation_text,
-            privacy_policy,
-            facebook,
-            instagram
-          );
-
-          await sendEmail({
-            email: user_details?.email,
-            subject: returnMessage("emailTemplate", "invitation"),
-            message: invitation_template,
-          });
-
-          await Team_Client.updateOne(
-            { _id: user_id, "agency_ids.agency_id": agency_id },
-            { $set: { "agency_ids.$.status": "pending" } },
-            { new: true }
-          );
-        }
+        sendEmail({
+          email: user_details?.email,
+          subject: returnMessage("auth", "invitationEmailSubject"),
+          message: email_template,
+        });
 
         await PaymentHistory.create({
           agency_id,
-          user_id: user_details?.reference_id,
+          member_id: user_details?._id,
           amount,
           order_id: razorpay_order_id,
           currency,
-          role: user_details?.role?.name,
+          role: member_detail?.role,
           payment_id: razorpay_payment_id,
         });
-
-        const occupied_sheets = [
-          ...sheets.occupied_sheets,
+        await Workspace.findOneAndUpdate(
           {
-            user_id,
-            role: user_details?.role?.name,
+            _id: workspace_exist?._id,
+            "members.user_id": payload?.user_id,
           },
-        ];
+          {
+            $set: {
+              "members.$.status": "confirm_pending",
+              "mwmbers.$.invitation_token": invitation_token,
+            },
+          }
+        );
+        await this.updateSubscription(agency_id, sheets?.total_sheets);
 
-        const sheet_obj = {
-          total_sheets: sheets?.total_sheets + 1,
-          occupied_sheets,
-        };
-        await SheetManagement.findByIdAndUpdate(sheets._id, sheet_obj);
-
-        await this.updateSubscription(agency_id, sheet_obj.total_sheets);
-
-        let message;
-        if (user_details?.role?.name === "client") {
-          message = returnMessage("agency", "clientCreated");
-        } else if (user_details?.role?.name === "team_agency") {
-          message = returnMessage("teamMember", "teamMemberCreated");
-        } else if (user_details?.role?.name === "team_client") {
-          message = returnMessage("teamMember", "teamMemberCreated");
-        }
-
-        return { success: true, message };
+        return { success: true };
       }
       return { success: false };
     } catch (error) {
@@ -1157,9 +1018,7 @@ class PaymentService {
   // update subscription whenever new sheet is addded or done the payment
   updateSubscription = async (agency_id, quantity) => {
     try {
-      const agency = await Authentication.findOne({
-        reference_id: agency_id,
-      }).lean();
+      const agency = await Authentication.findById(agency_id).lean();
       if (!agency) return;
       // commmenting to apply the razorpay axios api
       // await Promise.resolve(

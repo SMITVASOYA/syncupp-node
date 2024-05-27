@@ -26,10 +26,16 @@ exports.webHookHandler = catchAsyncError(async (req, res, next) => {
 });
 
 exports.verifySignature = catchAsyncError(async (req, res, next) => {
-  const verified = await paymentService.verifySignature(req.body);
-  let message = verified?.message;
-  if (!verified?.success) message = returnMessage("payment", "paymentFailed");
-  sendResponse(res, true, message, verified, 200);
+  const verified = await paymentService.verifySignature(req.body, req.user);
+  /* let message = verified?.message;
+  if (!verified?.success) message = returnMessage("payment", "paymentFailed"); */
+  sendResponse(
+    res,
+    true,
+    returnMessage("payment", "paymentCompleted"),
+    verified,
+    200
+  );
 });
 
 exports.singleTimePayment = catchAsyncError(async (req, res, next) => {

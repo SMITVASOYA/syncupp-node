@@ -1567,7 +1567,7 @@ class AuthService {
           .lean(),
       ]);
 
-      return { user_role: role?.name, sub_role: sub_role?.name };
+      return { user_role: role?.name, sub_role: sub_role?.name, workspace };
     } catch (error) {
       logger.error(
         `Error while gettign the role and subrole in the workspace: ${error}`

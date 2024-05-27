@@ -157,9 +157,26 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
     if (!user || !workspace)
       return throwError(returnMessage("auth", "unAuthorized"), 401);
 
+    const req_paths = ["/create-subscription", "/order"];
+    const workspace_creator = workspace?.members?.find(
+      (member) =>
+        workspace?.created_by?.toString() === user?._id?.toString() &&
+        member?.user_id?.toString() === workspace?.created_by?.toString() &&
+        member?.status === "payment_pending"
+    );
+
+    if (workspace_creator && !req_paths.includes(req.path))
+      return eventEmitter(
+        "PAYMENT_PENDING",
+        { status: "payment_pending" },
+        user?._id?.toString(),
+        workspace?._id
+      );
+
     req.user = user;
 
     req.user["workspace"] = decodedUserData?.workspace;
+    req.user["workspace_detail"] = workspace;
 
     next();
   } else {
