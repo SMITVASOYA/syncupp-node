@@ -19,8 +19,12 @@ const agreementSchema = new mongoose.Schema(
     },
     receiver: {
       type: mongoose.Types.ObjectId,
+      ref: "authentication",
+    },
+    workspace_id: {
+      type: mongoose.Types.ObjectId,
       required: true,
-      ref: "client",
+      ref: "workspace",
     },
     agreement_content: {
       type: String,

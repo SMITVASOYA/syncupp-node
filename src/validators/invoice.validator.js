@@ -8,9 +8,9 @@ exports.validateCreateInvoice = [
     .isString()
     .withMessage(validationMessage.invoice.invoiceNumberString),
 
-  body("client_id")
-    .isMongoId()
-    .withMessage(validationMessage.invoice.clientIdInvalid),
+  // body("client_id")
+  //   .isMongoId()
+  //   .withMessage(validationMessage.invoice.clientIdInvalid),
 
   body("due_date")
     .notEmpty()

@@ -2,17 +2,12 @@ const { body } = require("express-validator");
 const validationMessage = require("../messages/valiation.json");
 
 exports.addAgreementValidator = [
-  body("client_id")
-    .not()
-    .isEmpty()
-    .withMessage(validationMessage.agreement.clientIdReuired),
   body("title")
     .not()
     .isEmpty()
     .withMessage(validationMessage.agreement.titleRequired)
     .isLength({ max: 100 }) // specify the maximum length for the title
     .withMessage(validationMessage.general.titleLength),
-  body("receiver").not().isEmpty().withMessage("Receiver name required"),
   body("agreement_content")
     .not()
     .isEmpty()
