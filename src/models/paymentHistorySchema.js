@@ -23,6 +23,7 @@ const paymentHistorySchema = new mongoose.Schema(
     first_time: { type: Boolean, default: false },
     plan_id: { type: String },
     quantity: { type: Number, default: 1 },
+    workspace_id: { type: mongoose.Schema.ObjectId, ref: "workspaces" },
   },
   { timestamps: true }
 );

@@ -410,7 +410,8 @@
     "invitationSend": "Invitation has been sent.",
     "invitationExpired": "Your invitation has been expired.",
     "verified": "You have verified successfully.",
-    "teamMemeberExist": "This member is already exist in tis workspace."
+    "teamMemeberExist": "This member is already exist in tis workspace.",
+    "workspacePaymentPending":"Payment for this workspace is pending. Please change the workspace."
   },
 
   "section": {

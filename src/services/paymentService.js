@@ -48,6 +48,7 @@ const Affiliate = require("../models/affiliateSchema");
 const Payout = require("../models/payoutSchema");
 const Notification = require("../models/notificationSchema");
 const Workspace = require("../models/workspaceSchema");
+const Task = require("../models/taskSchema");
 class PaymentService {
   constructor() {
     this.razorpayApi = axios.create({
@@ -1044,26 +1045,8 @@ class PaymentService {
   // fetch the payment history for the agency only
   paymentHistory = async (payload, user) => {
     try {
-      if (user?.role?.name !== "agency" && user?.role?.name !== "team_agency")
-        return throwError(
-          returnMessage("auth", "unAuthorized"),
-          statusCode.forbidden
-        );
-
       const pagination = paginationObject(payload);
-      if (user?.role?.name === "team_agency") {
-        const team_agency_detail = await Team_Agency.findById(
-          user?.reference_id
-        )
-          .populate("role", "name")
-          .lean();
-        if (team_agency_detail?.role?.name === "admin")
-          user = await Authentication.findOne({
-            reference_id: team_agency_detail?.agency_id,
-          })
-            .populate("role", "name")
-            .lean();
-      }
+
       let search_obj = {};
       if (payload?.search && payload?.search !== "") {
         search_obj["$or"] = [
@@ -1088,13 +1071,13 @@ class PaymentService {
       }
 
       const [payment_history, total_history] = await Promise.all([
-        PaymentHistory.find({ agency_id: user?.reference_id, ...search_obj })
+        PaymentHistory.find({ agency_id: user?._id, ...search_obj })
           .sort(pagination.sort)
           .skip(pagination.skip)
           .limit(pagination.result_per_page)
           .lean(),
         PaymentHistory.countDocuments({
-          agency_id: user?.reference_id,
+          agency_id: user?._id,
           ...search_obj,
         }),
       ]);
@@ -1112,32 +1095,12 @@ class PaymentService {
   // fetch the sheets lists and who is assined to the particular sheet
   sheetsListing = async (payload, user) => {
     try {
-      if (user?.role?.name !== "agency" && user?.role?.name !== "team_agency")
-        return throwError(
-          returnMessage("auth", "unAuthorized"),
-          statusCode.forbidden
-        );
-
       const pagination = paginationObject(payload);
-      if (user?.role?.name === "team_agency") {
-        const team_agency_detail = await Team_Agency.findById(
-          user?.reference_id
-        )
-          .populate("role", "name")
-          .lean();
-        if (team_agency_detail?.role?.name === "admin")
-          user = await Authentication.findOne({
-            reference_id: team_agency_detail?.agency_id,
-          })
-            .populate("role", "name")
-            .lean();
-      }
 
       // aggragate reference from the https://mongoplayground.net/p/TqFafFxrncM
 
       const aggregate = [
-        { $match: { agency_id: user?.reference_id } },
-
+        { $match: { user_id: user?._id } },
         {
           $unwind: {
             path: "$occupied_sheets",
@@ -1146,55 +1109,78 @@ class PaymentService {
         },
         {
           $lookup: {
-            from: "authentications",
-            let: {
-              itemId: {
-                $toObjectId: "$occupied_sheets.user_id",
-              },
-              items: "$occupied_sheets",
-            },
+            from: "authentications", // The collection name of the users
+            localField: "occupied_sheets.user_id",
+            foreignField: "_id",
+            as: "user",
             pipeline: [
               {
-                $match: {
-                  $expr: {
-                    $eq: ["$reference_id", "$$itemId"],
-                  },
-                },
-              },
-              {
                 $project: {
-                  name: { $concat: ["$first_name", " ", "$last_name"] },
                   first_name: 1,
                   last_name: 1,
-                },
-              },
-              {
-                $replaceRoot: {
-                  newRoot: {
-                    $mergeObjects: ["$$items", "$$ROOT"],
+                  name: {
+                    $concat: ["$first_name", " ", "$last_name"],
                   },
+                  _id: 1,
                 },
               },
             ],
-            as: "occupied_sheets",
+          },
+        },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } }, // Unwind the user details array
+        {
+          $lookup: {
+            from: "role_masters", // The collection name of the sub_roles
+            localField: "occupied_sheets.role",
+            foreignField: "_id",
+            as: "role",
+          },
+        },
+        {
+          $unwind: {
+            path: "$role",
+            preserveNullAndEmptyArrays: true,
+          },
+        }, // Unwind the sub_role details array
+        {
+          $project: {
+            _id: 0,
+            user: "$user",
+            _id: "$user._id",
+            first_name: "$user.first_name",
+            last_name: "$user.last_name",
+            name: "$user.name",
+            role: "$role.name",
+            total_sheets: 1,
           },
         },
         {
           $group: {
-            _id: "$_id",
-            total_sheets: {
-              $first: "$total_sheets",
-            },
+            _id: null,
             items: {
               $push: {
-                $first: "$occupied_sheets",
+                user: "$user",
+                first_name: "$first_name",
+                last_name: "$last_name",
+                name: "$name",
+                role: "$role",
+                user_id: "$_id",
               },
             },
+            total_sheets: { $first: "$total_sheets" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            items: 1,
+            total_sheets: 1,
           },
         },
       ];
 
       const sheets = await SheetManagement.aggregate(aggregate);
+
       const occupied_sheets = sheets[0];
 
       occupied_sheets?.items?.unshift({
@@ -1204,13 +1190,13 @@ class PaymentService {
           capitalizeFirstLetter(user?.last_name),
         first_name: user?.first_name,
         last_name: user?.last_name,
-        role: user?.role?.name,
+        role: "agency",
       });
 
       for (let i = 0; i < occupied_sheets.total_sheets; i++) {
         if (occupied_sheets?.items[i] != undefined) {
           occupied_sheets.items[i] = {
-            ...occupied_sheets?.items[i],
+            ...occupied_sheets.items[i],
             seat_no: (i + 1).toString(),
             status: "Allocated",
           };
@@ -1241,7 +1227,7 @@ class PaymentService {
 
       if (payload?.sort_field && payload?.sort_field !== "") {
         // Sort the results based on the name
-        occupied_sheets?.items.sort((a, b) => {
+        occupied_sheets?.items?.sort((a, b) => {
           let nameA, nameB;
           if (payload?.sort_field === "name") {
             nameA = a?.name?.toLowerCase();
@@ -1288,13 +1274,18 @@ class PaymentService {
   removeUser = async (payload, user) => {
     try {
       const { user_id } = payload;
-      const sheets = await SheetManagement.findOne({
-        agency_id: user?.reference_id,
-      }).lean();
+      if (
+        user?.workspace_detail?.created_by?.toString() !== user?._id?.toString()
+      )
+        return throwError(
+          returnMessage("auth", "forbidden"),
+          statusCode.forbidden
+        );
 
-      const activity_status = await Activity_Status.findOne({ name: "pending" })
-        .select("_id")
-        .lean();
+      const [sheets, activity_status] = await Promise.all([
+        SheetManagement.findOne({ user_id: user?._id }).lean(),
+        Activity_Status.findOne({ name: "pending" }).select("_id").lean(),
+      ]);
 
       if (!sheets)
         return throwError(
@@ -1318,7 +1309,8 @@ class PaymentService {
 
       const remove_user = user_exist[0];
 
-      // ---------------- Notification ----------------
+      // notification module is pending to work
+      /* // ---------------- Notification ----------------
       const removeUserData = await Authentication.findOne({
         reference_id: remove_user.user_id,
       }).lean();
@@ -1350,68 +1342,34 @@ class PaymentService {
         subject: returnMessage("emailTemplate", "seatRemoved"),
         message: seatTemplate,
       });
-      // ---------------- Notification ----------------
+      // ---------------- Notification ---------------- */
 
       // this will used to check weather this user id has assined any task and it is in the pending state
-      let activity_assigned;
-      if (remove_user.role === "client") {
-        activity_assigned = await Activity.findOne({
-          agency_id: user?.reference_id,
-          client_id: user_id,
-          activity_status: activity_status?._id,
-        }).lean();
-      } else if (remove_user.role === "team_agency") {
-        activity_assigned = await Activity.findOne({
-          agency_id: user?.reference_id,
-          assign_to: user_id,
-          activity_status: activity_status?._id,
-        }).lean();
-      } else if (remove_user.role === "team_client") {
-        activity_assigned = await Activity.findOne({
-          agency_id: user?.reference_id,
-          client_id: user_id,
-          activity_status: activity_status?._id,
-        }).lean();
-      }
+      let task_assigned = await Task.findOne({
+        workspace_id: user?.workspace,
+        activity_status: activity_status?._id,
+        assign_to: { $in: [user_id] },
+        is_deleted: false,
+      }).lean();
 
-      if (activity_assigned && !payload?.force_fully_remove)
+      if (task_assigned && !payload?.force_fully_remove)
         return { force_fully_remove: true };
 
-      if (
-        (activity_assigned && payload?.force_fully_remove) ||
-        !activity_assigned
-      ) {
-        if (remove_user.role === "client") {
-          await Client.updateOne(
-            {
-              _id: remove_user?.user_id,
-              "agency_ids.agency_id": user?.reference_id,
-            },
-            { $set: { "agency_ids.$.status": "deleted" } },
-            { new: true }
-          );
-        } else if (remove_user.role === "team_agency") {
-          await Authentication.findOneAndUpdate(
-            { reference_id: remove_user?.user_id },
-            { status: "team_agency_inactive", is_deleted: true },
-            { new: true }
-          );
-        } else if (remove_user.role === "team_client") {
-          await Team_Client.updateOne(
-            {
-              _id: remove_user?.user_id,
-              "agency_ids.agency_id": user?.reference_id,
-            },
-            { $set: { "agency_ids.$.status": "deleted" } },
-            { new: true }
-          );
-        }
-
+      if ((task_assigned && payload?.force_fully_remove) || !task_assigned) {
         const update_obj = { occupied_sheets: updated_users };
-        if (user?.status === "free_trial") {
+        if (user?.workspace_detail?.trial_end_date) {
           update_obj.total_sheets = sheets?.total_sheets - 1;
         }
         await SheetManagement.findByIdAndUpdate(sheets._id, update_obj);
+        await Workspace.findOneAndUpdate(
+          { _id: user?.workspace, "members.user_id": user_id },
+          {
+            $set: {
+              "members.$.status": "deleted",
+              "members.$.invitation_token": undefined,
+            },
+          }
+        );
       }
       return;
     } catch (error) {
@@ -1465,49 +1423,40 @@ class PaymentService {
 
   getSubscription = async (agency) => {
     try {
-      let subscription, plan_details, next_billing_date;
-      if (agency?.status !== "free_trial" && agency?.subscription_id) {
+      let subscription, plan_details, agency_details;
+
+      if (agency?.subscribe_date && agency?.subscription_id) {
         subscription = await this.subscripionDetail(agency?.subscription_id);
         plan_details = await this.planDetails(subscription.plan_id);
       }
-
-      const [sheets_detail, earned_total, agency_details, configuration] =
-        await Promise.all([
-          SheetManagement.findOne({ agency_id: agency?.reference_id }).lean(),
-          this.calculateTotalReferralPoints(agency),
-          Agency.findById(agency?.reference_id).lean(),
-          Configuration.findOne({}).lean(),
-        ]);
+      /* Note:   We have not added the gamification points as of now */
+      const [sheets_detail, earned_total] = await Promise.all([
+        SheetManagement.findOne({ user_id: agency?._id }).lean(),
+        this.calculateTotalReferralPoints(agency),
+      ]);
 
       if (agency?.subscription_halted) {
         await Authentication.findByIdAndUpdate(agency?._id, {
           subscription_halted_displayed: true,
         });
       }
-      // commented because of the multiple plans
-      // if (agency?.status === "free_trial") {
-      //   const days = configuration?.payment?.free_trial;
-      //   next_billing_date = moment(agency?.createdAt)
-      //     .startOf("day")
-      //     .add(days, "days");
-      //   next_billing_date = next_billing_date.unix();
-      //   // this will change for the double plan
-      //   plan_details = await SubscriptionPlan.findOne({ active: true }).lean();
-      // }
 
       return {
-        next_billing_date: subscription?.current_end || next_billing_date,
+        next_billing_date:
+          subscription?.current_end || agency?.workspace_detail?.trial_end_date,
         next_billing_price:
           subscription?.quantity * (plan_details?.item?.amount / 100) ||
           plan_details?.amount / 100,
-        total_sheets: sheets_detail.total_sheets,
+        total_sheets: sheets_detail?.total_sheets,
         available_sheets: Math.abs(
-          sheets_detail.total_sheets - 1 - sheets_detail.occupied_sheets.length
+          sheets_detail?.total_sheets -
+            1 -
+            sheets_detail?.occupied_sheets?.length
         ),
         subscription,
         referral_points: {
           erned_points: earned_total,
-          available_points: agency_details?.total_referral_point,
+          available_points: agency_details?.total_referral_point || 1000,
         },
       };
     } catch (error) {
@@ -1515,6 +1464,7 @@ class PaymentService {
       return throwError(error?.message, error?.statusCode);
     }
   };
+  /* Need to work on the referral points later */
   calculateTotalReferralPoints = async (agency) => {
     try {
       const referral_data = await Configuration.findOne().lean();
@@ -2194,7 +2144,10 @@ class PaymentService {
 
   deactivateAgency = async (agency) => {
     try {
-      if (agency?.subscription_id && agency?.status !== "free_trial") {
+      if (
+        agency?.subscription_id &&
+        !agency?.workspace_detail?.trial_end_date
+      ) {
         const { data } = await this.razorpayApi.post(
           `/subscriptions/${agency?.subscription_id}/cancel`,
           {
@@ -2216,34 +2169,7 @@ class PaymentService {
   // deactivate account for the agency and delete all connected users
   deactivateAccount = async (agency) => {
     try {
-      const team_agency = await Team_Agency.distinct("_id", {
-        agency_id: agency?.reference_id,
-      });
       await Promise.all([
-        Team_Agency.updateMany(
-          { agency_id: agency?.reference_id },
-          { is_deleted: true }
-        ),
-        Authentication.updateMany(
-          { reference_id: { $in: team_agency } },
-          { is_deleted: true }
-        ),
-        Client.updateMany(
-          { agency_ids: { $elemMatch: { agency_id: agency?.reference_id } } },
-          { $set: { "agency_ids.$.status": "deleted" } }
-        ),
-        Team_Client.updateMany(
-          { agency_ids: { $elemMatch: { agency_id: agency?.reference_id } } },
-          { $set: { "agency_ids.$.status": "deleted" } }
-        ),
-        Authentication.updateMany(
-          { reference_id: agency?.reference_id },
-          { is_deleted: true, status: "subscription_cancelled" }
-        ),
-        Activity.updateMany(
-          { agency_id: agency?.reference_id },
-          { is_deleted: true }
-        ),
         Agreement.updateMany({ agency_id: agency?._id }, { is_deleted: true }),
         Event.updateMany(
           { agency_id: agency?.reference_id },
@@ -2491,7 +2417,7 @@ class PaymentService {
     try {
       const [plan_detail, sheets] = await Promise.all([
         SubscriptionPlan.findById(payload?.plan_id).lean(),
-        SheetManagement.findOne({ agency_id: agency?.reference_id }).lean(),
+        SheetManagement.findOne({ user_id: agency?._id }).lean(),
       ]);
 
       if (!plan_detail || !plan_detail.active)

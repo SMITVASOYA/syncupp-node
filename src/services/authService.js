@@ -84,6 +84,11 @@ class AuthService {
         }
       );
 
+      if (payload?.purchased_plan) {
+        payload.purchased_plan = await SheetManagement.findById(
+          payload.purchased_plan
+        ).lean();
+      }
       return {
         token,
         user: payload,
@@ -1546,6 +1551,7 @@ class AuthService {
   getProfile = async (user) => {
     try {
       return await Authentication.findById(user?._id)
+        .populate("purchased_plan")
         .select("-password")
         .lean();
     } catch (error) {

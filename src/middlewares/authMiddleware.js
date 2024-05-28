@@ -138,6 +138,7 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
 
     const [user, workspace] = await Promise.all([
       Authentication.findById(decodedUserData?.id)
+        .populate("purchased_plan")
         .where("is_deleted")
         .equals("false")
         .select("-password")
@@ -157,13 +158,25 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
     if (!user || !workspace)
       return throwError(returnMessage("auth", "unAuthorized"), 401);
 
-    const req_paths = ["/create-subscription", "/order"];
+    const req_paths = [
+      "/create-subscription",
+      "/order",
+      "/profile",
+      "/list",
+      "/change-workspace",
+    ];
     const workspace_creator = workspace?.members?.find(
       (member) =>
-        workspace?.created_by?.toString() === user?._id?.toString() &&
         member?.user_id?.toString() === workspace?.created_by?.toString() &&
         member?.status === "payment_pending"
     );
+    console.log(req.path);
+    if (
+      workspace?.created_by?.toString() !== user?._id?.toString() &&
+      workspace_creator?.status === "payment_pending" &&
+      !["/change-workspace", "/profile", "/list"].includes(req.path)
+    )
+      return throwError(returnMessage("workspace", "workspacePaymentPending"));
 
     if (workspace_creator && !req_paths.includes(req.path))
       return eventEmitter(
