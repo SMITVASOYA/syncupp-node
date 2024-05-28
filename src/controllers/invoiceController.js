@@ -217,18 +217,18 @@ exports.uploadLogo = catchAsyncError(async (req, res, next) => {
   );
 });
 
-// Get InvoiceInformation ------   AGENCY API
+// // Get InvoiceInformation ------   AGENCY API
 
-exports.getInvoiceInformation = catchAsyncError(async (req, res, next) => {
-  const getClientData = await invoiceService?.getInvoiceInformation(
-    req?.body,
-    req?.user
-  );
-  sendResponse(
-    res,
-    true,
-    returnMessage("invoice", "invoiceInfo"),
-    getClientData,
-    statusCode.success
-  );
-});
+// exports.getInvoiceInformation = catchAsyncError(async (req, res, next) => {
+//   const getClientData = await invoiceService?.getInvoiceInformation(
+//     req?.body,
+//     req?.user
+//   );
+//   sendResponse(
+//     res,
+//     true,
+//     returnMessage("invoice", "invoiceInfo"),
+//     getClientData,
+//     statusCode.success
+//   );
+// });

@@ -192,6 +192,26 @@ class AgreementService {
         agency_id: user_id,
         ...(client_id && { receiver: new mongoose.Types.ObjectId(client_id) }),
       };
+
+      // if (
+      //   searchObj?.start_date !== null &&
+      //   searchObj?.end_date !== null &&
+      //   searchObj?.start_date !== undefined &&
+      //   searchObj?.end_date !== undefined
+      // ) {
+      //   const parsedStartDate = moment.utc(searchObj?.start_date, "DD/MM/YYYY");
+      //   searchObj.start_date = parsedStartDate.utc();
+      //   const parsedEndDate = moment.utc(searchObj?.end_date, "DD/MM/YYYY");
+      //   searchObj.end_date = parsedEndDate.utc();
+      // }
+      // // Add date range conditions for invoice date and due date
+      // if (searchObj?.start_date && searchObj?.end_date) {
+      //   queryObj.due_date = {
+      //     $gte: new Date(searchObj?.start_date),
+      //     $lte: new Date(searchObj?.end_date),
+      //   };
+      // }
+
       const filter = {
         $match: {},
       };
