@@ -410,7 +410,7 @@ class TaskService {
             localField: "activity_status",
             foreignField: "_id",
             as: "status",
-            pipeline: [{ $project: { createdAt: -1, updatedAt: -1 } }],
+            pipeline: [{ $project: { createdAt: 0, updatedAt: 0 } }],
           },
         },
         {
