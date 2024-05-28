@@ -556,6 +556,12 @@ class ClientService {
   // Get the client ist for the Agency
   clientList = async (payload, user) => {
     try {
+      console.log(user);
+
+      if (!payload?.pagination) {
+        return await this.clientListWithoutPagination(user);
+      }
+      console.log(user);
       const pagination = paginationObject(payload);
 
       let search_obj = {},
@@ -683,43 +689,162 @@ class ClientService {
   };
 
   // Get the client ist for the Agency without pagination
-  clientListWithoutPagination = async (agency) => {
+  clientListWithoutPagination = async (user) => {
     try {
-      let clients;
-      if (agency?.role?.name === "team_agency") {
-        const agency_detail = await Team_Agency.findById(agency.reference_id);
-        clients = await Client.distinct("_id", {
-          agency_ids: {
-            $elemMatch: {
-              agency_id: agency_detail?.agency_id,
-              status: "active",
-            },
+      const client_data = await Role_Master.findOne({ name: "client" }).lean();
+      // const team_client_data = await Role_Master.findOne({
+      //   name: "team_client",
+      // }).lean();
+      const pipeline = [
+        {
+          $match: { _id: new mongoose.Types.ObjectId(user?.workspace) },
+        },
+
+        {
+          $unwind: {
+            path: "$members",
+            preserveNullAndEmptyArrays: true,
           },
-        }).lean();
-      } else {
-        clients = await Client.distinct("_id", {
-          agency_ids: {
-            $elemMatch: { agency_id: agency?.reference_id, status: "active" },
+        },
+
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "members.user_id",
+            foreignField: "_id",
+            as: "user_details",
           },
-        }).lean();
-      }
-      const aggrage_array = [
-        { $match: { reference_id: { $in: clients }, is_deleted: false } },
+        },
+
+        {
+          $unwind: {
+            path: "$user_details",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $lookup: {
+            from: "role_masters",
+            localField: "members.role",
+            foreignField: "_id",
+            as: "status_name",
+          },
+        },
+        {
+          $unwind: {
+            path: "$status_name",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $lookup: {
+            from: "state_masters",
+            localField: "client_data.state",
+            foreignField: "_id",
+            as: "client_state",
+            pipeline: [
+              {
+                $project: {
+                  name: 1,
+                  _id: 1,
+                },
+              },
+            ],
+          },
+        },
+
+        {
+          $unwind: { path: "$client_state", preserveNullAndEmptyArrays: true },
+        },
+        {
+          $lookup: {
+            from: "city_masters",
+            localField: "client_data.city",
+            foreignField: "_id",
+            as: "clientCity",
+            pipeline: [
+              {
+                $project: {
+                  name: 1,
+                  _id: 1,
+                },
+              },
+            ],
+          },
+        },
+
+        {
+          $unwind: { path: "$clientCity", preserveNullAndEmptyArrays: true },
+        },
+        {
+          $lookup: {
+            from: "country_masters",
+            localField: "client_data.country",
+            foreignField: "_id",
+            as: "clientCountry",
+            pipeline: [
+              {
+                $project: {
+                  name: 1,
+                  _id: 1,
+                },
+              },
+            ],
+          },
+        },
+
+        {
+          $unwind: { path: "$clientCountry", preserveNullAndEmptyArrays: true },
+        },
+
+        {
+          $match: {
+            $or: [
+              {
+                "status_name._id": new mongoose.Types.ObjectId(
+                  client_data?._id
+                ),
+              },
+              // {
+              //   "status_name._id": new mongoose.Types.ObjectId(
+              //     team_client_data?._id
+              //   ),
+              // },
+            ],
+          },
+        },
+
         {
           $project: {
-            first_name: 1,
-            last_name: 1,
-            email: 1,
-            name: { $concat: ["$first_name", " ", "$last_name"] },
-            createdAt: 1,
-            reference_id: 1,
-            contact_number: 1,
-            profile_image: 1,
+            _id: 0,
+            role: "$status_name.name",
+            _id: "$user_details._id",
+            profile_image: "$user_details.profile_image",
+            first_name: "$user_details.first_name",
+            last_name: "$user_details.last_name",
+            company_name: "$user_details.company_name",
+            contact_number: "$user_details.contact_number",
+            address: "$user_details.address",
+            industry: "$user_details.industry",
+            no_of_people: "$user_details.no_of_people",
+            pincode: "$user_details.pincode",
+            email: "$user_details.email",
+            city: "$clientCity",
+            state: "$clientState",
+            country: "$clientCountry",
+            client_full_name: {
+              $concat: [
+                "$user_details.first_name",
+                " ",
+                "$user_details.last_name",
+              ],
+            },
           },
         },
       ];
+      const client_list = await Workspace.aggregate(pipeline);
 
-      return await Authentication.aggregate(aggrage_array);
+      return client_list;
     } catch (error) {
       logger.error(
         `Error While fetching list of client for the agency: ${error}`

@@ -7,6 +7,8 @@ const Team_Agency = require("../models/teamAgencySchema");
 const Team_Role_Master = require("../models/masters/teamRoleSchema");
 const Authentication = require("../models/authenticationSchema");
 const agreementService = new AgreementService();
+const AuthService = require("../services/authService");
+const authService = new AuthService();
 
 // -------------------   Agency API   ------------------------
 
@@ -14,7 +16,7 @@ const agreementService = new AgreementService();
 
 exports.addAgreement = catchAsyncError(async (req, res, next) => {
   const addedAgreement = await agreementService.addAgreement(
-    req.body,
+    req?.body,
     req?.user
   );
   sendResponse(
@@ -30,25 +32,34 @@ exports.addAgreement = catchAsyncError(async (req, res, next) => {
 
 exports.getAllAgreement = catchAsyncError(async (req, res, next) => {
   let agreements;
-  const memberRoleId = await Team_Agency.findById(req?.user?.reference_id);
-  const memberRoleType = await Team_Role_Master.findById(memberRoleId?.role);
-  const agencyData = await Authentication.findOne({
-    reference_id: memberRoleId?.agency_id,
-  });
-  if (req?.user?.role?.name === "agency") {
+  const user_role_data = await authService.getRoleSubRoleInWorkspace(req?.user);
+  req.user["role"] = user_role_data?.user_role;
+  req.user["sub_role"] = user_role_data?.sub_role;
+
+  if (user_role_data?.user_role === "agency") {
     agreements = await agreementService.getAllAgreement(
       req?.body,
       req?.user?._id
     );
-  } else if (memberRoleType?.name === "admin") {
-    agreements = await agreementService.getAllAgreement(
-      req?.body,
-      agencyData?._id
-    );
-  } else if (req?.user?.role?.name === "client") {
+  } else if (user_role_data?.user_role === "client") {
     agreements = await agreementService.getAllClientAgreement(
       req?.body,
-      req?.user?._id
+      req?.user
+    );
+  } else if (
+    user_role_data?.user_role === "team_agency" &&
+    user_role_data?.sub_role === "admin"
+  ) {
+    const workspace_data = await Workspace.findById(user?.workspace).lean();
+    const agency_role_id = await Role_Master.findOne({
+      name: "agency",
+    }).lean();
+    const find_agency = workspace_data?.members?.find(
+      (user) => user?.role.toString() === agency_role_id?._id.toString()
+    );
+    agreements = await agreementService.getAllAgreement(
+      req?.body,
+      find_agency?.user_id
     );
   }
 
@@ -64,7 +75,13 @@ exports.getAllAgreement = catchAsyncError(async (req, res, next) => {
 // delete Agreement
 
 exports.deleteAgreement = catchAsyncError(async (req, res, next) => {
-  await agreementService.deleteAgreement(req.body);
+  const user_role_data = await authService.getRoleSubRoleInWorkspace(req?.user);
+  req.user["role"] = user_role_data?.user_role;
+  req.user["sub_role"] = user_role_data?.sub_role;
+
+  if (user_role_data?.user_role === "agency") {
+    await agreementService.deleteAgreement(req?.body);
+  }
   sendResponse(
     res,
     true,
@@ -77,10 +94,18 @@ exports.deleteAgreement = catchAsyncError(async (req, res, next) => {
 // Update Agreement
 
 exports.updateAgreement = catchAsyncError(async (req, res, next) => {
-  const updatedAgreement = await agreementService.updateAgreement(
-    req.body,
-    req?.params?.id
-  );
+  let updatedAgreement;
+  const user_role_data = await authService.getRoleSubRoleInWorkspace(req?.user);
+  req.user["role"] = user_role_data?.user_role;
+  req.user["sub_role"] = user_role_data?.sub_role;
+
+  if (user_role_data?.user_role === "agency") {
+    updatedAgreement = await agreementService.updateAgreement(
+      req?.body,
+      req?.params?.id
+    );
+  }
+
   sendResponse(
     res,
     true,
@@ -94,11 +119,18 @@ exports.updateAgreement = catchAsyncError(async (req, res, next) => {
 
 exports.getAgreement = catchAsyncError(async (req, res, next) => {
   let getAgreement;
-  if (req.user.role.name === "agency" || req.user.role.name === "client") {
+
+  const user_role_data = await authService.getRoleSubRoleInWorkspace(req?.user);
+  req.user["role"] = user_role_data?.user_role;
+  req.user["sub_role"] = user_role_data?.sub_role;
+
+  if (
+    user_role_data?.user_role === "agency" ||
+    user_role_data?.user_role === "client"
+  ) {
     getAgreement = await agreementService.getAgreement(req?.params?.id);
   }
 
-  getAgreement = await agreementService.getAgreement(req?.params?.id);
   sendResponse(
     res,
     true,
@@ -110,7 +142,13 @@ exports.getAgreement = catchAsyncError(async (req, res, next) => {
 // Send Agreement
 
 exports.sendAgreement = catchAsyncError(async (req, res, next) => {
-  await agreementService.sendAgreement(req?.body);
+  const user_role_data = await authService.getRoleSubRoleInWorkspace(req?.user);
+  req.user["role"] = user_role_data?.user_role;
+  req.user["sub_role"] = user_role_data?.sub_role;
+
+  if (user_role_data?.user_role === "agency") {
+    await agreementService.sendAgreement(req?.body);
+  }
 
   sendResponse(
     res,
@@ -124,11 +162,19 @@ exports.sendAgreement = catchAsyncError(async (req, res, next) => {
 // Update Agreement status
 
 exports.updateAgreementStatus = catchAsyncError(async (req, res, next) => {
-  const updatedAgreement = await agreementService.updateAgreementStatus(
-    req.body,
-    req?.params?.id,
-    req.user
-  );
+  let updatedAgreement;
+  const user_role_data = await authService.getRoleSubRoleInWorkspace(req?.user);
+  req.user["role"] = user_role_data?.user_role;
+  req.user["sub_role"] = user_role_data?.sub_role;
+
+  if (user_role_data?.user_role === "client") {
+    updatedAgreement = await agreementService.updateAgreementStatus(
+      req?.body,
+      req?.params?.id,
+      req?.user
+    );
+  }
+
   sendResponse(
     res,
     true,
@@ -139,28 +185,19 @@ exports.updateAgreementStatus = catchAsyncError(async (req, res, next) => {
 });
 
 exports.downloadPdf = catchAsyncError(async (req, res, next) => {
-  const downloadPdf = await agreementService.downloadPdf(req?.params?.id, res);
+  let downloadPdf;
+  const user_role_data = await authService.getRoleSubRoleInWorkspace(req?.user);
+  req.user["role"] = user_role_data?.user_role;
+  req.user["sub_role"] = user_role_data?.sub_role;
+
+  if (user_role_data?.user_role === "agency") {
+    downloadPdf = await agreementService.downloadPdf(req?.params?.id, res);
+  }
   sendResponse(
     res,
     true,
     returnMessage("agreement", "downloadPDF"),
     downloadPdf,
-    statusCode.success
-  );
-});
-
-// get All Agreement
-
-exports.getAllClientAgreement = catchAsyncError(async (req, res, next) => {
-  const agreements = await agreementService.getAllClientAgreement(
-    req.body,
-    req?.user?._id
-  );
-  sendResponse(
-    res,
-    true,
-    returnMessage("agreement", "getAllAgreement"),
-    agreements,
     statusCode.success
   );
 });

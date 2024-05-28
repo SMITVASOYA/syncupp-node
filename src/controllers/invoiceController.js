@@ -84,7 +84,6 @@ exports.getAllInvoice = catchAsyncError(async (req, res, next) => {
     const find_agency = workspace_data?.members?.find(
       (user) => user?.role.toString() === agency_role_id?._id.toString()
     );
-    agency_id = find_agency?.user_id;
     invoicesList = await invoiceService.getAllInvoice(req?.body, {
       _id: find_agency?.user_id,
       workspace: req?.user?.workspace,
