@@ -249,7 +249,9 @@
     "commentFetched": "Comments fetched successfully.",
     "taskLeave": "Task leave successfully.",
     "taskStatusUpdate": "Task status update.",
-    "activityStatusUpdated": "Activity Status updated successfully."
+    "activityStatusUpdated": "Activity Status updated successfully.",
+    "createCallMeeting": "Google meet link created successfully.",
+    "callMeetingAlreadyExists": "You are busy for this time slot !."
   },
 
   "payment": {

@@ -10,7 +10,7 @@ const activitySchema = new mongoose.Schema(
       required: true,
     },
     agenda: { type: String },
-    due_date: { type: Date },
+    meeting_date: { type: Date },
     internal_info: { type: String },
     google_meet_link: { type: String },
     created_by: { type: mongoose.Types.ObjectId, required: true },

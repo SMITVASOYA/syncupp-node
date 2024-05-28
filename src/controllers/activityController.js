@@ -125,3 +125,17 @@ exports.competitionStats = catchAsyncError(async (req, res, next) => {
   const competitionStats = await activityService.competitionStats(req?.user);
   sendResponse(res, true, undefined, competitionStats, statusCode.success);
 });
+
+exports.createCallGoogleMeeting = catchAsyncError(async (req, res, next) => {
+  const createCallGoogleMeeting = await activityService.createCallGoogleMeeting(
+    req?.body,
+    req?.user
+  );
+  sendResponse(
+    res,
+    true,
+    returnMessage("activity", "createCallMeeting"),
+    createCallGoogleMeeting,
+    200
+  );
+});

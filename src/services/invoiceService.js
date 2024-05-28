@@ -384,7 +384,6 @@ class InvoiceService {
               }
             });
         }
-        console.log(client_id);
         await Invoice.updateOne(
           { _id: invoiceIdToUpdate },
           {
@@ -1114,7 +1113,6 @@ class InvoiceService {
         };
       }
 
-      console.log(queryObj);
       const pagination = paginationObject(searchObj);
       const pipeLine = [
         {

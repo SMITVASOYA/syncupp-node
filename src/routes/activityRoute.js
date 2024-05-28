@@ -1,5 +1,10 @@
 const { protect } = require("../middlewares/authMiddleware");
 const activityController = require("../controllers/activityController");
+const {
+  createMeetMeetingValidator,
+} = require("../validators/activity.validator");
+const validatorFunc = require("../utils/validatorFunction.helper");
+
 const activityRoute = require("express").Router();
 
 activityRoute.use(protect);
@@ -15,6 +20,12 @@ activityRoute.post("/list", activityController.getActivities);
 activityRoute.put("/update-status/:id", activityController.updateStatus);
 activityRoute.delete("/delete-activity", activityController.deleteActivity);
 activityRoute.get("/get-status-list", activityController.statusList);
+activityRoute.post(
+  "/create-google-meeting",
+  createMeetMeetingValidator,
+  validatorFunc,
+  activityController.createCallGoogleMeeting
+);
 
 // Others
 activityRoute.post("/leaderboard", activityController.leaderboard);
