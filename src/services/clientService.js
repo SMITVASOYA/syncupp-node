@@ -41,6 +41,7 @@ const WorkspaceService = require("./workspaceService");
 const PaymentService = new paymentService();
 const workspaceService = new WorkspaceService();
 const crypto = require("crypto");
+const SubscriptionPlan = require("../models/subscriptionplanSchema");
 
 class ClientService {
   // create client for the agency
@@ -72,22 +73,23 @@ class ClientService {
           statusCode.notFound
         );
 
-      const [client_exist, role, configuration, plan] = await Promise.all([
-        Authentication.findOne({ email, is_deleted: false }).lean(),
-        Role_Master.findOne({ name: "client" }).lean(),
-        Configuration.findOne({}).lean(),
-        // SubscriptionPlan.findById(user?.purchased_plan).lean(),
-      ]);
+      const [client_exist, role, configuration, plan, sheets] =
+        await Promise.all([
+          Authentication.findOne({ email, is_deleted: false }).lean(),
+          Role_Master.findOne({ name: "client" }).lean(),
+          Configuration.findOne({}).lean(),
+          SubscriptionPlan.findById(user?.purchased_plan).lean(),
+          SheetManagement.findOne({
+            user_id: user?._id,
+            is_deleted: false,
+          }).lean(),
+        ]);
 
-      // need to work on this later
-      /* if (plan?.plan_type === "unlimited") {
-        const sheets = await SheetManagement.findOne({
-          agency_id: user?.reference_id,
-        }).lean();
-
-        if (sheets?.occupied_sheets?.length >= sheets?.total_sheets - 1)
-          return throwError(returnMessage("payment", "maxSheetsAllocated"));
-      } */
+      if (
+        plan?.plan_type === "unlimited" &&
+        sheets?.occupied_sheets?.length >= sheets?.total_sheets - 1
+      )
+        return throwError(returnMessage("payment", "maxSheetsAllocated"));
 
       if (client_exist) {
         // check for the user already exist in the workspace
@@ -101,43 +103,48 @@ class ClientService {
           return throwError(
             returnMessage("client", "clientIsAlreadyExistInWorkspace")
           );
-
-        let invitation_token = crypto.randomBytes(16).toString("hex");
-        const link = `${process.env.REACT_APP_URL}/verify?workspace=${
-          workspace_exist?._id
-        }&email=${encodeURIComponent(
-          client_exist?.email
-        )}&token=${invitation_token}&workspace_name=${
-          workspace_exist?.name
-        }&first_name=${client_exist?.first_name}&last_name=${
-          client_exist?.last_name
-        }`;
-
-        const email_template = templateMaker("teamInvitation.html", {
-          REACT_APP_URL: process.env.REACT_APP_URL,
-          SERVER_URL: process.env.SERVER_URL,
-          username:
-            capitalizeFirstLetter(client_exist?.first_name) +
-            " " +
-            capitalizeFirstLetter(client_exist?.last_name),
-          invitation_text: `You are invited to the ${
+        let invitation_token;
+        if (
+          sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
+          workspace_exist?.trial_end_date
+        ) {
+          invitation_token = crypto.randomBytes(16).toString("hex");
+          const link = `${process.env.REACT_APP_URL}/verify?workspace=${
+            workspace_exist?._id
+          }&email=${encodeURIComponent(
+            client_exist?.email
+          )}&token=${invitation_token}&workspace_name=${
             workspace_exist?.name
-          } workspace by ${
-            capitalizeFirstLetter(user?.first_name) +
-            " " +
-            capitalizeFirstLetter(user?.last_name)
-          }. Click on the below link to join the workspace.`,
-          link: link,
-          instagram: configuration?.urls?.instagram,
-          facebook: configuration?.urls?.facebook,
-          privacy_policy: configuration?.urls?.privacy_policy,
-        });
+          }&first_name=${client_exist?.first_name}&last_name=${
+            client_exist?.last_name
+          }`;
 
-        sendEmail({
-          email: client_exist?.email,
-          subject: returnMessage("auth", "invitationEmailSubject"),
-          message: email_template,
-        });
+          const email_template = templateMaker("teamInvitation.html", {
+            REACT_APP_URL: process.env.REACT_APP_URL,
+            SERVER_URL: process.env.SERVER_URL,
+            username:
+              capitalizeFirstLetter(client_exist?.first_name) +
+              " " +
+              capitalizeFirstLetter(client_exist?.last_name),
+            invitation_text: `You are invited to the ${
+              workspace_exist?.name
+            } workspace by ${
+              capitalizeFirstLetter(user?.first_name) +
+              " " +
+              capitalizeFirstLetter(user?.last_name)
+            }. Click on the below link to join the workspace.`,
+            link: link,
+            instagram: configuration?.urls?.instagram,
+            facebook: configuration?.urls?.facebook,
+            privacy_policy: configuration?.urls?.privacy_policy,
+          });
+
+          sendEmail({
+            email: client_exist?.email,
+            subject: returnMessage("auth", "invitationEmailSubject"),
+            message: email_template,
+          });
+        }
         // need to remove the user if the user is added before and deleted
         workspace_exist.members = workspace_exist?.members?.filter(
           (member) =>
@@ -149,6 +156,11 @@ class ClientService {
           user_id: client_exist?._id,
           role: role?._id,
           invitation_token: invitation_token,
+          status:
+            sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
+            workspace_exist?.trial_end_date
+              ? "confirm_pending"
+              : "payment_pending",
         });
 
         await Workspace.findByIdAndUpdate(
@@ -156,6 +168,19 @@ class ClientService {
           { members: members },
           { new: true }
         );
+
+        const occupied_sheets = [...sheets.occupied_sheets];
+
+        occupied_sheets.push({
+          user_id: client_exist?._id,
+          role: role?._id,
+          workspace: workspace_exist?._id,
+        });
+
+        await SheetManagement.findByIdAndUpdate(sheets?._id, {
+          occupied_sheets: occupied_sheets,
+          total_sheets: sheets?.total_sheets + 1,
+        });
         return;
       } else {
         validateRequestFields(payload, [
@@ -190,41 +215,47 @@ class ClientService {
           gst,
         });
 
-        let invitation_token = crypto.randomBytes(16).toString("hex");
-        const link = `${process.env.REACT_APP_URL}/verify?workspace=${
-          workspace_exist?._id
-        }&email=${encodeURIComponent(
-          email
-        )}&token=${invitation_token}&workspace_name=${
-          workspace_exist?.name
-        }&first_name=${first_name}&last_name=${last_name}`;
+        let invitation_token;
 
-        const email_template = templateMaker("teamInvitation.html", {
-          REACT_APP_URL: process.env.REACT_APP_URL,
-          SERVER_URL: process.env.SERVER_URL,
-          username:
-            capitalizeFirstLetter(first_name) +
-            " " +
-            capitalizeFirstLetter(last_name),
-          invitation_text: `You are invited to the ${
+        if (
+          sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
+          workspace_exist?.trial_end_date
+        ) {
+          invitation_token = crypto.randomBytes(16).toString("hex");
+          const link = `${process.env.REACT_APP_URL}/verify?workspace=${
+            workspace_exist?._id
+          }&email=${encodeURIComponent(
+            email
+          )}&token=${invitation_token}&workspace_name=${
             workspace_exist?.name
-          } workspace by ${
-            capitalizeFirstLetter(user?.first_name) +
-            " " +
-            capitalizeFirstLetter(user?.last_name)
-          }. Click on the below link to join the workspace.`,
-          link: link,
-          instagram: configuration?.urls?.instagram,
-          facebook: configuration?.urls?.facebook,
-          privacy_policy: configuration?.urls?.privacy_policy,
-        });
+          }&first_name=${first_name}&last_name=${last_name}`;
 
-        sendEmail({
-          email: email,
-          subject: returnMessage("auth", "invitationEmailSubject"),
-          message: email_template,
-        });
+          const email_template = templateMaker("teamInvitation.html", {
+            REACT_APP_URL: process.env.REACT_APP_URL,
+            SERVER_URL: process.env.SERVER_URL,
+            username:
+              capitalizeFirstLetter(first_name) +
+              " " +
+              capitalizeFirstLetter(last_name),
+            invitation_text: `You are invited to the ${
+              workspace_exist?.name
+            } workspace by ${
+              capitalizeFirstLetter(user?.first_name) +
+              " " +
+              capitalizeFirstLetter(user?.last_name)
+            }. Click on the below link to join the workspace.`,
+            link: link,
+            instagram: configuration?.urls?.instagram,
+            facebook: configuration?.urls?.facebook,
+            privacy_policy: configuration?.urls?.privacy_policy,
+          });
 
+          sendEmail({
+            email: email,
+            subject: returnMessage("auth", "invitationEmailSubject"),
+            message: email_template,
+          });
+        }
         // need to remove the user if the user is added before and deleted
         workspace_exist.members = workspace_exist?.members?.filter(
           (member) => member?.user_id?.toString() !== new_user?._id?.toString()
@@ -235,6 +266,11 @@ class ClientService {
           user_id: new_user?._id,
           role: role?._id,
           invitation_token: invitation_token,
+          status:
+            sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
+            workspace_exist?.trial_end_date
+              ? "confirm_pending"
+              : "payment_pending",
         });
 
         await Workspace.findByIdAndUpdate(
@@ -242,6 +278,19 @@ class ClientService {
           { members: members },
           { new: true }
         );
+
+        const occupied_sheets = [...sheets.occupied_sheets];
+
+        occupied_sheets.push({
+          user_id: new_user?._id,
+          role: role?._id,
+          workspace: workspace_exist?._id,
+        });
+
+        await SheetManagement.findByIdAndUpdate(sheets?._id, {
+          occupied_sheets: occupied_sheets,
+          total_sheets: sheets?.total_sheets + 1,
+        });
         return;
       }
     } catch (error) {
@@ -510,12 +559,9 @@ class ClientService {
   // Get the client ist for the Agency
   clientList = async (payload, user) => {
     try {
-      console.log(user);
-
       if (!payload?.pagination) {
         return await this.clientListWithoutPagination(user);
       }
-      console.log(user);
       const pagination = paginationObject(payload);
 
       let search_obj = {},

@@ -8,11 +8,6 @@ const teamMemberService = new TeamMemberService();
 // Team Member add
 exports.add = catchAsyncError(async (req, res, next) => {
   await teamMemberService.addAgencyTeam(req.body, req.user);
-
-  /*  let message = returnMessage("teamMember", "teamMemberCreated");
-  if (req?.user?.role?.name === "client") {
-    message = returnMessage("teamMember", "teamMemberCreatedByClient");
-  } */
   sendResponse(
     res,
     true,
