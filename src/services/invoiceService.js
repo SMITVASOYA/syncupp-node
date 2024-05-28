@@ -509,6 +509,12 @@ class InvoiceService {
               $options: "i",
             },
           },
+          {
+            total: {
+              $regex: searchObj?.search.toLowerCase(),
+              $options: "i",
+            },
+          },
         ];
 
         const keywordType = getKeywordType(searchObj?.search);
@@ -1091,6 +1097,12 @@ class InvoiceService {
           },
           {
             "status_array.name": {
+              $regex: searchObj?.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            total: {
               $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },

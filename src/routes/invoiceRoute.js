@@ -11,7 +11,7 @@ invoiceRoute.get("/currency", invoiceController.currencyList);
 invoiceRoute.use(protect);
 
 invoiceRoute.get("/get-clients", invoiceController.getClients);
-invoiceRoute.post("/get-invoice-data", invoiceController.getInvoiceInformation);
+// invoiceRoute.post("/get-invoice-data", invoiceController.getInvoiceInformation);
 invoiceRoute.post(
   "/create-invoice",
   checkProfileSize,

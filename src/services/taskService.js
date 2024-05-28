@@ -219,7 +219,7 @@ class TaskService {
       if (user?.role === "agency") {
         queryObj = {
           is_deleted: false,
-          agency_id: user._id,
+          agency_id: user?._id,
         };
       } else if (user?.role === "client") {
         queryObj = {
