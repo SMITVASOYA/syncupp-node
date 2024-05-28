@@ -55,7 +55,6 @@ class AgreementService {
         agency_id: user?._id,
         workspace_id: user?.workspace,
       });
-      console.log("sssss");
 
       if (send === true) {
         // const aggregationPipeline = [
