@@ -42,7 +42,7 @@ class AgreementService {
       const dueDate = moment.utc(due_date, "DD/MM/YYYY").utc();
 
       let client_data;
-      if (receiver && receiver !== "undefined") {
+      if (receiver && receiver !== "undefined" && receiver !== "null") {
         client_data = await Authentication.findById(receiver).lean();
       }
 
@@ -55,7 +55,6 @@ class AgreementService {
         agency_id: user?._id,
         workspace_id: user?.workspace,
       });
-      console.log("sssss");
 
       if (send === true) {
         // const aggregationPipeline = [
@@ -228,9 +227,14 @@ class AgreementService {
               $options: "i",
             },
           },
-
           {
-            "agreement_data.name": {
+            "agreement_data.first_name": {
+              $regex: searchObj?.search.toLowerCase(),
+              $options: "i",
+            },
+          },
+          {
+            "agreement_data.last_name": {
               $regex: searchObj?.search.toLowerCase(),
               $options: "i",
             },
@@ -319,9 +323,11 @@ class AgreementService {
             as: "receiver_data",
           },
         },
-
         {
-          $unwind: "$receiver_data",
+          $unwind: {
+            path: "$receiver_data",
+            preserveNullAndEmptyArrays: true,
+          },
         },
         {
           $lookup: {
@@ -331,9 +337,11 @@ class AgreementService {
             as: "sender_data",
           },
         },
-
         {
-          $unwind: "$sender_data",
+          $unwind: {
+            path: "$sender_data",
+            preserveNullAndEmptyArrays: true,
+          },
         },
 
         {
@@ -359,7 +367,7 @@ class AgreementService {
             receiver_number: "$receiver_data.contact_number",
             receiver_id: "$receiver_data._id",
             contact_number: 1,
-            sender: "$sender_data.name",
+            // sender: "$sender_data.name",
             sender_email: "$sender_data.email",
             sender_number: "$sender_data.contact_number",
             sender_first_name: "$sender_data.first_name",
@@ -424,6 +432,7 @@ class AgreementService {
         _id: agreementId,
         is_deleted: false,
       }).lean();
+
       if (payload?.send) {
         await Agreement.findByIdAndUpdate(
           {
@@ -440,24 +449,28 @@ class AgreementService {
           { new: true, useFindAndModify: false }
         );
       }
-
       if (status === "sent") {
-        const clientDetails = await Authentication.findOne({
-          _id: agreement.receiver,
-        });
+        if (receiver && receiver !== null) {
+          const clientDetails = await Authentication.findOne({
+            _id: agreement?.receiver,
+          }).lean();
+        }
         // const agreement_detail = await this.getAgreement(agreementId);
+
         const aggregationPipeline = [
           {
             $lookup: {
               from: "authentications",
               localField: "receiver",
               foreignField: "_id",
-              as: "receiver_Data",
+              as: "receiver_data",
             },
           },
-
           {
-            $unwind: "$receiver_Data",
+            $unwind: {
+              path: "$receiver_data",
+              preserveNullAndEmptyArrays: true,
+            },
           },
           {
             $lookup: {
@@ -467,9 +480,11 @@ class AgreementService {
               as: "sender_Data",
             },
           },
-
           {
-            $unwind: "$sender_Data",
+            $unwind: {
+              path: "$sender_Data",
+              preserveNullAndEmptyArrays: true,
+            },
           },
 
           {
@@ -481,15 +496,15 @@ class AgreementService {
           {
             $project: {
               _id: 1,
-              first_name: "$receiver_Data.first_name",
-              last_name: "$receiver_Data.last_name",
-              email: "$receiver_Data.email",
-              receiver: "$receiver_Data.name",
-              receiver_email: "$receiver_Data.email",
-              receiver_number: "$receiver_Data.contact_number",
-              receiver_id: "$receiver_Data._id",
+              first_name: "$receiver_data.first_name",
+              last_name: "$receiver_data.last_name",
+              email: "$receiver_data.email",
+              // receiver: "$receiver_data.name",
+              receiver_email: "$receiver_data.email",
+              receiver_number: "$receiver_data.contact_number",
+              receiver_id: "$receiver_data._id",
               contact_number: 1,
-              sender: "$sender_Data.name",
+              // sender: "$sender_Data.name",
               sender_email: "$sender_Data.email",
               sender_number: "$sender_Data.contact_number",
               sender_first_name: "$sender_Data.first_name",
@@ -504,9 +519,9 @@ class AgreementService {
               },
               receiver_fullName: {
                 $concat: [
-                  "$receiver_Data.first_name",
+                  "$receiver_data.first_name",
                   " ",
-                  "$receiver_Data.last_name",
+                  "$receiver_data.last_name",
                 ],
               },
               title: 1,
@@ -516,7 +531,9 @@ class AgreementService {
             },
           },
         ];
+
         const agreement = await Agreement.aggregate(aggregationPipeline);
+
         // var data = {
         //   title: agreement[0].title,
         //   dueDate: moment(agreement[0].due_date).format("DD/MM/YYYY"),
@@ -549,7 +566,11 @@ class AgreementService {
             agreement_content,
             due_date: payload.due_date,
             status,
-            receiver,
+            ...(!receiver || receiver === "null" || receiver === "undefined"
+              ? {
+                  receiver: null,
+                }
+              : { receiver: receiver }),
           },
           { new: true, useFindAndModify: false }
         );
@@ -586,9 +607,11 @@ class AgreementService {
             as: "receiver_Data",
           },
         },
-
         {
-          $unwind: "$receiver_Data",
+          $unwind: {
+            path: "$receiver_Data",
+            preserveNullAndEmptyArrays: true,
+          },
         },
         {
           $lookup: {
@@ -598,11 +621,12 @@ class AgreementService {
             as: "sender_Data",
           },
         },
-
         {
-          $unwind: "$sender_Data",
+          $unwind: {
+            path: "$sender_Data",
+            preserveNullAndEmptyArrays: true,
+          },
         },
-
         {
           $match: {
             _id: new mongoose.Types.ObjectId(agreementId),
@@ -615,12 +639,12 @@ class AgreementService {
             first_name: "$receiver_Data.first_name",
             last_name: "$receiver_Data.last_name",
             email: "$receiver_Data.email",
-            receiver: "$receiver_Data.name",
+            // receiver: "$receiver_Data.name",
             receiver_email: "$receiver_Data.email",
             receiver_number: "$receiver_Data.contact_number",
             receiver_id: "$receiver_Data._id",
             contact_number: 1,
-            sender: "$sender_Data.name",
+            // sender: "$sender_Data.name",
             sender_email: "$sender_Data.email",
             sender_number: "$sender_Data.contact_number",
             sender_first_name: "$sender_Data.first_name",
@@ -711,7 +735,6 @@ class AgreementService {
   updateAgreementStatus = async (payload, agreementId, user) => {
     try {
       const { status } = payload;
-
       if (user.role.name === "agency" && status === "agreed") {
         return throwError(returnMessage("agreement", "canNotUpdate"));
       }
@@ -725,82 +748,89 @@ class AgreementService {
           _id: agreementId,
           is_deleted: false,
         }).lean();
-        const clientDetails = await Authentication.findOne({
-          _id: agreements.receiver,
-        });
-        const aggregationPipeline = [
-          {
-            $lookup: {
-              from: "authentications",
-              localField: "receiver",
-              foreignField: "_id",
-              as: "receiver_Data",
-            },
-          },
 
-          {
-            $unwind: "$receiver_Data",
-          },
-          {
-            $lookup: {
-              from: "authentications",
-              localField: "agency_id",
-              foreignField: "_id",
-              as: "sender_Data",
-            },
-          },
+        // if (receiver && receiver !== null) {
+        //   const clientDetails = await Authentication.findOne({
+        //     _id: agreements?.receiver,
+        //   });
+        // }
+        // const aggregationPipeline = [
+        //   {
+        //     $lookup: {
+        //       from: "authentications",
+        //       localField: "receiver",
+        //       foreignField: "_id",
+        //       as: "receiver_Data",
+        //     },
+        //   },
+        //   {
+        //     $unwind: {
+        //       path: "$receiver_Data",
+        //       preserveNullAndEmptyArrays: true,
+        //     },
+        //   },
+        //   {
+        //     $lookup: {
+        //       from: "authentications",
+        //       localField: "agency_id",
+        //       foreignField: "_id",
+        //       as: "sender_Data",
+        //     },
+        //   },
+        //   {
+        //     $unwind: {
+        //       path: "$sender_Data",
+        //       preserveNullAndEmptyArrays: true,
+        //     },
+        //   },
 
-          {
-            $unwind: "$sender_Data",
-          },
+        //   {
+        //     $match: {
+        //       _id: new mongoose.Types.ObjectId(agreementId),
+        //       is_deleted: false,
+        //     },
+        //   },
+        //   {
+        //     $project: {
+        //       _id: 1,
+        //       first_name: "$receiver_Data.first_name",
+        //       last_name: "$receiver_Data.last_name",
+        //       email: "$receiver_Data.email",
+        //       // receiver: "$receiver_Data.name",
+        //       receiver_email: "$receiver_Data.email",
+        //       receiver_number: "$receiver_Data.contact_number",
+        //       receiver_id: "$receiver_Data._id",
+        //       contact_number: 1,
+        //       // sender: "$sender_Data.name",
+        //       sender_email: "$sender_Data.email",
+        //       sender_number: "$sender_Data.contact_number",
+        //       sender_first_name: "$sender_Data.first_name",
+        //       sender_last_name: "$sender_Data.last_name",
+        //       sender_id: "$sender_Data._id",
+        //       sender_id_notification: "$sender_Data._id",
 
-          {
-            $match: {
-              _id: new mongoose.Types.ObjectId(agreementId),
-              is_deleted: false,
-            },
-          },
-          {
-            $project: {
-              _id: 1,
-              first_name: "$receiver_Data.first_name",
-              last_name: "$receiver_Data.last_name",
-              email: "$receiver_Data.email",
-              receiver: "$receiver_Data.name",
-              receiver_email: "$receiver_Data.email",
-              receiver_number: "$receiver_Data.contact_number",
-              receiver_id: "$receiver_Data._id",
-              contact_number: 1,
-              sender: "$sender_Data.name",
-              sender_email: "$sender_Data.email",
-              sender_number: "$sender_Data.contact_number",
-              sender_first_name: "$sender_Data.first_name",
-              sender_last_name: "$sender_Data.last_name",
-              sender_id: "$sender_Data._id",
-              sender_id_notification: "$sender_Data._id",
-
-              sender_fullName: {
-                $concat: [
-                  "$sender_Data.first_name",
-                  " ",
-                  "$sender_Data.last_name",
-                ],
-              },
-              receiver_fullName: {
-                $concat: [
-                  "$receiver_Data.first_name",
-                  " ",
-                  "$receiver_Data.last_name",
-                ],
-              },
-              title: 1,
-              status: 1,
-              agreement_content: 1,
-              due_date: 1,
-            },
-          },
-        ];
-        agreement = await Agreement.aggregate(aggregationPipeline);
+        //       sender_fullName: {
+        //         $concat: [
+        //           "$sender_Data.first_name",
+        //           " ",
+        //           "$sender_Data.last_name",
+        //         ],
+        //       },
+        //       receiver_fullName: {
+        //         $concat: [
+        //           "$receiver_Data.first_name",
+        //           " ",
+        //           "$receiver_Data.last_name",
+        //         ],
+        //       },
+        //       title: 1,
+        //       status: 1,
+        //       agreement_content: 1,
+        //       due_date: 1,
+        //     },
+        //   },
+        // ];
+        // agreement = await Agreement.aggregate(aggregationPipeline);
         // if (status === "sent" || status === "agreed") {
         //   var data = {
         //     title: agreement[0].title,
@@ -890,10 +920,25 @@ class AgreementService {
       const queryObj = {
         is_deleted: false,
         receiver: user?._id,
-        // agency_id: agency_id,
         workspace_id: new mongoose.Types.ObjectId(user?.workspace),
         status: { $ne: "draft" }, // Exclude drafts
       };
+      const filter = {
+        $match: {},
+      };
+      if (searchObj?.status_name) {
+        filter["$match"] = {
+          ...filter["$match"],
+          status: searchObj?.status_name,
+        };
+      }
+      if (searchObj?.start_date && searchObj?.end_date) {
+        queryObj.due_date = {
+          $gte: new Date(searchObj?.start_date),
+          $lte: new Date(searchObj?.end_date),
+        };
+      }
+
       if (searchObj?.search && searchObj?.search !== "") {
         queryObj["$or"] = [
           {
@@ -918,27 +963,83 @@ class AgreementService {
         }
       }
 
+      // const pagination = paginationObject(searchObj);
+      // const agreements = await Agreement.find(queryObj)
+      //   .sort(pagination.sort)
+      //   .skip(pagination.skip)
+      //   .limit(pagination.result_per_page)
+      //   .populate({
+      //     path: "agency_id",
+      //     model: "authentication",
+      //     select: "first_name last_name",
+      //   });
+
+      // const totalAgreementsCount = await Agreement.countDocuments(queryObj);
+
+      // // Calculating total pages
+      // const pages = Math.ceil(
+      //   totalAgreementsCount / pagination.result_per_page
+      // );
+
+      // return {
+      //   agreements,
+      //   page_count: pages,
+      // };
       const pagination = paginationObject(searchObj);
-      const agreements = await Agreement.find(queryObj)
+      const aggregationPipeline = [
+        filter,
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "receiver",
+            foreignField: "_id",
+            as: "agreement_data",
+          },
+        },
+
+        {
+          $unwind: {
+            path: "$agreement_data",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $match: queryObj,
+        },
+        {
+          $project: {
+            first_name: "$agreement_data.first_name",
+            last_name: "$agreement_data.last_name",
+            email: "$agreement_data.email",
+            contact_number: 1,
+            title: 1,
+            status: 1,
+            agreement_content: 1,
+            due_date: 1,
+            createdAt: 1,
+            receiver: {
+              $concat: [
+                "$agreement_data.first_name",
+                " ",
+                "$agreement_data.last_name",
+              ],
+            },
+          },
+        },
+      ];
+      const agreements = await Agreement.aggregate(aggregationPipeline)
         .sort(pagination.sort)
         .skip(pagination.skip)
-        .limit(pagination.result_per_page)
-        .populate({
-          path: "agency_id",
-          model: "authentication",
-          select: "name",
-        });
+        .limit(pagination.result_per_page);
 
-      const totalAgreementsCount = await Agreement.countDocuments(queryObj);
-
-      // Calculating total pages
-      const pages = Math.ceil(
-        totalAgreementsCount / pagination.result_per_page
+      const totalAgreementsCount = await Agreement.aggregate(
+        aggregationPipeline
       );
-
       return {
         agreements,
-        page_count: pages,
+        page_count:
+          Math.ceil(totalAgreementsCount.length / pagination.result_per_page) ||
+          0,
       };
     } catch (error) {
       logger.error(`Error while Admin Agreement Listing, ${error}`);
@@ -957,9 +1058,11 @@ class AgreementService {
             as: "receiver_Data",
           },
         },
-
         {
-          $unwind: "$receiver_Data",
+          $unwind: {
+            path: "$receiver_Data",
+            preserveNullAndEmptyArrays: true,
+          },
         },
         {
           $lookup: {
@@ -969,9 +1072,11 @@ class AgreementService {
             as: "sender_Data",
           },
         },
-
         {
-          $unwind: "$sender_Data",
+          $unwind: {
+            path: "$sender_Data",
+            preserveNullAndEmptyArrays: true,
+          },
         },
 
         {

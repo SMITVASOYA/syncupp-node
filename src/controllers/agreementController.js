@@ -167,7 +167,10 @@ exports.updateAgreementStatus = catchAsyncError(async (req, res, next) => {
   req.user["role"] = user_role_data?.user_role;
   req.user["sub_role"] = user_role_data?.sub_role;
 
-  if (user_role_data?.user_role === "client") {
+  if (
+    user_role_data?.user_role === "client" ||
+    user_role_data?.user_role === "agency"
+  ) {
     updatedAgreement = await agreementService.updateAgreementStatus(
       req?.body,
       req?.params?.id,
