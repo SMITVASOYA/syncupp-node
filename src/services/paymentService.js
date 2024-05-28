@@ -2565,23 +2565,30 @@ class PaymentService {
 
   cronForFreeTrialEnd = async () => {
     try {
-      const [agencies, configuration] = await Promise.all([
-        Authentication.find({ status: "free_trial" }).lean(),
-        Configuration.findOne({}).lean(),
-      ]);
+      const workspaces = await Workspace.find({
+        trial_end_date: { $exist: true },
+        is_deleted: false,
+      }).lean();
       const today = moment.utc().startOf("day");
 
-      agencies.forEach(async (agency) => {
-        const created_at = moment.utc(agency.createdAt).startOf("day");
-        const days_diff = Math.abs(today.diff(created_at, "days"));
+      workspaces.forEach(async (workspace) => {
+        const trial_end_date = moment
+          .utc(workspace?.trial_end_date)
+          .startOf("day");
 
-        if (days_diff > configuration?.payment?.free_trial) {
-          await Authentication.findByIdAndUpdate(
-            agency?._id,
+        if (trial_end_date.isAfter(today)) {
+          await Workspace.findOneAndUpdate(
             {
-              status: "payment_pending",
+              _id: workspace?._id,
+              "members.user_id": workspace?.created_by,
+              is_deleted: false,
             },
-            { new: true }
+            {
+              $set: {
+                "members.$.status": "payment_pending",
+                trial_end_date: undefined,
+              },
+            }
           );
         }
       });
