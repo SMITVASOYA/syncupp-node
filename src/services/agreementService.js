@@ -41,7 +41,10 @@ class AgreementService {
 
       const dueDate = moment.utc(due_date, "DD/MM/YYYY").utc();
 
-      const client_data = await Authentication.findById(receiver).lean();
+      let client_data;
+      if (receiver && receiver !== "undefined") {
+        client_data = await Authentication.findById(receiver).lean();
+      }
 
       const agreements = await Agreement.create({
         title,
@@ -52,79 +55,80 @@ class AgreementService {
         agency_id: user?._id,
         workspace_id: user?.workspace,
       });
+      console.log("sssss");
 
       if (send === true) {
-        const aggregationPipeline = [
-          {
-            $lookup: {
-              from: "authentications",
-              localField: "receiver",
-              foreignField: "_id",
-              as: "receiver_data",
-            },
-          },
+        // const aggregationPipeline = [
+        //   {
+        //     $lookup: {
+        //       from: "authentications",
+        //       localField: "receiver",
+        //       foreignField: "_id",
+        //       as: "receiver_data",
+        //     },
+        //   },
 
-          {
-            $unwind: "$receiver_data",
-          },
-          {
-            $lookup: {
-              from: "authentications",
-              localField: "agency_id",
-              foreignField: "_id",
-              as: "sender_data",
-            },
-          },
+        //   {
+        //     $unwind: "$receiver_data",
+        //   },
+        //   {
+        //     $lookup: {
+        //       from: "authentications",
+        //       localField: "agency_id",
+        //       foreignField: "_id",
+        //       as: "sender_data",
+        //     },
+        //   },
 
-          {
-            $unwind: "$sender_data",
-          },
+        //   {
+        //     $unwind: "$sender_data",
+        //   },
 
-          {
-            $match: {
-              _id: new mongoose.Types.ObjectId(agreements._id),
-              is_deleted: false,
-            },
-          },
-          {
-            $project: {
-              _id: 1,
-              first_name: "$receiver_data.first_name",
-              last_name: "$receiver_data.last_name",
-              email: "$receiver_data.email",
-              receiver: "$receiver_data.name",
-              receiver_email: "$receiver_data.email",
-              receiver_number: "$receiver_data.contact_number",
-              receiver_id: "$receiver_data._id",
-              contact_number: 1,
-              sender: "$sender_data.name",
-              sender_email: "$sender_data.email",
-              sender_number: "$sender_data.contact_number",
-              sender_first_name: "$sender_data.first_name",
-              sender_last_name: "$sender_data.last_name",
-              sender_id: "$sender_data._id",
-              sender_full_name: {
-                $concat: [
-                  "$sender_data.first_name",
-                  " ",
-                  "$sender_data.last_name",
-                ],
-              },
-              receiver_full_name: {
-                $concat: [
-                  "$receiver_data.first_name",
-                  " ",
-                  "$receiver_data.last_name",
-                ],
-              },
-              title: 1,
-              status: 1,
-              agreement_content: 1,
-              due_date: 1,
-            },
-          },
-        ];
-        const agreement = await Agreement.aggregate(aggregationPipeline);
+        //   {
+        //     $match: {
+        //       _id: new mongoose.Types.ObjectId(agreements._id),
+        //       is_deleted: false,
+        //     },
+        //   },
+        //   {
+        //     $project: {
+        //       _id: 1,
+        //       first_name: "$receiver_data.first_name",
+        //       last_name: "$receiver_data.last_name",
+        //       email: "$receiver_data.email",
+        //       receiver: "$receiver_data.name",
+        //       receiver_email: "$receiver_data.email",
+        //       receiver_number: "$receiver_data.contact_number",
+        //       receiver_id: "$receiver_data._id",
+        //       contact_number: 1,
+        //       sender: "$sender_data.name",
+        //       sender_email: "$sender_data.email",
+        //       sender_number: "$sender_data.contact_number",
+        //       sender_first_name: "$sender_data.first_name",
+        //       sender_last_name: "$sender_data.last_name",
+        //       sender_id: "$sender_data._id",
+        //       sender_full_name: {
+        //         $concat: [
+        //           "$sender_data.first_name",
+        //           " ",
+        //           "$sender_data.last_name",
+        //         ],
+        //       },
+        //       receiver_full_name: {
+        //         $concat: [
+        //           "$receiver_data.first_name",
+        //           " ",
+        //           "$receiver_data.last_name",
+        //         ],
+        //       },
+        //       title: 1,
+        //       status: 1,
+        //       agreement_content: 1,
+        //       due_date: 1,
+        //     },
+        //   },
+        // ];
+        // const agreement = await Agreement.aggregate(aggregationPipeline);
 
         // if (client_data) {
         //   var data = {
