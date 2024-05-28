@@ -3,8 +3,12 @@ const { crm_connection } = require("../config/connection");
 
 const paymentHistorySchema = new mongoose.Schema(
   {
-    agency_id: { type: mongoose.Schema.Types.ObjectId, ref: "Agency" },
-    user_id: { type: mongoose.Schema.Types.ObjectId },
+    agency_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: "authentication",
+    },
+    member_id: { type: mongoose.Schema.Types.ObjectId, ref: "authentication" },
     role: { type: String },
     subscription_id: { type: String },
     order_id: { type: String },
@@ -19,6 +23,7 @@ const paymentHistorySchema = new mongoose.Schema(
     first_time: { type: Boolean, default: false },
     plan_id: { type: String },
     quantity: { type: Number, default: 1 },
+    workspace_id: { type: mongoose.Schema.ObjectId, ref: "workspaces" },
   },
   { timestamps: true }
 );

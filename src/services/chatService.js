@@ -214,6 +214,7 @@ class ChatService {
             profile_image: 1,
             createdAt: 1,
             updatedAt: 1,
+            contact_number: 1,
           },
         },
       ];
@@ -247,6 +248,7 @@ class ChatService {
         );
 
         if (last_chat) usr["last_message_date"] = last_chat?.createdAt;
+        if (last_chat) usr["last_message"] = last_chat?.messsage;
         return;
       });
 

@@ -41,6 +41,8 @@ const paymentService = require("../services/paymentService");
 const Workspace = require("../models/workspaceSchema");
 const PaymentService = new paymentService();
 const mongoose = require("mongoose");
+const Activity_Status_Master = require("../models/masters/activityStatusMasterSchema");
+const Task = require("../models/taskSchema");
 
 class TeamMemberService {
   // removed the code to create the team member for the agency
@@ -91,24 +93,30 @@ class TeamMemberService {
           statusCode.notFound
         );
 
-      const [team_member_exist, team_role, role_for_auth, configuration, plan] =
-        await Promise.all([
-          Authentication.findOne({ email, is_deleted: false }).lean(),
-          Team_Role_Master.findOne({ name: role }).select("_id").lean(),
-          Role_Master.findOne({ name: "team_agency" }).lean(),
-          Configuration.findOne({}).lean(),
-          // SubscriptionPlan.findById(user?.purchased_plan).lean(),
-        ]);
+      const [
+        team_member_exist,
+        team_role,
+        role_for_auth,
+        configuration,
+        plan,
+        sheets,
+      ] = await Promise.all([
+        Authentication.findOne({ email, is_deleted: false }).lean(),
+        Team_Role_Master.findOne({ name: role }).select("_id").lean(),
+        Role_Master.findOne({ name: "team_agency" }).lean(),
+        Configuration.findOne({}).lean(),
+        SubscriptionPlan.findById(user?.purchased_plan).lean(),
+        SheetManagement.findOne({
+          user_id: user?._id,
+          is_deleted: false,
+        }).lean(),
+      ]);
 
-      // need to work on this later
-      /* if (plan?.plan_type === "unlimited") {
-        const sheets = await SheetManagement.findOne({
-          agency_id: user?.reference_id,
-        }).lean();
-
-        if (sheets?.occupied_sheets?.length >= sheets?.total_sheets - 1)
-          return throwError(returnMessage("payment", "maxSheetsAllocated"));
-      } */
+      if (
+        plan?.plan_type === "unlimited" &&
+        sheets?.occupied_sheets?.length >= sheets?.total_sheets - 1
+      )
+        return throwError(returnMessage("payment", "maxSheetsAllocated"));
 
       if (team_member_exist) {
         // check for the user already exist in the workspace
@@ -122,44 +130,48 @@ class TeamMemberService {
           return throwError(
             returnMessage("workspace", "alreadyExistInWorkspace")
           );
-
-        let invitation_token = crypto.randomBytes(16).toString("hex");
-        const link = `${process.env.REACT_APP_URL}/verify?workspace=${
-          workspace_exist?._id
-        }&email=${encodeURIComponent(
-          team_member_exist?.email
-        )}&token=${invitation_token}&workspace_name=${
-          workspace_exist?.name
-        }&first_name=${team_member_exist?.first_name}&last_name=${
-          team_member_exist?.last_name
-        }`;
-
-        const email_template = templateMaker("teamInvitation.html", {
-          REACT_APP_URL: process.env.REACT_APP_URL,
-          SERVER_URL: process.env.SERVER_URL,
-          username:
-            capitalizeFirstLetter(team_member_exist?.first_name) +
-            " " +
-            capitalizeFirstLetter(team_member_exist?.last_name),
-          invitation_text: `You are invited to the ${
+        let invitation_token;
+        if (
+          sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
+          workspace_exist?.trial_end_date
+        ) {
+          invitation_token = crypto.randomBytes(16).toString("hex");
+          const link = `${process.env.REACT_APP_URL}/verify?workspace=${
+            workspace_exist?._id
+          }&email=${encodeURIComponent(
+            team_member_exist?.email
+          )}&token=${invitation_token}&workspace_name=${
             workspace_exist?.name
-          } workspace by ${
-            capitalizeFirstLetter(user?.first_name) +
-            " " +
-            capitalizeFirstLetter(user?.last_name)
-          }. Click on the below link to join the workspace.`,
-          link: link,
-          instagram: configuration?.urls?.instagram,
-          facebook: configuration?.urls?.facebook,
-          privacy_policy: configuration?.urls?.privacy_policy,
-        });
+          }&first_name=${team_member_exist?.first_name}&last_name=${
+            team_member_exist?.last_name
+          }`;
 
-        sendEmail({
-          email: team_member_exist?.email,
-          subject: returnMessage("auth", "invitationEmailSubject"),
-          message: email_template,
-        });
+          const email_template = templateMaker("teamInvitation.html", {
+            REACT_APP_URL: process.env.REACT_APP_URL,
+            SERVER_URL: process.env.SERVER_URL,
+            username:
+              capitalizeFirstLetter(team_member_exist?.first_name) +
+              " " +
+              capitalizeFirstLetter(team_member_exist?.last_name),
+            invitation_text: `You are invited to the ${
+              workspace_exist?.name
+            } workspace by ${
+              capitalizeFirstLetter(user?.first_name) +
+              " " +
+              capitalizeFirstLetter(user?.last_name)
+            }. Click on the below link to join the workspace.`,
+            link: link,
+            instagram: configuration?.urls?.instagram,
+            facebook: configuration?.urls?.facebook,
+            privacy_policy: configuration?.urls?.privacy_policy,
+          });
 
+          sendEmail({
+            email: team_member_exist?.email,
+            subject: returnMessage("auth", "invitationEmailSubject"),
+            message: email_template,
+          });
+        }
         // need to remove the user if the user is added before and deleted
         workspace_exist.members = workspace_exist?.members?.filter(
           (member) =>
@@ -172,6 +184,11 @@ class TeamMemberService {
           role: role_for_auth?._id,
           sub_role: team_role?._id,
           invitation_token: invitation_token,
+          status:
+            sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
+            !workspace_exist?.trial_end_date
+              ? "confirm_pending"
+              : "payment_pending",
         });
 
         await Workspace.findByIdAndUpdate(
@@ -179,6 +196,19 @@ class TeamMemberService {
           { members: members },
           { new: true }
         );
+
+        const occupied_sheets = [...sheets.occupied_sheets];
+
+        occupied_sheets.push({
+          user_id: team_member_exist?._id,
+          role: role_for_auth?._id,
+          workspace: workspace_exist?._id,
+        });
+
+        await SheetManagement.findByIdAndUpdate(sheets?._id, {
+          occupied_sheets: occupied_sheets,
+          total_sheets: sheets?.total_sheets + 1,
+        });
         return;
       } else {
         if (contact_number) {
@@ -197,41 +227,43 @@ class TeamMemberService {
           contact_number,
         });
 
-        let invitation_token = crypto.randomBytes(16).toString("hex");
-        const link = `${process.env.REACT_APP_URL}/verify?workspace=${
-          workspace_exist?._id
-        }&email=${encodeURIComponent(
-          email
-        )}&token=${invitation_token}&workspace_name=${
-          workspace_exist?.name
-        }&first_name=${first_name}&last_name=${last_name}`;
-
-        const email_template = templateMaker("teamInvitation.html", {
-          REACT_APP_URL: process.env.REACT_APP_URL,
-          SERVER_URL: process.env.SERVER_URL,
-          username:
-            capitalizeFirstLetter(first_name) +
-            " " +
-            capitalizeFirstLetter(last_name),
-          invitation_text: `You are invited to the ${
+        let invitation_token;
+        if (sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length) {
+          invitation_token = crypto.randomBytes(16).toString("hex");
+          const link = `${process.env.REACT_APP_URL}/verify?workspace=${
+            workspace_exist?._id
+          }&email=${encodeURIComponent(
+            email
+          )}&token=${invitation_token}&workspace_name=${
             workspace_exist?.name
-          } workspace by ${
-            capitalizeFirstLetter(user?.first_name) +
-            " " +
-            capitalizeFirstLetter(user?.last_name)
-          }. Click on the below link to join the workspace.`,
-          link: link,
-          instagram: configuration?.urls?.instagram,
-          facebook: configuration?.urls?.facebook,
-          privacy_policy: configuration?.urls?.privacy_policy,
-        });
+          }&first_name=${first_name}&last_name=${last_name}`;
 
-        sendEmail({
-          email: email,
-          subject: returnMessage("auth", "invitationEmailSubject"),
-          message: email_template,
-        });
+          const email_template = templateMaker("teamInvitation.html", {
+            REACT_APP_URL: process.env.REACT_APP_URL,
+            SERVER_URL: process.env.SERVER_URL,
+            username:
+              capitalizeFirstLetter(first_name) +
+              " " +
+              capitalizeFirstLetter(last_name),
+            invitation_text: `You are invited to the ${
+              workspace_exist?.name
+            } workspace by ${
+              capitalizeFirstLetter(user?.first_name) +
+              " " +
+              capitalizeFirstLetter(user?.last_name)
+            }. Click on the below link to join the workspace.`,
+            link: link,
+            instagram: configuration?.urls?.instagram,
+            facebook: configuration?.urls?.facebook,
+            privacy_policy: configuration?.urls?.privacy_policy,
+          });
 
+          sendEmail({
+            email: email,
+            subject: returnMessage("auth", "invitationEmailSubject"),
+            message: email_template,
+          });
+        }
         // need to remove the user if the user is added before and deleted
         workspace_exist.members = workspace_exist?.members?.filter(
           (member) => member?.user_id?.toString() !== new_user?._id?.toString()
@@ -242,6 +274,11 @@ class TeamMemberService {
           role: role_for_auth?._id,
           sub_role: team_role?._id,
           invitation_token: invitation_token,
+          status:
+            sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
+            workspace_exist?.trial_end_date
+              ? "confirm_pending"
+              : "payment_pending",
         });
 
         await Workspace.findByIdAndUpdate(
@@ -249,6 +286,19 @@ class TeamMemberService {
           { members: members },
           { new: true }
         );
+
+        const occupied_sheets = [...sheets.occupied_sheets];
+
+        occupied_sheets.push({
+          user_id: new_user?._id,
+          role: role_for_auth?._id,
+          workspace: workspace_exist?._id,
+        });
+
+        await SheetManagement.findByIdAndUpdate(sheets?._id, {
+          occupied_sheets: occupied_sheets,
+          total_sheets: sheets?.total_sheets + 1,
+        });
         return;
       }
     } catch (error) {
@@ -522,25 +572,6 @@ class TeamMemberService {
         },
         { new: true }
       );
-
-      if (accept) {
-        const sheets = await SheetManagement.findOne({
-          user_id: workspace_exist?.created_by,
-        }).lean();
-
-        const occupied_sheets = [...sheets.occupied_sheets];
-
-        occupied_sheets.push({
-          user_id: member_exist?._id,
-          role: member_exist?.role,
-          workspace: workspace_exist?._id,
-        });
-
-        await SheetManagement.findByIdAndUpdate(sheets?._id, {
-          occupied_sheets: occupied_sheets,
-          total_sheets: sheets?.total_sheets + 1,
-        });
-      }
       return;
     } catch (error) {
       logger.error(`Error while verify the workspace invitation: ${error}`);
@@ -926,9 +957,15 @@ class TeamMemberService {
     try {
       const { teamMemberIds } = payload;
       // pending to implement when we remove the team members and the tasks are assigned and pending set
-      const [workspace, sheet] = await Promise.all([
+      const [workspace, sheet, activity_status] = await Promise.all([
         Workspace.findById(user?.workspace).lean(),
-        SheetManagement.findOne({ user_id: user?._id }).lean(),
+        SheetManagement.findOne({
+          user_id: user?._id,
+          is_deleted: false,
+        }).lean(),
+        Activity_Status_Master.findOne({ name: "pending" })
+          .select("_id")
+          .lean(),
       ]);
 
       if (!sheet) return throwError(returnMessage("default", "default"));
@@ -950,30 +987,44 @@ class TeamMemberService {
             statusCode.forbidden
           );
       }
+
+      const task_assigned = await Task.findOne({
+        workspace_id: user.workspace,
+        assign_to: { $in: teamMemberIds },
+        activity_status: activity_status?._id,
+        is_deleted: false,
+      }).lean();
+
+      if (task_assigned && !payload?.force_fully_remove)
+        return { force_fully_remove: true };
       // remove the member from the workspace
-      await Workspace.findOneAndUpdate(
-        { _id: user.workspace, "members.user_id": { $in: teamMemberIds } },
-        {
-          $set: {
-            "members.$.status": "deleted",
-            "members.$.invitation_token": undefined,
+
+      if ((task_assigned && payload?.force_fully_remove) || !task_assigned) {
+        // remove the member from the workspace
+        await Workspace.findOneAndUpdate(
+          { _id: user.workspace, "members.user_id": { $in: teamMemberIds } },
+          {
+            $set: {
+              "members.$.status": "deleted",
+              "members.$.invitation_token": undefined,
+            },
           },
-        },
-        { new: true }
-      );
+          { new: true }
+        );
 
-      const updated_sheet = sheet?.occupied_sheets?.filter(
-        (sh) => !teamMemberIds?.includes(sh?.user_id?.toString())
-      );
+        const updated_sheet = sheet?.occupied_sheets?.filter(
+          (sh) => !teamMemberIds?.includes(sh?.user_id?.toString())
+        );
 
-      SheetManagement.findByIdAndUpdate(
-        sheet?._id,
-        {
-          occupied_sheets: updated_sheet,
-          total_sheets: updated_sheet?.length + 1,
-        },
-        { new: true }
-      );
+        SheetManagement.findByIdAndUpdate(
+          sheet?._id,
+          {
+            occupied_sheets: updated_sheet,
+            total_sheets: updated_sheet?.length + 1,
+          },
+          { new: true }
+        );
+      }
       return;
     } catch (error) {
       logger.error(
@@ -994,9 +1045,15 @@ class TeamMemberService {
         (member) => member?.user_id?.toString() === user?._id?.toString()
       );
 
-      const [role, sheet] = await Promise.all([
+      const [role, sheet, activity_status] = await Promise.all([
         Role_Master.findById(member_details?.role).lean(),
-        SheetManagement.findOne({ user_id: workspace?.created_by }).lean(),
+        SheetManagement.findOne({
+          user_id: workspace?.created_by,
+          is_deleted: false,
+        }).lean(),
+        Activity_Status_Master.findOne({ name: "pending" })
+          .select("_id")
+          .lean(),
       ]);
       if (role?.name !== "client")
         return throwError(
@@ -1005,39 +1062,50 @@ class TeamMemberService {
         );
       if (!sheet) return throwError(returnMessage("default", "default"));
 
+      const task_assigned = await Task.findOne({
+        workspace_id: user.workspace,
+        assign_to: { $in: teamMemberIds },
+        activity_status: activity_status?._id,
+        is_deleted: false,
+      }).lean();
+
+      if (task_assigned && !payload?.force_fully_remove)
+        return { force_fully_remove: true };
       // remove the member from the workspace
-      await Workspace.findOneAndUpdate(
-        {
-          _id: user.workspace,
-          "members.user_id": { $in: teamMemberIds },
-          "members.client_id": user?._id,
-        },
-        {
-          $set: {
-            "members.$.status": "deleted",
-            "members.$.invitation_token": undefined,
+
+      if ((task_assigned && payload?.force_fully_remove) || !task_assigned) {
+        await Workspace.findOneAndUpdate(
+          {
+            _id: user.workspace,
+            "members.user_id": { $in: teamMemberIds },
+            "members.client_id": user?._id,
           },
-        },
-        { new: true }
-      );
+          {
+            $set: {
+              "members.$.status": "deleted",
+              "members.$.invitation_token": undefined,
+            },
+          },
+          { new: true }
+        );
 
-      const updated_members_id = workspace?.members?.map((member) => {
-        if (member?.client_id?.toString() === user?._id?.toString())
-          return member?._id;
-      });
-      const updated_sheet = sheet?.occupied_sheets?.filter(
-        (sh) => !updated_members_id?.includes(sh?.user_id?.toString())
-      );
+        const updated_members_id = workspace?.members?.map((member) => {
+          if (member?.client_id?.toString() === user?._id?.toString())
+            return member?._id;
+        });
+        const updated_sheet = sheet?.occupied_sheets?.filter(
+          (sh) => !updated_members_id?.includes(sh?.user_id?.toString())
+        );
 
-      SheetManagement.findByIdAndUpdate(
-        sheet?._id,
-        {
-          occupied_sheets: updated_sheet,
-          total_sheets: updated_sheet?.length + 1,
-        },
-        { new: true }
-      );
-
+        SheetManagement.findByIdAndUpdate(
+          sheet?._id,
+          {
+            occupied_sheets: updated_sheet,
+            total_sheets: updated_sheet?.length + 1,
+          },
+          { new: true }
+        );
+      }
       return;
     } catch (error) {
       logger.error(
@@ -1901,7 +1969,7 @@ class TeamMemberService {
         Authentication.findOne({ reference_id: user_id })
           .populate("role", "name")
           .lean(),
-        SheetManagement.findOne({ agency_id }).lean(),
+        SheetManagement.findOne({ agency_id, is_deleted: false }).lean(),
       ]);
 
       if (user_details?.role?.name === "client") {
@@ -2061,7 +2129,7 @@ class TeamMemberService {
       we need to manage the subscription on accept or reject */
       const { status, member_id } = payload;
 
-      const [workspace, client_member_detail, configuration] =
+      const [workspace, client_member_detail, configuration, sheets, role] =
         await Promise.all([
           Workspace.findOne({
             members: {
@@ -2075,6 +2143,11 @@ class TeamMemberService {
           }).lean(),
           Authentication.findById(member_id).lean(),
           Configuration.findOne().lean(),
+          SheetManagement.findOne({
+            user_id: user?._id,
+            is_deleted: false,
+          }).lean(),
+          Role_Master.findOne({ name: "team_client" }).select("_id").lean(),
         ]);
 
       if (!workspace || !client_member_detail)
@@ -2100,52 +2173,74 @@ class TeamMemberService {
       }
 
       if (status === "accept") {
-        let invitation_token = crypto.randomBytes(16).toString("hex");
-        const link = `${process.env.REACT_APP_URL}/verify?workspace=${
-          workspace?._id
-        }&email=${encodeURIComponent(
-          client_member_detail?.email
-        )}&token=${invitation_token}&workspace_name=${
-          workspace?.name
-        }&first_name=${client_member_detail?.first_name}&last_name=${
-          client_member_detail?.last_name
-        }`;
+        let invitation_token;
 
-        const email_template = templateMaker("teamInvitation.html", {
-          REACT_APP_URL: process.env.REACT_APP_URL,
-          SERVER_URL: process.env.SERVER_URL,
-          username:
-            capitalizeFirstLetter(client_member_detail?.first_name) +
-            " " +
-            capitalizeFirstLetter(client_member_detail?.last_name),
-          invitation_text: `You are invited to the ${
+        if (
+          sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
+          workspace?.trial_end_date
+        ) {
+          invitation_token = crypto.randomBytes(16).toString("hex");
+          const link = `${process.env.REACT_APP_URL}/verify?workspace=${
+            workspace?._id
+          }&email=${encodeURIComponent(
+            client_member_detail?.email
+          )}&token=${invitation_token}&workspace_name=${
             workspace?.name
-          } workspace by ${
-            capitalizeFirstLetter(user?.first_name) +
-            " " +
-            capitalizeFirstLetter(user?.last_name)
-          }. Click on the below link to join the workspace.`,
-          link: link,
-          instagram: configuration?.urls?.instagram,
-          facebook: configuration?.urls?.facebook,
-          privacy_policy: configuration?.urls?.privacy_policy,
-        });
+          }&first_name=${client_member_detail?.first_name}&last_name=${
+            client_member_detail?.last_name
+          }`;
 
-        sendEmail({
-          email: client_member_detail?.email,
-          subject: returnMessage("auth", "invitationEmailSubject"),
-          message: email_template,
-        });
+          const email_template = templateMaker("teamInvitation.html", {
+            REACT_APP_URL: process.env.REACT_APP_URL,
+            SERVER_URL: process.env.SERVER_URL,
+            username:
+              capitalizeFirstLetter(client_member_detail?.first_name) +
+              " " +
+              capitalizeFirstLetter(client_member_detail?.last_name),
+            invitation_text: `You are invited to the ${
+              workspace?.name
+            } workspace by ${
+              capitalizeFirstLetter(user?.first_name) +
+              " " +
+              capitalizeFirstLetter(user?.last_name)
+            }. Click on the below link to join the workspace.`,
+            link: link,
+            instagram: configuration?.urls?.instagram,
+            facebook: configuration?.urls?.facebook,
+            privacy_policy: configuration?.urls?.privacy_policy,
+          });
+
+          sendEmail({
+            email: client_member_detail?.email,
+            subject: returnMessage("auth", "invitationEmailSubject"),
+            message: email_template,
+          });
+        }
 
         await Workspace.findOneAndUpdate(
           { _id: workspace?._id, "members.user_id": member_id },
           {
             $set: {
               "members.$.invitation_token": invitation_token,
-              "members.$.status": "confirm_pending",
+              "members.$.status":
+                sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
+                workspace?.trial_end_date
+                  ? "confirm_pending"
+                  : "payment_pending",
             },
           }
         );
+        const occupied_sheets = [...sheets.occupied_sheets];
+        occupied_sheets.push({
+          user_id: client_member_detail?._id,
+          role: role?._id,
+          workspace: workspace?._id,
+        });
+
+        await SheetManagement.findByIdAndUpdate(sheets?._id, {
+          occupied_sheets: occupied_sheets,
+          total_sheets: sheets?.total_sheets + 1,
+        });
       } else if (status === "reject") {
         await Workspace.findOneAndUpdate(
           { _id: workspace?._id, "members.user_id": member_id },

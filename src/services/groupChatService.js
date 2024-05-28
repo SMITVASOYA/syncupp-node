@@ -229,6 +229,7 @@ class GroupChatService {
             const group_obj = {
               group_name: group?.group_name,
               last_message_date: chat_messages[i]?.createdAt,
+              last_message: chat_messages[i]?.message,
               createdAt: chat_messages[i]?.createdAt,
               _id: group?._id,
             };

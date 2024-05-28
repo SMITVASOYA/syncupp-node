@@ -4,20 +4,18 @@ const { crm_connection } = require("../config/connection");
 const taskSchema = new mongoose.Schema(
   {
     title: { type: String },
-    workspace_id: { type: mongoose.Types.ObjectId },
-    priority: {
-      type: String,
-      enum: ["high", "low", "medium"],
-    },
+    workspace_id: { type: mongoose.Types.ObjectId, ref: "workspaces" },
+    priority: { type: String, enum: ["high", "low", "medium"] },
     agenda: { type: String },
     due_date: { type: Date },
     due_time: { type: String },
     assign_to: [
       {
         type: mongoose.Types.ObjectId,
+        ref: "authentication",
       },
     ],
-    assign_by: { type: mongoose.Types.ObjectId },
+    assign_by: { type: mongoose.Types.ObjectId, ref: "authentication" },
     agency_id: { type: mongoose.Types.ObjectId },
     status_history: [
       {
@@ -30,13 +28,10 @@ const taskSchema = new mongoose.Schema(
         },
       },
     ],
-    attachments: [
-      {
-        type: String,
-      },
-    ],
+    attachments: [{ type: String }],
     activity_status: {
       type: mongoose.Types.ObjectId,
+      ref: "activity_status_master",
       required: true,
     },
     is_deleted: { type: Boolean, default: false },
@@ -44,7 +39,7 @@ const taskSchema = new mongoose.Schema(
     competition_point: { type: Number, default: 0 },
     comments: [
       {
-        user_id: { type: mongoose.Types.ObjectId },
+        user_id: { type: mongoose.Types.ObjectId, ref: "authentication" },
         comment: { type: String },
       },
     ],

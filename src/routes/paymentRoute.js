@@ -10,8 +10,8 @@ paymentRoute.post("/contact-create", paymentConrtoller.createContact);
 // for end payout
 
 paymentRoute.post("/webhook", paymentConrtoller.webHookHandler);
-paymentRoute.post("/verify-signature", paymentConrtoller.verifySignature);
 paymentRoute.get("/plans", paymentConrtoller.listPlan);
+paymentRoute.post("/verify-signature", paymentConrtoller.verifySignature);
 
 paymentRoute.get(
   "/plan/:planId",
