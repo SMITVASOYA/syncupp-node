@@ -219,7 +219,7 @@ class TaskService {
       if (user?.role === "agency") {
         queryObj = {
           is_deleted: false,
-          agency_id: user._id,
+          agency_id: user?._id,
         };
       } else if (user?.role === "client") {
         queryObj = {
@@ -410,7 +410,7 @@ class TaskService {
             localField: "activity_status",
             foreignField: "_id",
             as: "status",
-            pipeline: [{ $project: { section_name: 1, _id: 1 } }],
+            pipeline: [{ $project: { createdAt: 0, updatedAt: 0 } }],
           },
         },
         {
@@ -443,6 +443,7 @@ class TaskService {
             agency_id: 1,
             board_id: 1,
             priority: 1,
+            mark_as_done: 1,
           },
         },
       ];
@@ -685,7 +686,7 @@ class TaskService {
             localField: "activity_status",
             foreignField: "_id",
             as: "status",
-            pipeline: [{ $project: { section_name: 1 } }],
+            pipeline: [{ $project: { createdAt: -1, updatedAt: -1 } }],
           },
         },
         {
@@ -717,6 +718,7 @@ class TaskService {
             priority: 1,
             attachment_count: { $size: "$attachments" },
             comments_count: { $size: "$comments" },
+            mark_as_done: 1,
           },
         },
       ];
@@ -1028,6 +1030,10 @@ class TaskService {
         user_role_data?.user_role !== "team_agency"
       ) {
         return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
+      if (payload?.action_name === "date_assignee_update") {
+        await this.updateDateAssigneeTask(payload, id);
       }
 
       let {
@@ -1473,6 +1479,43 @@ class TaskService {
         });
 
       return updateTasks;
+    } catch (error) {
+      logger.error(`Error while Updating task, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  updateDateAssigneeTask = async (payload, id) => {
+    try {
+      let { due_date, assign_to } = payload;
+
+      if (due_date && due_date !== "null") {
+        var dueDateObject = moment(due_date);
+        const duetimeObject = moment(due_date);
+
+        let updatedData = await Task.findById(id).lean();
+        var timeOnly = duetimeObject.format("HH:mm:ss");
+
+        const currentDate = moment().startOf("day");
+        let check_due_date = moment(updatedData.due_date);
+        if (!check_due_date.isSame(dueDateObject)) {
+          if (!dueDateObject.isSameOrAfter(currentDate)) {
+            return throwError(returnMessage("activity", "dateinvalid"));
+          }
+        }
+      }
+
+      let updateTasksPayload = {
+        ...(due_date && due_date !== "null" && { due_time: timeOnly }),
+        ...(due_date &&
+          due_date !== "null" && { due_date: dueDateObject.toDate() }),
+        ...(assign_to && assign_to[0] && { assign_to: assign_to }),
+      };
+      await Task.findByIdAndUpdate(id, updateTasksPayload, {
+        new: true,
+        useFindAndModify: false,
+      });
+      return;
     } catch (error) {
       logger.error(`Error while Updating task, ${error}`);
       throwError(error?.message, error?.statusCode);

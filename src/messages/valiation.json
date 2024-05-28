@@ -99,5 +99,10 @@
     "projectNameRequired": "Project name is required",
     "descriptionRequired": "Description name is required",
     "membersRequired": "Members name are required"
+  },
+  "activity": {
+    "dateRequired": "Meeting is required",
+    "timeRequired": "Meeting is required",
+    "tokenRequired": "Token is required"
   }
 }
