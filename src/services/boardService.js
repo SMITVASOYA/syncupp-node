@@ -423,12 +423,7 @@ class BoardService {
     try {
       const { skip = 0, limit = 5, all, agency_id, sort } = search_obj;
 
-      let query = {
-        ...((user?.role === "client" || user?.role === "team_client") &&
-          agency_id && {
-            agency_id: new mongoose.Types.ObjectId(agency_id),
-          }),
-      };
+      let query = {};
 
       if (user) {
         if (user?.role === "agency") {

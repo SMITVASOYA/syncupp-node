@@ -36,13 +36,343 @@ const { ObjectId } = require("mongoose");
 const Section = require("../models/sectionSchema");
 const Workspace = require("../models/workspaceSchema");
 const Role_Master = require("../models/masters/roleMasterSchema");
+const AuthService = require("../services/authService");
+const authService = new AuthService();
+const Meeting = require("google-meet-api").meet;
 
 class ActivityService {
+  // this function is used to create the call meeting and other call details
+  createCallMeeting = async (payload, user) => {
+    try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+
+      if (
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.user_role !== "team_agency"
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
+      validateRequestFields(payload, [
+        "title",
+        "meeting_date",
+        "meeting_start_time",
+        "meeting_end_time",
+      ]);
+
+      const {
+        title,
+        agenda,
+        meeting_date,
+        meeting_start_time,
+        meeting_end_time,
+        internal_info,
+        attendees,
+        all_day,
+        alert_time,
+        alert_time_unit,
+        google_meet_link,
+      } = payload;
+
+      let recurring_date;
+      const current_date = moment.utc().startOf("day");
+      const start_date = moment.utc(meeting_date, "DD-MM-YYYY").startOf("day");
+      const start_time = moment.utc(
+        `${meeting_date}-${meeting_start_time}`,
+        "DD-MM-YYYY-HH:mm"
+      );
+      const end_time = moment.utc(
+        `${meeting_date}-${meeting_end_time}`,
+        "DD-MM-YYYY-HH:mm"
+      );
+      if (!start_date.isSameOrAfter(current_date))
+        return throwError(returnMessage("activity", "dateinvalid"));
+
+      if (!end_time.isAfter(start_time))
+        return throwError(returnMessage("activity", "invalidTime"));
+
+      if (payload?.recurring_end_date) {
+        recurring_date = moment
+          .utc(payload?.recurring_end_date, "DD-MM-YYYY")
+          .startOf("day");
+        if (!recurring_date.isSameOrAfter(start_date))
+          return throwError(returnMessage("activity", "invalidRecurringDate"));
+      }
+
+      const status = await ActivityStatus.findOne({ name: "pending" }).lean();
+
+      payload.attendees?.push(user?._id.toString());
+      payload.attendees = [
+        ...new Set(payload?.attendees?.map((attendee) => attendee.toString())),
+      ].map((attendee) => new mongoose.Types.ObjectId(attendee));
+
+      const newActivity = await Activity.create({
+        activity_status: status?._id,
+        created_by: user?._id,
+        agenda,
+        title,
+        internal_info,
+        meeting_start_time: start_time,
+        meeting_end_time: end_time,
+        meeting_date: start_date,
+        recurring_end_date: recurring_date,
+        attendees: payload?.attendees,
+        workspace_id: user?.workspace,
+        all_day,
+        alert_time,
+        alert_time_unit,
+        google_meet_link,
+      });
+
+      // const event = {
+      //   start: [
+      //     moment(start_date).year(),
+      //     moment(start_date).month() + 1, // Months are zero-based in JavaScript Date objects
+      //     moment(start_date).date(),
+      //     moment(payload.meeting_start_time, "HH:mm").hour(), // Use .hour() to get the hour as a number
+      //     moment(payload.meeting_start_time, "HH:mm").minute(),
+      //   ],
+      //   end: [
+      //     moment(recurring_date).year(),
+      //     moment(recurring_date).month() + 1, // Months are zero-based in JavaScript Date objects
+      //     moment(recurring_date).date(),
+      //     moment(payload.meeting_end_time, "HH:mm").hour(), // Use .hour() to get the hour as a number
+      //     moment(payload.meeting_end_time, "HH:mm").minute(),
+      //   ],
+
+      //   title: title,
+      //   description: agenda,
+      //   // Other optional properties can be added here such as attendees, etc.
+      // };
+
+      // // const file = await new Promise((resolve, reject) => {
+      // //   const filename = "ExampleEvent.ics";
+      // //   ics.createEvent(event, (error, value) => {
+      // //     if (error) {
+      // //       reject(error);
+      // //     }
+
+      // //     resolve(value, filename, { type: "text/calendar" });
+      // //   });
+      // // });
+
+      // // if (user?.role?.name === "agency") {
+      // //   // --------------- Start--------------------
+      // //   const [assign_to_data, client_data, attendees_data] = await Promise.all(
+      // //     [
+      // //       Authentication.findOne({ reference_id: assign_to }).lean(),
+      // //       Authentication.findOne({ reference_id: client_id }).lean(),
+      // //       Authentication.find({ reference_id: { $in: attendees } }).lean(),
+      // //     ]
+      // //   );
+
+      // //   const activity_email_template = activityTemplate({
+      // //     ...payload,
+      // //     status: mark_as_done ? "completed" : "pending",
+      // //     assigned_by_name: user.first_name + " " + user.last_name,
+      // //     client_name: client_data
+      // //       ? client_data.first_name + " " + client_data.last_name
+      // //       : "",
+      // //     assigned_to_name:
+      // //       assign_to_data.first_name + " " + assign_to_data.last_name,
+      // //     meeting_start_time: momentTimezone
+      // //       .utc(meeting_start_time, "HH:mm")
+      // //       .tz("Asia/Kolkata")
+      // //       .format("HH:mm"),
+
+      // //     meeting_end_time: momentTimezone
+      // //       .utc(meeting_end_time, "HH:mm")
+      // //       .tz("Asia/Kolkata")
+      // //       .format("HH:mm"),
+      // //   });
+
+      // //   client_data &&
+      // //     sendEmail({
+      // //       email: client_data?.email,
+      // //       subject: returnMessage("emailTemplate", "newActivityMeeting"),
+      // //       message: activity_email_template,
+      // //       icsContent: file,
+      // //     });
+      // //   sendEmail({
+      // //     email: assign_to_data?.email,
+      // //     subject: returnMessage("emailTemplate", "newActivityMeeting"),
+      // //     message: activity_email_template,
+      // //     icsContent: file,
+      // //   });
+
+      // //   attendees_data &&
+      // //     attendees_data[0] &&
+      // //     attendees_data.map((item) => {
+      // //       const activity_email_template = activityTemplate({
+      // //         ...payload,
+      // //         status: mark_as_done ? "completed" : "pending",
+      // //         assigned_by_name: user.first_name + " " + user.last_name,
+      // //         client_name: client_data
+      // //           ? client_data.first_name + " " + client_data.last_name
+      // //           : "",
+      // //         assigned_to_name:
+      // //           assign_to_data.first_name + " " + assign_to_data.last_name,
+      // //       });
+
+      // //       sendEmail({
+      // //         email: item?.email,
+      // //         subject: returnMessage("emailTemplate", "newActivityMeeting"),
+      // //         message: activity_email_template,
+      // //         icsContent: file,
+      // //       });
+      // //     });
+      // //   await notificationService.addNotification(
+      // //     {
+      // //       assign_by: user?.reference_id,
+      // //       assigned_by_name: user?.first_name + " " + user?.last_name,
+      // //       client_name: client_data
+      // //         ? client_data.first_name + " " + client_data.last_name
+      // //         : "",
+      // //       assigned_to_name:
+      // //         assign_to_data?.first_name + " " + assign_to_data?.last_name,
+      // //       ...payload,
+      // //       module_name: "activity",
+      // //       activity_type_action: "create_call_meeting",
+      // //       activity_type:
+      // //         activity_type === "others" ? "activity" : "call meeting",
+      // //       meeting_start_time: momentTimezone
+      // //         .utc(meeting_start_time, "HH:mm")
+      // //         .tz("Asia/Kolkata")
+      // //         .format("HH:mm"),
+      // //       meeting_end_time: momentTimezone
+      // //         .utc(meeting_end_time, "HH:mm")
+      // //         .tz("Asia/Kolkata")
+      // //         .format("HH:mm"),
+      // //     },
+      // //     newActivity?._id
+      // //   );
+      // //   // ---------------- End ---------------
+      // // }
+      // // if (user?.role?.name === "team_agency") {
+      // //   // --------------- Start--------------------
+      // //   const [assign_to_data, client_data, attendees_data] = await Promise.all(
+      // //     [
+      // //       Authentication.findOne({ reference_id: assign_to }).lean(),
+      // //       Authentication.findOne({ reference_id: client_id }).lean(),
+      // //       Authentication.find({ reference_id: { $in: attendees } }).lean(),
+      // //     ]
+      // //   );
+
+      // //   const activity_email_template = activityTemplate({
+      // //     ...payload,
+      // //     status: mark_as_done ? "completed" : "pending",
+      // //     assigned_by_name: user.first_name + " " + user.last_name,
+      // //     client_name: client_data
+      // //       ? client_data.first_name + " " + client_data.last_name
+      // //       : "",
+      // //     assigned_to_name:
+      // //       assign_to_data.first_name + " " + assign_to_data.last_name,
+      // //     meeting_start_time: momentTimezone
+      // //       .utc(meeting_start_time, "HH:mm")
+      // //       .tz("Asia/Kolkata")
+      // //       .format("HH:mm"),
+
+      // //     meeting_end_time: momentTimezone
+      // //       .utc(meeting_end_time, "HH:mm")
+      // //       .tz("Asia/Kolkata")
+      // //       .format("HH:mm"),
+      // //   });
+
+      // //   client_data &&
+      // //     sendEmail({
+      // //       email: client_data?.email,
+      // //       subject: returnMessage("emailTemplate", "newActivityMeeting"),
+      // //       message: activity_email_template,
+      // //       icsContent: file,
+      // //     });
+      // //   sendEmail({
+      // //     email: assign_to_data?.email,
+      // //     subject: returnMessage("emailTemplate", "newActivityMeeting"),
+      // //     message: activity_email_template,
+      // //     icsContent: file,
+      // //   });
+
+      // //   attendees_data &&
+      // //     attendees_data[0] &&
+      // //     attendees_data.map((item) => {
+      // //       const activity_email_template = activityTemplate({
+      // //         ...payload,
+      // //         status: mark_as_done ? "completed" : "pending",
+      // //         assigned_by_name: user.first_name + " " + user.last_name,
+      // //         client_name: client_data
+      // //           ? client_data.first_name + " " + client_data.last_name
+      // //           : "",
+      // //         assigned_to_name:
+      // //           assign_to_data.first_name + " " + assign_to_data.last_name,
+
+      // //         meeting_start_time: momentTimezone
+      // //           .utc(meeting_start_time, "HH:mm")
+      // //           .tz("Asia/Kolkata")
+      // //           .format("HH:mm"),
+
+      // //         meeting_end_time: momentTimezone
+      // //           .utc(meeting_end_time, "HH:mm")
+      // //           .tz("Asia/Kolkata")
+      // //           .format("HH:mm"),
+      // //       });
+
+      // //       sendEmail({
+      // //         email: item?.email,
+      // //         subject: returnMessage("emailTemplate", "newActivityMeeting"),
+      // //         message: activity_email_template,
+      // //         icsContent: file,
+      // //       });
+      // //     });
+
+      // //   const agencyData = await Authentication.findOne({
+      // //     reference_id: newActivity?.agency_id,
+      // //   });
+
+      // //   await notificationService.addNotification(
+      // //     {
+      // //       agency_name: agencyData?.first_name + " " + agencyData?.last_name,
+      // //       agency_id: agencyData?.reference_id,
+      // //       assign_by: user?.reference_id,
+      // //       assigned_by_name: user?.first_name + " " + user?.last_name,
+      // //       client_name: client_data
+      // //         ? client_data.first_name + " " + client_data.last_name
+      // //         : "",
+      // //       assigned_to_name:
+      // //         assign_to_data?.first_name + " " + assign_to_data?.last_name,
+      // //       ...payload,
+      // //       module_name: "activity",
+      // //       activity_type_action: "create_call_meeting",
+      // //       activity_type:
+      // //         activity_type === "others" ? "activity" : "call meeting",
+      // //       log_user: "member",
+      // //       meeting_start_time: momentTimezone
+      // //         .utc(meeting_start_time, "HH:mm")
+      // //         .tz("Asia/Kolkata")
+      // //         .format("HH:mm"),
+      // //       meeting_end_time: momentTimezone
+      // //         .utc(meeting_end_time, "HH:mm")
+      // //         .tz("Asia/Kolkata")
+      // //         .format("HH:mm"),
+      // //     },
+      // //     newActivity?._id
+      // //   );
+      // //   // ---------------- End ---------------
+      // // }
+
+      return;
+    } catch (error) {
+      logger.error(`Error while creating call meeting and other: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
   activityStatus = async () => {
     try {
-      return await ActivityStatus.find();
+      return await ActivityStatus.find({});
     } catch (error) {
-      logger.error(`Error while fetch list : ${error}`);
+      logger.error(`Error while activity status list : ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
@@ -53,13 +383,12 @@ class ActivityService {
         {
           $lookup: {
             from: "authentications",
-            localField: "client_id",
-            foreignField: "reference_id",
-            as: "client_Data",
+            localField: "created_by",
+            foreignField: "_id",
+            as: "created_by",
             pipeline: [
               {
                 $project: {
-                  name: 1,
                   first_name: 1,
                   last_name: 1,
                   assigned_by_name: {
@@ -71,66 +400,25 @@ class ActivityService {
           },
         },
         {
-          $unwind: { path: "$client_Data", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $lookup: {
-            from: "authentications",
-            localField: "assign_to",
-            foreignField: "reference_id",
-            as: "team_data",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                  first_name: 1,
-                  last_name: 1,
-                  assigned_by_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: { path: "$team_data", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $lookup: {
-            from: "authentications",
-            localField: "assign_by",
-            foreignField: "reference_id",
-            as: "assign_by",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                  first_name: 1,
-                  last_name: 1,
-                  assigned_by_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
+          $unwind: { path: "$created_by", preserveNullAndEmptyArrays: true },
         },
         {
           $lookup: {
             from: "authentications",
             localField: "attendees",
-            foreignField: "reference_id",
+            foreignField: "_id",
             as: "attendeesData",
             pipeline: [
               {
                 $project: {
                   email: 1,
-                  reference_id: 1,
-                  _id: 0,
+                  _id: 1,
+                  profile_image: 1,
+                  first_name: 1,
+                  last_name: 1,
+                  attendees_name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
                 },
               },
             ],
@@ -149,18 +437,6 @@ class ActivityService {
           $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
         },
         {
-          $lookup: {
-            from: "activity_type_masters",
-            localField: "activity_type",
-            foreignField: "_id",
-            as: "activity_type",
-            pipeline: [{ $project: { name: 1 } }],
-          },
-        },
-        {
-          $unwind: { path: "$activity_type", preserveNullAndEmptyArrays: true },
-        },
-        {
           $match: {
             _id: new mongoose.Types.ObjectId(id),
             is_deleted: false,
@@ -170,48 +446,25 @@ class ActivityService {
           $project: {
             title: 1,
             due_time: 1,
-            due_date: 1,
+            meeting_date: 1,
             createdAt: 1,
             status: "$status.name",
-            client_id: 1,
-            client_name: {
-              $concat: [
-                "$client_Data.first_name",
-                " ",
-                "$client_Data.last_name",
-              ],
-            },
-            client_first_name: "$client_Data.first_name",
-            client_last_name: "$client_Data.last_name",
             agenda: 1,
-            client_fullName: {
-              $concat: [
-                "$client_Data.first_name",
-                " ",
-                "$client_Data.last_name",
-              ],
-            },
-            assign_to: 1,
-            assigned_to_name: "$team_data.name",
-            assigned_to_first_name: "$team_data.first_name",
-            assigned_to_last_name: "$team_data.last_name",
-            assigned_by_name: "$assign_by.name",
-            assigned_by_first_name: "$assign_by.first_name",
-            assigned_by_last_name: "$assign_by.last_name",
+            assigned_by_name: "$created_by.name",
+            assigned_by_first_name: "$created_by.first_name",
+            assigned_by_last_name: "$created_by.last_name",
             assigned_by_name: {
-              $concat: ["$assign_by.first_name", " ", "$assign_by.last_name"],
-            },
-            assigned_to_name: {
-              $concat: ["$team_data.first_name", " ", "$team_data.last_name"],
+              $concat: ["$created_by.first_name", " ", "$created_by.last_name"],
             },
             meeting_start_time: 1,
             meeting_end_time: 1,
             recurring_end_date: 1,
-            activity_type: 1,
             attendees: "$attendeesData",
-            attachments: 1,
-            tags: 1,
             internal_info: 1,
+            all_day: 1,
+            google_meet_link: 1,
+            alert_time_unit: 1,
+            alert_time: 1,
           },
         },
       ];
@@ -232,144 +485,112 @@ class ActivityService {
         { $set: { is_deleted: true } }
       );
 
-      const pipeline = [
-        {
-          $lookup: {
-            from: "authentications",
-            localField: "assign_to",
-            foreignField: "reference_id",
-            as: "team_data",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                  first_name: 1,
-                  last_name: 1,
-                  email: 1,
-                  assigned_to_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: { path: "$team_data", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $lookup: {
-            from: "authentications",
-            localField: "assign_by",
-            foreignField: "reference_id",
-            as: "assign_by",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                  first_name: 1,
-                  last_name: 1,
-                  assigned_by_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $lookup: {
-            from: "activity_status_masters",
-            localField: "activity_status",
-            foreignField: "_id",
-            as: "status",
-            pipeline: [{ $project: { name: 1 } }],
-          },
-        },
-        {
-          $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $match: {
-            _id: {
-              $in: taskIdsToDelete.map((id) => new mongoose.Types.ObjectId(id)),
-            },
-          },
-        },
-        {
-          $project: {
-            agenda: 1,
-            status: "$status.name",
-            assigned_by_first_name: "$assign_by.first_name",
-            assigned_by_last_name: "$assign_by.last_name",
-            assigned_to_first_name: "$team_data.first_name",
-            assigned_to_last_name: "$team_data.last_name",
-            assigned_to_name: "$team_data.assigned_to_name",
-            assigned_by_name: "$assign_by.assigned_by_name",
-            client_name: "$client_Data.client_name",
-            column_id: "$status.name",
-            assign_email: "$team_data.email",
-            due_date: 1,
-            due_time: 1,
-            title: 1,
-            assign_to: 1,
-            client_id: 1,
-            board_id: 1,
-          },
-        },
-      ];
-      const getTask = await Activity.aggregate(pipeline);
-      getTask.forEach(async (task) => {
-        const board = await Board.findOne({ _id: task?.board_id }).lean();
+      // const pipeline = [
+      //   {
+      //     $lookup: {
+      //       from: "authentications",
+      //       localField: "assign_by",
+      //       foreignField: "_id",
+      //       as: "assign_by",
+      //       pipeline: [
+      //         {
+      //           $project: {
+      //             name: 1,
+      //             first_name: 1,
+      //             last_name: 1,
+      //             assigned_by_name: {
+      //               $concat: ["$first_name", " ", "$last_name"],
+      //             },
+      //           },
+      //         },
+      //       ],
+      //     },
+      //   },
+      //   {
+      //     $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
+      //   },
+      //   {
+      //     $lookup: {
+      //       from: "activity_status_masters",
+      //       localField: "activity_status",
+      //       foreignField: "_id",
+      //       as: "status",
+      //       pipeline: [{ $project: { name: 1 } }],
+      //     },
+      //   },
+      //   {
+      //     $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
+      //   },
+      //   {
+      //     $match: {
+      //       _id: {
+      //         $in: taskIdsToDelete.map((id) => new mongoose.Types.ObjectId(id)),
+      //       },
+      //     },
+      //   },
+      //   {
+      //     $project: {
+      //       agenda: 1,
+      //       status: "$status.name",
+      //       assigned_by_first_name: "$assign_by.first_name",
+      //       assigned_by_last_name: "$assign_by.last_name",
+      //       assigned_by_name: "$assign_by.assigned_by_name",
+      //       column_id: "$status.name",
+      //       meeting_date: 1,
+      //       due_time: 1,
+      //       title: 1,
+      //     },
+      //   },
+      // ];
+      // const getTask = await Activity.aggregate(pipeline);
+      // getTask.forEach(async (task) => {
+      //   const board = await Board.findOne({ _id: task?.board_id }).lean();
 
-        let data = {
-          TaskTitle: "Deleted Task",
-          taskName: task?.title,
-          status: task?.status,
-          assign_by: task?.assigned_by_name,
-          dueDate: moment(task?.due_date)?.format("DD/MM/YYYY"),
-          dueTime: task?.due_time,
-          agginTo_email: task?.assign_email,
-          assignName: task?.assigned_to_name,
-          board_name: board ? board?.project_name : "",
-        };
-        const taskMessage = taskTemplate(data);
-        const clientData = await Authentication.findOne({
-          reference_id: task?.client_id,
-        }).lean();
-        await sendEmail({
-          email: task?.assign_email,
-          subject: returnMessage("activity", "taskDeleted"),
-          message: taskMessage,
-        });
+      //   let data = {
+      //     TaskTitle: "Deleted Task",
+      //     taskName: task?.title,
+      //     status: task?.status,
+      //     assign_by: task?.assigned_by_name,
+      //     dueDate: moment(task?.meeting_date)?.format("DD/MM/YYYY"),
+      //     dueTime: task?.due_time,
+      //     agginTo_email: task?.assign_email,
+      //     assignName: task?.assigned_to_name,
+      //     board_name: board ? board?.project_name : "",
+      //   };
+      //   const taskMessage = taskTemplate(data);
+      //   const clientData = await Authentication.findOne({
+      //     reference_id: task?.client_id,
+      //   }).lean();
+      //   await sendEmail({
+      //     email: task?.assign_email,
+      //     subject: returnMessage("activity", "taskDeleted"),
+      //     message: taskMessage,
+      //   });
 
-        if (clientData) {
-          await sendEmail({
-            email: clientData?.email,
-            subject: returnMessage("activity", "taskDeleted"),
-            message: taskTemplate({
-              ...data,
-              assignName: clientData.first_name + " " + clientData.last_name,
-            }),
-          });
-        }
+      //   if (clientData) {
+      //     await sendEmail({
+      //       email: clientData?.email,
+      //       subject: returnMessage("activity", "taskDeleted"),
+      //       message: taskTemplate({
+      //         ...data,
+      //         assignName: clientData.first_name + " " + clientData.last_name,
+      //       }),
+      //     });
+      //   }
 
-        await notificationService.addNotification(
-          {
-            title: task?.title,
-            module_name: "task",
-            activity_type_action: "deleted",
-            activity_type: "task",
-            assign_to: task?.assign_to,
-            client_id: task?.client_id,
-          },
-          task?._id
-        );
-        return;
-      });
+      //   await notificationService.addNotification(
+      //     {
+      //       title: task?.title,
+      //       module_name: "task",
+      //       activity_type_action: "deleted",
+      //       activity_type: "task",
+      //       assign_to: task?.assign_to,
+      //       client_id: task?.client_id,
+      //     },
+      //     task?._id
+      //   );
+      //   return;
+      // });
 
       return;
     } catch (error) {
@@ -398,14 +619,7 @@ class ActivityService {
         update_status = await ActivityStatus.findOne({
           name: "overdue",
         }).lean();
-      } else if (status === "cancel") {
-        update_status = await ActivityStatus.findOne({
-          name: "cancel",
-        }).lean();
       }
-      let current_activity = await Activity.findById(id).lean();
-      let current_status = current_activity.activity_status;
-
       const updateTasks = await Activity.findByIdAndUpdate(
         {
           _id: id,
@@ -415,568 +629,335 @@ class ActivityService {
         },
         { new: true, useFindAndModify: false }
       );
-      const type = await ActivityType.findOne({ name: "task" }).lean();
-      if (
-        current_status?.toString() !== update_status?._id?.toString() &&
-        current_activity?.activity_type?.toString() === type?._id?.toString()
-      ) {
-        const referral_data = await Configuration.findOne().lean();
 
-        // Decrement completion points if transitioning from completed to pending, in_progress, or overdue
-        if (
-          current_status?.toString() ===
-            (
-              await ActivityStatus.findOne({ name: "completed" }).lean()
-            )?._id?.toString() &&
-          (update_status?.name === "pending" ||
-            update_status?.name === "in_progress" ||
-            update_status?.name === "overdue")
-        ) {
-          await Activity.findOneAndUpdate(
-            { _id: id },
-            {
-              $inc: {
-                competition_point:
-                  -referral_data?.competition?.successful_task_competition,
-              },
-            },
-            { new: true }
-          );
+      // const pipeline = [
+      //   {
+      //     $lookup: {
+      //       from: "authentications",
+      //       localField: "assign_by",
+      //       foreignField: "_id",
+      //       as: "assign_by",
+      //       pipeline: [
+      //         {
+      //           $project: {
+      //             name: 1,
+      //             first_name: 1,
+      //             last_name: 1,
+      //             assigned_by_name: {
+      //               $concat: ["$first_name", " ", "$last_name"],
+      //             },
+      //           },
+      //         },
+      //       ],
+      //     },
+      //   },
+      //   {
+      //     $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
+      //   },
 
-          const assign_role = await Authentication.findOne({
-            reference_id: current_activity.assign_to,
-          }).populate("role", "name");
+      //   {
+      //     $match: {
+      //       _id: new mongoose.Types.ObjectId(id),
+      //       is_deleted: false,
+      //     },
+      //   },
+      //   {
+      //     $project: {
+      //       agenda: 1,
+      //       assigned_first_name: "$assign_by.first_name",
+      //       assigned_last_name: "$assign_by.last_name",
+      //       assigned_name: "$assign_by.assigned_by_name",
+      //       column_id: "$status.name",
+      //       meeting_date: 1,
+      //       due_time: 1,
+      //       title: 1,
+      //       meeting_start_time: 1,
+      //       meeting_end_time: 1,
+      //       recurring_end_date: 1,
+      //       assign_by: 1,
+      //       attendees: 1,
+      //     },
+      //   },
+      // ];
 
-          if (assign_role?.role?.name === "agency") {
-            await Agency.findOneAndUpdate(
-              { _id: current_activity.agency_id },
-              {
-                $inc: {
-                  total_referral_point:
-                    -referral_data?.competition?.successful_task_competition,
-                },
-              },
-              { new: true }
-            );
-          } else if (assign_role?.role?.name === "team_agency") {
-            await Team_Agency.findOneAndUpdate(
-              { _id: current_activity.assign_to },
-              {
-                $inc: {
-                  total_referral_point:
-                    -referral_data?.competition?.successful_task_competition,
-                },
-              },
-              { new: true }
-            );
-          } else if (assign_role?.role?.name === "team_client") {
-            await Team_Client.findOneAndUpdate(
-              { _id: current_activity.assign_to },
-              {
-                $inc: {
-                  total_referral_point:
-                    -referral_data?.competition?.successful_task_competition,
-                },
-              },
-              { new: true }
-            );
-          }
+      // const getTask = await Activity.aggregate(pipeline);
+      // const [assign_to_data, client_data, attendees_data, board] =
+      //   await Promise.all([
+      //     Authentication.findOne({ reference_id: getTask[0]?.assign_to }),
+      //     Authentication.findOne({ reference_id: getTask[0]?.client_id }),
+      //     Authentication.find({
+      //       reference_id: { $in: getTask[0]?.attendees },
+      //     }).lean(),
+      //     Board.findOne({ _id: getTask[0]?.board_id }).lean(),
+      //   ]);
 
-          await Competition_Point.create({
-            user_id: current_activity.assign_to,
-            agency_id: current_activity.agency_id,
-            point:
-              -referral_data.competition.successful_task_competition?.toString(),
-            type: "task",
-            role: assign_role?.role?.name,
-          });
+      // let task_status;
+      // let emailTempKey;
+      // if (payload.status == "cancel") {
+      //   task_status = "cancel";
+      //   emailTempKey = "meetingCancelled";
+      // }
+      // if (payload.status == "completed") {
+      //   task_status = "completed";
+      //   emailTempKey = "activityCompleted";
+      // }
+      // if (payload.status == "in_progress") {
+      //   task_status = "inProgress";
+      //   emailTempKey = "activityInProgress";
+      // }
+      // if (payload.status == "pending") {
+      //   task_status = "pending";
+      //   emailTempKey = "activityInPending";
+      // }
+      // if (payload.status == "overdue") {
+      //   task_status = "overdue";
+      //   emailTempKey = "activityInOverdue";
+      // }
+      // if (getTask[0].activity_type === "task") {
+      //   let data = {
+      //     TaskTitle: "Updated Task status",
+      //     taskName: getTask[0]?.title,
+      //     status: payload.status,
+      //     assign_by: getTask[0]?.assigned_by_name,
+      //     dueDate: moment(getTask[0]?.meeting_date)?.format("DD/MM/YYYY"),
+      //     dueTime: getTask[0]?.due_time,
+      //     agginTo_email: getTask[0]?.assign_email,
+      //     assignName: getTask[0]?.assigned_to_name,
+      //     board_name: board ? board?.project_name : "",
+      //   };
+      //   const taskMessage = taskTemplate(data);
+      //   sendEmail({
+      //     email: getTask[0]?.assign_email,
+      //     subject: returnMessage("activity", "UpdateSubject"),
+      //     message: taskMessage,
+      //   });
 
-          const agencyData = await Authentication.findOne({
-            reference_id: current_activity.agency_id,
-          });
+      //   if (client_data) {
+      //     sendEmail({
+      //       email: client_data?.email,
+      //       subject: returnMessage("activity", "UpdateSubject"),
+      //       message: taskTemplate({
+      //         ...data,
+      //         assignName: client_data.first_name + " " + client_data.last_name,
+      //         board_name: board ? board?.project_name : "",
+      //       }),
+      //     });
+      //   }
 
-          await notificationService.addNotification({
-            module_name: "referral",
-            action_type: "taskDeduct",
-            task_name: current_activity?.title,
-            referred_by: agencyData?.first_name + " " + agencyData?.last_name,
-            receiver_id: current_activity?.agency_id,
-            points:
-              referral_data.competition.successful_task_competition?.toString(),
-          });
-        }
+      //   if (user?.role?.name === "agency") {
+      //     //   ----------    Notifications start ----------
+      //     await notificationService.addNotification(
+      //       {
+      //         client_name: client_data
+      //           ? client_data?.first_name + " " + client_data?.last_name
+      //           : "",
+      //         assigned_to_name:
+      //           assign_to_data?.first_name + " " + assign_to_data?.last_name,
+      //         ...getTask[0],
+      //         module_name: "task",
+      //         activity_type_action: task_status,
+      //         activity_type: "task",
+      //         meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
+      //           "HH:mm"
+      //         ),
+      //         meeting_date: moment(getTask[0]?.meeting_date).format("DD-MM-YYYY"),
+      //         board_name: board ? board?.project_name : "",
+      //       },
+      //       id
+      //     );
+      //     //   ----------    Notifications end ----------
+      //   }
 
-        // Increment completion points if transitioning from pending or overdue to completed
-        if (
-          (current_status?.toString() ===
-            (
-              await ActivityStatus.findOne({ name: "pending" }).lean()
-            )?._id?.toString() &&
-            update_status?.name === "completed") ||
-          (current_status?.toString() ===
-            (
-              await ActivityStatus.findOne({ name: "overdue" }).lean()
-            )?._id?.toString() &&
-            update_status?.name === "completed") ||
-          (current_status?.toString() ===
-            (
-              await ActivityStatus.findOne({ name: "in_progress" }).lean()
-            )?._id?.toString() &&
-            update_status?.name === "completed")
-        ) {
-          await Activity.findOneAndUpdate(
-            { _id: id },
-            {
-              $inc: {
-                competition_point:
-                  referral_data?.competition?.successful_task_competition,
-              },
-            },
-            { new: true }
-          );
-          const assign_role = await Authentication.findOne({
-            reference_id: current_activity.assign_to,
-          }).populate("role", "name");
+      //   if (
+      //     user.role.name === "team_agency" ||
+      //     user.role.name === "team_client"
+      //   ) {
+      //     const agencyData = await Authentication.findById(
+      //       getTask[0].assign_by._id
+      //     );
 
-          if (assign_role?.role?.name === "agency") {
-            await Agency.findOneAndUpdate(
-              { _id: current_activity.agency_id },
-              {
-                $inc: {
-                  total_referral_point:
-                    referral_data?.competition?.successful_task_competition,
-                },
-              },
-              { new: true }
-            );
-          } else if (assign_role?.role?.name === "team_agency") {
-            await Team_Agency.findOneAndUpdate(
-              { _id: current_activity.assign_to },
-              {
-                $inc: {
-                  total_referral_point:
-                    referral_data?.competition?.successful_task_competition,
-                },
-              },
-              { new: true }
-            );
-          } else if (assign_role?.role?.name === "team_client") {
-            await Team_Client.findOneAndUpdate(
-              { _id: current_activity.assign_to },
-              {
-                $inc: {
-                  total_referral_point:
-                    referral_data?.competition?.successful_task_competition,
-                },
-              },
-              { new: true }
-            );
-          }
+      //     //   ----------    Notifications start ----------
+      //     await notificationService.addNotification(
+      //       {
+      //         client_name: client_data
+      //           ? client_data.first_name + " " + client_data.last_name
+      //           : "",
+      //         agency_name: agencyData?.first_name + " " + agencyData?.last_name,
+      //         assigned_to_name:
+      //           assign_to_data?.first_name + " " + assign_to_data?.last_name,
+      //         ...getTask[0],
+      //         module_name: "task",
+      //         log_user: "member",
+      //         activity_type_action: task_status,
+      //         activity_type: "task",
+      //         meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
+      //           "HH:mm"
+      //         ),
+      //         meeting_date: moment(getTask[0]?.meeting_date).format("DD-MM-YYYY"),
+      //         assigned_by_name: getTask[0]?.assigned_by_name,
+      //         assign_by: agencyData?.reference_id,
+      //         board_name: board ? board?.project_name : "",
+      //       },
+      //       id
+      //     );
+      //     //   ----------    Notifications end ----------
+      //   }
+      // } else {
+      //   //   ----------    Notifications start ----------
+      //   if (user.role.name === "agency") {
+      //     const activity_email_template = activityTemplate({
+      //       ...getTask[0],
+      //       activity_type: getTask[0]?.activity_type,
+      //       meeting_start_time: momentTimezone(
+      //         getTask[0]?.meeting_start_time,
+      //         "HH:mm"
+      //       )
+      //         .tz("Asia/Kolkata")
+      //         .format("HH:mm"),
+      //       meeting_end_time: momentTimezone(
+      //         getTask[0]?.meeting_end_time,
+      //         "HH:mm"
+      //       )
+      //         .tz("Asia/Kolkata")
+      //         .format("HH:mm"),
+      //       recurring_end_date: getTask[0]?.recurring_end_date
+      //         ? moment(getTask[0]?.recurring_end_date).format("DD-MM-YYYY")
+      //         : null,
+      //       meeting_date: moment(getTask[0]?.meeting_date).format("DD-MM-YYYY"),
+      //       status: payload?.status,
+      //       client_name: client_data
+      //         ? client_data?.first_name + " " + client_data?.last_name
+      //         : "",
+      //     });
+      //     client_data &&
+      //       sendEmail({
+      //         email: client_data?.email,
+      //         subject: returnMessage("emailTemplate", emailTempKey),
+      //         message: activity_email_template,
+      //       });
 
-          await Competition_Point.create({
-            user_id: current_activity.assign_to,
-            agency_id: current_activity.agency_id,
-            point:
-              +referral_data.competition.successful_task_competition?.toString(),
-            type: "task",
-            role: assign_role?.role?.name,
-          });
+      //     sendEmail({
+      //       email: assign_to_data?.email,
+      //       subject: returnMessage("emailTemplate", emailTempKey),
+      //       message: activity_email_template,
+      //     });
 
-          const agencyData = await Authentication.findOne({
-            reference_id: current_activity.agency_id,
-          });
+      //     attendees_data &&
+      //       attendees_data[0] &&
+      //       attendees_data.map((item) => {
+      //         sendEmail({
+      //           email: item?.email,
+      //           subject: returnMessage("emailTemplate", emailTempKey),
+      //           message: activity_email_template,
+      //         });
+      //       });
 
-          await notificationService.addNotification({
-            module_name: "referral",
-            action_type: "taskAdded",
-            task_name: current_activity?.title,
-            referred_by: agencyData?.first_name + " " + agencyData?.last_name,
-            receiver_id: current_activity?.agency_id,
-            points:
-              referral_data.competition.successful_task_competition?.toString(),
-          });
-        }
-      }
+      //     //   ----------    Notifications start ----------
 
-      const pipeline = [
-        {
-          $lookup: {
-            from: "authentications",
-            localField: "assign_to",
-            foreignField: "reference_id",
-            as: "team_data",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                  first_name: 1,
-                  last_name: 1,
-                  email: 1,
-                  assigned_to_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: { path: "$team_data", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $lookup: {
-            from: "authentications",
-            localField: "assign_by",
-            foreignField: "reference_id",
-            as: "assign_by",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                  first_name: 1,
-                  last_name: 1,
-                  assigned_by_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $lookup: {
-            from: "activity_type_masters",
-            localField: "activity_type",
-            foreignField: "_id",
-            as: "activity_type",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: { path: "$activity_type", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $match: {
-            _id: new mongoose.Types.ObjectId(id),
-            is_deleted: false,
-          },
-        },
-        {
-          $project: {
-            agenda: 1,
-            assigned_by_first_name: "$assign_by.first_name",
-            assigned_by_last_name: "$assign_by.last_name",
-            assigned_to_first_name: "$team_data.first_name",
-            assigned_to_last_name: "$team_data.last_name",
-            assigned_to_name: "$team_data.assigned_to_name",
-            assigned_by_name: "$assign_by.assigned_by_name",
-            client_name: "$client_Data.client_name",
-            column_id: "$status.name",
-            assign_email: "$team_data.email",
-            due_date: 1,
-            due_time: 1,
-            title: 1,
-            activity_type: "$activity_type.name",
-            meeting_start_time: 1,
-            meeting_end_time: 1,
-            recurring_end_date: 1,
-            assign_to: 1,
-            assign_by: 1,
-            client_id: 1,
-            tags: 1,
-            attendees: 1,
-            board_id: 1,
-          },
-        },
-      ];
+      //     await notificationService.addNotification(
+      //       {
+      //         client_name: client_data
+      //           ? client_data?.first_name + " " + client_data?.last_name
+      //           : "",
+      //         assigned_to_name:
+      //           assign_to_data?.first_name + " " + assign_to_data?.last_name,
+      //         ...getTask[0],
+      //         module_name: "activity",
+      //         activity_type_action: task_status,
+      //         activity_type:
+      //           getTask[0]?.activity_type.name === "others"
+      //             ? "activity"
+      //             : "call meeting",
+      //         meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
+      //           "HH:mm"
+      //         ),
+      //         meeting_date: moment(getTask[0]?.meeting_date).format("DD-MM-YYYY"),
+      //         tags: getTask[0]?.tags,
+      //         board_name: board ? board?.project_name : "",
+      //       },
+      //       id
+      //     );
+      //     //   ----------    Notifications end ----------
+      //   }
 
-      const getTask = await Activity.aggregate(pipeline);
-      const [assign_to_data, client_data, attendees_data, board] =
-        await Promise.all([
-          Authentication.findOne({ reference_id: getTask[0]?.assign_to }),
-          Authentication.findOne({ reference_id: getTask[0]?.client_id }),
-          Authentication.find({
-            reference_id: { $in: getTask[0]?.attendees },
-          }).lean(),
-          Board.findOne({ _id: getTask[0]?.board_id }).lean(),
-        ]);
+      //   if (
+      //     user.role.name === "team_agency" ||
+      //     user.role.name === "team_client"
+      //   ) {
+      //     const agencyData = await Authentication.findById(
+      //       getTask[0].assign_by._id
+      //     );
 
-      let task_status;
-      let emailTempKey;
-      if (payload.status == "cancel") {
-        task_status = "cancel";
-        emailTempKey = "meetingCancelled";
-      }
-      if (payload.status == "completed") {
-        task_status = "completed";
-        emailTempKey = "activityCompleted";
-      }
-      if (payload.status == "in_progress") {
-        task_status = "inProgress";
-        emailTempKey = "activityInProgress";
-      }
-      if (payload.status == "pending") {
-        task_status = "pending";
-        emailTempKey = "activityInPending";
-      }
-      if (payload.status == "overdue") {
-        task_status = "overdue";
-        emailTempKey = "activityInOverdue";
-      }
-      if (getTask[0].activity_type === "task") {
-        let data = {
-          TaskTitle: "Updated Task status",
-          taskName: getTask[0]?.title,
-          status: payload.status,
-          assign_by: getTask[0]?.assigned_by_name,
-          dueDate: moment(getTask[0]?.due_date)?.format("DD/MM/YYYY"),
-          dueTime: getTask[0]?.due_time,
-          agginTo_email: getTask[0]?.assign_email,
-          assignName: getTask[0]?.assigned_to_name,
-          board_name: board ? board?.project_name : "",
-        };
-        const taskMessage = taskTemplate(data);
-        sendEmail({
-          email: getTask[0]?.assign_email,
-          subject: returnMessage("activity", "UpdateSubject"),
-          message: taskMessage,
-        });
+      //     const activity_email_template = activityTemplate({
+      //       ...getTask[0],
+      //       activity_type: getTask[0]?.activity_type,
+      //       meeting_end_time: moment(getTask[0]?.meeting_end_time).format(
+      //         "HH:mm"
+      //       ),
+      //       meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
+      //         "HH:mm"
+      //       ),
+      //       recurring_end_date: getTask[0]?.recurring_end_date
+      //         ? moment(getTask[0]?.recurring_end_date).format("DD-MM-YYYY")
+      //         : null,
+      //       meeting_date: moment(getTask[0].meeting_date).format("DD-MM-YYYY"),
+      //       status: payload?.status,
+      //       client_name: client_data
+      //         ? client_data?.first_name + " " + client_data?.last_name
+      //         : "",
+      //     });
+      //     client_data &&
+      //       sendEmail({
+      //         email: client_data?.email,
+      //         subject: returnMessage("emailTemplate", emailTempKey),
+      //         message: activity_email_template,
+      //       });
+      //     sendEmail({
+      //       email: assign_to_data?.email,
+      //       subject: returnMessage("emailTemplate", emailTempKey),
+      //       message: activity_email_template,
+      //     });
 
-        if (client_data) {
-          sendEmail({
-            email: client_data?.email,
-            subject: returnMessage("activity", "UpdateSubject"),
-            message: taskTemplate({
-              ...data,
-              assignName: client_data.first_name + " " + client_data.last_name,
-              board_name: board ? board?.project_name : "",
-            }),
-          });
-        }
+      //     attendees_data &&
+      //       attendees_data[0] &&
+      //       attendees_data.map((item) => {
+      //         sendEmail({
+      //           email: item?.email,
+      //           subject: returnMessage("emailTemplate", emailTempKey),
+      //           message: activity_email_template,
+      //         });
+      //       });
 
-        if (user?.role?.name === "agency") {
-          //   ----------    Notifications start ----------
-          await notificationService.addNotification(
-            {
-              client_name: client_data
-                ? client_data?.first_name + " " + client_data?.last_name
-                : "",
-              assigned_to_name:
-                assign_to_data?.first_name + " " + assign_to_data?.last_name,
-              ...getTask[0],
-              module_name: "task",
-              activity_type_action: task_status,
-              activity_type: "task",
-              meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
-                "HH:mm"
-              ),
-              due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
-              board_name: board ? board?.project_name : "",
-            },
-            id
-          );
-          //   ----------    Notifications end ----------
-        }
+      //     //   ----------    Notifications start ----------
 
-        if (
-          user.role.name === "team_agency" ||
-          user.role.name === "team_client"
-        ) {
-          const agencyData = await Authentication.findById(
-            getTask[0].assign_by._id
-          );
-
-          //   ----------    Notifications start ----------
-          await notificationService.addNotification(
-            {
-              client_name: client_data
-                ? client_data.first_name + " " + client_data.last_name
-                : "",
-              agency_name: agencyData?.first_name + " " + agencyData?.last_name,
-              assigned_to_name:
-                assign_to_data?.first_name + " " + assign_to_data?.last_name,
-              ...getTask[0],
-              module_name: "task",
-              log_user: "member",
-              activity_type_action: task_status,
-              activity_type: "task",
-              meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
-                "HH:mm"
-              ),
-              due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
-              assigned_by_name: getTask[0]?.assigned_by_name,
-              assign_by: agencyData?.reference_id,
-              board_name: board ? board?.project_name : "",
-            },
-            id
-          );
-          //   ----------    Notifications end ----------
-        }
-      } else {
-        //   ----------    Notifications start ----------
-        if (user.role.name === "agency") {
-          const activity_email_template = activityTemplate({
-            ...getTask[0],
-            activity_type: getTask[0]?.activity_type,
-            meeting_start_time: momentTimezone(
-              getTask[0]?.meeting_start_time,
-              "HH:mm"
-            )
-              .tz("Asia/Kolkata")
-              .format("HH:mm"),
-            meeting_end_time: momentTimezone(
-              getTask[0]?.meeting_end_time,
-              "HH:mm"
-            )
-              .tz("Asia/Kolkata")
-              .format("HH:mm"),
-            recurring_end_date: getTask[0]?.recurring_end_date
-              ? moment(getTask[0]?.recurring_end_date).format("DD-MM-YYYY")
-              : null,
-            due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
-            status: payload?.status,
-            client_name: client_data
-              ? client_data?.first_name + " " + client_data?.last_name
-              : "",
-          });
-          client_data &&
-            sendEmail({
-              email: client_data?.email,
-              subject: returnMessage("emailTemplate", emailTempKey),
-              message: activity_email_template,
-            });
-
-          sendEmail({
-            email: assign_to_data?.email,
-            subject: returnMessage("emailTemplate", emailTempKey),
-            message: activity_email_template,
-          });
-
-          attendees_data &&
-            attendees_data[0] &&
-            attendees_data.map((item) => {
-              sendEmail({
-                email: item?.email,
-                subject: returnMessage("emailTemplate", emailTempKey),
-                message: activity_email_template,
-              });
-            });
-
-          //   ----------    Notifications start ----------
-
-          await notificationService.addNotification(
-            {
-              client_name: client_data
-                ? client_data?.first_name + " " + client_data?.last_name
-                : "",
-              assigned_to_name:
-                assign_to_data?.first_name + " " + assign_to_data?.last_name,
-              ...getTask[0],
-              module_name: "activity",
-              activity_type_action: task_status,
-              activity_type:
-                getTask[0]?.activity_type.name === "others"
-                  ? "activity"
-                  : "call meeting",
-              meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
-                "HH:mm"
-              ),
-              due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
-              tags: getTask[0]?.tags,
-              board_name: board ? board?.project_name : "",
-            },
-            id
-          );
-          //   ----------    Notifications end ----------
-        }
-
-        if (
-          user.role.name === "team_agency" ||
-          user.role.name === "team_client"
-        ) {
-          const agencyData = await Authentication.findById(
-            getTask[0].assign_by._id
-          );
-
-          const activity_email_template = activityTemplate({
-            ...getTask[0],
-            activity_type: getTask[0]?.activity_type,
-            meeting_end_time: moment(getTask[0]?.meeting_end_time).format(
-              "HH:mm"
-            ),
-            meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
-              "HH:mm"
-            ),
-            recurring_end_date: getTask[0]?.recurring_end_date
-              ? moment(getTask[0]?.recurring_end_date).format("DD-MM-YYYY")
-              : null,
-            due_date: moment(getTask[0].due_date).format("DD-MM-YYYY"),
-            status: payload?.status,
-            client_name: client_data
-              ? client_data?.first_name + " " + client_data?.last_name
-              : "",
-          });
-          client_data &&
-            sendEmail({
-              email: client_data?.email,
-              subject: returnMessage("emailTemplate", emailTempKey),
-              message: activity_email_template,
-            });
-          sendEmail({
-            email: assign_to_data?.email,
-            subject: returnMessage("emailTemplate", emailTempKey),
-            message: activity_email_template,
-          });
-
-          attendees_data &&
-            attendees_data[0] &&
-            attendees_data.map((item) => {
-              sendEmail({
-                email: item?.email,
-                subject: returnMessage("emailTemplate", emailTempKey),
-                message: activity_email_template,
-              });
-            });
-
-          //   ----------    Notifications start ----------
-
-          await notificationService.addNotification(
-            {
-              client_name: client_data
-                ? client_data?.first_name + " " + client_data?.last_name
-                : "",
-              assigned_to_name:
-                assign_to_data?.first_name + " " + assign_to_data?.last_name,
-              ...getTask[0],
-              module_name: "activity",
-              activity_type_action: task_status,
-              activity_type:
-                getTask[0]?.activity_type.name === "others"
-                  ? "activity"
-                  : "call meeting",
-              meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
-                "HH:mm"
-              ),
-              due_date: moment(getTask[0]?.due_date).format("DD-MM-YYYY"),
-              tags: getTask[0].tags,
-              log_user: "member",
-              assigned_by_name: getTask[0]?.assigned_by_name,
-              assign_by: agencyData?.reference_id,
-            },
-            id
-          );
-          //   ----------    Notifications end ----------
-        }
-      }
+      //     await notificationService.addNotification(
+      //       {
+      //         client_name: client_data
+      //           ? client_data?.first_name + " " + client_data?.last_name
+      //           : "",
+      //         assigned_to_name:
+      //           assign_to_data?.first_name + " " + assign_to_data?.last_name,
+      //         ...getTask[0],
+      //         module_name: "activity",
+      //         activity_type_action: task_status,
+      //         activity_type:
+      //           getTask[0]?.activity_type.name === "others"
+      //             ? "activity"
+      //             : "call meeting",
+      //         meeting_start_time: moment(getTask[0]?.meeting_start_time).format(
+      //           "HH:mm"
+      //         ),
+      //         meeting_date: moment(getTask[0]?.meeting_date).format("DD-MM-YYYY"),
+      //         tags: getTask[0].tags,
+      //         log_user: "member",
+      //         assigned_by_name: getTask[0]?.assigned_by_name,
+      //         assign_by: agencyData?.reference_id,
+      //       },
+      //       id
+      //     );
+      //     //   ----------    Notifications end ----------
+      //   }
+      // }
       return updateTasks;
     } catch (error) {
       logger.error(`Error while Updating status, ${error}`);
@@ -984,598 +965,20 @@ class ActivityService {
     }
   };
 
-  // this function is used to create the call meeting and other call details
-  createCallMeeting = async (payload, user) => {
-    try {
-      if (user?.role?.name === "client" || user?.role?.name === "team_client")
-        return throwError(
-          returnMessage("auth", "unAuthorized"),
-          statusCode.forbidden
-        );
-
-      validateRequestFields(payload, [
-        "title",
-        // "client_id",
-        "due_date",
-        "assign_to",
-        "activity_type",
-        "meeting_start_time",
-        "meeting_end_time",
-      ]);
-
-      const {
-        client_id,
-        assign_to,
-        title,
-        agenda,
-        due_date,
-        meeting_start_time,
-        meeting_end_time,
-        activity_type,
-        internal_info,
-        mark_as_done,
-        attendees,
-      } = payload;
-
-      let recurring_date;
-      const current_date = moment.utc().startOf("day");
-      const start_date = moment.utc(due_date, "DD-MM-YYYY").startOf("day");
-      const start_time = moment.utc(
-        `${due_date}-${meeting_start_time}`,
-        "DD-MM-YYYY-HH:mm"
-      );
-      const end_time = moment.utc(
-        `${due_date}-${meeting_end_time}`,
-        "DD-MM-YYYY-HH:mm"
-      );
-      if (!start_date.isSameOrAfter(current_date))
-        return throwError(returnMessage("activity", "dateinvalid"));
-
-      if (!end_time.isAfter(start_time))
-        return throwError(returnMessage("activity", "invalidTime"));
-
-      // if (activity_type === "others" && !payload?.recurring_end_date)
-      //   return throwError(returnMessage("activity", "recurringDateRequired"));
-
-      if (activity_type === "others" && payload?.recurring_end_date) {
-        recurring_date = moment
-          .utc(payload?.recurring_end_date, "DD-MM-YYYY")
-          .startOf("day");
-        if (!recurring_date.isSameOrAfter(start_date))
-          return throwError(returnMessage("activity", "invalidRecurringDate"));
-      }
-
-      const [activity_type_id, activity_status_type] = await Promise.all([
-        ActivityType.findOne({
-          name: activity_type,
-        })
-          .select("_id")
-          .lean(),
-        ActivityStatus.findOne({ name: "pending" }).select("name").lean(),
-      ]);
-
-      if (!activity_type_id)
-        return throwError(
-          returnMessage("activity", "activityTypeNotFound"),
-          statusCode.notFound
-        );
-
-      // this condition is used for the check if client or team member is assined to any same time activity or not
-      const or_condition = [
-        {
-          $and: [
-            { meeting_start_time: { $gte: start_time } },
-            { meeting_end_time: { $lte: end_time } },
-          ],
-        },
-        {
-          $and: [
-            { meeting_start_time: { $lte: start_time } },
-            { meeting_end_time: { $gte: end_time } },
-          ],
-        },
-        {
-          $and: [
-            { meeting_start_time: { $gte: start_time } },
-            { meeting_end_time: { $lte: end_time } },
-            { due_date: { $gte: start_date } },
-            { recurring_end_date: { $lte: recurring_date } },
-          ],
-        },
-        {
-          $and: [
-            { meeting_start_time: { $lte: start_time } },
-            { meeting_end_time: { $gte: end_time } },
-            { due_date: { $gte: start_date } },
-            { recurring_end_date: { $lte: recurring_date } },
-          ],
-        },
-      ];
-
-      // check for the user role. if the role is team_agency then we need to
-      // find the agency id for that user which he is assigned
-
-      // let team_agency_detail;
-      if (user?.role?.name === "team_agency") {
-        const team_agency_detail = await Team_Agency.findById(
-          user?.reference_id
-        ).lean();
-        user.agency_id = team_agency_detail?.agency_id;
-      }
-
-      // this below function is used to check weather client is assign to any type of the call or other
-      // activity or not if yes then throw an error but it should be in the same agency id not in the other
-      let meeting_exist;
-      if (user?.role?.name === "agency" && !mark_as_done) {
-        meeting_exist = await Activity.findOne({
-          client_id,
-          agency_id: user?.reference_id,
-          activity_status: { $eq: activity_status_type?._id },
-          activity_type: activity_type_id?._id,
-          $or: or_condition,
-        }).lean();
-      } else if (user?.role?.name === "team_agency" && !mark_as_done) {
-        meeting_exist = await Activity.findOne({
-          client_id,
-          agency_id: user?.agency_id,
-          activity_status: { $eq: activity_status_type?._id },
-          $or: or_condition,
-          activity_type: activity_type_id?._id,
-        }).lean();
-      }
-      if (meeting_exist)
-        return throwError(
-          returnMessage("activity", "meetingScheduledForClient")
-        );
-
-      // if the user role is agency then we need to check weather team member is assined to other call or not
-
-      if (user?.role?.name === "agency" && !mark_as_done) {
-        const meeting_exist = await Activity.findOne({
-          assign_to,
-          agency_id: user?.reference_id,
-          activity_status: { $eq: activity_status_type?._id },
-          $or: or_condition,
-          activity_type: activity_type_id?._id,
-        }).lean();
-
-        if (meeting_exist)
-          return throwError(
-            returnMessage("activity", "meetingScheduledForTeam")
-          );
-      } else if (user?.role?.name === "team_agency" && !mark_as_done) {
-        const meeting_exist = await Activity.findOne({
-          assign_to,
-          agency_id: user?.agency_id,
-          activity_status: { $eq: activity_status_type?._id },
-          $or: or_condition,
-          activity_type: activity_type_id?._id,
-        }).lean();
-
-        if (meeting_exist)
-          return throwError(
-            returnMessage("activity", "meetingScheduledForTeam")
-          );
-      }
-
-      let status;
-      if (mark_as_done && mark_as_done === true) {
-        status = await ActivityStatus.findOne({ name: "completed" }).lean();
-      } else {
-        status = await ActivityStatus.findOne({ name: "pending" }).lean();
-      }
-      const newActivity = await Activity.create({
-        activity_status: status?._id,
-        activity_type: activity_type_id?._id,
-        agency_id: user?.agency_id || user?.reference_id,
-        assign_by: user?.reference_id,
-        agenda,
-        assign_to,
-        title,
-        client_id,
-        internal_info,
-        meeting_start_time: start_time,
-        meeting_end_time: end_time,
-        due_date: start_date,
-        recurring_end_date: recurring_date,
-        attendees: attendees,
-      });
-
-      const event = {
-        start: [
-          moment(start_date).year(),
-          moment(start_date).month() + 1, // Months are zero-based in JavaScript Date objects
-          moment(start_date).date(),
-          moment(payload.meeting_start_time, "HH:mm").hour(), // Use .hour() to get the hour as a number
-          moment(payload.meeting_start_time, "HH:mm").minute(),
-        ],
-        end: [
-          moment(recurring_date).year(),
-          moment(recurring_date).month() + 1, // Months are zero-based in JavaScript Date objects
-          moment(recurring_date).date(),
-          moment(payload.meeting_end_time, "HH:mm").hour(), // Use .hour() to get the hour as a number
-          moment(payload.meeting_end_time, "HH:mm").minute(),
-        ],
-
-        title: title,
-        description: agenda,
-        // Other optional properties can be added here such as attendees, etc.
-      };
-
-      const file = await new Promise((resolve, reject) => {
-        const filename = "ExampleEvent.ics";
-        ics.createEvent(event, (error, value) => {
-          if (error) {
-            reject(error);
-          }
-
-          resolve(value, filename, { type: "text/calendar" });
-        });
-      });
-
-      if (user?.role?.name === "agency") {
-        // --------------- Start--------------------
-        const [assign_to_data, client_data, attendees_data] = await Promise.all(
-          [
-            Authentication.findOne({ reference_id: assign_to }).lean(),
-            Authentication.findOne({ reference_id: client_id }).lean(),
-            Authentication.find({ reference_id: { $in: attendees } }).lean(),
-          ]
-        );
-
-        const activity_email_template = activityTemplate({
-          ...payload,
-          status: mark_as_done ? "completed" : "pending",
-          assigned_by_name: user.first_name + " " + user.last_name,
-          client_name: client_data
-            ? client_data.first_name + " " + client_data.last_name
-            : "",
-          assigned_to_name:
-            assign_to_data.first_name + " " + assign_to_data.last_name,
-          meeting_start_time: momentTimezone
-            .utc(meeting_start_time, "HH:mm")
-            .tz("Asia/Kolkata")
-            .format("HH:mm"),
-
-          meeting_end_time: momentTimezone
-            .utc(meeting_end_time, "HH:mm")
-            .tz("Asia/Kolkata")
-            .format("HH:mm"),
-        });
-
-        client_data &&
-          sendEmail({
-            email: client_data?.email,
-            subject: returnMessage("emailTemplate", "newActivityMeeting"),
-            message: activity_email_template,
-            icsContent: file,
-          });
-        sendEmail({
-          email: assign_to_data?.email,
-          subject: returnMessage("emailTemplate", "newActivityMeeting"),
-          message: activity_email_template,
-          icsContent: file,
-        });
-
-        attendees_data &&
-          attendees_data[0] &&
-          attendees_data.map((item) => {
-            const activity_email_template = activityTemplate({
-              ...payload,
-              status: mark_as_done ? "completed" : "pending",
-              assigned_by_name: user.first_name + " " + user.last_name,
-              client_name: client_data
-                ? client_data.first_name + " " + client_data.last_name
-                : "",
-              assigned_to_name:
-                assign_to_data.first_name + " " + assign_to_data.last_name,
-            });
-
-            sendEmail({
-              email: item?.email,
-              subject: returnMessage("emailTemplate", "newActivityMeeting"),
-              message: activity_email_template,
-              icsContent: file,
-            });
-          });
-        await notificationService.addNotification(
-          {
-            assign_by: user?.reference_id,
-            assigned_by_name: user?.first_name + " " + user?.last_name,
-            client_name: client_data
-              ? client_data.first_name + " " + client_data.last_name
-              : "",
-            assigned_to_name:
-              assign_to_data?.first_name + " " + assign_to_data?.last_name,
-            ...payload,
-            module_name: "activity",
-            activity_type_action: "create_call_meeting",
-            activity_type:
-              activity_type === "others" ? "activity" : "call meeting",
-            meeting_start_time: momentTimezone
-              .utc(meeting_start_time, "HH:mm")
-              .tz("Asia/Kolkata")
-              .format("HH:mm"),
-            meeting_end_time: momentTimezone
-              .utc(meeting_end_time, "HH:mm")
-              .tz("Asia/Kolkata")
-              .format("HH:mm"),
-          },
-          newActivity?._id
-        );
-        // ---------------- End ---------------
-      }
-      if (user?.role?.name === "team_agency") {
-        // --------------- Start--------------------
-        const [assign_to_data, client_data, attendees_data] = await Promise.all(
-          [
-            Authentication.findOne({ reference_id: assign_to }).lean(),
-            Authentication.findOne({ reference_id: client_id }).lean(),
-            Authentication.find({ reference_id: { $in: attendees } }).lean(),
-          ]
-        );
-
-        const activity_email_template = activityTemplate({
-          ...payload,
-          status: mark_as_done ? "completed" : "pending",
-          assigned_by_name: user.first_name + " " + user.last_name,
-          client_name: client_data
-            ? client_data.first_name + " " + client_data.last_name
-            : "",
-          assigned_to_name:
-            assign_to_data.first_name + " " + assign_to_data.last_name,
-          meeting_start_time: momentTimezone
-            .utc(meeting_start_time, "HH:mm")
-            .tz("Asia/Kolkata")
-            .format("HH:mm"),
-
-          meeting_end_time: momentTimezone
-            .utc(meeting_end_time, "HH:mm")
-            .tz("Asia/Kolkata")
-            .format("HH:mm"),
-        });
-
-        client_data &&
-          sendEmail({
-            email: client_data?.email,
-            subject: returnMessage("emailTemplate", "newActivityMeeting"),
-            message: activity_email_template,
-            icsContent: file,
-          });
-        sendEmail({
-          email: assign_to_data?.email,
-          subject: returnMessage("emailTemplate", "newActivityMeeting"),
-          message: activity_email_template,
-          icsContent: file,
-        });
-
-        attendees_data &&
-          attendees_data[0] &&
-          attendees_data.map((item) => {
-            const activity_email_template = activityTemplate({
-              ...payload,
-              status: mark_as_done ? "completed" : "pending",
-              assigned_by_name: user.first_name + " " + user.last_name,
-              client_name: client_data
-                ? client_data.first_name + " " + client_data.last_name
-                : "",
-              assigned_to_name:
-                assign_to_data.first_name + " " + assign_to_data.last_name,
-
-              meeting_start_time: momentTimezone
-                .utc(meeting_start_time, "HH:mm")
-                .tz("Asia/Kolkata")
-                .format("HH:mm"),
-
-              meeting_end_time: momentTimezone
-                .utc(meeting_end_time, "HH:mm")
-                .tz("Asia/Kolkata")
-                .format("HH:mm"),
-            });
-
-            sendEmail({
-              email: item?.email,
-              subject: returnMessage("emailTemplate", "newActivityMeeting"),
-              message: activity_email_template,
-              icsContent: file,
-            });
-          });
-
-        const agencyData = await Authentication.findOne({
-          reference_id: newActivity?.agency_id,
-        });
-
-        await notificationService.addNotification(
-          {
-            agency_name: agencyData?.first_name + " " + agencyData?.last_name,
-            agency_id: agencyData?.reference_id,
-            assign_by: user?.reference_id,
-            assigned_by_name: user?.first_name + " " + user?.last_name,
-            client_name: client_data
-              ? client_data.first_name + " " + client_data.last_name
-              : "",
-            assigned_to_name:
-              assign_to_data?.first_name + " " + assign_to_data?.last_name,
-            ...payload,
-            module_name: "activity",
-            activity_type_action: "create_call_meeting",
-            activity_type:
-              activity_type === "others" ? "activity" : "call meeting",
-            log_user: "member",
-            meeting_start_time: momentTimezone
-              .utc(meeting_start_time, "HH:mm")
-              .tz("Asia/Kolkata")
-              .format("HH:mm"),
-            meeting_end_time: momentTimezone
-              .utc(meeting_end_time, "HH:mm")
-              .tz("Asia/Kolkata")
-              .format("HH:mm"),
-          },
-          newActivity?._id
-        );
-        // ---------------- End ---------------
-      }
-
-      return;
-    } catch (error) {
-      logger.error(`Error while creating call meeting and other: ${error}`);
-      return throwError(error?.message, error?.statusCode);
-    }
-  };
-
-  // this function is used to fetch the call or other call detials by id
-  getActivity = async (activity_id) => {
-    try {
-      const taskPipeline = [
-        {
-          $lookup: {
-            from: "authentications",
-            localField: "client_id",
-            foreignField: "reference_id",
-            as: "client_Data",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                  first_name: 1,
-                  last_name: 1,
-                  client_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: { path: "$client_Data", preserveNullAndEmptyArrays: true },
-        },
-
-        {
-          $lookup: {
-            from: "activity_type_masters",
-            localField: "activity_type",
-            foreignField: "_id",
-            as: "activity_type",
-            pipeline: [{ $project: { name: 1 } }],
-          },
-        },
-        {
-          $unwind: { path: "$activity_type", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $lookup: {
-            from: "authentications",
-            localField: "assign_to",
-            foreignField: "reference_id",
-            as: "team_data",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                  first_name: 1,
-                  last_name: 1,
-                  assigned_to_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: { path: "$team_data", preserveNullAndEmptyArrays: true },
-        },
-
-        {
-          $lookup: {
-            from: "authentications",
-            localField: "assign_by",
-            foreignField: "reference_id",
-            as: "assign_by",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                  first_name: 1,
-                  last_name: 1,
-                  assigned_by_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
-        },
-
-        {
-          $lookup: {
-            from: "activity_status_masters",
-            localField: "activity_status",
-            foreignField: "_id",
-            as: "status",
-            pipeline: [{ $project: { name: 1 } }],
-          },
-        },
-        {
-          $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
-        },
-
-        {
-          $match: {
-            _id: new mongoose.Types.ObjectId(activity_id),
-            is_deleted: false,
-          },
-        },
-        {
-          $project: {
-            contact_number: 1,
-            title: 1,
-            status: "$status.name",
-            due_time: 1,
-            due_date: 1,
-            createdAt: 1,
-            agenda: 1,
-            client_id: 1,
-            assign_to: 1,
-            assigned_by_first_name: "$assign_by.first_name",
-            assigned_by_last_name: "$assign_by.last_name",
-            assigned_to_first_name: "$team_data.first_name",
-            assigned_to_last_name: "$team_data.last_name",
-            assigned_to_name: "$team_data.assigned_to_name",
-            assigned_by_name: "$assign_by.assigned_by_name",
-            client_name: "$client_Data.client_name",
-            client_first_name: "$client_Data.first_name",
-            client_last_name: "$client_Data.last_name",
-            column_id: "$status.name",
-            meeting_start_time: 1,
-            meeting_end_time: 1,
-            recurring_end_date: 1,
-            activity_type: 1,
-            attendees: 1,
-            internal_info: 1,
-          },
-        },
-      ];
-      const activity = await Activity.aggregate(taskPipeline);
-      if (activity.length === 0)
-        return throwError(
-          returnMessage("activity", "activityNotFound"),
-          statusCode.notFound
-        );
-      return activity;
-    } catch (error) {
-      logger.error(`Error while Getting the activity, ${error}`);
-      return throwError(error?.message, error?.statusCode);
-    }
-  };
-
   // this function is used to update the call type activity or other
   updateActivity = async (activity_id, payload, user) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+
+      if (
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.user_role !== "team_agency"
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
       const activity_exist = await Activity.findById(activity_id)
         .populate("activity_status")
         .lean();
@@ -1585,50 +988,36 @@ class ActivityService {
           statusCode.notFound
         );
 
-      if (user?.role?.name === "client" || user?.role?.name === "team_client")
-        return throwError(
-          returnMessage("auth", "unAuthorized"),
-          statusCode.forbidden
-        );
-
-      if (
-        activity_exist?.activity_status?.name === "completed" ||
-        activity_exist?.activity_status?.name === "cancel"
-      ) {
+      if (activity_exist?.activity_status?.name === "completed") {
         return throwError(returnMessage("activity", "ActivityCannotUpdate"));
       }
       validateRequestFields(payload, [
         "title",
-        // "client_id",
         "meeting_start_time",
         "meeting_end_time",
-        "due_date",
-        "assign_to",
-        "activity_type",
+        "meeting_date",
       ]);
 
       const {
-        client_id,
-        assign_to,
         title,
         agenda,
-        due_date,
+        meeting_date,
         meeting_start_time,
         meeting_end_time,
-        activity_type,
         internal_info,
         attendees,
+        google_meet_link,
       } = payload;
 
       let recurring_date;
       const current_date = moment.utc().startOf("day");
-      const start_date = moment.utc(due_date, "DD-MM-YYYY").startOf("day");
+      const start_date = moment.utc(meeting_date, "DD-MM-YYYY").startOf("day");
       const start_time = moment.utc(
-        `${due_date}-${meeting_start_time}`,
+        `${meeting_date}-${meeting_start_time}`,
         "DD-MM-YYYY-HH:mm"
       );
       const end_time = moment.utc(
-        `${due_date}-${meeting_end_time}`,
+        `${meeting_date}-${meeting_end_time}`,
         "DD-MM-YYYY-HH:mm"
       );
       if (!start_date.isSameOrAfter(current_date))
@@ -1637,10 +1026,7 @@ class ActivityService {
       if (!end_time.isSameOrAfter(start_time))
         return throwError(returnMessage("activity", "invalidTime"));
 
-      // if (activity_type === "others" && !payload?.recurring_end_date)
-      //   return throwError(returnMessage("activity", "recurringDateRequired"));
-
-      if (activity_type === "others" && payload?.recurring_end_date) {
+      if (payload?.recurring_end_date) {
         recurring_date = moment
           .utc(payload?.recurring_end_date, "DD-MM-YYYY")
           .startOf("day");
@@ -1648,375 +1034,247 @@ class ActivityService {
           return throwError(returnMessage("activity", "invalidRecurringDate"));
       }
 
-      const [activity_type_id, activity_status_type] = await Promise.all([
-        ActivityType.findOne({
-          name: activity_type,
-        })
-          .select("_id")
-          .lean(),
-        ActivityStatus.findOne({ name: "pending" }).select("name").lean(),
-      ]);
+      payload.attendees?.push(user?._id.toString());
+      payload.attendees = [
+        ...new Set(payload?.attendees?.map((attendee) => attendee.toString())),
+      ].map((attendee) => new mongoose.Types.ObjectId(attendee));
 
-      if (!activity_type_id)
-        return throwError(
-          returnMessage("activity", "activityTypeNotFound"),
-          statusCode.notFound
-        );
-
-      // this condition is used for the check if client or team member is assined to any same time activity or not
-      const or_condition = [
-        {
-          $and: [
-            { meeting_start_time: { $gte: start_time } },
-            { meeting_end_time: { $lte: end_time } },
-          ],
-        },
-        {
-          $and: [
-            { meeting_start_time: { $lte: start_time } },
-            { meeting_end_time: { $gte: end_time } },
-          ],
-        },
-        {
-          $and: [
-            { meeting_start_time: { $gte: start_time } },
-            { meeting_end_time: { $lte: end_time } },
-            { due_date: { $gte: start_date } },
-            { recurring_end_date: { $lte: recurring_date } },
-          ],
-        },
-        {
-          $and: [
-            { meeting_start_time: { $lte: start_time } },
-            { meeting_end_time: { $gte: end_time } },
-            { due_date: { $gte: start_date } },
-            { recurring_end_date: { $lte: recurring_date } },
-          ],
-        },
-      ];
-
-      // check for the user role. if the role is team_agency then we need to
-      // find the agency id for that user which he is assigned
-
-      // let team_agency_detail;
-      if (user?.role?.name === "team_agency") {
-        const team_agency_detail = await Team_Agency.findById(
-          user?.reference_id
-        ).lean();
-        user.agency_id = team_agency_detail?.agency_id;
-      }
-
-      // this below function is used to check weather client is assign to any type of the call or other
-      // activity or not if yes then throw an error but it should be in the same agency id not in the other
-
-      let meeting_exist;
-      if (user?.role?.name === "agency" && !payload?.mark_as_done) {
-        meeting_exist = await Activity.findOne({
-          client_id,
-          agency_id: user?.reference_id,
-          activity_status: { $eq: activity_status_type?._id },
-          activity_type: activity_type_id?._id,
-          $or: or_condition,
-        })
-          .where("_id")
-          .ne(activity_id)
-          .lean();
-      } else if (user?.role?.name === "team_agency" && !payload?.mark_as_done) {
-        meeting_exist = await Activity.findOne({
-          client_id,
-          agency_id: user?.agency_id,
-          activity_status: { $eq: activity_status_type?._id },
-          $or: or_condition,
-          activity_type: activity_type_id?._id,
-        })
-          .where("_id")
-          .ne(activity_id)
-          .lean();
-      }
-      if (meeting_exist)
-        return throwError(
-          returnMessage("activity", "meetingScheduledForClient")
-        );
-
-      // if the user role is agency then we need to check weather team member is assined to other call or not
-
-      if (user?.role?.name === "agency" && !payload?.mark_as_done) {
-        const meeting_exist = await Activity.findOne({
-          assign_to,
-          agency_id: user?.reference_id,
-          activity_status: { $eq: activity_status_type?._id },
-          $or: or_condition,
-          activity_type: activity_type_id?._id,
-        })
-          .where("_id")
-          .ne(activity_id)
-          .lean();
-
-        if (meeting_exist)
-          return throwError(
-            returnMessage("activity", "meetingScheduledForTeam")
-          );
-      } else if (user?.role?.name === "team_agency" && !payload?.mark_as_done) {
-        const meeting_exist = await Activity.findOne({
-          assign_to,
-          agency_id: user?.agency_id,
-          activity_status: { $eq: activity_status_type?._id },
-          $or: or_condition,
-          activity_type: activity_type_id?._id,
-        })
-          .where("_id")
-          .ne(activity_id)
-          .lean();
-
-        if (meeting_exist)
-          return throwError(
-            returnMessage("activity", "meetingScheduledForTeam")
-          );
-      }
-
-      let status;
-      if (payload?.mark_as_done === true) {
-        status = await ActivityStatus.findOne({ name: "completed" }).lean();
-      } else {
-        status = await ActivityStatus.findOne({ name: "pending" }).lean();
-      }
+      const status = await ActivityStatus.findOne({ name: "pending" }).lean();
       await Activity.findByIdAndUpdate(
         activity_id,
         {
           activity_status: status?._id,
-          agency_id: user?.agency_id || user?.reference_id,
-          assign_by: user?.reference_id,
+          assign_by: user?._id,
           agenda,
-          assign_to,
           title,
-          client_id,
           internal_info,
           meeting_start_time: start_time,
           meeting_end_time: end_time,
-          due_date: start_date,
+          meeting_date: start_date,
           recurring_end_date: recurring_date,
-          attendees: attendees,
+          attendees: payload?.attendees,
+          google_meet_link,
         },
         { new: true }
       );
-      if (user?.role?.name === "agency") {
-        // --------------- Start--------------------
-        let task_status = "update";
-        let emailTempKey = "activityUpdated";
-        if (payload.mark_as_done) {
-          task_status = "completed";
-          emailTempKey = "activityCompleted";
-        }
+      // if (user?.role?.name === "agency") {
+      //   // --------------- Start--------------------
+      //   let task_status = "update";
+      //   let emailTempKey = "activityUpdated";
+      //   if (payload.mark_as_done) {
+      //     task_status = "completed";
+      //     emailTempKey = "activityCompleted";
+      //   }
 
-        const [assign_to_data, client_data, attendees_data] = await Promise.all(
-          [
-            Authentication.findOne({ reference_id: assign_to }),
-            Authentication.findOne({ reference_id: client_id }),
-            Authentication.find({ reference_id: { $in: attendees } }).lean(),
-          ]
-        );
-        const activity_email_template = activityTemplate({
-          ...payload,
-          status: payload.mark_as_done ? "completed" : "pending",
-          assigned_by_name: user.first_name + " " + user.last_name,
-          client_name: client_data
-            ? client_data.first_name + " " + client_data.last_name
-            : "",
-          assigned_to_name:
-            assign_to_data.first_name + " " + assign_to_data.last_name,
-          meeting_start_time: momentTimezone
-            .utc(meeting_start_time, "HH:mm")
-            .tz("Asia/Kolkata")
-            .format("HH:mm"),
+      //   const [assign_to_data, client_data, attendees_data] = await Promise.all(
+      //     [
+      //       Authentication.findOne({ reference_id: assign_to }),
+      //       Authentication.findOne({ reference_id: client_id }),
+      //       Authentication.find({ reference_id: { $in: attendees } }).lean(),
+      //     ]
+      //   );
+      //   const activity_email_template = activityTemplate({
+      //     ...payload,
+      //     status: payload.mark_as_done ? "completed" : "pending",
+      //     assigned_by_name: user.first_name + " " + user.last_name,
+      //     client_name: client_data
+      //       ? client_data.first_name + " " + client_data.last_name
+      //       : "",
+      //     assigned_to_name:
+      //       assign_to_data.first_name + " " + assign_to_data.last_name,
+      //     meeting_start_time: momentTimezone
+      //       .utc(meeting_start_time, "HH:mm")
+      //       .tz("Asia/Kolkata")
+      //       .format("HH:mm"),
 
-          meeting_end_time: momentTimezone
-            .utc(meeting_end_time, "HH:mm")
-            .tz("Asia/Kolkata")
-            .format("HH:mm"),
-        });
+      //     meeting_end_time: momentTimezone
+      //       .utc(meeting_end_time, "HH:mm")
+      //       .tz("Asia/Kolkata")
+      //       .format("HH:mm"),
+      //   });
 
-        client_data &&
-          sendEmail({
-            email: client_data?.email,
-            subject: returnMessage("emailTemplate", emailTempKey),
-            message: activity_email_template,
-          });
-        sendEmail({
-          email: assign_to_data?.email,
-          subject: returnMessage("emailTemplate", emailTempKey),
-          message: activity_email_template,
-        });
+      //   client_data &&
+      //     sendEmail({
+      //       email: client_data?.email,
+      //       subject: returnMessage("emailTemplate", emailTempKey),
+      //       message: activity_email_template,
+      //     });
+      //   sendEmail({
+      //     email: assign_to_data?.email,
+      //     subject: returnMessage("emailTemplate", emailTempKey),
+      //     message: activity_email_template,
+      //   });
 
-        attendees_data &&
-          attendees_data[0] &&
-          attendees_data.map((item) => {
-            const activity_email_template = activityTemplate({
-              ...payload,
-              status: payload.mark_as_done ? "completed" : "pending",
-              assigned_by_name: user.first_name + " " + user.last_name,
-              client_name: client_data
-                ? client_data.first_name + " " + client_data.last_name
-                : "",
-              assigned_to_name:
-                assign_to_data.first_name + " " + assign_to_data.last_name,
-              meeting_start_time: momentTimezone
-                .utc(meeting_start_time, "HH:mm")
-                .tz("Asia/Kolkata")
-                .format("HH:mm"),
+      //   attendees_data &&
+      //     attendees_data[0] &&
+      //     attendees_data.map((item) => {
+      //       const activity_email_template = activityTemplate({
+      //         ...payload,
+      //         status: payload.mark_as_done ? "completed" : "pending",
+      //         assigned_by_name: user.first_name + " " + user.last_name,
+      //         client_name: client_data
+      //           ? client_data.first_name + " " + client_data.last_name
+      //           : "",
+      //         assigned_to_name:
+      //           assign_to_data.first_name + " " + assign_to_data.last_name,
+      //         meeting_start_time: momentTimezone
+      //           .utc(meeting_start_time, "HH:mm")
+      //           .tz("Asia/Kolkata")
+      //           .format("HH:mm"),
 
-              meeting_end_time: momentTimezone
-                .utc(meeting_end_time, "HH:mm")
-                .tz("Asia/Kolkata")
-                .format("HH:mm"),
-            });
+      //         meeting_end_time: momentTimezone
+      //           .utc(meeting_end_time, "HH:mm")
+      //           .tz("Asia/Kolkata")
+      //           .format("HH:mm"),
+      //       });
 
-            sendEmail({
-              email: item?.email,
-              subject: returnMessage("emailTemplate", emailTempKey),
-              message: activity_email_template,
-            });
-          });
+      //       sendEmail({
+      //         email: item?.email,
+      //         subject: returnMessage("emailTemplate", emailTempKey),
+      //         message: activity_email_template,
+      //       });
+      //     });
 
-        await notificationService.addNotification(
-          {
-            assign_by: user?.reference_id,
-            assigned_by_name: user?.first_name + " " + user?.last_name,
-            client_name: client_data
-              ? client_data.first_name + " " + client_data.last_name
-              : "",
-            assigned_to_name:
-              assign_to_data?.first_name + " " + assign_to_data?.last_name,
-            ...payload,
-            module_name: "activity",
-            activity_type_action: task_status,
-            activity_type:
-              activity_type === "others" ? "activity" : "call meeting",
-            meeting_start_time: momentTimezone
-              .utc(meeting_start_time, "HH:mm")
-              .tz("Asia/Kolkata")
-              .format("HH:mm"),
-            meeting_end_time: momentTimezone
-              .utc(meeting_end_time, "HH:mm")
-              .tz("Asia/Kolkata")
-              .format("HH:mm"),
-          },
-          activity_id
-        );
-        // ---------------- End ---------------
-      }
-      if (user?.role?.name === "team_agency") {
-        // --------------- Start--------------------
-        let task_status = "update";
-        let emailTempKey = "activityUpdated";
-        if (payload.mark_as_done) {
-          task_status = "completed";
-          emailTempKey = "activityCompleted";
-        }
+      //   await notificationService.addNotification(
+      //     {
+      //       assign_by: user?.reference_id,
+      //       assigned_by_name: user?.first_name + " " + user?.last_name,
+      //       client_name: client_data
+      //         ? client_data.first_name + " " + client_data.last_name
+      //         : "",
+      //       assigned_to_name:
+      //         assign_to_data?.first_name + " " + assign_to_data?.last_name,
+      //       ...payload,
+      //       module_name: "activity",
+      //       activity_type_action: task_status,
+      //       activity_type:
+      //         activity_type === "others" ? "activity" : "call meeting",
+      //       meeting_start_time: momentTimezone
+      //         .utc(meeting_start_time, "HH:mm")
+      //         .tz("Asia/Kolkata")
+      //         .format("HH:mm"),
+      //       meeting_end_time: momentTimezone
+      //         .utc(meeting_end_time, "HH:mm")
+      //         .tz("Asia/Kolkata")
+      //         .format("HH:mm"),
+      //     },
+      //     activity_id
+      //   );
+      //   // ---------------- End ---------------
+      // }
+      // if (user?.role?.name === "team_agency") {
+      //   // --------------- Start--------------------
+      //   let task_status = "update";
+      //   let emailTempKey = "activityUpdated";
+      //   if (payload.mark_as_done) {
+      //     task_status = "completed";
+      //     emailTempKey = "activityCompleted";
+      //   }
 
-        const [assign_to_data, client_data, attendees_data, agencyData] =
-          await Promise.all([
-            Authentication.findOne({ reference_id: assign_to }),
-            Authentication.findOne({ reference_id: client_id }),
-            Authentication.find({ reference_id: { $in: attendees } }).lean(),
-            Authentication.findOne({
-              reference_id: user?.agency_id
-                ? user?.agency_id
-                : user?.reference_id,
-            }).lean(),
-          ]);
+      //   const [assign_to_data, client_data, attendees_data, agencyData] =
+      //     await Promise.all([
+      //       Authentication.findOne({ reference_id: assign_to }),
+      //       Authentication.findOne({ reference_id: client_id }),
+      //       Authentication.find({ reference_id: { $in: attendees } }).lean(),
+      //       Authentication.findOne({
+      //         reference_id: user?.agency_id
+      //           ? user?.agency_id
+      //           : user?.reference_id,
+      //       }).lean(),
+      //     ]);
 
-        const activity_email_template = activityTemplate({
-          ...payload,
-          status: payload.mark_as_done ? "completed" : "pending",
-          assigned_by_name: user.first_name + " " + user.last_name,
-          client_name: client_data
-            ? client_data.first_name + " " + client_data.last_name
-            : "",
-          assigned_to_name:
-            assign_to_data.first_name + " " + assign_to_data.last_name,
-          meeting_start_time: momentTimezone
-            .utc(meeting_start_time, "HH:mm")
-            .tz("Asia/Kolkata")
-            .format("HH:mm"),
+      //   const activity_email_template = activityTemplate({
+      //     ...payload,
+      //     status: payload.mark_as_done ? "completed" : "pending",
+      //     assigned_by_name: user.first_name + " " + user.last_name,
+      //     client_name: client_data
+      //       ? client_data.first_name + " " + client_data.last_name
+      //       : "",
+      //     assigned_to_name:
+      //       assign_to_data.first_name + " " + assign_to_data.last_name,
+      //     meeting_start_time: momentTimezone
+      //       .utc(meeting_start_time, "HH:mm")
+      //       .tz("Asia/Kolkata")
+      //       .format("HH:mm"),
 
-          meeting_end_time: momentTimezone
-            .utc(meeting_end_time, "HH:mm")
-            .tz("Asia/Kolkata")
-            .format("HH:mm"),
-        });
+      //     meeting_end_time: momentTimezone
+      //       .utc(meeting_end_time, "HH:mm")
+      //       .tz("Asia/Kolkata")
+      //       .format("HH:mm"),
+      //   });
 
-        client_data &&
-          sendEmail({
-            email: client_data?.email,
-            subject: returnMessage("emailTemplate", emailTempKey),
-            message: activity_email_template,
-          });
-        sendEmail({
-          email: assign_to_data?.email,
-          subject: returnMessage("emailTemplate", emailTempKey),
-          message: activity_email_template,
-        });
+      //   client_data &&
+      //     sendEmail({
+      //       email: client_data?.email,
+      //       subject: returnMessage("emailTemplate", emailTempKey),
+      //       message: activity_email_template,
+      //     });
+      //   sendEmail({
+      //     email: assign_to_data?.email,
+      //     subject: returnMessage("emailTemplate", emailTempKey),
+      //     message: activity_email_template,
+      //   });
 
-        attendees_data &&
-          attendees_data[0] &&
-          attendees_data.map((item) => {
-            const activity_email_template = activityTemplate({
-              ...payload,
-              status: payload.mark_as_done ? "completed" : "pending",
-              assigned_by_name: user.first_name + " " + user.last_name,
-              client_name: client_data
-                ? client_data.first_name + " " + client_data.last_name
-                : "",
-              assigned_to_name:
-                assign_to_data.first_name + " " + assign_to_data.last_name,
-              meeting_start_time: momentTimezone
-                .utc(meeting_start_time, "HH:mm")
-                .tz("Asia/Kolkata")
-                .format("HH:mm"),
+      //   attendees_data &&
+      //     attendees_data[0] &&
+      //     attendees_data.map((item) => {
+      //       const activity_email_template = activityTemplate({
+      //         ...payload,
+      //         status: payload.mark_as_done ? "completed" : "pending",
+      //         assigned_by_name: user.first_name + " " + user.last_name,
+      //         client_name: client_data
+      //           ? client_data.first_name + " " + client_data.last_name
+      //           : "",
+      //         assigned_to_name:
+      //           assign_to_data.first_name + " " + assign_to_data.last_name,
+      //         meeting_start_time: momentTimezone
+      //           .utc(meeting_start_time, "HH:mm")
+      //           .tz("Asia/Kolkata")
+      //           .format("HH:mm"),
 
-              meeting_end_time: momentTimezone
-                .utc(meeting_end_time, "HH:mm")
-                .tz("Asia/Kolkata")
-                .format("HH:mm"),
-            });
+      //         meeting_end_time: momentTimezone
+      //           .utc(meeting_end_time, "HH:mm")
+      //           .tz("Asia/Kolkata")
+      //           .format("HH:mm"),
+      //       });
 
-            sendEmail({
-              email: item?.email,
-              subject: returnMessage("emailTemplate", emailTempKey),
-              message: activity_email_template,
-            });
-          });
+      //       sendEmail({
+      //         email: item?.email,
+      //         subject: returnMessage("emailTemplate", emailTempKey),
+      //         message: activity_email_template,
+      //       });
+      //     });
 
-        await notificationService.addNotification(
-          {
-            assign_by: user?.reference_id,
-            assigned_by_name: user?.first_name + " " + user?.last_name,
-            client_name: client_data
-              ? client_data.first_name + " " + client_data.last_name
-              : "",
-            assigned_to_name:
-              assign_to_data?.first_name + " " + assign_to_data?.last_name,
-            ...payload,
-            module_name: "activity",
-            activity_type_action: task_status,
-            activity_type:
-              activity_type === "others" ? "activity" : "call meeting",
-            agency_id: user?.agency_id ? user?.agency_id : user?.reference_id,
-            agency_name: agencyData?.first_name + " " + agencyData?.last_name,
-            log_user: "member",
-            meeting_start_time: momentTimezone
-              .utc(meeting_start_time, "HH:mm")
-              .tz("Asia/Kolkata")
-              .format("HH:mm"),
-            meeting_end_time: momentTimezone
-              .utc(meeting_end_time, "HH:mm")
-              .tz("Asia/Kolkata")
-              .format("HH:mm"),
-          },
-          activity_id
-        );
-        // ---------------- End ---------------
-      }
+      //   await notificationService.addNotification(
+      //     {
+      //       assign_by: user?.reference_id,
+      //       assigned_by_name: user?.first_name + " " + user?.last_name,
+      //       client_name: client_data
+      //         ? client_data.first_name + " " + client_data.last_name
+      //         : "",
+      //       assigned_to_name:
+      //         assign_to_data?.first_name + " " + assign_to_data?.last_name,
+      //       ...payload,
+      //       module_name: "activity",
+      //       activity_type_action: task_status,
+      //       activity_type:
+      //         activity_type === "others" ? "activity" : "call meeting",
+      //       agency_id: user?.agency_id ? user?.agency_id : user?.reference_id,
+      //       agency_name: agencyData?.first_name + " " + agencyData?.last_name,
+      //       log_user: "member",
+      //       meeting_start_time: momentTimezone
+      //         .utc(meeting_start_time, "HH:mm")
+      //         .tz("Asia/Kolkata")
+      //         .format("HH:mm"),
+      //       meeting_end_time: momentTimezone
+      //         .utc(meeting_end_time, "HH:mm")
+      //         .tz("Asia/Kolkata")
+      //         .format("HH:mm"),
+      //     },
+      //     activity_id
+      //   );
+      //   // ---------------- End ---------------
+      // }
       return;
     } catch (error) {
       logger.error(`Error while updating call meeting and other: ${error}`);
@@ -2027,11 +1285,15 @@ class ActivityService {
   // this function is used for to get the activity with date and user based filter
   getActivities = async (payload, user) => {
     try {
+      if (payload?.pagination) {
+        return await this.getWithPaginationActivities(payload, user);
+      }
+
       const match_obj = { $match: {} };
       const assign_obj = { $match: {} };
       if (payload?.given_date) {
         match_obj["$match"] = {
-          due_date: {
+          meeting_date: {
             $eq: moment.utc(payload?.given_date, "DD-MM-YYYY").startOf("day"),
           },
         };
@@ -2082,27 +1344,17 @@ class ActivityService {
             ...filter["$match"],
             activity_status: activity_status?._id,
           };
-        } else if (payload?.filter?.status === "cancel") {
-          const activity_status = await ActivityStatus.findOne({
-            name: "cancel",
-          })
-            .select("_id")
-            .lean();
-          filter["$match"] = {
-            ...filter["$match"],
-            activity_status: activity_status?._id,
-          };
         }
 
         if (payload?.filter?.date === "today") {
           filter["$match"] = {
             ...filter["$match"],
-            due_date: { $eq: new Date(moment.utc().startOf("day")) },
+            meeting_date: { $eq: new Date(moment.utc().startOf("day")) },
           };
         } else if (payload?.filter?.date === "tomorrow") {
           filter["$match"] = {
             ...filter["$match"],
-            due_date: {
+            meeting_date: {
               $eq: new Date(moment.utc().add(1, "day").startOf("day")),
             },
           };
@@ -2111,10 +1363,10 @@ class ActivityService {
             ...filter["$match"],
             $and: [
               {
-                due_date: { $gte: new Date(moment.utc().startOf("week")) },
+                meeting_date: { $gte: new Date(moment.utc().startOf("week")) },
               },
               {
-                due_date: { $lte: new Date(moment.utc().endOf("week")) },
+                meeting_date: { $lte: new Date(moment.utc().endOf("week")) },
               },
             ],
           };
@@ -2145,104 +1397,41 @@ class ActivityService {
             $or: [
               {
                 $and: [
-                  { due_date: { $gte: new Date(start_date) } },
-                  { due_date: { $lte: new Date(end_date) } },
+                  { meeting_date: { $gte: new Date(start_date) } },
+                  { meeting_date: { $lte: new Date(end_date) } },
                 ],
               },
               {
                 $and: [
-                  { due_date: { $gte: new Date(start_date) } },
+                  { meeting_date: { $gte: new Date(start_date) } },
                   { recurring_end_date: { $lte: new Date(end_date) } },
                 ],
               },
             ],
           };
         }
-        if (
-          payload?.filter?.activity_type &&
-          payload?.filter?.activity_type !== ""
-        ) {
-          const activity_type = await ActivityType.findOne({
-            name: payload?.filter?.activity_type,
-          })
-            .select("_id")
-            .lean();
-
-          if (!activity_type)
-            return throwError(
-              returnMessage("activity", "activityTypeNotFound"),
-              statusCode.notFound
-            );
-
-          filter["$match"] = {
-            ...filter["$match"],
-            activity_type: activity_type?._id,
-          };
-        }
       }
 
       const pagination = paginationObject(payload);
-      if (user?.role?.name === "agency") {
+      if (user?.role === "agency") {
         assign_obj["$match"] = {
           is_deleted: false,
-          $or: [
-            { agency_id: user?.reference_id }, // this is removed because agency can also assign the activity
-            { assign_to: user?.reference_id },
-          ],
+          workspace_id: user?.workspace, // this is removed because agency can also assign the activity
         };
-        if (payload?.client_id) {
-          assign_obj["$match"] = {
-            ...assign_obj["$match"],
-            client_id: new mongoose.Types.ObjectId(payload?.client_id),
-          };
-        }
-        if (payload?.client_team_id) {
-          assign_obj["$match"] = {
-            ...assign_obj["$match"],
-            client_id: new mongoose.Types.ObjectId(payload?.client_team_id),
-          };
-        }
-        if (payload?.team_id) {
-          assign_obj["$match"] = {
-            ...assign_obj["$match"],
-            assign_to: new mongoose.Types.ObjectId(payload?.team_id),
-          };
-        }
-      } else if (user?.role?.name === "team_agency") {
-        // assign_obj["$match"] = {
-        //   is_deleted: false,
-        //   assign_to: user?.reference_id,
-        // };
-        const teamRole = await Team_Agency.findOne({
-          _id: user.reference_id,
-        }).populate("role");
-        // if (teamRole?.role?.name === "admin") {
+      } else if (user?.role === "team_agency") {
         assign_obj["$match"] = {
-          $or: [
-            { assign_by: user.reference_id },
-            { assign_to: user.reference_id },
-          ],
+          $or: [{ created_by: user?._id }, { assignee: user?._id }],
           is_deleted: false,
-          // activity_type: new mongoose.Types.ObjectId(type._id),
-          // };
         };
-      } else if (user?.role?.name === "client") {
+      } else if (user?.role === "client") {
         assign_obj["$match"] = {
           is_deleted: false,
-          client_id: user?.reference_id,
-          agency_id: new mongoose.Types.ObjectId(payload?.agency_id),
+          assignee: user?._id,
         };
-        if (payload?.client_team_id) {
-          assign_obj["$match"] = {
-            ...assign_obj["$match"],
-            client_id: new mongoose.Types.ObjectId(payload?.client_team_id),
-          };
-        }
-      } else if (user?.role?.name === "team_client") {
+      } else if (user?.role === "team_client") {
         assign_obj["$match"] = {
           is_deleted: false,
-          client_id: user?.reference_id,
-          agency_id: new mongoose.Types.ObjectId(payload?.agency_id),
+          assignee: user?._id,
         };
       }
 
@@ -2278,49 +1467,7 @@ class ActivityService {
               },
             },
             {
-              "assign_to.first_name": {
-                $regex: payload?.search.toLowerCase(),
-                $options: "i",
-              },
-            },
-            {
-              "assign_to.last_name": {
-                $regex: payload?.search.toLowerCase(),
-                $options: "i",
-              },
-            },
-            {
-              "assign_to.name": {
-                $regex: payload?.search.toLowerCase(),
-                $options: "i",
-              },
-            },
-            {
-              "client_id.first_name": {
-                $regex: payload?.search.toLowerCase(),
-                $options: "i",
-              },
-            },
-            {
-              "client_id.last_name": {
-                $regex: payload?.search.toLowerCase(),
-                $options: "i",
-              },
-            },
-            {
-              "client_id.name": {
-                $regex: payload?.search.toLowerCase(),
-                $options: "i",
-              },
-            },
-            {
               "activity_status.name": {
-                $regex: payload?.search.toLowerCase(),
-                $options: "i",
-              },
-            },
-            {
-              "activity_type.name": {
                 $regex: payload?.search.toLowerCase(),
                 $options: "i",
               },
@@ -2336,32 +1483,8 @@ class ActivityService {
         {
           $lookup: {
             from: "authentications",
-            localField: "assign_to",
-            foreignField: "reference_id",
-            as: "assign_to",
-            pipeline: [
-              {
-                $project: {
-                  first_name: 1,
-                  last_name: 1,
-                  email: 1,
-                  name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                  reference_id: 1,
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: { path: "$assign_to", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $lookup: {
-            from: "authentications",
             localField: "assign_by",
-            foreignField: "reference_id",
+            foreignField: "_id",
             as: "assign_by",
             pipeline: [
               {
@@ -2383,9 +1506,280 @@ class ActivityService {
         {
           $lookup: {
             from: "authentications",
-            localField: "client_id",
-            foreignField: "reference_id",
-            as: "client_id",
+            localField: "attendees",
+            foreignField: "_id",
+            as: "attendeesData",
+            pipeline: [
+              {
+                $project: {
+                  email: 1,
+                  _id: 1,
+                  profile_image: 1,
+                  first_name: 1,
+                  last_name: 1,
+                  attendees_name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                },
+              },
+            ],
+          },
+        },
+        {
+          $lookup: {
+            from: "activity_status_masters",
+            localField: "activity_status",
+            foreignField: "_id",
+            as: "activity_status",
+            pipeline: [{ $project: { name: 1 } }],
+          },
+        },
+        {
+          $unwind: {
+            path: "$activity_status",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+      ];
+      let activity, total_activity;
+      activity = await Activity.aggregate(aggragate);
+      let activity_array = [];
+      activity.forEach((act) => {
+        if (
+          !payload?.given_date &&
+          !payload?.filter &&
+          act?.recurring_end_date
+        ) {
+          // this will give the activity based on the filter selected and recurring date activity
+          if (payload?.filter?.date === "period") {
+            act.recurring_end_date = moment
+              .utc(payload?.filter?.end_date, "DD-MM-YYYY")
+              .endOf("day");
+          }
+          const others_meetings = this.generateMeetingTimes(act);
+          activity_array = [...activity_array, ...others_meetings];
+          return;
+        } else {
+          let obj = {
+            id: act?._id,
+            title: act?.title,
+            description: act?.agenda,
+            allDay: act?.all_day,
+            start: act?.meeting_start_time,
+            end: act?.meeting_end_time,
+            status: act?.activity_status?.name,
+          };
+          activity_array.push(obj);
+        }
+      });
+
+      activity_array = [...activity_array];
+      return activity_array;
+    } catch (error) {
+      logger.error(`Error while fetching the activity: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  getWithPaginationActivities = async (payload, user) => {
+    try {
+      const match_obj = { $match: {} };
+      const assign_obj = { $match: {} };
+      if (payload?.given_date) {
+        match_obj["$match"] = {
+          meeting_date: {
+            $eq: moment.utc(payload?.given_date, "DD-MM-YYYY").startOf("day"),
+          },
+        };
+      }
+
+      // this will used for the date filter in the listing
+      const filter = {
+        $match: {},
+      };
+      if (payload?.filter) {
+        if (payload?.filter?.status === "in_progress") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "in_progress",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        } else if (payload?.filter?.status === "pending") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "pending",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        } else if (payload?.filter?.status === "overdue") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "overdue",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        } else if (payload?.filter?.status === "done") {
+          const activity_status = await ActivityStatus.findOne({
+            name: "completed",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        }
+
+        if (payload?.filter?.date === "today") {
+          filter["$match"] = {
+            ...filter["$match"],
+            meeting_date: { $eq: new Date(moment.utc().startOf("day")) },
+          };
+        } else if (payload?.filter?.date === "tomorrow") {
+          filter["$match"] = {
+            ...filter["$match"],
+            meeting_date: {
+              $eq: new Date(moment.utc().add(1, "day").startOf("day")),
+            },
+          };
+        } else if (payload?.filter?.date === "this_week") {
+          filter["$match"] = {
+            ...filter["$match"],
+            $and: [
+              {
+                meeting_date: { $gte: new Date(moment.utc().startOf("week")) },
+              },
+              {
+                meeting_date: { $lte: new Date(moment.utc().endOf("week")) },
+              },
+            ],
+          };
+        } else if (payload?.filter?.date === "period") {
+          // need the start and end date to fetch the data between 2 dates
+
+          if (
+            !(payload?.filter?.start_date && payload?.filter?.end_date) &&
+            payload?.filter?.start_date !== "" &&
+            payload?.filter?.end_date !== ""
+          )
+            return throwError(
+              returnMessage("activity", "startEnddateRequired")
+            );
+
+          const start_date = moment
+            .utc(payload?.filter?.start_date, "DD-MM-YYYY")
+            .startOf("day");
+          const end_date = moment
+            .utc(payload?.filter?.end_date, "DD-MM-YYYY")
+            .endOf("day");
+
+          if (end_date.isBefore(start_date))
+            return throwError(returnMessage("activity", "invalidDate"));
+
+          filter["$match"] = {
+            ...filter["$match"],
+            $or: [
+              {
+                $and: [
+                  { meeting_date: { $gte: new Date(start_date) } },
+                  { meeting_date: { $lte: new Date(end_date) } },
+                ],
+              },
+              {
+                $and: [
+                  { meeting_date: { $gte: new Date(start_date) } },
+                  { recurring_end_date: { $lte: new Date(end_date) } },
+                ],
+              },
+            ],
+          };
+        }
+      }
+
+      const pagination = paginationObject(payload);
+      if (user?.role === "agency") {
+        assign_obj["$match"] = {
+          is_deleted: false,
+          workspace_id: user?.workspace, // this is removed because agency can also assign the activity
+        };
+      } else if (user?.role === "team_agency") {
+        assign_obj["$match"] = {
+          $or: [{ created_by: user?._id }, { assignee: user?._id }],
+          is_deleted: false,
+        };
+      } else if (user?.role === "client") {
+        assign_obj["$match"] = {
+          is_deleted: false,
+          assignee: user?._id,
+        };
+      } else if (user?.role === "team_client") {
+        assign_obj["$match"] = {
+          is_deleted: false,
+          assignee: user?._id,
+        };
+      }
+
+      if (payload?.search && payload?.search !== "") {
+        match_obj["$match"] = {
+          ...match_obj["$match"],
+          $or: [
+            {
+              title: {
+                $regex: payload?.search.toLowerCase(),
+                $options: "i",
+              },
+            },
+            {
+              status: { $regex: payload?.search.toLowerCase(), $options: "i" },
+            },
+            {
+              "assign_by.first_name": {
+                $regex: payload?.search.toLowerCase(),
+                $options: "i",
+              },
+            },
+            {
+              "assign_by.last_name": {
+                $regex: payload?.search.toLowerCase(),
+                $options: "i",
+              },
+            },
+            {
+              "assign_by.name": {
+                $regex: payload?.search.toLowerCase(),
+                $options: "i",
+              },
+            },
+            {
+              "activity_status.name": {
+                $regex: payload?.search.toLowerCase(),
+                $options: "i",
+              },
+            },
+          ],
+        };
+      }
+
+      let aggragate = [
+        assign_obj,
+        match_obj,
+        filter,
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "assign_by",
+            foreignField: "_id",
+            as: "assign_by",
             pipeline: [
               {
                 $project: {
@@ -2395,14 +1789,35 @@ class ActivityService {
                   name: {
                     $concat: ["$first_name", " ", "$last_name"],
                   },
-                  reference_id: 1,
                 },
               },
             ],
           },
         },
         {
-          $unwind: { path: "$client_id", preserveNullAndEmptyArrays: true },
+          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
+        },
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "attendees",
+            foreignField: "_id",
+            as: "attendeesData",
+            pipeline: [
+              {
+                $project: {
+                  email: 1,
+                  _id: 1,
+                  profile_image: 1,
+                  first_name: 1,
+                  last_name: 1,
+                  attendees_name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                },
+              },
+            ],
+          },
         },
         {
           $lookup: {
@@ -2420,93 +1835,38 @@ class ActivityService {
           },
         },
         {
-          $lookup: {
-            from: "activity_type_masters",
-            localField: "activity_type",
-            foreignField: "_id",
-            as: "activity_type",
-            pipeline: [{ $project: { name: 1 } }],
+          $project: {
+            title: 1,
+            due_time: 1,
+            meeting_date: 1,
+            createdAt: 1,
+            status: "$activity_status.name",
+            agenda: 1,
+            assigned_by_first_name: "$assign_by.first_name",
+            assigned_by_last_name: "$assign_by.last_name",
+            assigned_by_name: {
+              $concat: ["$assign_by.first_name", " ", "$assign_by.last_name"],
+            },
+            meeting_start_time: 1,
+            meeting_end_time: 1,
+            recurring_end_date: 1,
+            attendees: "$attendeesData",
+            internal_info: 1,
+            all_day: 1,
+            google_meet_link: 1,
+            alert_time_unit: 1,
+            alert_time: 1,
           },
-        },
-        {
-          $unwind: { path: "$activity_type", preserveNullAndEmptyArrays: true },
         },
       ];
 
-      let activity, total_activity;
-      if (!payload?.pagination) {
-        activity = await Activity.aggregate(aggragate);
-
-        // this is the basic example of the front side requried to show data
-        //   {
-        //     id: "123",
-        //     start: new Date(2024, 2,1,5,0,0,0),
-        //     end: new Date(2024, 3,1,6,0,0,0),
-        //     allDay: false,
-        //     title: 'Event 1',
-        //     description: 'About Planning',
-        // }
-
-        let activity_array = [];
-        const event = await eventService.eventList(payload, user);
-        activity.forEach((act) => {
-          if (act?.activity_type?.name === "task") return;
-          if (
-            act?.activity_type?.name === "others" &&
-            act?.recurring_end_date &&
-            !payload?.given_date &&
-            !payload?.filter
-          ) {
-            // this will give the activity based on the filter selected and recurring date activity
-
-            if (payload?.filter?.date === "period") {
-              act.recurring_end_date = moment
-                .utc(payload?.filter?.end_date, "DD-MM-YYYY")
-                .endOf("day");
-            }
-            const others_meetings = this.generateMeetingTimes(act);
-            activity_array = [...activity_array, ...others_meetings];
-            return;
-          }
-          let obj = {
-            id: act?._id,
-            title: act?.title,
-            description: act?.agenda,
-            allDay: false,
-            start: act?.meeting_start_time,
-            end: act?.meeting_end_time,
-            status: act?.activity_status?.name,
-            type: "activity",
-          };
-
-          activity_array.push(obj);
-        });
-
-        // for event in calender view
-        if (!payload?.given_date) {
-          event.forEach((event) => {
-            // if (payload?.filter?.date === "period") {
-            //   event.recurring_end_date = moment
-            //     .utc(payload?.filter?.end_date, "DD-MM-YYYY")
-            //     .endOf("day");
-            // }
-            const event_meetings = this.generateEventTimes(event);
-
-            activity_array = [...activity_array, ...event_meetings];
-
-            // activity_array.push(obj);
-          });
-        }
-        return activity_array;
-      } else {
-        [activity, total_activity] = await Promise.all([
-          Activity.aggregate(aggragate)
-            .sort(pagination.sort)
-            .skip(pagination.skip)
-            .limit(pagination.result_per_page),
-          Activity.aggregate(aggragate),
-        ]);
-      }
+      const [activity, total_activity] = await Promise.all([
+        Activity.aggregate(aggragate)
+          .sort(pagination.sort)
+          .skip(pagination.skip)
+          .limit(pagination.result_per_page),
+        Activity.aggregate(aggragate),
+      ]);
 
       return {
         activity,
@@ -2521,6 +1881,7 @@ class ActivityService {
 
   // this function is used for the only generate the calandar view objects only
   // because we need to generate the between dates from the start and recurring date
+
   generateMeetingTimes = (activity_obj) => {
     const meetingTimes = [];
     let current_meeting_start = moment.utc(activity_obj?.meeting_start_time);
@@ -2588,7 +1949,7 @@ class ActivityService {
         key: "completed",
       });
       const overdueActivities = await Activity.find({
-        due_date: { $lt: currentDate.toDate() },
+        meeting_date: { $lt: currentDate.toDate() },
         activity_status: {
           $nin: [overdue._id, completed._id],
         },
@@ -2627,7 +1988,7 @@ class ActivityService {
         key: "overdue",
       });
       const overdueActivities = await Activity.find({
-        due_date: {
+        meeting_date: {
           $gte: currentDate.toDate(), // Activities with due date greater than or equal to the current date
           $lt: currentDate.add(1, "days").toDate(), // Activities with due date less than the next day
         },
@@ -2709,7 +2070,7 @@ class ActivityService {
         recurring_end_date: data?.recurring_end_date
           ? moment(data?.recurring_end_date).format("DD-MM-YYYY")
           : null,
-        due_date: moment(data?.due_date).format("DD-MM-YYYY"),
+        meeting_date: moment(data?.meeting_date).format("DD-MM-YYYY"),
       });
 
       clientData &&
@@ -2831,7 +2192,7 @@ class ActivityService {
         );
 
       validateRequestFields(payload, [
-        "due_date",
+        "meeting_date",
         "activity_type",
         "meeting_start_time",
         "meeting_end_time",
@@ -2839,7 +2200,7 @@ class ActivityService {
 
       const {
         client_id,
-        due_date,
+        meeting_date,
         meeting_start_time,
         meeting_end_time,
         activity_type,
@@ -2848,13 +2209,13 @@ class ActivityService {
 
       let recurring_date;
       const current_date = moment.utc().startOf("day");
-      const start_date = moment.utc(due_date, "DD-MM-YYYY").startOf("day");
+      const start_date = moment.utc(meeting_date, "DD-MM-YYYY").startOf("day");
       const start_time = moment.utc(
-        `${due_date}-${meeting_start_time}`,
+        `${meeting_date}-${meeting_start_time}`,
         "DD-MM-YYYY-HH:mm"
       );
       const end_time = moment.utc(
-        `${due_date}-${meeting_end_time}`,
+        `${meeting_date}-${meeting_end_time}`,
         "DD-MM-YYYY-HH:mm"
       );
       if (!start_date.isSameOrAfter(current_date))
@@ -2903,7 +2264,7 @@ class ActivityService {
           $and: [
             { meeting_start_time: { $gte: start_time } },
             { meeting_end_time: { $lte: end_time } },
-            { due_date: { $gte: start_date } },
+            { meeting_date: { $gte: start_date } },
             { recurring_end_date: { $lte: recurring_date } },
           ],
         },
@@ -2911,7 +2272,7 @@ class ActivityService {
           $and: [
             { meeting_start_time: { $lte: start_time } },
             { meeting_end_time: { $gte: end_time } },
-            { due_date: { $gte: start_date } },
+            { meeting_date: { $gte: start_date } },
             { recurring_end_date: { $lte: recurring_date } },
           ],
         },
@@ -3097,55 +2458,35 @@ class ActivityService {
     }
   };
 
-  addTaskComment = async (payload, user) => {
+  createCallGoogleMeeting = async (payload) => {
     try {
-      const { comment, task_id } = payload;
-      const task = await Activity.findById(task_id);
+      const {
+        token,
+        meeting_date,
+        meeting_start_time,
+        summary,
+        location,
+        description,
+      } = payload;
+      const result = await Meeting({
+        client_id,
+        client_secret,
+        token,
+        meeting_date,
+        meeting_start_time,
+        summary,
+        location,
+        description,
+      });
 
-      task.comments.push({ user_id: user?._id, comment: comment });
-      task.save();
-      return;
-    } catch (error) {
-      logger.error(`Error while Add task comment: ${error}`);
-      return throwError(error?.message, error?.statusCode);
-    }
-  };
-
-  listTaskComment = async (payload) => {
-    try {
-      const { task_id } = payload;
-      const task = await Activity.findById(task_id);
-
-      let comments = [];
-      if (task && task?.comments?.length > 0) {
-        for (const item of task?.comments) {
-          const user_data = await Authentication.findById(item?.user_id).lean();
-          comments.push({
-            comment: item?.comment,
-            user_image: user_data?.profile_image,
-            name: user_data?.first_name + " " + user_data?.last_name,
-            user_id: user_data?._id,
-          });
-        }
+      if (result === null) {
+        return throwError(
+          returnMessage("activity", "callMeetingAlreadyExists")
+        );
       }
-      return comments;
+      return { meeting_link: result };
     } catch (error) {
-      logger.error(`Error while Add task comment: ${error}`);
-      return throwError(error?.message, error?.statusCode);
-    }
-  };
-
-  leaveTask = async (payload, user) => {
-    try {
-      const { task_id } = payload;
-      const task = await Activity.findById(task_id);
-      task.assign_to = task?.assign_to.filter(
-        (item) => item.toString() !== user._id.toString()
-      );
-      task.save();
-      return;
-    } catch (error) {
-      logger.error(`Error while Add task comment: ${error}`);
+      logger.error(`Error while creating google meeting : ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
