@@ -281,7 +281,25 @@ class PaymentService {
               is_deleted: false,
             }).lean(),
           ]);
-          if (!order_management) return;
+          if (!order_management) {
+            await PaymentHistory.create({
+              agency_id: order_management?.agency_id,
+              amount,
+              subscription_id,
+              currency,
+              payment_id,
+              plan_id,
+              quantity,
+            });
+            await Authentication.findByIdAndUpdate(
+              order_management?.agency_id,
+              {
+                purchased_plan: plan?._id,
+                subscribe_date: moment().format("YYYY-MM-DD").toString(),
+              }
+            );
+            return;
+          }
 
           if (plan?.plan_type === "unlimited") {
             await SheetManagement.findByIdAndUpdate(
@@ -1007,8 +1025,7 @@ class PaymentService {
         //   payment_id: razorpay_payment_id,
         // });
 
-        // removed because, handled in the Webhook events
-        /*  const sheets = await SheetManagement.findOne({
+        const sheets = await SheetManagement.findOne({
           user_id: agency_id,
           is_deleted: false,
         }).lean();
@@ -1021,21 +1038,24 @@ class PaymentService {
               occupied_sheets: [],
             },
             { upsert: true }
-          ); */
+          );
         // updated_agency_detail = updated_agency_detail.toJSON();
         delete updated_agency_detail?.password;
         delete updated_agency_detail?.is_google_signup;
         delete updated_agency_detail?.is_facebook_signup;
         delete updated_agency_detail?.subscription_id;
+
+        await Order_Management.findOneAndUpdate(
+          { subscription_id },
+          { is_deleted: true }
+        );
         return {
           success: true,
           message: returnMessage("payment", "paymentCompleted"),
           data: { user: updated_agency_detail },
         };
       } else if (payload?.agency_id && payload?.user_id) {
-        // removed because, handled in the Webhook events
-
-        /* const [
+        const [
           agency_details,
           user_details,
           sheets,
@@ -1115,7 +1135,11 @@ class PaymentService {
             },
           }
         );
-        await this.updateSubscription(agency_id, sheets?.total_sheets); */
+        await Order_Management.findOneAndUpdate(
+          { order_id: razorpay_order_id },
+          { is_deleted: true }
+        );
+        await this.updateSubscription(agency_id, sheets?.total_sheets);
 
         return { success: true };
       }
