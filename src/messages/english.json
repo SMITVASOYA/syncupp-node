@@ -416,7 +416,10 @@
     "verified": "You have verified successfully.",
     "teamMemeberExist": "This member is already exist in tis workspace.",
     "workspacePaymentPending":"Payment for this workspace is pending. Please change the workspace.",
-    "notAssignToWorkspace":"You are not assinged to any workspaces."
+    "notAssignToWorkspace":"You are not assinged to any workspaces.",
+    "trialExtendDate":"Trial extend date is required.",
+    "invalidTrailExtendDate":"Trail extend date should be future date.",
+    "trialExtended":"Trial end date extended."
   },
 
   "section": {

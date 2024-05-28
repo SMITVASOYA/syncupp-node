@@ -8,6 +8,9 @@ const adminService = new AdminService();
 const agencyService = new AgencyService();
 const PaymentService = require("../services/paymentService");
 const paymentService = new PaymentService();
+const WorkspaceService = require("../services/workspaceService");
+const workspaceServie = new WorkspaceService();
+
 exports.login = catchAsyncError(async (req, res, next) => {
   const admin = await adminService.login(req.body);
   sendResponse(
@@ -154,4 +157,16 @@ exports.createPayout = catchAsyncError(async (req, res, next) => {
 
 exports.paymentDownload = catchAsyncError(async (req, res, next) => {
   await adminService.paymentHistoryDownload(res);
+});
+
+//  Update admin
+exports.extendTrialPeriod = catchAsyncError(async (req, res, next) => {
+  await workspaceServie.updateTrialEndDate(req.body, req.params.agencyId);
+  sendResponse(
+    res,
+    true,
+    returnMessage("workspace", "trialExtended"),
+    admin,
+    statusCode.success
+  );
 });

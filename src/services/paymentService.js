@@ -241,31 +241,6 @@ class PaymentService {
 
       if (body) {
         const { payload } = body;
-        // if (body?.event === "subscription.authenticated") {
-        //   const subscription_id = payload?.subscription?.entity?.id;
-        //   const plan_id = payload?.subscription?.entity?.plan_id;
-
-        //   const [agency_details, payment_history, configuration] =
-        //     await Promise.all([
-        //       Authentication.findOne({ subscription_id }).lean(),
-        //       PaymentHistory.findOne({ subscription_id }),
-        //       Configuration.findOne().lean(),
-        //     ]);
-
-        //   if (!(configuration.payment.free_trial > 0)) return;
-        //   if (!agency_details) return;
-        //   let first_time = false;
-        //   if (!payment_history) first_time = true;
-
-        //   const pp = await PaymentHistory.create({
-        //     agency_id: agency_details?.reference_id,
-        //     subscription_id,
-        //     first_time,
-        //     plan_id,
-        //     payment_mode: "free_trial",
-        //   });
-        //   return;
-        // }
         if (body?.event === "subscription.charged") {
           const subscription_id = payload?.subscription?.entity?.id;
           const payment_id = payload?.payment?.entity?.id;
@@ -274,7 +249,8 @@ class PaymentService {
           const plan_id = payload?.subscription?.entity?.plan_id;
           const quantity = payload?.subscription?.entity?.quantity;
 
-          const [plan, order_management] = await Promise.all([
+          const [agency_detail, plan, order_management] = await Promise.all([
+            Authentication.findOne({ subscription_id }).lean(),
             SubscriptionPlan.findOne({ plan_id }).lean(),
             Order_Management.findOne({
               subscription_id,
@@ -282,22 +258,22 @@ class PaymentService {
             }).lean(),
           ]);
           if (!order_management) {
-            await PaymentHistory.create({
-              agency_id: order_management?.agency_id,
-              amount,
-              subscription_id,
-              currency,
-              payment_id,
-              plan_id,
-              quantity,
-            });
-            await Authentication.findByIdAndUpdate(
-              order_management?.agency_id,
-              {
+            await Promise.all([
+              PaymentHistory.create({
+                agency_id: agency_detail?._id,
+                amount,
+                subscription_id,
+                currency,
+                payment_id,
+                plan_id,
+                quantity,
+              }),
+              Authentication.findByIdAndUpdate(order_management?.agency_id, {
                 purchased_plan: plan?._id,
                 subscribe_date: moment().format("YYYY-MM-DD").toString(),
-              }
-            );
+              }),
+            ]);
+
             return;
           }
 
