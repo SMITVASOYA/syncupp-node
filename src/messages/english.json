@@ -411,7 +411,8 @@
     "invitationExpired": "Your invitation has been expired.",
     "verified": "You have verified successfully.",
     "teamMemeberExist": "This member is already exist in tis workspace.",
-    "workspacePaymentPending":"Payment for this workspace is pending. Please change the workspace."
+    "workspacePaymentPending":"Payment for this workspace is pending. Please change the workspace.",
+    "notAssignToWorkspace":"You are not assinged to any workspaces."
   },
 
   "section": {

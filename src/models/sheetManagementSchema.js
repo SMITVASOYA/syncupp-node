@@ -25,6 +25,7 @@ const sheetManagementSchema = new mongoose.Schema(
         workspace: { type: mongoose.Schema.ObjectId, ref: "workspaces" },
       },
     ],
+    is_deleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

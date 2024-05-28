@@ -79,7 +79,10 @@ class ClientService {
           Role_Master.findOne({ name: "client" }).lean(),
           Configuration.findOne({}).lean(),
           SubscriptionPlan.findById(user?.purchased_plan).lean(),
-          SheetManagement.findOne({ user_id: user?._id }).lean(),
+          SheetManagement.findOne({
+            user_id: user?._id,
+            is_deleted: false,
+          }).lean(),
         ]);
 
       if (
@@ -556,12 +559,9 @@ class ClientService {
   // Get the client ist for the Agency
   clientList = async (payload, user) => {
     try {
-      console.log(user);
-
       if (!payload?.pagination) {
         return await this.clientListWithoutPagination(user);
       }
-      console.log(user);
       const pagination = paginationObject(payload);
 
       let search_obj = {},

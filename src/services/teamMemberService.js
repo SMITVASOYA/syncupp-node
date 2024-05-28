@@ -41,6 +41,8 @@ const paymentService = require("../services/paymentService");
 const Workspace = require("../models/workspaceSchema");
 const PaymentService = new paymentService();
 const mongoose = require("mongoose");
+const Activity_Status_Master = require("../models/masters/activityStatusMasterSchema");
+const Task = require("../models/taskSchema");
 
 class TeamMemberService {
   // removed the code to create the team member for the agency
@@ -104,7 +106,10 @@ class TeamMemberService {
         Role_Master.findOne({ name: "team_agency" }).lean(),
         Configuration.findOne({}).lean(),
         SubscriptionPlan.findById(user?.purchased_plan).lean(),
-        SheetManagement.findOne({ user_id: user?._id }).lean(),
+        SheetManagement.findOne({
+          user_id: user?._id,
+          is_deleted: false,
+        }).lean(),
       ]);
 
       if (
@@ -952,9 +957,15 @@ class TeamMemberService {
     try {
       const { teamMemberIds } = payload;
       // pending to implement when we remove the team members and the tasks are assigned and pending set
-      const [workspace, sheet] = await Promise.all([
+      const [workspace, sheet, activity_status] = await Promise.all([
         Workspace.findById(user?.workspace).lean(),
-        SheetManagement.findOne({ user_id: user?._id }).lean(),
+        SheetManagement.findOne({
+          user_id: user?._id,
+          is_deleted: false,
+        }).lean(),
+        Activity_Status_Master.findOne({ name: "pending" })
+          .select("_id")
+          .lean(),
       ]);
 
       if (!sheet) return throwError(returnMessage("default", "default"));
@@ -976,30 +987,44 @@ class TeamMemberService {
             statusCode.forbidden
           );
       }
+
+      const task_assigned = await Task.findOne({
+        workspace_id: user.workspace,
+        assign_to: { $in: teamMemberIds },
+        activity_status: activity_status?._id,
+        is_deleted: false,
+      }).lean();
+
+      if (task_assigned && !payload?.force_fully_remove)
+        return { force_fully_remove: true };
       // remove the member from the workspace
-      await Workspace.findOneAndUpdate(
-        { _id: user.workspace, "members.user_id": { $in: teamMemberIds } },
-        {
-          $set: {
-            "members.$.status": "deleted",
-            "members.$.invitation_token": undefined,
+
+      if ((task_assigned && payload?.force_fully_remove) || !task_assigned) {
+        // remove the member from the workspace
+        await Workspace.findOneAndUpdate(
+          { _id: user.workspace, "members.user_id": { $in: teamMemberIds } },
+          {
+            $set: {
+              "members.$.status": "deleted",
+              "members.$.invitation_token": undefined,
+            },
           },
-        },
-        { new: true }
-      );
+          { new: true }
+        );
 
-      const updated_sheet = sheet?.occupied_sheets?.filter(
-        (sh) => !teamMemberIds?.includes(sh?.user_id?.toString())
-      );
+        const updated_sheet = sheet?.occupied_sheets?.filter(
+          (sh) => !teamMemberIds?.includes(sh?.user_id?.toString())
+        );
 
-      SheetManagement.findByIdAndUpdate(
-        sheet?._id,
-        {
-          occupied_sheets: updated_sheet,
-          total_sheets: updated_sheet?.length + 1,
-        },
-        { new: true }
-      );
+        SheetManagement.findByIdAndUpdate(
+          sheet?._id,
+          {
+            occupied_sheets: updated_sheet,
+            total_sheets: updated_sheet?.length + 1,
+          },
+          { new: true }
+        );
+      }
       return;
     } catch (error) {
       logger.error(
@@ -1020,9 +1045,15 @@ class TeamMemberService {
         (member) => member?.user_id?.toString() === user?._id?.toString()
       );
 
-      const [role, sheet] = await Promise.all([
+      const [role, sheet, activity_status] = await Promise.all([
         Role_Master.findById(member_details?.role).lean(),
-        SheetManagement.findOne({ user_id: workspace?.created_by }).lean(),
+        SheetManagement.findOne({
+          user_id: workspace?.created_by,
+          is_deleted: false,
+        }).lean(),
+        Activity_Status_Master.findOne({ name: "pending" })
+          .select("_id")
+          .lean(),
       ]);
       if (role?.name !== "client")
         return throwError(
@@ -1031,39 +1062,50 @@ class TeamMemberService {
         );
       if (!sheet) return throwError(returnMessage("default", "default"));
 
+      const task_assigned = await Task.findOne({
+        workspace_id: user.workspace,
+        assign_to: { $in: teamMemberIds },
+        activity_status: activity_status?._id,
+        is_deleted: false,
+      }).lean();
+
+      if (task_assigned && !payload?.force_fully_remove)
+        return { force_fully_remove: true };
       // remove the member from the workspace
-      await Workspace.findOneAndUpdate(
-        {
-          _id: user.workspace,
-          "members.user_id": { $in: teamMemberIds },
-          "members.client_id": user?._id,
-        },
-        {
-          $set: {
-            "members.$.status": "deleted",
-            "members.$.invitation_token": undefined,
+
+      if ((task_assigned && payload?.force_fully_remove) || !task_assigned) {
+        await Workspace.findOneAndUpdate(
+          {
+            _id: user.workspace,
+            "members.user_id": { $in: teamMemberIds },
+            "members.client_id": user?._id,
           },
-        },
-        { new: true }
-      );
+          {
+            $set: {
+              "members.$.status": "deleted",
+              "members.$.invitation_token": undefined,
+            },
+          },
+          { new: true }
+        );
 
-      const updated_members_id = workspace?.members?.map((member) => {
-        if (member?.client_id?.toString() === user?._id?.toString())
-          return member?._id;
-      });
-      const updated_sheet = sheet?.occupied_sheets?.filter(
-        (sh) => !updated_members_id?.includes(sh?.user_id?.toString())
-      );
+        const updated_members_id = workspace?.members?.map((member) => {
+          if (member?.client_id?.toString() === user?._id?.toString())
+            return member?._id;
+        });
+        const updated_sheet = sheet?.occupied_sheets?.filter(
+          (sh) => !updated_members_id?.includes(sh?.user_id?.toString())
+        );
 
-      SheetManagement.findByIdAndUpdate(
-        sheet?._id,
-        {
-          occupied_sheets: updated_sheet,
-          total_sheets: updated_sheet?.length + 1,
-        },
-        { new: true }
-      );
-
+        SheetManagement.findByIdAndUpdate(
+          sheet?._id,
+          {
+            occupied_sheets: updated_sheet,
+            total_sheets: updated_sheet?.length + 1,
+          },
+          { new: true }
+        );
+      }
       return;
     } catch (error) {
       logger.error(
@@ -1927,7 +1969,7 @@ class TeamMemberService {
         Authentication.findOne({ reference_id: user_id })
           .populate("role", "name")
           .lean(),
-        SheetManagement.findOne({ agency_id }).lean(),
+        SheetManagement.findOne({ agency_id, is_deleted: false }).lean(),
       ]);
 
       if (user_details?.role?.name === "client") {
@@ -2101,7 +2143,10 @@ class TeamMemberService {
           }).lean(),
           Authentication.findById(member_id).lean(),
           Configuration.findOne().lean(),
-          SheetManagement.findOne({ user_id: user?._id }).lean(),
+          SheetManagement.findOne({
+            user_id: user?._id,
+            is_deleted: false,
+          }).lean(),
           Role_Master.findOne({ name: "team_client" }).select("_id").lean(),
         ]);
 

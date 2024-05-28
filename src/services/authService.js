@@ -42,6 +42,7 @@ const PaymentService = new paymentService();
 const WorkspaceService = require("../services/workspaceService");
 const Workspace = require("../models/workspaceSchema");
 const Team_Role_Master = require("../models/masters/teamRoleSchema");
+const SubscriptionPlan = require("../models/subscriptionplanSchema");
 const workspaceService = new WorkspaceService();
 
 class AuthService {
@@ -54,6 +55,7 @@ class AuthService {
 
       let workspace = await Workspace.findOne({
         created_by: payload?._id,
+        is_deleted: false,
       }).lean();
       if (!workspace) {
         workspace = await Workspace.findOne({
@@ -85,7 +87,7 @@ class AuthService {
       );
 
       if (payload?.purchased_plan) {
-        payload.purchased_plan = await SheetManagement.findById(
+        payload.purchased_plan = await SubscriptionPlan.findById(
           payload.purchased_plan
         ).lean();
       }

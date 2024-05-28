@@ -155,8 +155,13 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
       }).lean(),
     ]);
 
-    if (!user || !workspace)
-      return throwError(returnMessage("auth", "unAuthorized"), 401);
+    if (!user) return throwError(returnMessage("auth", "unAuthorized"), 401);
+
+    if (!workspace)
+      return throwError(
+        returnMessage("workspace", "notAssignToWorkspace"),
+        401
+      );
 
     const req_paths = [
       "/create-subscription",
@@ -170,7 +175,6 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
         member?.user_id?.toString() === workspace?.created_by?.toString() &&
         member?.status === "payment_pending"
     );
-    console.log(req.path);
     if (
       workspace?.created_by?.toString() !== user?._id?.toString() &&
       workspace_creator?.status === "payment_pending" &&

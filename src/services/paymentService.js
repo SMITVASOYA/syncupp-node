@@ -8,7 +8,6 @@ const Team_Agency = require("../models/teamAgencySchema");
 const Team_Client = require("../models/teamClientSchema");
 const PaymentHistory = require("../models/paymentHistorySchema");
 const SheetManagement = require("../models/sheetManagementSchema");
-const Activity = require("../models/activitySchema");
 const Activity_Status = require("../models/masters/activityStatusMasterSchema");
 const {
   returnMessage,
@@ -49,6 +48,8 @@ const Payout = require("../models/payoutSchema");
 const Notification = require("../models/notificationSchema");
 const Workspace = require("../models/workspaceSchema");
 const Task = require("../models/taskSchema");
+const Chat = require("../models/chatSchema");
+const Order_Management = require("../models/orderManagementSchema");
 class PaymentService {
   constructor() {
     this.razorpayApi = axios.create({
@@ -131,7 +132,10 @@ class PaymentService {
 
       const [plan, sheets] = await Promise.all([
         SubscriptionPlan.findById(payload?.plan_id).lean(),
-        SheetManagement.findOne({ user_id: user?._id }).lean(),
+        SheetManagement.findOne({
+          user_id: user?._id,
+          is_deleted: false,
+        }).lean(),
       ]);
 
       if (!plan || !plan?.active)
@@ -174,6 +178,19 @@ class PaymentService {
         { subscription_id: subscription?.id },
         { new: true }
       );
+
+      await Order_Management.create({
+        subscription_id: subscription?.id,
+        amount:
+          plan?.plan_type === "unlimited"
+            ? plan?.amount * 1
+            : plan?.amount * (sheets?.total_sheets || 1),
+        currency: plan?.currency,
+        agency_id: user?._id,
+        email: user?.email,
+        contact_number: user?.contact_number,
+        workspace_id: user?.workspace_detail?._id,
+      });
 
       return {
         payment_id: subscription?.id,
@@ -257,25 +274,27 @@ class PaymentService {
           const plan_id = payload?.subscription?.entity?.plan_id;
           const quantity = payload?.subscription?.entity?.quantity;
 
-          const [user_detail, plan] = await Promise.all([
-            Authentication.findOne({ subscription_id }).lean(),
+          const [plan, order_management] = await Promise.all([
             SubscriptionPlan.findOne({ plan_id }).lean(),
+            Order_Management.findOne({
+              subscription_id,
+              is_deleted: false,
+            }).lean(),
           ]);
-
-          // removed as of now as this has no meaning
-          /* if (!agency_details) return;
-          let first_time = false;
-          if (!payment_history) first_time = true; */
+          if (!order_management) return;
 
           if (plan?.plan_type === "unlimited") {
-            await SheetManagement.findByIdAndUpdate(user_detail?._id, {
-              total_sheets: plan?.seat,
-            });
+            await SheetManagement.findByIdAndUpdate(
+              order_management?.agency_id,
+              {
+                total_sheets: plan?.seat,
+              }
+            );
           }
 
           await Promise.all([
             PaymentHistory.create({
-              agency_id: user_detail?._id,
+              agency_id: order_management?.agency_id,
               amount,
               subscription_id,
               currency,
@@ -283,12 +302,42 @@ class PaymentService {
               plan_id,
               quantity,
             }),
-            Authentication.findByIdAndUpdate(user_detail?._id, {
+            Authentication.findByIdAndUpdate(order_management?.agency_id, {
               purchased_plan: plan?._id,
               subscribe_date: moment().format("YYYY-MM-DD").toString(),
             }),
+            Workspace.findOneAndUpdate(
+              {
+                _id: order_management?.workspace_id,
+                created_by: order_management?.agency_id,
+                "members.user_id": order_management?.agency_id,
+                is_deleted: false,
+              },
+              {
+                $set: {
+                  "members.$.status": "confirmed",
+                  trial_end_date: undefined,
+                },
+              }
+            ),
+            Order_Management.findByIdAndUpdate(order_management?._id, {
+              is_deleted: true,
+            }),
           ]);
-
+          const sheets = await SheetManagement.findOne({
+            user_id: order_management?.agency_id,
+            is_deleted: false,
+          }).lean();
+          if (!sheets)
+            await SheetManagement.findOneAndUpdate(
+              { user_id: order_management?.agency_id },
+              {
+                user_id: order_management?.agency_id,
+                total_sheets: 1,
+                occupied_sheets: [],
+              },
+              { upsert: true }
+            );
           return;
         } else if (body?.event === "subscription.activated") {
           const subscription_id = payload?.subscription?.entity?.id;
@@ -332,12 +381,10 @@ class PaymentService {
             referred_to: agency_details?._id,
             status: "active",
           }).lean();
-          const [affiliateCheck, crmAffiliate, configuration] =
-            await Promise.all([
-              Affiliate.findById(affilate_detail?.referred_by).lean(),
-              Authentication.findById(affilate_detail?.referred_by).lean(),
-              Configuration.findOne().lean(),
-            ]);
+          const [affiliateCheck, crmAffiliate] = await Promise.all([
+            Affiliate.findById(affilate_detail?.referred_by).lean(),
+            Authentication.findById(affilate_detail?.referred_by).lean(),
+          ]);
 
           if (affiliateCheck) {
             await Affiliate.findOneAndUpdate(
@@ -383,6 +430,105 @@ class PaymentService {
               subscription_halted: moment.utc().startOf("day"),
             });
           }
+
+          return;
+        } else if (body?.event === "order.paid") {
+          const order_id = payload?.order?.entity?.id;
+          const payment_id = payload?.payment?.entity?.id;
+          const currency = payload?.payment?.entity?.currency;
+          const amount = payload?.payment?.entity?.amount;
+          const order_management = await Order_Management.findOne({
+            order_id,
+            is_deleted: false,
+          }).lean();
+          if (!order_management) return;
+          const [
+            agency_details,
+            user_details,
+            sheets,
+            workspace_exist,
+            configuration,
+          ] = await Promise.all([
+            Authentication.findById(order_management?.agency_id).lean(),
+            Authentication.findById(order_management?.member_id).lean(),
+            SheetManagement.findOne({
+              user_id: order_management?.agency_id,
+              is_deleted: false,
+            }).lean(),
+            Workspace.findById(order_management?.workspace_id).lean(),
+            Configuration.findOne().lean(),
+          ]);
+          const member_detail = workspace_exist?.members?.find(
+            (member) =>
+              member?.user_id?.toString() === user_details?._id?.toString()
+          );
+          let invitation_token = crypto.randomBytes(16).toString("hex");
+          const link = `${process.env.REACT_APP_URL}/verify?workspace=${
+            workspace_exist?._id
+          }&email=${encodeURIComponent(
+            user_details?.email
+          )}&token=${invitation_token}&workspace_name=${
+            workspace_exist?.name
+          }&first_name=${user_details?.first_name}&last_name=${
+            user_details?.last_name
+          }`;
+
+          const email_template = templateMaker("teamInvitation.html", {
+            REACT_APP_URL: process.env.REACT_APP_URL,
+            SERVER_URL: process.env.SERVER_URL,
+            username:
+              capitalizeFirstLetter(user_details?.first_name) +
+              " " +
+              capitalizeFirstLetter(user_details?.last_name),
+            invitation_text: `You are invited to the ${
+              workspace_exist?.name
+            } workspace by ${
+              capitalizeFirstLetter(agency_details?.first_name) +
+              " " +
+              capitalizeFirstLetter(agency_details?.last_name)
+            }. Click on the below link to join the workspace.`,
+            link: link,
+            instagram: configuration?.urls?.instagram,
+            facebook: configuration?.urls?.facebook,
+            privacy_policy: configuration?.urls?.privacy_policy,
+          });
+
+          sendEmail({
+            email: user_details?.email,
+            subject: returnMessage("auth", "invitationEmailSubject"),
+            message: email_template,
+          });
+
+          await Promise.all([
+            PaymentHistory.create({
+              agency_id: order_management?.agency_id,
+              member_id: user_details?._id,
+              amount,
+              order_id,
+              currency,
+              role: member_detail?.role,
+              payment_id,
+            }),
+            Workspace.findOneAndUpdate(
+              {
+                _id: workspace_exist?._id,
+                "members.user_id": user_details?._id,
+              },
+              {
+                $set: {
+                  "members.$.status": "confirm_pending",
+                  "mwmbers.$.invitation_token": invitation_token,
+                },
+              }
+            ),
+            this.updateSubscription(
+              order_management?.agency_id,
+              sheets?.total_sheets
+            ),
+            Order_Management.findByIdAndUpdate(order_management?._id, {
+              is_deleted: true,
+            }),
+          ]);
 
           return;
         }
@@ -641,6 +787,7 @@ class PaymentService {
       if (plan?.plan_type === "unlimited") {
         const sheets = await SheetManagement.findOne({
           user_id: user?._id,
+          is_deleted: false,
         }).lean();
 
         // this is used if the users has selected unlimited plan wants to add the user even after the occupied
@@ -691,6 +838,18 @@ class PaymentService {
       });
 
       const order = data;
+
+      await Order_Management.create({
+        order_id: order?.id,
+        amount: prorate_value,
+        currency: plan?.currency,
+        member_id: payload?.user_id,
+        agency_id: user?._id,
+        email: user?.email,
+        contact_number: user?.contact_number,
+        workspace_id: user?.workspace_detail?._id,
+      });
+
       return {
         payment_id: order?.id,
         amount: prorate_value,
@@ -839,21 +998,6 @@ class PaymentService {
           { new: true }
         );
 
-        await Workspace.findOneAndUpdate(
-          {
-            _id: workspace_id,
-            created_by: agency_id,
-            "members.user_id": agency_id,
-            is_deleted: false,
-          },
-          {
-            $set: {
-              "members.$.status": "confirmed",
-              trial_end_date: undefined,
-            },
-          }
-        );
-
         // commenting to create the payment history by the webhook
         // await PaymentHistory.create({
         //   agency_id,
@@ -863,8 +1007,10 @@ class PaymentService {
         //   payment_id: razorpay_payment_id,
         // });
 
-        const sheets = await SheetManagement.findOne({
+        // removed because, handled in the Webhook events
+        /*  const sheets = await SheetManagement.findOne({
           user_id: agency_id,
+          is_deleted: false,
         }).lean();
         if (!sheets)
           await SheetManagement.findOneAndUpdate(
@@ -875,7 +1021,7 @@ class PaymentService {
               occupied_sheets: [],
             },
             { upsert: true }
-          );
+          ); */
         // updated_agency_detail = updated_agency_detail.toJSON();
         delete updated_agency_detail?.password;
         delete updated_agency_detail?.is_google_signup;
@@ -887,7 +1033,9 @@ class PaymentService {
           data: { user: updated_agency_detail },
         };
       } else if (payload?.agency_id && payload?.user_id) {
-        const [
+        // removed because, handled in the Webhook events
+
+        /* const [
           agency_details,
           user_details,
           sheets,
@@ -896,7 +1044,10 @@ class PaymentService {
         ] = await Promise.all([
           Authentication.findById(agency_id).lean(),
           Authentication.findById(payload?.user_id).lean(),
-          SheetManagement.findOne({ user_id: agency_id }).lean(),
+          SheetManagement.findOne({
+            user_id: agency_id,
+            is_deleted: false,
+          }).lean(),
           Workspace.findById(workspace_id).lean(),
           Configuration.findOne().lean(),
         ]);
@@ -964,7 +1115,7 @@ class PaymentService {
             },
           }
         );
-        await this.updateSubscription(agency_id, sheets?.total_sheets);
+        await this.updateSubscription(agency_id, sheets?.total_sheets); */
 
         return { success: true };
       }
@@ -1100,7 +1251,7 @@ class PaymentService {
       // aggragate reference from the https://mongoplayground.net/p/TqFafFxrncM
 
       const aggregate = [
-        { $match: { user_id: user?._id } },
+        { $match: { user_id: user?._id, is_deleted: false } },
         {
           $unwind: {
             path: "$occupied_sheets",
@@ -1283,7 +1434,10 @@ class PaymentService {
         );
 
       const [sheets, activity_status] = await Promise.all([
-        SheetManagement.findOne({ user_id: user?._id }).lean(),
+        SheetManagement.findOne({
+          user_id: user?._id,
+          is_deleted: false,
+        }).lean(),
         Activity_Status.findOne({ name: "pending" }).select("_id").lean(),
       ]);
 
@@ -1381,7 +1535,10 @@ class PaymentService {
   cancelSubscription = async (user) => {
     try {
       const [sheets, plan] = await Promise.all([
-        SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
+        SheetManagement.findOne({
+          user_id: user?._id,
+          is_deleted: false,
+        }).lean(),
         SubscriptionPlan.findById(user?.purchased_plan).lean(),
       ]);
 
@@ -1404,7 +1561,7 @@ class PaymentService {
       //   })
       // );
 
-      if (user?.status !== "free_trial" && user?.subscription_id) {
+      if (!user?.workspace_detail?.trial_end_date && user?.subscription_id) {
         await this.razorpayApi.patch(
           `/subscriptions/${user?.subscription_id}`,
           {
@@ -1431,7 +1588,10 @@ class PaymentService {
       }
       /* Note:   We have not added the gamification points as of now */
       const [sheets_detail, earned_total] = await Promise.all([
-        SheetManagement.findOne({ user_id: agency?._id }).lean(),
+        SheetManagement.findOne({
+          user_id: agency?._id,
+          is_deleted: false,
+        }).lean(),
         this.calculateTotalReferralPoints(agency),
       ]);
 
@@ -1585,7 +1745,10 @@ class PaymentService {
           })
             .populate("role", "name")
             .lean(),
-          SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
+          SheetManagement.findOne({
+            agency_id: user?._id,
+            is_deleted: false,
+          }).lean(),
         ]);
 
         if (!sheets) return { success: false };
@@ -1773,10 +1936,10 @@ class PaymentService {
   paymentScopes = async (agency) => {
     try {
       const [plan, subscription_detail, config, sheet] = await Promise.all([
-        SubscriptionPlan.findOne({ active: true }).lean(),
+        SubscriptionPlan.findById(agency?.purchased_plan).lean(),
         this.subscripionDetail(agency?.subscription_id),
         Configuration.findOne().lean(),
-        SheetManagement.findOne({ agency_id: agency?.reference_id }),
+        SheetManagement.findOne({ user_id: agency?._id, is_deleted: false }),
       ]);
 
       let payable_amount;
@@ -1835,7 +1998,10 @@ class PaymentService {
           })
             .populate("role", "name")
             .lean(),
-          SheetManagement.findOne({ agency_id: user?.reference_id }).lean(),
+          SheetManagement.findOne({
+            user_id: user?._id,
+            is_deleted: false,
+          }).lean(),
         ]);
 
         if (
@@ -2154,7 +2320,6 @@ class PaymentService {
             cancel_at_cycle_end: 0,
           }
         );
-
         if (!data || data?.status !== "cancelled")
           return throwError(returnMessage("default", "default"));
       }
@@ -2170,14 +2335,25 @@ class PaymentService {
   deactivateAccount = async (agency) => {
     try {
       await Promise.all([
-        Agreement.updateMany({ agency_id: agency?._id }, { is_deleted: true }),
-        Event.updateMany(
-          { agency_id: agency?.reference_id },
-          { is_deleted: true }
+        Agreement.updateMany(
+          { agency_id: agency?._id, workspace_id: agency?.workspace },
+          { $set: { is_deleted: true } }
         ),
         Invoice.updateMany(
-          { agency_id: agency?.reference_id },
-          { is_deleted: true }
+          { agency_id: agency?._id, workspace_id: agency?.workspace },
+          { $set: { is_deleted: true } }
+        ),
+        Workspace.updateMany(
+          { created_by: agency?._id, _id: agency?.workspace },
+          { $set: { is_deleted: true } }
+        ),
+        SheetManagement.updateMany(
+          { user_id: agency?._id },
+          { $set: { is_deleted: true } }
+        ),
+        Task.updateMany(
+          { workspace_id: agency?.workspace },
+          { $set: { is_deleted: true } }
         ),
         this.glideCampaignContactDelete(agency?.glide_campaign_id),
       ]);
@@ -2417,7 +2593,10 @@ class PaymentService {
     try {
       const [plan_detail, sheets] = await Promise.all([
         SubscriptionPlan.findById(payload?.plan_id).lean(),
-        SheetManagement.findOne({ user_id: agency?._id }).lean(),
+        SheetManagement.findOne({
+          user_id: agency?._id,
+          is_deleted: false,
+        }).lean(),
       ]);
 
       if (!plan_detail || !plan_detail.active)

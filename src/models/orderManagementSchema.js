@@ -8,6 +8,7 @@ const { crm_connection } = require("../config/connection");
 const orderManagementSchema = new mongoose.Schema(
   {
     subscription_id: { type: String },
+    order_id: { type: String },
     amount: { type: Number },
     currency: { type: String },
     agency_id: {
@@ -17,14 +18,13 @@ const orderManagementSchema = new mongoose.Schema(
     },
     email: { type: String },
     contact_number: { type: String },
-    workspace: { type: mongoose.Schema.Types.ObjectId, ref: "workspaces" },
-    order_id: { type: String },
+    workspace_id: { type: mongoose.Schema.Types.ObjectId, ref: "workspaces" },
     member_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "authentication",
-      required: true,
     },
     is_deleted: { type: Boolean, default: false },
+    payment_id: { type: String },
   },
   { timestamps: true }
 );
@@ -33,4 +33,7 @@ const Order_Management = crm_connection.model(
   "ordermanagemnt",
   orderManagementSchema
 );
+
+orderManagementSchema.index({ subscription_id: 1 });
+orderManagementSchema.index({ order_id: 1 });
 module.exports = Order_Management;
