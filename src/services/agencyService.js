@@ -244,8 +244,8 @@ class AgencyService {
     }
   };
 
-  // Update Agency profile
-  updateAgencyProfile = async (payload, user_id, reference_id, image) => {
+  // Update profile
+  updateProfile = async (payload, user, image) => {
     try {
       let {
         first_name,
@@ -260,9 +260,10 @@ class AgencyService {
         state,
         country,
         pincode,
+        bio,
       } = payload;
 
-      validateRequestFields(payload, ["contact_number"]);
+      let profile_image;
 
       if (
         country == null ||
@@ -292,32 +293,27 @@ class AgencyService {
         company_website == undefined
       )
         company_website = null;
-      const existingImage = await Authentication.findById(user_id).lean();
+
+      const existingImage = user?.profile_image;
       let imagePath = false;
+
       if (image) {
-        imagePath = "uploads/" + image.filename;
+        imagePath = "uploads/" + image?.filename;
+        profile_image = image?.filename;
       } else if (
         image === "" ||
         (image === undefined && !payload?.profile_image)
       ) {
         imagePath = "";
         existingImage &&
-          fs.unlink(`./src/public/${existingImage.profile_image}`, (err) => {
+          fs.unlink(`./src/public/${existingImage}`, (err) => {
             if (err) {
               logger.error(`Error while unlinking the documents: ${err}`);
             }
           });
       }
-      const authData = {
-        first_name,
-        last_name,
-        contact_number,
-        name:
-          capitalizeFirstLetter(first_name) +
-          " " +
-          capitalizeFirstLetter(last_name),
-      };
-      const agencyData = {
+
+      await Authentication.findByIdAndUpdate(user?._id, {
         company_name,
         company_website,
         no_of_people,
@@ -327,31 +323,12 @@ class AgencyService {
         state,
         country,
         pincode,
-      };
-
-      await Promise.all([
-        Authentication.updateOne(
-          { _id: user_id },
-          {
-            $set: authData,
-            ...((imagePath || imagePath === "") && {
-              profile_image: imagePath,
-            }),
-          },
-          { new: true }
-        ),
-        Agency.updateOne(
-          { _id: reference_id },
-          {
-            $set: agencyData,
-          },
-          { new: true }
-        ),
-        this.glideCampaignContactUpdate(
-          existingImage?.glide_campaign_id,
-          payload
-        ),
-      ]);
+        first_name,
+        last_name,
+        contact_number,
+        profile_image,
+        bio,
+      });
 
       return;
     } catch (error) {

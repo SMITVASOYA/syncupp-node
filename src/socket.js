@@ -1063,10 +1063,7 @@ exports.socket_connection = (http_server) => {
         const message = await Chat.aggregate([
           { $match: { _id: new mongoose.Types.ObjectId(chat_id) } },
           {
-            $unwind: {
-              path: "$reactions",
-              preserveNullAndEmptyArrays: true,
-            },
+            $unwind: { path: "$reactions", preserveNullAndEmptyArrays: true },
           },
           {
             $lookup: {
@@ -1110,7 +1107,6 @@ exports.socket_connection = (http_server) => {
               from_user: 1,
             },
           },
-
           {
             $group: {
               _id: "$_id",
@@ -1127,6 +1123,10 @@ exports.socket_connection = (http_server) => {
             },
           },
         ]);
+
+        message[0].reactions = message[0]?.reactions?.filter(
+          (item) => Object.keys(item)?.length !== 0
+        );
 
         // Broadcast the new reaction to other users in the chat room
         const sender = workspace_id?.toString() + "." + from_user?.toString();
@@ -1235,6 +1235,10 @@ exports.socket_connection = (http_server) => {
             },
           },
         ]);
+
+        message_obj[0].reactions = message_obj[0]?.reactions?.filter(
+          (item) => Object.keys(item)?.length !== 0
+        );
 
         const group_sender =
           workspace_id?.toString() + "." + group_id?.toString();

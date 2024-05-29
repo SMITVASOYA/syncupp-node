@@ -48,6 +48,7 @@ const authenticationSchema = new mongoose.Schema(
     address: { type: String },
     profession_role: { type: String },
     gst: { type: String },
+    bio: { type: String },
   },
   { timestamps: true }
 );

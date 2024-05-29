@@ -1356,6 +1356,10 @@ class PaymentService {
         role: "agency",
       });
 
+      occupied_sheets.items = occupied_sheets?.items?.filter(
+        (item) => Object.keys(item)?.length !== 0
+      );
+
       for (let i = 0; i < occupied_sheets.total_sheets; i++) {
         if (occupied_sheets?.items[i] != undefined) {
           occupied_sheets.items[i] = {
