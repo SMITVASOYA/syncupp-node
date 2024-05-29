@@ -48,6 +48,7 @@ const workspaceSchema = new mongoose.Schema(
       },
     ],
     trial_end_date: { type: Date },
+    pause_subscription_date: { type: Date },
     is_deleted: { type: Boolean, default: false },
   },
   { timestamps: true }

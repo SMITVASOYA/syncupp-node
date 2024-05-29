@@ -181,7 +181,13 @@ class ClientService {
           occupied_sheets: occupied_sheets,
           total_sheets: sheets?.total_sheets + 1,
         });
-        return;
+        return {
+          message:
+            sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
+            workspace_exist?.trial_end_date
+              ? returnMessage("workspace", "invitationSend")
+              : returnMessage("agency", "clientCreated"),
+        };
       } else {
         validateRequestFields(payload, [
           "first_name",
@@ -291,7 +297,13 @@ class ClientService {
           occupied_sheets: occupied_sheets,
           total_sheets: sheets?.total_sheets + 1,
         });
-        return;
+        return {
+          message:
+            sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
+            workspace_exist?.trial_end_date
+              ? returnMessage("workspace", "invitationSend")
+              : returnMessage("agency", "clientCreated"),
+        };
       }
     } catch (error) {
       console.log(error);

@@ -13,6 +13,7 @@ const {
   PendingPayout,
   createPayout,
   paymentDownload,
+  extendTrialPeriod,
 } = require("../controllers/adminController");
 const validatorFunc = require("../utils/validatorFunction.helper");
 const agencyController = require("../controllers/agencyController");
@@ -148,5 +149,8 @@ adminRoute.post(
 );
 
 // ------------------------ Notification ------------------------
+
+// extend the trial period of the user
+adminRoute.patch("/extend-trial/:agencyId", extendTrialPeriod);
 
 module.exports = adminRoute;

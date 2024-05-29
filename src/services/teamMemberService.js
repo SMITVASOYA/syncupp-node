@@ -209,7 +209,13 @@ class TeamMemberService {
           occupied_sheets: occupied_sheets,
           total_sheets: sheets?.total_sheets + 1,
         });
-        return;
+        return {
+          message:
+            sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
+            workspace_exist?.trial_end_date
+              ? returnMessage("workspace", "invitationSend")
+              : returnMessage("teamMember", "teamMemberCreated"),
+        };
       } else {
         if (contact_number) {
           const unique_contact = await Authentication.findOne({
@@ -299,7 +305,13 @@ class TeamMemberService {
           occupied_sheets: occupied_sheets,
           total_sheets: sheets?.total_sheets + 1,
         });
-        return;
+        return {
+          message:
+            sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
+            workspace_exist?.trial_end_date
+              ? returnMessage("workspace", "invitationSend")
+              : returnMessage("teamMember", "teamMemberCreated"),
+        };
       }
     } catch (error) {
       logger.error(`Error While adding the Team member by agency: ${error}`);

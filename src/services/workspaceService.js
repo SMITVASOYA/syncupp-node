@@ -143,6 +143,36 @@ class WorkspaceService {
       return throwError(error?.message, error?.statusCode);
     }
   };
+
+  updateTrialEndDate = async (payload, agency_id) => {
+    try {
+      const { trial_end_date } = payload;
+      const today = moment.utc().startOf("day");
+      const trial_extend_date = moment
+        .utc(trial_end_date, "DD-MM-YYYY")
+        .startOf("day");
+      if (trial_extend_date.isSameOrAfter(today))
+        return throwError(returnMessage("workspace", "invalidTrailExtendDate"));
+
+      const workspace = await Workspace.findOne({
+        created_by: agency_id,
+        free_trial_end: { $exists: true },
+        is_deleted: false,
+      }).lean();
+
+      if (!workspace)
+        return throwError(returnMessage("workspace", "workspaceNotFound"), 404);
+
+      await Workspace.findByIdAndUpdate(workspace?._id, {
+        trial_end_date: trial_extend_date,
+      });
+
+      return;
+    } catch (error) {
+      logger.error(`Error while updating the trial end date: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
 }
 
 module.exports = WorkspaceService;

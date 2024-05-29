@@ -20,6 +20,7 @@ const Agreement = require("../models/agreementSchema");
 const paymentService = new PaymentService();
 const fs = require("fs");
 const axios = require("axios");
+const Workspace = require("../models/workspaceSchema");
 // Register Agency
 class AgencyService {
   agencyRegistration = async (payload) => {
@@ -34,19 +35,15 @@ class AgencyService {
   // this will only avilabe for the admin panel
   allAgencies = async (payload) => {
     try {
-      const role = await Role_Master.findOne({ name: "agency" })
-        .select("_id")
-        .lean();
       const pagination = paginationObject(payload);
-      const query_obj = { role: role?._id, is_deleted: false };
+      const query_obj = { is_deleted: false };
 
       if (payload?.filter) {
         const { status, industry, no_of_people, date } = payload?.filter;
         if (status && status !== "") query_obj["status"] = status;
-        if (industry && industry !== "")
-          query_obj["reference_id.industry"] = industry;
+        if (industry && industry !== "") query_obj["industry"] = industry;
         if (no_of_people && no_of_people !== "")
-          query_obj["reference_id.no_of_people"] = no_of_people;
+          query_obj["no_of_people"] = no_of_people;
         if (date && date !== "") {
           const start_date = moment(date?.start_date, "DD-MM-YYYY").startOf(
             "day"
@@ -75,25 +72,25 @@ class AgencyService {
             contact_number: { $regex: payload.search, $options: "i" },
           },
           {
-            "reference_id.company_name": {
+            company_name: {
               $regex: payload.search,
               $options: "i",
             },
           },
           {
-            "reference_id.company_website": {
+            company_website: {
               $regex: payload.search,
               $options: "i",
             },
           },
           {
-            "reference_id.no_of_people": {
+            no_of_people: {
               $regex: payload.search,
               $options: "i",
             },
           },
           {
-            "reference_id.industry": {
+            industry: {
               $regex: payload.search,
               $options: "i",
             },
@@ -110,12 +107,24 @@ class AgencyService {
       }
 
       const aggragate = [
+        { $match: { is_deleted: false } },
+        { $unwind: { path: "$members", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $eq: ["$members.user_id", "$created_by"] },
+                { $eq: ["$_id", "$_id"] }, // Ensures the matching is within the same workspace
+              ],
+            },
+          },
+        },
         {
           $lookup: {
-            from: "agencies",
-            localField: "reference_id",
+            from: "authentications",
+            localField: "created_by",
             foreignField: "_id",
-            as: "reference_id",
+            as: "created_by",
             pipeline: [
               {
                 $project: {
@@ -123,21 +132,43 @@ class AgencyService {
                   company_website: 1,
                   industry: 1,
                   no_of_people: 1,
+                  first_name: 1,
+                  last_name: 1,
+                  email: 1,
+                  contact_number: 1,
+                  name: { $concat: ["$first_name", " ", "$last_name"] },
+                  _id: 1,
                 },
               },
             ],
           },
         },
-        { $unwind: "$reference_id" },
-        { $match: query_obj },
+        { $unwind: { path: "$created_by", preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            _id: "$created_by._id",
+            company_name: "$created_by.company_name",
+            company_website: "$created_by.company_website",
+            industry: "$created_by.industry",
+            no_of_people: "$created_by.no_of_people",
+            first_name: "$created_by.first_name",
+            last_name: "$created_by.last_name",
+            email: "$created_by.email",
+            contact_number: "$created_by.contact_number",
+            name: "$created_by.name",
+            trial_end_date: 1,
+            status: "$members.status",
+            workspace_name: "$name",
+          },
+        },
       ];
 
       const [agencyList, total_agencies] = await Promise.all([
-        Authentication.aggregate(aggragate)
+        Workspace.aggregate(aggragate)
           .sort(pagination.sort)
           .skip(pagination.skip)
           .limit(pagination.result_per_page),
-        Authentication.aggregate(aggragate),
+        Workspace.aggregate(aggragate),
       ]);
 
       return {
@@ -185,19 +216,13 @@ class AgencyService {
   // Get Agency profile
   getAgencyProfile = async (agency) => {
     try {
-      const [agency_detail, agency_reference, plan] = await Promise.all([
+      const [agency_detail, plan] = await Promise.all([
         Authentication.findById(agency?._id)
           .populate("purchased_plan", "plan_type")
           .select("-password")
           .lean(),
-        Agency.findById(agency?.reference_id)
-          .populate("city", "name")
-          .populate("state", "name")
-          .populate("country", "name")
-          .lean(),
         SubscriptionPlan.findOne({ active: true }).lean(),
       ]);
-      agency_detail.reference_id = agency_reference;
       // removed because of the subscription api is gettign cancelled due to razorpay api call
       // const [subscription_detail, check_referral] = await Promise.all([
       //   paymentService.subscripionDetail(agency_detail?.subscription_id),
