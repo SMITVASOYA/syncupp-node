@@ -260,6 +260,7 @@ class AgencyService {
         state,
         country,
         pincode,
+        profession_role,
         bio,
       } = payload;
 
@@ -295,16 +296,13 @@ class AgencyService {
         company_website = null;
 
       const existingImage = user?.profile_image;
-      let imagePath = false;
 
       if (image) {
-        imagePath = "uploads/" + image?.filename;
         profile_image = image?.filename;
       } else if (
         image === "" ||
         (image === undefined && !payload?.profile_image)
       ) {
-        imagePath = "";
         existingImage &&
           fs.unlink(`./src/public/${existingImage}`, (err) => {
             if (err) {
@@ -328,6 +326,7 @@ class AgencyService {
         contact_number,
         profile_image,
         bio,
+        profession_role,
       });
 
       return;
