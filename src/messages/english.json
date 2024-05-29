@@ -432,7 +432,8 @@
     "fetched": "Section fetched successfully.",
     "canNotBeCreated": "Section can not be created with same name.",
     "nameAlreadyExists": "Section name already exists.",
-    "canNotBeDeleted": "Section includes task can not be deleted."
+    "canNotBeDeleted": "Section includes task can not be deleted.",
+    "orderUpdated": "Section order updated successfully."
   },
 
   "default": { "default": "Something went wrong." }

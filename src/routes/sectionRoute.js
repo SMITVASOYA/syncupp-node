@@ -12,5 +12,6 @@ sectionRoute.put(
 sectionRoute.get("/get-all/:board_id", sectionController.getAllSections);
 sectionRoute.get("/:section_id", sectionController.getSection);
 sectionRoute.delete("/:section_id", sectionController.deleteSection);
+sectionRoute.put("/update-order", sectionController.updateSectionOrder);
 
 module.exports = sectionRoute;

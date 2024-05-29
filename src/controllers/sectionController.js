@@ -8,7 +8,7 @@ const sectionService = new SectionService();
 // Add   Section
 
 exports.addSection = catchAsyncError(async (req, res, next) => {
-  await sectionService.addSection(req?.body);
+  await sectionService.addSection(req?.body, req?.user);
   sendResponse(
     res,
     true,
@@ -20,7 +20,7 @@ exports.addSection = catchAsyncError(async (req, res, next) => {
 // Update   Section
 
 exports.updateSection = catchAsyncError(async (req, res, next) => {
-  await sectionService.updateSection(req?.body, req?.params);
+  await sectionService.updateSection(req?.body, req?.params, req?.user);
   sendResponse(
     res,
     true,
@@ -59,11 +59,24 @@ exports.getSection = catchAsyncError(async (req, res, next) => {
 // Delete Section
 
 exports.deleteSection = catchAsyncError(async (req, res, next) => {
-  await sectionService.deleteSection(req?.params);
+  await sectionService.deleteSection(req?.params, req?.user);
   sendResponse(
     res,
     true,
     returnMessage("section", "deleted"),
+    null,
+    statusCode.success
+  );
+});
+
+// Section Sort Order change
+
+exports.updateSectionOrder = catchAsyncError(async (req, res, next) => {
+  await sectionService.updateSectionOrder(req?.body, req?.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("section", "orderUpdated"),
     null,
     statusCode.success
   );

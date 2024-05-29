@@ -148,7 +148,6 @@ class BoardService {
           board_id: new_board?._id,
           is_deletable: false,
           key: "completed",
-          sort_order: 4,
           color: "#E4F6D6",
           test_color: "#527C31",
         }),
@@ -201,14 +200,14 @@ class BoardService {
   getBoard = async (board_id) => {
     try {
       // Validate board_id
-      if (!mongoose.Types.ObjectId.isValid(board_id)) {
-        return throwError(returnMessage("board", "invalidBoardId"));
-      }
-      const board_data = await Board.findById(board_id).lean();
+      // if (!mongoose.Types.ObjectId.isValid(board_id)) {
+      //   return throwError(returnMessage("board", "invalidBoardId"));
+      // }
+      // const board_data = await Board.findById(board_id).lean();
 
-      if (!board_data) {
-        return throwError(returnMessage("board", "boardNotFound"));
-      }
+      // if (!board_data) {
+      //   return throwError(returnMessage("board", "boardNotFound"));
+      // }
       const board = await Board.findById(board_id)
         .select("-createdAt -updatedAt -__v")
         .lean();

@@ -6,6 +6,12 @@ const sectionSchema = new mongoose.Schema(
     board_id: {
       type: mongoose.Types.ObjectId,
       required: true,
+      ref: "board",
+    },
+    workspace_id: {
+      type: mongoose.Types.ObjectId,
+      required: true,
+      ref: "workspace",
     },
     section_name: {
       type: String,
@@ -13,7 +19,6 @@ const sectionSchema = new mongoose.Schema(
     },
     sort_order: {
       type: Number,
-      required: true,
     },
     is_deletable: {
       type: Boolean,

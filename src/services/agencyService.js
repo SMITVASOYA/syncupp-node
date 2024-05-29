@@ -21,6 +21,8 @@ const paymentService = new PaymentService();
 const fs = require("fs");
 const axios = require("axios");
 const Workspace = require("../models/workspaceSchema");
+const Task = require("../models/taskSchema");
+const Section = require("../models/sectionSchema");
 // Register Agency
 class AgencyService {
   agencyRegistration = async (payload) => {
@@ -363,18 +365,33 @@ class AgencyService {
   // Dashboard Data
   dashboardData = async (user) => {
     try {
-      const currentDate = moment();
-      const startOfMonth = moment(currentDate).startOf("month");
-      const endOfMonth = moment(currentDate).endOf("month");
-      const startOfToday = moment(currentDate).startOf("day");
-      const endOfToday = moment(currentDate).endOf("day");
-
-      let subscription, planDetailForSubscription, Next_billing_amount;
-      if (user?.status !== "free_trial" && user?.subscription_id) {
-        subscription = await paymentService.subscripionDetail(
-          user?.subscription_id
-        );
-      }
+      const currentDate = moment().utc();
+      const startOfMonth = moment(currentDate).startOf("month").utc();
+      const endOfMonth = moment(currentDate).endOf("month").utc();
+      const startOfToday = moment(currentDate).startOf("day").utc();
+      const endOfToday = moment(currentDate).endOf("day").utc();
+      // let subscription, planDetailForSubscription, Next_billing_amount;
+      // if (user?.status !== "free_trial" && user?.subscription_id) {
+      //   subscription = await paymentService.subscripionDetail(
+      //     user?.subscription_id
+      //   );
+      // }
+      const pending_status = await Section.distinct("_id", {
+        workspace_id: new mongoose.Types.ObjectId(user?.workspace),
+        key: "pending",
+      });
+      const completed_status = await Section.distinct("_id", {
+        workspace_id: new mongoose.Types.ObjectId(user?.workspace),
+        key: "completed",
+      });
+      const overdue_status = await Section.distinct("_id", {
+        workspace_id: new mongoose.Types.ObjectId(user?.workspace),
+        key: "overdue",
+      });
+      const in_progress_status = await Section.distinct("_id", {
+        workspace_id: new mongoose.Types.ObjectId(user?.workspace),
+        key: "in_progress",
+      });
 
       const [
         clientCount,
@@ -391,7 +408,7 @@ class AgencyService {
         invoiceSentCount,
         agreementPendingCount,
       ] = await Promise.all([
-        Client.aggregate([
+        Authentication.aggregate([
           {
             $lookup: {
               from: "authentications",
@@ -478,219 +495,59 @@ class AgencyService {
             $count: "clientCountMonth",
           },
         ]),
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_status_masters",
-              localField: "activity_status",
-              foreignField: "_id",
-              as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "typeName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$typeName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
+        Task.aggregate([
           {
             $match: {
-              agency_id: user.reference_id,
-              "statusName.name": { $ne: "cancel" }, // Fix: Change $nq to $ne
+              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
               is_deleted: false,
-              "typeName.name": "task",
             },
           },
           {
             $count: "totalTaskCount",
           },
         ]),
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_status_masters",
-              localField: "activity_status",
-              foreignField: "_id",
-              as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "typeName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$typeName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
+        Task.aggregate([
           {
             $match: {
-              agency_id: user.reference_id,
-              "statusName.name": { $eq: "pending" },
+              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
               is_deleted: false,
-              "typeName.name": "task",
+              activity_status: { $in: pending_status },
             },
           },
           {
             $count: "pendingTask",
           },
         ]),
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_status_masters",
-              localField: "activity_status",
-              foreignField: "_id",
-              as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "typeName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$typeName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
+        Task.aggregate([
           {
             $match: {
-              agency_id: user.reference_id,
-              "statusName.name": { $eq: "completed" },
+              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
               is_deleted: false,
-              "typeName.name": "task",
+              activity_status: { $in: completed_status },
             },
           },
           {
             $count: "completedTask",
           },
         ]),
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_status_masters",
-              localField: "activity_status",
-              foreignField: "_id",
-              as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "typeName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$typeName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
+        Task.aggregate([
           {
             $match: {
-              agency_id: user.reference_id,
-              "statusName.name": { $eq: "in_progress" },
+              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
               is_deleted: false,
-              "typeName.name": "task",
+              activity_status: { $in: in_progress_status },
             },
           },
           {
             $count: "inprogressTask",
           },
         ]),
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_status_masters",
-              localField: "activity_status",
-              foreignField: "_id",
-              as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "typeName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$typeName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
+        Task.aggregate([
           {
             $match: {
-              agency_id: user.reference_id,
+              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
               is_deleted: false,
-              "statusName.name": { $eq: "overdue" },
-              "typeName.name": "task",
+              activity_status: { $in: overdue_status },
             },
           },
           {
@@ -699,26 +556,10 @@ class AgencyService {
         ]),
         Activity.aggregate([
           {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "activityType",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$activityType",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
             $match: {
-              agency_id: user.reference_id,
               is_deleted: false,
-              "activityType.name": { $eq: "call_meeting" },
-              meeting_start_time: {
+              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
+              meeting_date: {
                 $gte: startOfToday.toDate(),
                 $lte: endOfToday.toDate(),
               },
@@ -748,7 +589,7 @@ class AgencyService {
 
           {
             $match: {
-              agency_id: new mongoose.Types.ObjectId(user.reference_id),
+              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
               "invoiceStatus.name": { $eq: "paid" },
               is_deleted: false,
             },
@@ -780,7 +621,7 @@ class AgencyService {
 
           {
             $match: {
-              agency_id: new mongoose.Types.ObjectId(user.reference_id),
+              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
               "invoiceStatus.name": { $eq: "overdue" },
               is_deleted: false,
             },
@@ -809,7 +650,7 @@ class AgencyService {
 
           {
             $match: {
-              agency_id: new mongoose.Types.ObjectId(user.reference_id),
+              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
               "invoiceStatus.name": { $eq: "sent" },
               is_deleted: false,
             },
@@ -822,7 +663,7 @@ class AgencyService {
         Agreement.aggregate([
           {
             $match: {
-              agency_id: new mongoose.Types.ObjectId(user?._id),
+              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
               status: "sent",
               is_deleted: false,
             },
@@ -833,14 +674,14 @@ class AgencyService {
         ]),
       ]);
 
-      if (user?.status === "confirmed" && user?.subscription_id) {
-        planDetailForSubscription = await paymentService.planDetails(
-          subscription?.plan_id
-        );
-        Next_billing_amount =
-          subscription?.quantity *
-            (planDetailForSubscription?.item.amount / 100) ?? 0;
-      }
+      // if (user?.status === "confirmed" && user?.subscription_id) {
+      //   planDetailForSubscription = await paymentService.planDetails(
+      //     subscription?.plan_id
+      //   );
+      //   Next_billing_amount =
+      //     subscription?.quantity *
+      //       (planDetailForSubscription?.item.amount / 100) ?? 0;
+      // }
       // commented because of the multiple plans
       // if (user?.status === "free_trial") {
       //   const [sheets, plan_details] = await Promise.all([
@@ -856,20 +697,21 @@ class AgencyService {
         team_member_count: teamMemberCount[0]?.teamMemberCount ?? 0,
         client_count_month: clientCountMonth[0]?.clientCountMonth ?? 0,
         task_count: taskCount[0]?.totalTaskCount ?? 0,
-        pending_task_count: pendingTask[0]?.pendingTask ?? 0,
+        pending_task_count: pendingTask[0].pendingTask ?? 0,
         completed_task_count: completedTask[0]?.completedTask ?? 0,
         in_progress_task_count: inprogressTask[0]?.inprogressTask ?? 0,
         overdue_task_count: overdueTask[0]?.overdueTask ?? 0,
         todays_call_meeting: todaysCallMeeting[0]?.todaysCallMeeting ?? 0,
         total_invoice_amount: totalAmountInvoices[0]?.totalPaidAmount ?? 0,
         invoice_overdue_count: invoiceOverdueCount[0]?.invoiceOverdueCount ?? 0,
-        Next_billing_amount: Next_billing_amount || 0,
+        invoice_sent_count: invoiceSentCount[0]?.invoiceSentCount ?? 0,
+        // Next_billing_amount: Next_billing_amount || 0,
         agreement_pending_count:
           agreementPendingCount[0]?.agreementPendingCount ?? 0,
-        Next_billing_amount:
-          subscription?.quantity *
-            (planDetailForSubscription?.item.amount / 100) ?? 0,
-        invoice_sent_count: invoiceSentCount[0]?.invoiceSentCount ?? 0,
+        // Next_billing_amount:
+        //   subscription?.quantity *
+        //     (planDetailForSubscription?.item.amount / 100) ?? 0,
+        // invoice_sent_count: invoiceSentCount[0]?.invoiceSentCount ?? 0,
       };
     } catch (error) {
       logger.error(`Error while fetch dashboard data for agency: ${error}`);

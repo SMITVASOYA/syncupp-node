@@ -10,18 +10,24 @@ const TeamMemberService = require("../services/teamMemberService");
 const teamMemberService = new TeamMemberService();
 const DashboardService = require("../services/dashboardService");
 const dashboardService = new DashboardService();
+const AuthService = require("../services/authService");
+const authService = new AuthService();
 
 // Get Dashboard information
 
 exports.dashboardData = catchAsyncError(async (req, res, next) => {
   let dashboardData;
-  if (req?.user.role?.name === "agency") {
+
+  const user_role_data = await authService.getRoleSubRoleInWorkspace(req?.user);
+  req.user["role"] = user_role_data?.user_role;
+  req.user["sub_role"] = user_role_data?.sub_role;
+  if (req?.user?.role === "agency") {
     dashboardData = await agencyService.dashboardData(req?.user);
   }
-  if (req?.user.role?.name === "client") {
+  if (req?.user?.role === "client") {
     dashboardData = await clientService.dashboardData(req?.user);
   }
-  if (req?.user.role?.name === "team_agency") {
+  if (req?.user?.role === "team_agency") {
     dashboardData = await teamMemberService.dashboardData(req?.user);
   }
 

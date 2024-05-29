@@ -5,41 +5,45 @@ const Section = require("../models/sectionSchema");
 const colorsData = require("../messages/colorsCombinations.json");
 const Activity = require("../models/activitySchema");
 const colors = colorsData;
+const AuthService = require("../services/authService");
+const authService = new AuthService();
 
 class sectionService {
   // Add   Section
-  addSection = async (payload) => {
+  addSection = async (payload, user) => {
     try {
-      const { section_name, board_id, sort_order } = payload;
-      const is_exist = await Section.findOne({
-        board_id: board_id,
-        section_name: section_name,
-      }).lean();
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
 
-      if (is_exist) {
-        return throwError(returnMessage("section", "canNotBeCreated"));
+      if (
+        user_role_data?.user_role !== "agency" ||
+        (user_role_data?.user_role === "team_agency" &&
+          user_role_data?.sub_role !== "admin")
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
       }
-      // const get_random_color = async () => {
-      //   const color_keys = Object.keys(colors);
-      //   let random_color_key;
-      //   let is_color = false;
 
-      //   do {
-      //     random_color_key =
-      //       color_keys[Math.floor(Math.random() * color_keys.length)];
-      //     const is_color_exist = await Section.findOne({
-      //       board_id: board_id,
-      //       color: ,
-      //       text_color:,
-      //     }).lean();
+      const { board_id } = payload;
 
-      //     if (!is_color_exist) {
-      //       is_color = true;
-      //     }
-      //   } while (!is_color);
+      const sections = await Section.find({
+        board_id: board_id,
+        section_name: new RegExp("^New Section"),
+        sort_order: { $exists: true },
+      }).lean();
+      // Determine the next section name
+      let next_section_number = 1;
+      sections.forEach((section) => {
+        const match = section.section_name.match(/^New Section (\d+)$/);
+        if (match) {
+          const number = parseInt(match[1], 10);
+          if (number >= next_section_number) {
+            next_section_number = number + 1;
+          }
+        }
+      });
 
-      //   return colors[random_color_key];
-      // };
+      const new_section_name = `New Section ${next_section_number}`;
 
       const get_random_color = async () => {
         try {
@@ -74,14 +78,29 @@ class sectionService {
         }
       };
 
+      const sections_list = await Section.find({
+        board_id: board_id,
+        sort_order: { $exists: true },
+      }).sort({
+        sort_order: -1,
+      });
+
+      if (sections_list && sections_list.length > 0) {
+        for (const section of sections_list) {
+          section.sort_order += 1;
+          await section.save();
+        }
+      }
+
       const resolved_color = await get_random_color();
       await Section.create({
-        section_name,
+        section_name: new_section_name,
         board_id,
-        sort_order,
+        sort_order: 1,
         color: resolved_color?.color,
         test_color: resolved_color?.test_color,
         is_deletable: true,
+        workspace_id: user?.workspace,
       });
 
       return;
@@ -92,9 +111,21 @@ class sectionService {
   };
 
   // Update   Section
-  updateSection = async (payload, section_data) => {
+  updateSection = async (payload, section_data, user) => {
     try {
-      const { section_name, board_id, sort_order } = payload;
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+
+      if (
+        user_role_data?.user_role !== "agency" ||
+        (user_role_data?.user_role === "team_agency" &&
+          user_role_data?.sub_role !== "admin")
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
+      const { section_name, board_id } = payload;
       const { section_id } = section_data;
       const is_exist = await Section.findOne({
         board_id: board_id,
@@ -110,7 +141,6 @@ class sectionService {
         {
           $set: {
             section_name,
-            sort_order,
           },
         }
       );
@@ -126,10 +156,21 @@ class sectionService {
   getAllSections = async (payload) => {
     try {
       const { board_id } = payload;
-      const sections = await Section.find({ board_id: board_id }).select(
-        "-is_deleted"
-      );
-      return sections;
+      const sections = await Section.find({
+        board_id: board_id,
+        sort_order: { $exists: true },
+      })
+        .select("-is_deleted")
+        .sort({ sort_order: 1 })
+        .lean();
+
+      const completed_section = await Section.findOne({
+        board_id: board_id,
+        key: "completed",
+      })
+        .select("-is_deleted")
+        .lean();
+      return [...sections, completed_section];
     } catch (error) {
       logger.error(`Error while get all section, ${error}`);
       throwError(error?.message, error?.statusCode);
@@ -150,8 +191,20 @@ class sectionService {
 
   // Delete Section
 
-  deleteSection = async (payload) => {
+  deleteSection = async (payload, user) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+
+      if (
+        user_role_data?.user_role !== "agency" ||
+        (user_role_data?.user_role === "team_agency" &&
+          user_role_data?.sub_role !== "admin")
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
       const { id } = payload;
 
       const is_task_available = await Activity.findOne({ status: id }).lean();
@@ -163,6 +216,88 @@ class sectionService {
       return true;
     } catch (error) {
       logger.error(`Error while Delete Section, ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // Update Section
+  updateSectionOrder = async (payload, user) => {
+    try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+
+      if (
+        user_role_data?.user_role !== "agency" ||
+        (user_role_data?.user_role === "team_agency" &&
+          user_role_data?.sub_role !== "admin")
+      ) {
+        return throwError(returnMessage("auth", "insufficientPermission"));
+      }
+
+      const { sort_order, section_id, board_id } = payload;
+
+      // Check if the section exists
+      const sectionExists = await Section.findOne({
+        board_id: board_id,
+        _id: section_id,
+      }).lean();
+
+      if (!sectionExists) {
+        return throwError(returnMessage("section", "sectionNotFound"));
+      }
+
+      // Get all sections sorted by sort_order
+      const sections = await Section.find({
+        board_id: board_id,
+        sort_order: { $exists: true },
+      }).sort({ sort_order: 1 });
+
+      if (sections && sections.length > 0) {
+        // Find the section to be updated and its current sort order
+        const currentSection = sections.find(
+          (section) => section._id.toString() === section_id
+        );
+        const currentSortOrder = currentSection.sort_order;
+
+        // Update other sections' sort orders
+        await Promise.all(
+          sections.map(async (section) => {
+            if (section._id.toString() !== section_id) {
+              if (
+                currentSortOrder < sort_order &&
+                section.sort_order > currentSortOrder &&
+                section.sort_order <= sort_order
+              ) {
+                // If the section is after the current section and before or equal to the new position, decrement its sort order
+                await Section.findByIdAndUpdate(section._id, {
+                  $inc: { sort_order: -1 },
+                });
+              } else if (
+                currentSortOrder > sort_order &&
+                section.sort_order < currentSortOrder &&
+                section.sort_order >= sort_order
+              ) {
+                // If the section is before the current section and after or equal to the new position, increment its sort order
+                await Section.findByIdAndUpdate(section._id, {
+                  $inc: { sort_order: 1 },
+                });
+              }
+            }
+          })
+        );
+
+        // Finally, update the sort order of the moved section
+        await Section.findByIdAndUpdate(section_id, {
+          $set: {
+            sort_order: sort_order,
+          },
+        });
+      }
+
+      return;
+    } catch (error) {
+      logger.error(`Error while updating order section, ${error}`);
       throwError(error?.message, error?.statusCode);
     }
   };
