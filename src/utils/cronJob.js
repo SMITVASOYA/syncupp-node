@@ -50,24 +50,38 @@ exports.setupNightlyCronJob = async () => {
   });
 
   // Crone job for 15 minutes start
-  const callMeetingCron = config?.cron_job.call_meeting_alert;
+  // const callMeetingCron = config?.cron_job.call_meeting_alert;
   const call_meeting_alert_check_rate =
     config?.cron_job.call_meeting_alert_check_rate;
   cron.schedule(call_meeting_alert_check_rate, async () => {
     const currentUtcDate = moment().utc();
-    const callMeeting = await Activity_Type_Master.findOne({
-      name: "call_meeting",
-    });
     const meetings = await Activity.find({
-      activity_type: callMeeting._id,
       is_deleted: false,
-      meeting_start_time: {
-        $gte: currentUtcDate.toDate(),
-        $lte: moment(currentUtcDate).add(callMeetingCron, "minutes").toDate(),
-      },
+      // meeting_start_time: {
+      //   $gte: currentUtcDate.toDate(),
+      //   $lte: moment(currentUtcDate).add(callMeetingCron, "minutes").toDate(),
+      // },
     }).lean();
     meetings.forEach((meeting) => {
-      activityService.meetingAlertCronJob(meeting);
+      const { alert_time, alert_time_unit, meeting_start_time } = meeting;
+
+      if (alert_time && alert_time_unit) {
+        // Calculate the notification time
+        let notificationTime = moment(meeting_start_time);
+        if (alert_time_unit === "h") {
+          notificationTime.subtract(alert_time, "hours");
+        } else if (alert_time_unit === "min") {
+          notificationTime.subtract(alert_time, "minutes");
+        }
+      }
+
+      // If the current time is the same or after the notification time, send the alert
+      if (
+        currentUtcDate.isSameOrAfter(notificationTime) &&
+        currentUtcDate.isBefore(moment(meeting_start_time))
+      ) {
+        activityService.meetingAlertCronJob(meeting);
+      }
     });
   });
 

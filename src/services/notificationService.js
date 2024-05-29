@@ -127,26 +127,26 @@ class NotificationService {
             );
           }
         } else if (activity_type_action === "meetingAlert") {
-          if (payload.client_id) {
-            await createAndEmitNotification(
-              payload.client_id,
-              message_type,
-              "alertMessage"
-            );
-          }
+          // if (payload.client_id) {
+          //   await createAndEmitNotification(
+          //     payload.client_id,
+          //     message_type,
+          //     "alertMessage"
+          //   );
+          // }
 
-          await createAndEmitNotification(
-            payload.assign_by,
-            message_type,
-            "alertMessage"
-          );
-          if (String(payload.assign_to) !== String(payload.assign_by)) {
-            await createAndEmitNotification(
-              payload.assign_to,
-              message_type,
-              "alertMessage"
-            );
-          }
+          // await createAndEmitNotification(
+          //   payload.assign_by,
+          //   message_type,
+          //   "alertMessage"
+          // );
+          // if (String(payload.assign_to) !== String(payload.assign_by)) {
+          //   await createAndEmitNotification(
+          //     payload.assign_to,
+          //     message_type,
+          //     "alertMessage"
+          //   );
+          // }
 
           attendees &&
             attendees[0] &&

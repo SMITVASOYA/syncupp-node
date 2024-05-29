@@ -2034,64 +2034,41 @@ class ActivityService {
         data._id
       );
 
-      const clientData = await Authentication.findOne({
-        reference_id: data.client_id,
-      }).lean();
-      const assignByData = await Authentication.findOne({
-        reference_id: data.assign_by,
-      }).lean();
-      const assignToData = await Authentication.findOne({
-        reference_id: data.assign_by,
-      }).lean();
-      const activityStatusName = await Activity_Status_Master.findOne({
-        _id: data.activity_status,
-      }).lean();
-      const activityTypeName = await Activity_Type_Master.findOne({
-        _id: data.activity_type,
-      }).lean();
+      // const activity_email_template = activityTemplate({
+      //   ...data,
+      //   status:
+      //     activityStatusName?.name === "in_progress"
+      //       ? "In Progress"
+      //       : activityStatusName.name,
+      //   assigned_by_name:
+      //     assignByData?.first_name + " " + assignByData?.last_name,
+      //   client_name: clientData
+      //     ? clientData.first_name + " " + clientData.last_name
+      //     : "",
+      //   assigned_to_name:
+      //     assignToData?.first_name + " " + assignToData?.last_name,
 
-      const activity_email_template = activityTemplate({
-        ...data,
-        status:
-          activityStatusName?.name === "in_progress"
-            ? "In Progress"
-            : activityStatusName.name,
-        assigned_by_name:
-          assignByData?.first_name + " " + assignByData?.last_name,
-        client_name: clientData
-          ? clientData.first_name + " " + clientData.last_name
-          : "",
-        assigned_to_name:
-          assignToData?.first_name + " " + assignToData?.last_name,
+      //   activity_type: activityTypeName?.name,
+      //   meeting_end_time: moment(data?.meeting_end_time).format("HH:mm"),
+      //   meeting_start_time: moment(data?.meeting_start_time).format("HH:mm"),
+      //   recurring_end_date: data?.recurring_end_date
+      //     ? moment(data?.recurring_end_date).format("DD-MM-YYYY")
+      //     : null,
+      //   meeting_date: moment(data?.meeting_date).format("DD-MM-YYYY"),
+      // });
 
-        activity_type: activityTypeName?.name,
-        meeting_end_time: moment(data?.meeting_end_time).format("HH:mm"),
-        meeting_start_time: moment(data?.meeting_start_time).format("HH:mm"),
-        recurring_end_date: data?.recurring_end_date
-          ? moment(data?.recurring_end_date).format("DD-MM-YYYY")
-          : null,
-        meeting_date: moment(data?.meeting_date).format("DD-MM-YYYY"),
-      });
-
-      clientData &&
-        sendEmail({
-          email: clientData?.email,
-          subject: returnMessage("emailTemplate", "meetingAlert"),
-          message: activity_email_template,
-        });
-
-      sendEmail({
-        email: assignByData?.email,
-        subject: returnMessage("emailTemplate", "meetingAlert"),
-        message: activity_email_template,
-      });
-      if (assignByData?.email !== assignToData?.email) {
-        sendEmail({
-          email: assignToData?.email,
-          subject: returnMessage("emailTemplate", "meetingAlert"),
-          message: activity_email_template,
-        });
-      }
+      // sendEmail({
+      //   email: assignByData?.email,
+      //   subject: returnMessage("emailTemplate", "meetingAlert"),
+      //   message: activity_email_template,
+      // });
+      // if (assignByData?.email !== assignToData?.email) {
+      //   sendEmail({
+      //     email: assignToData?.email,
+      //     subject: returnMessage("emailTemplate", "meetingAlert"),
+      //     message: activity_email_template,
+      //   });
+      // }
     } catch (error) {
       logger.error(`Error while Overdue crone Job PDF, ${error}`);
       throwError(error?.message, error?.statusCode);

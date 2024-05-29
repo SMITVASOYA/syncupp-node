@@ -13,7 +13,11 @@ const activitySchema = new mongoose.Schema(
     meeting_date: { type: Date },
     internal_info: { type: String },
     google_meet_link: { type: String },
-    created_by: { type: mongoose.Types.ObjectId, required: true },
+    created_by: {
+      type: mongoose.Types.ObjectId,
+      required: true,
+      ref: "authentication",
+    },
     meeting_start_time: { type: Date },
     meeting_end_time: { type: Date },
     recurring_end_date: { type: Date },

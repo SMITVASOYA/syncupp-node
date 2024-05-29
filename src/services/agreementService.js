@@ -334,6 +334,16 @@ class AgreementService {
 
   getAgreement = async (agreementId) => {
     try {
+      // Validate board_id
+      if (!mongoose.Types.ObjectId.isValid(agreementId)) {
+        return throwError(returnMessage("agreement", "agreementNotFound"));
+      }
+      const agreement_data = await Agreement.findById(agreementId).lean();
+
+      if (!agreement_data) {
+        return throwError(returnMessage("agreement", "agreementNotFound"));
+      }
+
       const aggregationPipeline = [
         {
           $lookup: {

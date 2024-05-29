@@ -80,6 +80,7 @@ class BoardService {
 
       const board = await Board.findOne({
         project_name: lowercaseFirstLetter(project_name),
+        workspace_id: user?.workspace,
       }).lean();
       if (board) {
         return throwError(returnMessage("board", "alreadyExist"));
@@ -199,9 +200,19 @@ class BoardService {
   // Get   Board
   getBoard = async (board_id) => {
     try {
+      // Validate board_id
+      if (!mongoose.Types.ObjectId.isValid(board_id)) {
+        return throwError(returnMessage("board", "invalidBoardId"));
+      }
+      const board_data = await Board.findById(board_id).lean();
+
+      if (!board_data) {
+        return throwError(returnMessage("board", "boardNotFound"));
+      }
       const board = await Board.findById(board_id)
         .select("-createdAt -updatedAt -__v")
         .lean();
+
       return board;
     } catch (error) {
       logger.error(`Error while  Board fetched, ${error}`);
@@ -263,6 +274,7 @@ class BoardService {
       // check board name already exists
       const board = await Board.findOne({
         project_name: lowercaseFirstLetter(project_name),
+        workspace_id: user?.workspace,
       }).lean();
       if (
         board &&

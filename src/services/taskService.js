@@ -212,6 +212,19 @@ class TaskService {
     user["role"] = user_role_data?.user_role;
     user["sub_role"] = user_role_data?.sub_role;
 
+    // Validate board_id
+    if (!mongoose.Types.ObjectId.isValid(searchObj?.board_id)) {
+      return throwError(returnMessage("board", "boardNotFound"));
+    }
+
+    const board_data = await Board.findOne({
+      _id: searchObj?.board_id,
+    }).lean();
+
+    if (!board_data) {
+      return throwError(returnMessage("board", "boardNotFound"));
+    }
+
     if (!searchObj.pagination)
       return await this.taskListWithOutPaination(searchObj, user);
     try {
@@ -686,7 +699,7 @@ class TaskService {
             localField: "activity_status",
             foreignField: "_id",
             as: "status",
-            pipeline: [{ $project: { createdAt: -1, updatedAt: -1 } }],
+            pipeline: [{ $project: { createdAt: 0, updatedAt: 0 } }],
           },
         },
         {

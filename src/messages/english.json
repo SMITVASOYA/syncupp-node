@@ -140,7 +140,8 @@
     "agreementStatusUpdated": "Agreement status updated.",
     "agreementSent": "Agreement sent to client successfully.",
     "downloadPDF": "PDF Downloaded successfully.",
-    "clientnotexist": "Client doest not exist."
+    "clientnotexist": "Client doest not exist.",
+    "agreementNotFound": "Invalid agreement Id."
   },
   "invoice": {
     "invoiceCreated": "Invoice created successfully - ",
@@ -372,7 +373,9 @@
     "canNotRemove": "Cannot remove member associated with task.",
     "boardImageFetched": "Board images fetched successfully.",
     "boardMemberUpdated": "Board member list updated successfully.",
-    "userFetched": "Users fetched successfully."
+    "userFetched": "Users fetched successfully.",
+    "boardNotFound": "Board not found.",
+    "invalidBoardId": "Invalid board ID."
   },
 
   "chat": {
@@ -415,8 +418,8 @@
     "invitationExpired": "Your invitation has been expired.",
     "verified": "You have verified successfully.",
     "teamMemeberExist": "This member is already exist in tis workspace.",
-    "workspacePaymentPending":"Payment for this workspace is pending. Please change the workspace.",
-    "notAssignToWorkspace":"You are not assinged to any workspaces."
+    "workspacePaymentPending": "Payment for this workspace is pending. Please change the workspace.",
+    "notAssignToWorkspace": "You are not assinged to any workspaces."
   },
 
   "section": {

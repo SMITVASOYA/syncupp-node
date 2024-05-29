@@ -227,14 +227,14 @@ class InvoiceService {
           newInvoiceNumber = `INV-${invoiceCount}`;
           var existingInvoice = await Invoice.findOne({
             invoice_number: newInvoiceNumber,
-            agency_id: user?._id,
+            workspace_id: user?.workspace,
           });
         } while (existingInvoice);
       } else {
         newInvoiceNumber = `INV-${invoice_number}`;
         const isInvoice = await Invoice.findOne({
           invoice_number: newInvoiceNumber,
-          agency_id: user?._id,
+          workspace_id: user?.workspace,
         });
         if (isInvoice) {
           return throwError(returnMessage("invoice", "invoiceNumberExists"));
@@ -327,8 +327,8 @@ class InvoiceService {
       }).lean();
       const isInvoice = await Invoice.findOne({
         invoice_number: `INV-${invoice_number}`,
-        agency_id: user?._id,
         status: { $ne: draftKey?._id },
+        workspace_id: user?.workspace,
       }).lean();
 
       if (isInvoice) {

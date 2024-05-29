@@ -16,7 +16,7 @@ const taskSchema = new mongoose.Schema(
       },
     ],
     assign_by: { type: mongoose.Types.ObjectId, ref: "authentication" },
-    agency_id: { type: mongoose.Types.ObjectId },
+    agency_id: { type: mongoose.Types.ObjectId, ref: "authentication" },
     status_history: [
       {
         status: {

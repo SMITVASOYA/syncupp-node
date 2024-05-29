@@ -7,13 +7,21 @@ const boardSchema = new mongoose.Schema(
     description: { type: String },
     members: [
       {
-        member_id: { type: mongoose.Types.ObjectId },
+        member_id: { type: mongoose.Types.ObjectId, ref: "authentication" },
         is_pinned: { type: Boolean, default: false },
       },
     ],
     board_image: { type: String },
-    agency_id: { type: mongoose.Types.ObjectId, required: true },
-    created_by: { type: mongoose.Types.ObjectId, required: true },
+    agency_id: {
+      type: mongoose.Types.ObjectId,
+      required: true,
+      ref: "authentication",
+    },
+    created_by: {
+      type: mongoose.Types.ObjectId,
+      required: true,
+      ref: "authentication",
+    },
     workspace_id: {
       type: mongoose.Types.ObjectId,
       ref: "workspaces",
