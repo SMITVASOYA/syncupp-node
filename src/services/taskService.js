@@ -214,7 +214,7 @@ class TaskService {
 
     // Validate board_id
     if (!mongoose.Types.ObjectId.isValid(searchObj?.board_id)) {
-      return throwError(returnMessage("board", "boardNotFound"));
+      return throwError(returnMessage("board", "invalidBoardId"));
     }
 
     const board_data = await Board.findOne({
@@ -493,6 +493,19 @@ class TaskService {
 
   taskListWithOutPaination = async (searchObj, user) => {
     try {
+      // Validate board_id
+      if (!mongoose.Types.ObjectId.isValid(searchObj?.board_id)) {
+        return throwError(returnMessage("board", "invalidBoardId"));
+      }
+
+      const board_data = await Board.findOne({
+        _id: searchObj?.board_id,
+      }).lean();
+
+      if (!board_data) {
+        return throwError(returnMessage("board", "boardNotFound"));
+      }
+
       let queryObj;
       if (user?.role === "agency") {
         queryObj = {
