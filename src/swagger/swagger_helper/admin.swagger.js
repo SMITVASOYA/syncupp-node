@@ -712,6 +712,44 @@ const getDashboard = {
   },
 };
 
+const extendTrialDate = {
+  tags: ["Admin Panel"],
+  description: "",
+  summary: "Update the trial end date",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
+  requestBody: {
+    content: {
+      "application/json": {
+        schema: {
+          type: "object",
+          properties: {
+            trial_end_date: {
+              type: "DD-MM-YYYY",
+              required: true,
+            },
+          },
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+
 const adminRoutes = {
   "/api/v1/admin/login": {
     post: loginAdmin,
@@ -760,6 +798,9 @@ const adminRoutes = {
   },
   "/api/v1/admin/dashboard": {
     get: getDashboard,
+  },
+  "/api/v1/admin/extend-trial/{agencyId}": {
+    patch: extendTrialDate,
   },
 };
 

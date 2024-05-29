@@ -7,14 +7,8 @@ const teamMemberService = new TeamMemberService();
 
 // Team Member add
 exports.add = catchAsyncError(async (req, res, next) => {
-  await teamMemberService.addAgencyTeam(req.body, req.user);
-  sendResponse(
-    res,
-    true,
-    returnMessage("workspace", "invitationSend"),
-    {},
-    statusCode.success
-  );
+  const member = await teamMemberService.addAgencyTeam(req.body, req.user);
+  sendResponse(res, true, member?.message, {}, statusCode.success);
 });
 
 // Team Member Verification

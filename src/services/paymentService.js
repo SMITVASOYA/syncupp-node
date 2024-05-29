@@ -1001,6 +1001,18 @@ class PaymentService {
         //   payment_id: razorpay_payment_id,
         // });
 
+        await Workspace.findOneAndUpdate(
+          {
+            _id: workspace_id,
+            "members.user_id": agency_id,
+          },
+          {
+            $set: {
+              "members.$.status": "confirmed",
+              trial_end_date: undefined,
+            },
+          }
+        );
         const sheets = await SheetManagement.findOne({
           user_id: agency_id,
           is_deleted: false,
