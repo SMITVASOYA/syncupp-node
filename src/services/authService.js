@@ -1553,7 +1553,7 @@ class AuthService {
   getProfile = async (user) => {
     try {
       return await Authentication.findById(user?._id)
-        .populate("purchased_plan")
+        .populate("purchased_plan city country state")
         .select("-password")
         .lean();
     } catch (error) {

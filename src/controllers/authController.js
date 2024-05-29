@@ -142,36 +142,7 @@ exports.getProfile = catchAsyncError(async (req, res, next) => {
 });
 
 exports.updateProfile = catchAsyncError(async (req, res, next) => {
-  const user_id = req?.user?._id;
-  const reference_id = req?.user?.reference_id;
-  const user = req.user;
-
-  if (user?.role?.name === "agency") {
-    await agencyService.updateAgencyProfile(
-      req.body,
-      user_id,
-      reference_id,
-      req?.file
-    );
-  } else if (user?.role?.name === "client") {
-    await clientService.updateClientProfile(
-      req.body,
-      user_id,
-      reference_id,
-      req?.file
-    );
-  } else if (
-    user?.role?.name === "team_agency" ||
-    user?.role?.name === "team_client"
-  ) {
-    await teamMemberService.updateTeamMeberProfile(
-      req.body,
-      user_id,
-      reference_id,
-      user?.role?.name,
-      req?.file
-    );
-  }
+  await agencyService.updateProfile(req.body, req.user, req?.file);
   sendResponse(
     res,
     true,
