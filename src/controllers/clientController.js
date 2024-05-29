@@ -10,13 +10,7 @@ const teamMemberService = new TeamMemberService();
 
 exports.createClient = catchAsyncError(async (req, res, next) => {
   const client = await clientService.createClient(req.body, req.user);
-  sendResponse(
-    res,
-    true,
-    returnMessage("agency", "clientCreated"),
-    client,
-    statusCode.success
-  );
+  sendResponse(res, true, client?.message, client, statusCode.success);
 });
 
 exports.verifyClient = catchAsyncError(async (req, res, next) => {
