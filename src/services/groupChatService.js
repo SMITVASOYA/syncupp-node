@@ -276,7 +276,7 @@ class GroupChatService {
         user?.workspace
       );
 
-      return await Chat.aggregate([
+      const messages = await Chat.aggregate([
         {
           $match: {
             group_id: new mongoose.Types.ObjectId(payload?.group_id),
@@ -370,12 +370,19 @@ class GroupChatService {
           },
         },
       ]).sort({ createdAt: 1 });
+
+      for (let i = 0; i < messages?.length; i++) {
+        messages[i].reactions = messages[i].reactions?.filter(
+          (item) => Object.keys(item)?.length !== 0
+        );
+      }
+      return messages;
     } catch (error) {
       logger.error(
         `Error while feching the chat history of the group: ${error}`
       );
+      return throwError(error?.message, error?.statusCode);
     }
-    return throwError(error?.message, error?.statusCode);
   };
 
   // update the group by the creator only

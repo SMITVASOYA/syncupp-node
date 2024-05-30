@@ -37,6 +37,12 @@ class ChatService {
         .sort({ createdAt: 1 })
         .lean();
       const aggregatedChats = await this.aggregateChats(chats);
+
+      for (let i = 0; i < aggregatedChats?.length; i++) {
+        aggregatedChats[i].reactions = aggregatedChats[i].reactions?.filter(
+          (item) => Object.keys(item)?.length !== 0
+        );
+      }
       await Notification.updateMany(
         { user_id: user?._id, from_user: payload?.to_user },
         { $set: { is_read: true } }
