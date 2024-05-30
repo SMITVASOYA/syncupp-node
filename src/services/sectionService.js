@@ -1,11 +1,12 @@
 const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
-const { returnMessage } = require("../utils/utils");
+const { returnMessage, capitalizeFirstLetter } = require("../utils/utils");
 const Section = require("../models/sectionSchema");
 const colorsData = require("../messages/colorsCombinations.json");
 const Activity = require("../models/activitySchema");
 const colors = colorsData;
 const AuthService = require("../services/authService");
+const Task = require("../models/taskSchema");
 const authService = new AuthService();
 
 class sectionService {
@@ -129,7 +130,7 @@ class sectionService {
       const { section_id } = section_data;
       const is_exist = await Section.findOne({
         board_id: board_id,
-        section_name: section_name,
+        section_name: capitalizeFirstLetter(section_name),
       }).lean();
 
       if (is_exist) {
@@ -140,7 +141,7 @@ class sectionService {
         { _id: section_id },
         {
           $set: {
-            section_name,
+            section_name: capitalizeFirstLetter(section_name),
           },
         }
       );
@@ -159,18 +160,28 @@ class sectionService {
       const sections = await Section.find({
         board_id: board_id,
         sort_order: { $exists: true },
+        is_deleted: false,
       })
         .select("-is_deleted")
         .sort({ sort_order: 1 })
         .lean();
 
-      const completed_section = await Section.findOne({
-        board_id: board_id,
-        key: "completed",
-      })
-        .select("-is_deleted")
-        .lean();
-      return [...sections, completed_section];
+      const [completed_section, archived_section] = await Promise.all([
+        Section.findOne({
+          board_id: board_id,
+          key: "completed",
+        })
+          .select("-is_deleted")
+          .lean(),
+        Section.findOne({
+          board_id: board_id,
+          key: "archived",
+        })
+          .select("-is_deleted")
+          .lean(),
+      ]);
+
+      return [...sections, completed_section, archived_section];
     } catch (error) {
       logger.error(`Error while get all section, ${error}`);
       throwError(error?.message, error?.statusCode);
@@ -205,14 +216,20 @@ class sectionService {
         return throwError(returnMessage("auth", "insufficientPermission"));
       }
 
-      const { id } = payload;
+      const { section_id } = payload;
 
-      const is_task_available = await Activity.findOne({ status: id }).lean();
+      const is_task_available = await Task.findOne({
+        activity_status: section_id,
+      }).lean();
 
       if (is_task_available) {
         return throwError(returnMessage("section", "canNotBeDeleted"));
       }
-      await Section.updateOne({ _id: id }, { $set: { is_deleted: true } });
+      await Section.findOneAndUpdate(
+        { _id: section_id },
+        { is_deleted: true },
+        { new: true }
+      );
       return true;
     } catch (error) {
       logger.error(`Error while Delete Section, ${error}`);
