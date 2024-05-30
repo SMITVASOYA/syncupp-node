@@ -13,17 +13,6 @@ exports.createClient = catchAsyncError(async (req, res, next) => {
   sendResponse(res, true, client?.message, client, statusCode.success);
 });
 
-exports.verifyClient = catchAsyncError(async (req, res, next) => {
-  const client_verified = await clientService.verifyClient(req.body);
-  sendResponse(
-    res,
-    true,
-    returnMessage("client", "clientVerified"),
-    client_verified,
-    statusCode.success
-  );
-});
-
 exports.deleteClient = catchAsyncError(async (req, res, next) => {
   if (req?.body?.client_ids?.length === 0)
     return throwError(returnMessage("default", "default"));
@@ -60,17 +49,6 @@ exports.getClient = catchAsyncError(async (req, res, next) => {
     true,
     returnMessage("auth", "profileFetched"),
     client,
-    statusCode.success
-  );
-});
-
-exports.updateClient = catchAsyncError(async (req, res, next) => {
-  await clientService.updateClient(req.body, req.user);
-  sendResponse(
-    res,
-    true,
-    returnMessage("auth", "profileUpdated"),
-    {},
     statusCode.success
   );
 });

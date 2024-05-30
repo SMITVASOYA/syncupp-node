@@ -21,12 +21,6 @@ agencyRoute.get(
   agencyController.getClient
 );
 
-agencyRoute.patch(
-  "/update-client/:clientId",
-  // authorizeRole("agency"),// removed because to give access of team agency of type admin
-  agencyController.updateClient
-);
-
 agencyRoute.post("/clients", clientController.clients);
 agencyRoute.get("/get-profile", agencyController.getAgencyProfile);
 agencyRoute.put("/update-profile", agencyController.updateAgencyProfile);

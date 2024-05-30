@@ -43,6 +43,9 @@ const WorkspaceService = require("../services/workspaceService");
 const Workspace = require("../models/workspaceSchema");
 const Team_Role_Master = require("../models/masters/teamRoleSchema");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
+const {
+  loginGamificationPointIncrease,
+} = require("../middlewares/authMiddleware");
 const workspaceService = new WorkspaceService();
 
 class AuthService {
@@ -78,6 +81,7 @@ class AuthService {
         ]);
       }
 
+      await loginGamificationPointIncrease(payload, workspace);
       const token = jwt.sign(
         { id: payload._id, workspace: workspace?._id },
         process.env.JWT_SECRET_KEY,
@@ -151,6 +155,7 @@ class AuthService {
         Team_Role_Master.findById(member_details?.sub_role).lean(),
       ]);
 
+      // await loginGamificationPointIncrease(user, workspace_exist);
       return {
         token: new_token,
         workspace: workspace_exist,
@@ -310,7 +315,7 @@ class AuthService {
 
       if (payload?.workspace_name) {
         await workspaceService.createWorkspace(
-          { workspace_name: payload?.workspace_name?.replace(/\s+/g, "-") },
+          { workspace_name: payload?.workspace_name?.trim() },
           user_exist
         );
       }

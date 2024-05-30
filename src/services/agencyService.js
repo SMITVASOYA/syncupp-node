@@ -25,15 +25,6 @@ const Task = require("../models/taskSchema");
 const Section = require("../models/sectionSchema");
 // Register Agency
 class AgencyService {
-  agencyRegistration = async (payload) => {
-    try {
-      return await Agency.create(payload);
-    } catch (error) {
-      logger.error(`Error while registering the agency: ${error}`);
-      return throwError(error?.message, error?.statusCode);
-    }
-  };
-
   // this will only avilabe for the admin panel
   allAgencies = async (payload) => {
     try {

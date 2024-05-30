@@ -52,28 +52,6 @@ exports.updateAgency = catchAsyncError(async (req, res, next) => {
   sendResponse(res, true, message, {}, statusCode.success);
 });
 
-exports.updateClient = catchAsyncError(async (req, res, next) => {
-  if (!req.params?.clientId)
-    return throwError(returnMessage("default", "default"));
-
-  const client_exist = await Authentication.findById(
-    req.params?.clientId
-  ).lean();
-  if (!client_exist)
-    return throwError(
-      returnMessage("client", "clientNotFound"),
-      statusCode.notFound
-    );
-  await clientService.updateClient(req.body, client_exist);
-  sendResponse(
-    res,
-    true,
-    returnMessage("agency", "clientUpdated"),
-    {},
-    statusCode.success
-  );
-});
-
 exports.getClient = catchAsyncError(async (req, res, next) => {
   if (!req.params?.clientId)
     return throwError(returnMessage("default", "default"));
