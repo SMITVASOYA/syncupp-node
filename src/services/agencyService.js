@@ -352,189 +352,159 @@ class AgencyService {
       //     user?.subscription_id
       //   );
       // }
-      const pending_status = await Section.distinct("_id", {
-        workspace_id: new mongoose.Types.ObjectId(user?.workspace),
-        key: "pending",
-      });
-      const completed_status = await Section.distinct("_id", {
-        workspace_id: new mongoose.Types.ObjectId(user?.workspace),
-        key: "completed",
-      });
-      const overdue_status = await Section.distinct("_id", {
-        workspace_id: new mongoose.Types.ObjectId(user?.workspace),
-        key: "overdue",
-      });
-      const in_progress_status = await Section.distinct("_id", {
-        workspace_id: new mongoose.Types.ObjectId(user?.workspace),
-        key: "in_progress",
-      });
+
+      const workspaceId = new mongoose.Types.ObjectId(user?.workspace);
+      const userId = new mongoose.Types.ObjectId(user?._id);
+
+      const statusKeys = ["pending", "completed", "overdue", "in_progress"];
+      const statusPromises = statusKeys.map((key) =>
+        Section.distinct("_id", { workspace_id: workspaceId, key })
+      );
+
+      const taskAggregates = [
+        { status: pending_status, alias: "pendingTask" },
+        { status: completed_status, alias: "completedTask" },
+        { status: overdue_status, alias: "overdueTask" },
+        { status: in_progress_status, alias: "inprogressTask" },
+      ];
+
+      const taskPromises = taskAggregates.map(({ status, alias }) =>
+        Task.aggregate([
+          {
+            $match: {
+              workspace_id: workspaceId,
+              is_deleted: false,
+              activity_status: { $in: status },
+            },
+          },
+          {
+            $count: alias,
+          },
+        ])
+      );
+
+      const [pendingTask, completedTask, overdueTask, inprogressTask] =
+        await Promise.all(taskPromises);
+
+      // Members Aggregation
+
+      const [client_data, team_client_data] = await Promise.all([
+        Role_Master.findOne({ name: "client" }).lean(),
+        Role_Master.findOne({ name: "team_client" }).lean(),
+      ]);
+
+      const clientRoleId = client_data?._id;
+      const teamClientRoleId = team_client_data?._id;
+
+      const workspaceAggregationPipeline = (roleId, countAlias) => [
+        { $match: { _id: workspaceId } },
+        { $unwind: { path: "$members", preserveNullAndEmptyArrays: true } },
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "members.user_id",
+            foreignField: "_id",
+            as: "user_details",
+          },
+        },
+        {
+          $unwind: { path: "$user_details", preserveNullAndEmptyArrays: true },
+        },
+        {
+          $lookup: {
+            from: "role_masters",
+            localField: "members.role",
+            foreignField: "_id",
+            as: "status_name",
+          },
+        },
+        { $unwind: { path: "$status_name", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            "status_name._id": roleId,
+            "members.status": "confirmed",
+            "user_details.is_deleted": false,
+          },
+        },
+        { $count: countAlias },
+      ];
+
+      const [clientCount, teamMemberCount] = await Promise.all([
+        Workspace.aggregate(
+          workspaceAggregationPipeline(clientRoleId, "clientCount")
+        ),
+        Workspace.aggregate(
+          workspaceAggregationPipeline(teamClientRoleId, "teamMemberCount")
+        ),
+      ]);
 
       const [
-        clientCount,
-        teamMemberCount,
-        clientCountMonth,
+        pending_status,
+        completed_status,
+        overdue_status,
+        in_progress_status,
+      ] = await Promise.all(statusPromises);
+
+      // Other aggregations
+      const [
+        // clientCountMonth,
         taskCount,
-        pendingTask,
-        completedTask,
-        inprogressTask,
-        overdueTask,
         todaysCallMeeting,
         totalAmountInvoices,
         invoiceOverdueCount,
         invoiceSentCount,
         agreementPendingCount,
       ] = await Promise.all([
-        Authentication.aggregate([
-          {
-            $lookup: {
-              from: "authentications",
-              localField: "_id",
-              foreignField: "reference_id",
-              as: "statusName",
-              pipeline: [{ $project: { is_deleted: 1, status: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $match: {
-              "agency_ids.agency_id": user.reference_id,
-              "agency_ids.status": "active",
-              "statusName.is_deleted": { $eq: false },
-              "statusName.status": "confirmed",
-            },
-          },
-          {
-            $count: "clientCount",
-          },
-        ]),
-        Team_Agency.aggregate([
-          {
-            $lookup: {
-              from: "authentications",
-              localField: "_id",
-              foreignField: "reference_id",
-              as: "statusName",
-              pipeline: [{ $project: { is_deleted: 1, status: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $match: {
-              agency_id: user.reference_id,
-              "statusName.is_deleted": { $eq: false },
-              "statusName.status": "confirmed",
-            },
-          },
-          {
-            $count: "teamMemberCount",
-          },
-        ]),
-        Client.aggregate([
-          {
-            $lookup: {
-              from: "authentications",
-              localField: "_id",
-              foreignField: "reference_id",
-              as: "statusName",
-              pipeline: [{ $project: { is_deleted: 1, status: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $match: {
-              "agency_ids.agency_id": user.reference_id,
-              "agency_ids.status": "active",
-              createdAt: {
-                $gte: startOfMonth.toDate(),
-                $lte: endOfMonth.toDate(),
-              },
-              "statusName.is_deleted": { $eq: false },
-              "statusName.status": "confirmed",
-            },
-          },
-          {
-            $count: "clientCountMonth",
-          },
-        ]),
+        // Client.aggregate([
+        //   {
+        //     $lookup: {
+        //       from: "authentications",
+        //       localField: "_id",
+        //       foreignField: "reference_id",
+        //       as: "statusName",
+        //       pipeline: [{ $project: { is_deleted: 1, status: 1 } }],
+        //     },
+        //   },
+        //   {
+        //     $unwind: {
+        //       path: "$statusName",
+        //       preserveNullAndEmptyArrays: true,
+        //     },
+        //   },
+        //   {
+        //     $match: {
+        //       "agency_ids.agency_id": user.reference_id,
+        //       "agency_ids.status": "active",
+        //       createdAt: {
+        //         $gte: startOfMonth.toDate(),
+        //         $lte: endOfMonth.toDate(),
+        //       },
+        //       "statusName.is_deleted": { $eq: false },
+        //       "statusName.status": "confirmed",
+        //     },
+        //   },
+        //   {
+        //     $count: "clientCountMonth",
+        //   },
+        // ]),
         Task.aggregate([
           {
             $match: {
-              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
+              workspace_id: workspaceId,
               is_deleted: false,
+              assign_to: userId,
             },
           },
           {
             $count: "totalTaskCount",
           },
         ]),
-        Task.aggregate([
-          {
-            $match: {
-              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
-              is_deleted: false,
-              activity_status: { $in: pending_status },
-            },
-          },
-          {
-            $count: "pendingTask",
-          },
-        ]),
-        Task.aggregate([
-          {
-            $match: {
-              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
-              is_deleted: false,
-              activity_status: { $in: completed_status },
-            },
-          },
-          {
-            $count: "completedTask",
-          },
-        ]),
-        Task.aggregate([
-          {
-            $match: {
-              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
-              is_deleted: false,
-              activity_status: { $in: in_progress_status },
-            },
-          },
-          {
-            $count: "inprogressTask",
-          },
-        ]),
-        Task.aggregate([
-          {
-            $match: {
-              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
-              is_deleted: false,
-              activity_status: { $in: overdue_status },
-            },
-          },
-          {
-            $count: "overdueTask",
-          },
-        ]),
+
         Activity.aggregate([
           {
             $match: {
               is_deleted: false,
-              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
+              workspace_id: workspaceId,
               meeting_date: {
                 $gte: startOfToday.toDate(),
                 $lte: endOfToday.toDate(),
@@ -545,7 +515,6 @@ class AgencyService {
             $count: "todaysCallMeeting",
           },
         ]),
-
         Invoice.aggregate([
           {
             $lookup: {
@@ -562,10 +531,9 @@ class AgencyService {
               preserveNullAndEmptyArrays: true,
             },
           },
-
           {
             $match: {
-              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
+              workspace_id: workspaceId,
               "invoiceStatus.name": { $eq: "paid" },
               is_deleted: false,
             },
@@ -577,7 +545,6 @@ class AgencyService {
             },
           },
         ]),
-
         Invoice.aggregate([
           {
             $lookup: {
@@ -594,10 +561,9 @@ class AgencyService {
               preserveNullAndEmptyArrays: true,
             },
           },
-
           {
             $match: {
-              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
+              workspace_id: workspaceId,
               "invoiceStatus.name": { $eq: "overdue" },
               is_deleted: false,
             },
@@ -606,7 +572,6 @@ class AgencyService {
             $count: "invoiceOverdueCount",
           },
         ]),
-
         Invoice.aggregate([
           {
             $lookup: {
@@ -623,11 +588,10 @@ class AgencyService {
               preserveNullAndEmptyArrays: true,
             },
           },
-
           {
             $match: {
-              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
-              "invoiceStatus.name": { $eq: "sent" },
+              workspace_id: workspaceId,
+              "invoiceStatus.name": { $eq: "unpaid" },
               is_deleted: false,
             },
           },
@@ -635,11 +599,10 @@ class AgencyService {
             $count: "invoiceSentCount",
           },
         ]),
-
         Agreement.aggregate([
           {
             $match: {
-              workspace_id: new mongoose.Types.ObjectId(user?.workspace),
+              workspace_id: workspaceId,
               status: "sent",
               is_deleted: false,
             },
@@ -671,14 +634,14 @@ class AgencyService {
       return {
         client_count: clientCount[0]?.clientCount ?? 0,
         team_member_count: teamMemberCount[0]?.teamMemberCount ?? 0,
-        client_count_month: clientCountMonth[0]?.clientCountMonth ?? 0,
+        // client_count_month: clientCountMonth[0]?.clientCountMonth ?? 0,
         task_count: taskCount[0]?.totalTaskCount ?? 0,
-        pending_task_count: pendingTask[0].pendingTask ?? 0,
+        // pending_task_count: pendingTask[0].pendingTask ?? 0,
         completed_task_count: completedTask[0]?.completedTask ?? 0,
-        in_progress_task_count: inprogressTask[0]?.inprogressTask ?? 0,
+        // in_progress_task_count: inprogressTask[0]?.inprogressTask ?? 0,
         overdue_task_count: overdueTask[0]?.overdueTask ?? 0,
         todays_call_meeting: todaysCallMeeting[0]?.todaysCallMeeting ?? 0,
-        total_invoice_amount: totalAmountInvoices[0]?.totalPaidAmount ?? 0,
+        // total_invoice_amount: totalAmountInvoices[0]?.totalPaidAmount ?? 0,
         invoice_overdue_count: invoiceOverdueCount[0]?.invoiceOverdueCount ?? 0,
         invoice_sent_count: invoiceSentCount[0]?.invoiceSentCount ?? 0,
         // Next_billing_amount: Next_billing_amount || 0,

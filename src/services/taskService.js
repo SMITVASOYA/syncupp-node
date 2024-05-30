@@ -97,7 +97,23 @@ class TaskService {
       } else {
         activity_status = payload?.status;
       }
-      const newTask = new Task({
+      const pending_status = await Section.findOne({
+        board_id: board_id,
+        key: "pending",
+      }).lean();
+
+      const status_history = [
+        { status: pending_status?._id, updated_by: user?._id },
+      ];
+
+      if (activity_status.toString() !== pending_status?._id.toString()) {
+        status_history.push({
+          status: activity_status,
+          updated_by: user?._id,
+        });
+      }
+
+      const update_data = {
         title,
         agenda,
         ...(due_date && due_date !== "null" && { due_time: timeOnly }),
@@ -112,8 +128,14 @@ class TaskService {
         board_id,
         priority,
         workspace_id: user?.workspace,
-      });
+        status_history: status_history,
+      };
+      const newTask = new Task(update_data);
       const added_task = await newTask.save();
+
+      const status_data = await Section.findById(activity_status)
+        .select("-createdAt -updatedAt")
+        .lean();
 
       const comment_payload = { task_id: newTask._id, comment: comment };
       if (comment) {
@@ -200,7 +222,7 @@ class TaskService {
 
       // ----------------------- Notification END -----------------------
 
-      return added_task;
+      return { ...added_task?._doc, status: status_data };
     } catch (error) {
       logger.error(`Error while creating task : ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -433,6 +455,7 @@ class TaskService {
           $match: {
             ...queryObj,
             board_id: new mongoose.Types.ObjectId(searchObj?.board_id),
+            is_deleted: false,
           },
         },
         filter,
@@ -723,6 +746,7 @@ class TaskService {
           $match: {
             ...queryObj,
             board_id: new mongoose.Types.ObjectId(searchObj?.board_id),
+            is_deleted: false,
           },
         },
         filter,
@@ -1132,6 +1156,10 @@ class TaskService {
         payload.assign_to = JSON.parse(assign_to);
       }
 
+      const status_history = [
+        { status: payload?.status, updated_by: logInUser?._id },
+      ];
+
       // const current_activity = await Task.findById(id).lean();
       let updateTasksPayload = {
         title,
@@ -1148,6 +1176,11 @@ class TaskService {
         ...(payload?.status &&
           payload?.status.toString() ===
             get_complete_status?._id.toString() && { mark_as_done: true }),
+        ...(payload?.status &&
+          status_check.activity_status._id.toString() !==
+            payload?.status.toString() && {
+            $push: { status_history: status_history },
+          }),
       };
       const updateTasks = await Task.findByIdAndUpdate(id, updateTasksPayload, {
         new: true,
@@ -1561,6 +1594,7 @@ class TaskService {
       }
 
       const { status } = payload;
+
       let update_status = status;
       let current_activity = await Task.findById(id).lean();
       // let current_status = current_activity.activity_status;
@@ -1568,23 +1602,43 @@ class TaskService {
       const check_existing_status = await Section.findOne({
         _id: current_activity?.activity_status,
       }).lean();
+      const new_status = await Section.findOne({
+        _id: status,
+      }).lean();
 
-      if (check_existing_status?.key === "completed") {
+      if (
+        check_existing_status?.key !== "completed" &&
+        new_status?.key === "archived"
+      ) {
         return throwError(returnMessage("activity", "CannotUpdate"));
       }
+
+      const status_history = [
+        { status: payload?.status, updated_by: user?._id },
+      ];
 
       const get_complete_status = await Section.findOne({
         _id: update_status,
         key: "completed",
       }).lean();
+
+      const update_data = {
+        activity_status: update_status,
+        ...(get_complete_status && { mark_as_done: true }),
+        ...(check_existing_status?.key === "completed" &&
+          new_status?.key !== "archived" && { mark_as_done: false }),
+        ...(payload?.status &&
+          current_activity?.activity_status?._id.toString() !==
+            payload?.status.toString() && {
+            $push: { status_history: status_history },
+          }),
+      };
+
       const updateTasks = await Task.findByIdAndUpdate(
         {
           _id: id,
         },
-        {
-          activity_status: update_status,
-          ...(get_complete_status && { mark_as_done: true }),
-        },
+        update_data,
         { new: true, useFindAndModify: false }
       );
       // const type = await ActivityType.findOne({ name: "task" }).lean();
@@ -2036,12 +2090,6 @@ class TaskService {
       const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
       user["role"] = user_role_data?.user_role;
       user["sub_role"] = user_role_data?.sub_role;
-      if (
-        user_role_data?.user_role !== "agency" &&
-        user_role_data?.user_role !== "team_agency"
-      ) {
-        return throwError(returnMessage("auth", "insufficientPermission"));
-      }
 
       const { comment, task_id } = payload;
       const task = await Task.findById(task_id);

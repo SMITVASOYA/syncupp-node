@@ -42,6 +42,8 @@ const PaymentService = new paymentService();
 const workspaceService = new WorkspaceService();
 const crypto = require("crypto");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
+const Section = require("../models/sectionSchema");
+const Task = require("../models/taskSchema");
 
 class ClientService {
   // create client for the agency
@@ -823,6 +825,8 @@ class ClientService {
               //   ),
               // },
             ],
+            "members.status": "confirmed",
+            "user_details.is_deleted": false,
           },
         },
 
@@ -1167,264 +1171,111 @@ class ClientService {
   dashboardData = async (user) => {
     try {
       const currentDate = moment();
-      const startOfToday = moment(currentDate).startOf("day");
-      const endOfToday = moment(currentDate).endOf("day");
+      const startOfToday = moment(currentDate).startOf("day").utc();
+      const endOfToday = moment(currentDate).endOf("day").utc();
+
+      const workspaceId = new mongoose.Types.ObjectId(user?.workspace);
+      const userId = new mongoose.Types.ObjectId(user?._id);
+
+      // Task Status
+      const statusKeys = ["pending", "completed", "overdue", "in_progress"];
+      const statusPromises = statusKeys.map((key) =>
+        Section.distinct("_id", { workspace_id: workspaceId, key })
+      );
+
       const [
-        pendingTask,
-        completedTask,
-        inprogressTask,
-        overdueTask,
-        todaysCallMeeting,
-        invoiceOverdueCount,
-        agreementNotAgreedCount,
-      ] = await Promise.all([
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_status_masters",
-              localField: "activity_status",
-              foreignField: "_id",
-              as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "typeName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$typeName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $match: {
-              client_id: user.reference_id,
-              "statusName.name": { $eq: "pending" }, // Fix: Change $nq to $ne
-              is_deleted: false,
-              "typeName.name": "task",
-            },
-          },
-          {
-            $count: "pendingTask",
-          },
-        ]),
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_status_masters",
-              localField: "activity_status",
-              foreignField: "_id",
-              as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
+        pending_status,
+        completed_status,
+        overdue_status,
+        in_progress_status,
+      ] = await Promise.all(statusPromises);
 
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "typeName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$typeName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $match: {
-              client_id: user.reference_id,
-              "statusName.name": { $eq: "completed" }, // Fix: Change $nq to $ne
-              is_deleted: false,
-              "typeName.name": "task",
-            },
-          },
-          {
-            $count: "completedTask",
-          },
-        ]),
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_status_masters",
-              localField: "activity_status",
-              foreignField: "_id",
-              as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "typeName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$typeName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $match: {
-              client_id: user.reference_id,
-              "statusName.name": { $eq: "in_progress" }, // Fix: Change $nq to $ne
-              is_deleted: false,
-              "typeName.name": "task",
-            },
-          },
-          {
-            $count: "inprogressTask",
-          },
-        ]),
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_status_masters",
-              localField: "activity_status",
-              foreignField: "_id",
-              as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "typeName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$typeName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
+      // Task
+      const taskAggregates = [
+        { status: pending_status, alias: "pendingTask" },
+        { status: completed_status, alias: "completedTask" },
+        { status: overdue_status, alias: "overdueTask" },
+        { status: in_progress_status, alias: "inprogressTask" },
+      ];
 
+      const taskPromises = taskAggregates.map(({ status, alias }) =>
+        Task.aggregate([
           {
             $match: {
-              client_id: user.reference_id,
-              "statusName.name": { $eq: "overdue" }, // Fix: Change $nq to $ne
+              workspace_id: workspaceId,
               is_deleted: false,
-              "typeName.name": "task",
+              activity_status: { $in: status },
+              assign_to: new mongoose.Types.ObjectId(userId),
             },
           },
           {
-            $count: "overdueTask",
+            $count: alias,
           },
-        ]),
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "activityType",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$activityType",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $match: {
-              client_id: user.reference_id,
-              "activityType.name": { $eq: "call_meeting" },
-              is_deleted: false,
+        ])
+      );
+      const [pendingTask, completedTask, overdueTask, inprogressTask] =
+        await Promise.all(taskPromises);
 
-              meeting_start_time: {
-                $gte: startOfToday.toDate(),
-                $lte: endOfToday.toDate(),
+      // Other
+      const [todaysCallMeeting, invoiceOverdueCount, agreementNotAgreedCount] =
+        await Promise.all([
+          Activity.aggregate([
+            {
+              $match: {
+                is_deleted: false,
+                workspace_id: new mongoose.Types.ObjectId(user?.workspace),
+                attendees: new mongoose.Types.ObjectId(user?._id),
+                meeting_date: {
+                  $gte: startOfToday.toDate(),
+                  $lte: endOfToday.toDate(),
+                },
               },
             },
-          },
-          {
-            $count: "todaysCallMeeting",
-          },
-        ]),
-        Invoice.aggregate([
-          {
-            $lookup: {
-              from: "invoice_status_masters",
-              localField: "status",
-              foreignField: "_id",
-              as: "invoiceStatus",
-              pipeline: [{ $project: { name: 1 } }],
+            {
+              $count: "todaysCallMeeting",
             },
-          },
-          {
-            $unwind: {
-              path: "$invoiceStatus",
-              preserveNullAndEmptyArrays: true,
+          ]),
+          Invoice.aggregate([
+            {
+              $lookup: {
+                from: "invoice_status_masters",
+                localField: "status",
+                foreignField: "_id",
+                as: "invoiceStatus",
+                pipeline: [{ $project: { name: 1 } }],
+              },
             },
-          },
+            {
+              $unwind: {
+                path: "$invoiceStatus",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
 
-          {
-            $match: {
-              client_id: new mongoose.Types.ObjectId(user.reference_id),
-              "invoiceStatus.name": { $eq: "unpaid" }, // Exclude documents with status "draft"
-              is_deleted: false,
+            {
+              $match: {
+                client_id: new mongoose.Types.ObjectId(user?._id),
+                "invoiceStatus.name": { $eq: "unpaid" }, // Exclude documents with status "draft"
+                is_deleted: false,
+              },
             },
-          },
-          {
-            $count: "invoiceOverdueCount",
-          },
-        ]),
-        Agreement.aggregate([
-          {
-            $match: {
-              receiver: new mongoose.Types.ObjectId(user._id),
-              status: "sent", // Exclude documents with status "draft"
-              is_deleted: false,
+            {
+              $count: "invoiceOverdueCount",
             },
-          },
-          {
-            $count: "agreementNotAgreedCount",
-          },
-        ]),
-      ]);
+          ]),
+          Agreement.aggregate([
+            {
+              $match: {
+                receiver: new mongoose.Types.ObjectId(user._id),
+                status: "sent", // Exclude documents with status "draft"
+                is_deleted: false,
+              },
+            },
+            {
+              $count: "agreementNotAgreedCount",
+            },
+          ]),
+        ]);
 
       return {
         pending_task_count: pendingTask[0]?.pendingTask ?? 0,

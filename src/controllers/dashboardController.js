@@ -27,7 +27,7 @@ exports.dashboardData = catchAsyncError(async (req, res, next) => {
   if (req?.user?.role === "client") {
     dashboardData = await clientService.dashboardData(req?.user);
   }
-  if (req?.user?.role === "team_agency") {
+  if (req?.user?.role === "team_agency" || req?.user?.role === "team_client") {
     dashboardData = await teamMemberService.dashboardData(req?.user);
   }
 
@@ -43,6 +43,10 @@ exports.dashboardData = catchAsyncError(async (req, res, next) => {
 // Get Todays task
 
 exports.todayTask = catchAsyncError(async (req, res, next) => {
+  const user_role_data = await authService.getRoleSubRoleInWorkspace(req?.user);
+  req.user["role"] = user_role_data?.user_role;
+  req.user["sub_role"] = user_role_data?.sub_role;
+
   const todaysTask = await dashboardService.todayTask(req?.user);
 
   sendResponse(
@@ -64,6 +68,22 @@ exports.overdueTask = catchAsyncError(async (req, res, next) => {
     true,
     returnMessage("agency", "overdueTask"),
     overdueTask,
+    statusCode.success
+  );
+});
+// Get Completed task
+
+exports.competedTask = catchAsyncError(async (req, res, next) => {
+  const user_role_data = await authService.getRoleSubRoleInWorkspace(req?.user);
+  req.user["role"] = user_role_data?.user_role;
+  req.user["sub_role"] = user_role_data?.sub_role;
+  const competedTask = await dashboardService.completedTask(req?.user);
+
+  sendResponse(
+    res,
+    true,
+    returnMessage("agency", "completedTask"),
+    competedTask,
     statusCode.success
   );
 });
