@@ -310,7 +310,7 @@ class AuthService {
 
       if (payload?.workspace_name) {
         await workspaceService.createWorkspace(
-          { workspace_name: payload?.workspace_name?.replace(/\s+/g, "-") },
+          { workspace_name: payload?.workspace_name?.trim() },
           user_exist
         );
       }
