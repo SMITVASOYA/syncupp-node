@@ -21,10 +21,15 @@ const taskSchema = new mongoose.Schema(
       {
         status: {
           type: mongoose.Types.ObjectId,
+          ref: "section",
         },
-        active: {
-          default: 0,
-          type: Number,
+        updated_by: {
+          type: mongoose.Types.ObjectId,
+          ref: "authentication",
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
         },
       },
     ],

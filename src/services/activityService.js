@@ -1835,6 +1835,11 @@ class ActivityService {
           },
         },
         {
+          $match: {
+            is_deleted: false,
+          },
+        },
+        {
           $project: {
             title: 1,
             due_time: 1,

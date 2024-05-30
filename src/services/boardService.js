@@ -100,8 +100,7 @@ class BoardService {
         }).lean();
       }
 
-      // Save Board
-      const new_board = await Board.create({
+      const update_board = {
         project_name: lowercaseFirstLetter(project_name),
         description,
         workspace_id: user.workspace,
@@ -114,7 +113,10 @@ class BoardService {
           board_image: payload?.board_image,
         }),
         agency_id: agency_id,
-      });
+      };
+
+      // Save Board
+      const new_board = await Board.create(update_board);
 
       await Promise.all([
         Section.create({
@@ -359,21 +361,19 @@ class BoardService {
           }).lean();
         }
 
-        await Board.findByIdAndUpdate(
-          board_id,
-          {
-            project_name: lowercaseFirstLetter(project_name),
-            description,
-            members: updated_members,
-            ...(image_path && {
-              board_image: image_path,
-            }),
-            ...(is_image_exist && {
-              board_image: payload?.board_image,
-            }),
-          },
-          { new: true }
-        );
+        const update_data = {
+          project_name: lowercaseFirstLetter(project_name),
+          description,
+          members: updated_members,
+          ...(image_path && {
+            board_image: image_path,
+          }),
+          ...(is_image_exist && {
+            board_image: payload?.board_image,
+          }),
+        };
+
+        await Board.findByIdAndUpdate(board_id, update_data, { new: true });
       } else {
         await Board.findByIdAndUpdate(
           board_id,
