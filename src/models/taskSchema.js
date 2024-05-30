@@ -31,7 +31,7 @@ const taskSchema = new mongoose.Schema(
     attachments: [{ type: String }],
     activity_status: {
       type: mongoose.Types.ObjectId,
-      ref: "activity_status_master",
+      ref: "section",
       required: true,
     },
     is_deleted: { type: Boolean, default: false },

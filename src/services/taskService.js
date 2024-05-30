@@ -115,6 +115,10 @@ class TaskService {
       });
       const added_task = await newTask.save();
 
+      const status_data = await Section.findById(activity_status)
+        .select("-createdAt -updatedAt")
+        .lean();
+
       const comment_payload = { task_id: newTask._id, comment: comment };
       if (comment) {
         this.addTaskComment(comment_payload, user);
@@ -200,7 +204,7 @@ class TaskService {
 
       // ----------------------- Notification END -----------------------
 
-      return added_task;
+      return { ...added_task?._doc, status: status_data };
     } catch (error) {
       logger.error(`Error while creating task : ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -2036,12 +2040,6 @@ class TaskService {
       const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
       user["role"] = user_role_data?.user_role;
       user["sub_role"] = user_role_data?.sub_role;
-      if (
-        user_role_data?.user_role !== "agency" &&
-        user_role_data?.user_role !== "team_agency"
-      ) {
-        return throwError(returnMessage("auth", "insufficientPermission"));
-      }
 
       const { comment, task_id } = payload;
       const task = await Task.findById(task_id);

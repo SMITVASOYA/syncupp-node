@@ -116,55 +116,71 @@ class BoardService {
         agency_id: agency_id,
       });
 
-      await Section.create({
-        section_name: "Pending",
-        board_id: new_board?._id,
-        is_deletable: false,
-        sort_order: 1,
-        color: "#FBF0DE",
-        key: "pending",
-        test_color: "#8C6825",
-      }),
-        await Section.create({
-          section_name: "In Progress",
+      await Promise.all([
+        Section.create({
+          section_name: "Pending",
           board_id: new_board?._id,
           is_deletable: false,
+          sort_order: 1,
+          color: "#FBF0DE",
+          key: "pending",
+          test_color: "#8C6825",
+          workspace_id: user?.workspace,
+        }),
+        Section.create({
+          section_name: "In Progress",
+          board_id: new_board?._id,
+          is_deletable: true,
           sort_order: 2,
           color: "#CBE3FB",
           key: "in_progress",
           test_color: "#43688D",
+          workspace_id: user?.workspace,
         }),
-        await Section.create({
+        Section.create({
           section_name: "Overdue",
           board_id: new_board?._id,
-          is_deletable: false,
+          is_deletable: true,
           sort_order: 3,
           color: "#FFD4C6",
           key: "overdue",
           test_color: "#AC2D2D",
+          workspace_id: user?.workspace,
         }),
-        await Section.create({
+        Section.create({
           section_name: "Completed",
           board_id: new_board?._id,
           is_deletable: false,
           key: "completed",
           color: "#E4F6D6",
           test_color: "#527C31",
+          workspace_id: user?.workspace,
         }),
-        // ------------- Notifications -------------
-        await notificationService.addNotification(
-          {
-            module_name: "board",
-            // workspace_id: user?.workspace,
-            members: payload?.members?.filter((item) => item !== user?._id),
-            project_name: lowercaseFirstLetter(project_name),
-            created_by_name:
-              capitalizeFirstLetter(user?.first_name) +
-              " " +
-              capitalizeFirstLetter(user?.last_name),
-          },
-          new_board?._id
-        );
+        Section.create({
+          section_name: "Archived",
+          board_id: new_board?._id,
+          is_deletable: false,
+          key: "archived",
+          color: "#D1C4E9",
+          test_color: "#4A148C",
+          workspace_id: user?.workspace,
+        }),
+      ]);
+
+      // ------------- Notifications -------------
+      await notificationService.addNotification(
+        {
+          module_name: "board",
+          // workspace_id: user?.workspace,
+          members: payload?.members?.filter((item) => item !== user?._id),
+          project_name: lowercaseFirstLetter(project_name),
+          created_by_name:
+            capitalizeFirstLetter(user?.first_name) +
+            " " +
+            capitalizeFirstLetter(user?.last_name),
+        },
+        new_board?._id
+      );
 
       const member_send_mail = payload?.members?.filter(
         (item) => item !== user?._id
@@ -598,11 +614,16 @@ class BoardService {
 
         {
           $unwind: {
-            path: "$member_workspaces.members",
+            path: "$member_workspaces",
             preserveNullAndEmptyArrays: true,
           },
         },
-
+        {
+          $match: {
+            // "member_workspaces.member.status": "confirmed",
+            "member.is_deleted": false,
+          },
+        },
         {
           $project: {
             _id: 0,
@@ -696,7 +717,12 @@ class BoardService {
             preserveNullAndEmptyArrays: true,
           },
         },
-
+        {
+          $match: {
+            "members.status": "confirmed",
+            "userDetails.is_deleted": false,
+          },
+        },
         {
           $project: {
             _id: 0,

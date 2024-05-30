@@ -147,6 +147,8 @@ class InvoiceService {
               //   ),
               // },
             ],
+            "members.status": "confirmed",
+            "user_details.is_deleted": false,
           },
         },
 
