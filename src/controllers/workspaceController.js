@@ -15,3 +15,8 @@ exports.workspaces = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+
+exports.workspaceCheck = catchAsyncError(async (req, res, next) => {
+  await workspaceService.workspaceCheck(req.body, req.user);
+  sendResponse(res, true, undefined, {}, statusCode.success);
+});
