@@ -97,21 +97,10 @@ class TaskService {
       } else {
         activity_status = payload?.status;
       }
-      const pending_status = await Section.findOne({
-        board_id: board_id,
-        key: "pending",
-      }).lean();
 
       const status_history = [
-        { status: pending_status?._id, updated_by: user?._id },
+        { status: activity_status, updated_by: user?._id },
       ];
-
-      if (activity_status.toString() !== pending_status?._id.toString()) {
-        status_history.push({
-          status: activity_status,
-          updated_by: user?._id,
-        });
-      }
 
       const update_data = {
         title,
@@ -152,6 +141,7 @@ class TaskService {
           const user_data = await Authentication.findOne({
             _id: user_id,
           }).lean();
+
           let data = {
             TaskTitle: "New Task Created",
             taskName: capitalizeFirstLetter(title),
@@ -191,7 +181,7 @@ class TaskService {
                 due_date: moment(due_date).format("DD-MM-YYYY"),
                 board_name: board ? board?.project_name : "",
                 assign_to: user_data?._id,
-                // workspace_id: user?.workspace,
+                workspace_id: user?.workspace,
               },
               added_task?._id
             );
@@ -213,7 +203,7 @@ class TaskService {
                 due_date: moment(due_date).format("DD-MM-YYYY"),
                 log_user: "member",
                 board_name: board ? board?.project_name : "",
-                // workspace_id: user?.workspace,
+                workspace_id: user?.workspace,
               },
               added_task?._id
             );

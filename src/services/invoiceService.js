@@ -1495,38 +1495,20 @@ class InvoiceService {
     }
   };
 
-  // GET Invoice information like address , company name pin etc before creating.  ------   AGENCY API
-  // getInvoiceInformation = async (payload, user) => {
-  //   try {
-  //     const { client_id } = payload;
-  //     const getClientData = await Client.findOne(
-  //       {
-  //         _id: client_id,
-  //       },
-  //       {
-  //         agency_ids: 0,
-  //         createdAt: 0,
-  //         updatedAt: 0,
-  //         __v: 0,
-  //         company_website: 0,
-  //         title: 0,
-  //       }
-  //     )
-  //       .populate("city", "name")
-  //       .populate("state", "name")
-  //       .populate("country", "name")
-  //       .lean();
-  //     const getClientInfo = await Authentication.findOne(
-  //       { reference_id: client_id },
-  //       { contact_number: 1 }
-  //     ).lean();
-
-  //     return { ...getClientData, contact_number: getClientInfo.contact_number };
-  //   } catch (error) {
-  //     logger.error(`Error while Get Invoice information, ${error}`);
-  //     throwError(error?.message, error?.statusCode);
-  //   }
-  // };
+  // Get Setting
+  getSetting = async (user, logo) => {
+    try {
+      const getSetting = await Setting.findOne({
+        workspace_id: user?.workspace,
+      })
+        .select("-__v")
+        .lean();
+      return getSetting;
+    } catch (error) {
+      logger.error(`Error while Get setting , ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
 }
 
 module.exports = InvoiceService;

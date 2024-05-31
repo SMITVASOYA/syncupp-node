@@ -131,6 +131,7 @@ class sectionService {
       const is_exist = await Section.findOne({
         board_id: board_id,
         section_name: capitalizeFirstLetter(section_name),
+        is_deleted: false,
       }).lean();
 
       if (is_exist) {

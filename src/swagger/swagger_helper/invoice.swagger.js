@@ -523,7 +523,7 @@ const downloadInvoice = {
   },
 };
 const uploadImage = {
-  tags: ["Invoice"],
+  tags: ["Setting"],
   description: "",
   summary: "Upload logo",
   security: [
@@ -549,6 +549,29 @@ const uploadImage = {
       },
     },
   },
+
+  responses: {
+    200: {
+      description: "ok",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+          },
+        },
+      },
+    },
+  },
+};
+const getSetting = {
+  tags: ["Setting"],
+  description: "",
+  summary: "Upload logo",
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
 
   responses: {
     200: {
@@ -594,8 +617,11 @@ const invoiceRoutes = {
   "/api/v1/invoice/download-invoice": {
     post: downloadInvoice,
   },
-  "/api/v1/invoice/upload-logo": {
+  "/api/v1/setting/upload-logo": {
     post: uploadImage,
+  },
+  "/api/v1/setting/get-setting": {
+    get: getSetting,
   },
 };
 

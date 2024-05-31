@@ -216,19 +216,15 @@ exports.uploadLogo = catchAsyncError(async (req, res, next) => {
     statusCode.success
   );
 });
+// Get Setting
 
-// // Get InvoiceInformation ------   AGENCY API
-
-// exports.getInvoiceInformation = catchAsyncError(async (req, res, next) => {
-//   const getClientData = await invoiceService?.getInvoiceInformation(
-//     req?.body,
-//     req?.user
-//   );
-//   sendResponse(
-//     res,
-//     true,
-//     returnMessage("invoice", "invoiceInfo"),
-//     getClientData,
-//     statusCode.success
-//   );
-// });
+exports.getSetting = catchAsyncError(async (req, res, next) => {
+  const getSetting = await invoiceService.getSetting(req?.user);
+  sendResponse(
+    res,
+    true,
+    returnMessage("invoice", "settingFetched"),
+    getSetting,
+    statusCode.success
+  );
+});
