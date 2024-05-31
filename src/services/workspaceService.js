@@ -173,6 +173,27 @@ class WorkspaceService {
       return throwError(error?.message, error?.statusCode);
     }
   };
+
+  workspaceCheck = async (payload, user) => {
+    try {
+      const { workspace_name } = payload;
+      const workspace_exist = await Workspace.findOne({
+        "members.user_id": user?._id,
+        name: workspace_name,
+      }).lean();
+
+      if (!workspace_exist) {
+        return throwError(
+          returnMessage("workspace", "workspaceNotFound"),
+          statusCode.notFound
+        );
+      }
+      return true;
+    } catch (error) {
+      logger.error(`Error while checking the workspace name: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
 }
 
 module.exports = WorkspaceService;
