@@ -6,8 +6,6 @@ const validatorFunc = require("../utils/validatorFunction.helper");
 
 clientRoute.use(protect);
 
-clientRoute.get("/", authorizeRole("client"), clientController.getClient);
-
 // Get Agencies
 
 clientRoute.get("/get-agencies", clientController.getAgencies);
