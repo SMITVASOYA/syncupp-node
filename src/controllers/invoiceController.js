@@ -155,7 +155,7 @@ exports.updateStatusInvoice = catchAsyncError(async (req, res, next) => {
 // Send Invoice By mail------   Agency API
 
 exports.sendInvoice = catchAsyncError(async (req, res, next) => {
-  await invoiceService.sendInvoice(req?.body, "", req?.user);
+  await invoiceService.sendInvoice(req?.body, "", req?.user?.workspace);
   sendResponse(
     res,
     true,

@@ -226,14 +226,14 @@ class InvoiceService {
         // Generate a new invoice number and ensure it's unique
         do {
           invoiceCount += 1;
-          newInvoiceNumber = `INV-${invoiceCount}`;
+          newInvoiceNumber = invoiceCount;
           var existingInvoice = await Invoice.findOne({
             invoice_number: newInvoiceNumber,
             workspace_id: user?.workspace,
           });
         } while (existingInvoice);
       } else {
-        newInvoiceNumber = `INV-${invoice_number}`;
+        newInvoiceNumber = invoice_number;
         const isInvoice = await Invoice.findOne({
           invoice_number: newInvoiceNumber,
           workspace_id: user?.workspace,
@@ -328,7 +328,7 @@ class InvoiceService {
         name: "draft",
       }).lean();
       const isInvoice = await Invoice.findOne({
-        invoice_number: `INV-${invoice_number}`,
+        invoice_number: invoice_number,
         status: { $ne: draftKey?._id },
         workspace_id: user?.workspace,
       }).lean();
@@ -405,7 +405,7 @@ class InvoiceService {
               status: getInvoiceStatus,
               currency,
               memo,
-              invoice_number: `INV-${invoice_number}`,
+              invoice_number: invoice_number,
               ...(image_path && { invoice_logo: image_path }),
             },
           }
@@ -1302,25 +1302,41 @@ class InvoiceService {
         payload.forEach(async (invoice_id) => {
           const invoice = await this.getInvoice(invoice_id);
 
-          if (invoice[0]?.to?._id) {
-            // ----------------  Notification start    -----------------
+          // ----------------  Notification start    -----------------
 
+          let notification_sent = ["agency"];
+          if (invoice[0]?.client_id) {
+            notification_sent.push("client");
+          }
+
+          notification_sent.forEach(async (receiver) => {
             await notificationService?.addNotification(
               {
-                receiver_name: invoice[0]?.to?.client_full_name,
-                sender_name: invoice[0]?.from?.agency_full_name,
-                receiver_id: invoice[0]?.to?._id,
+                receiver_name:
+                  receiver === "client"
+                    ? invoice[0]?.to?.client_full_name
+                    : invoice[0]?.from?.agency_full_name,
+                sender_name:
+                  receiver === "client"
+                    ? invoice[0]?.from?.agency_full_name
+                    : invoice[0]?.to?.client_full_name,
+                receiver_id:
+                  receiver === "client"
+                    ? invoice[0]?.to?._id
+                    : invoice[0]?.from?._id,
                 invoice_number: invoice[0]?.invoice_number,
                 module_name: "invoice",
-                action_type: "overdue",
+                action_type:
+                  receiver === "client" ? "overdue" : "agencyOverdue",
                 workspace_id: workspace_id,
+                receiver: receiver,
               },
               invoice_id
             );
-          }
+          });
           const client_details = await Authentication.findOne({
             _id: invoice[0]?.to?._id,
-          });
+          }).lean();
           if (client_details) {
             const company_urls = await Configuration.find().lean();
             // Use a template or format the invoice message accordingly

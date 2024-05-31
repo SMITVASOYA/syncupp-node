@@ -480,6 +480,7 @@ class TaskService {
             board_id: 1,
             priority: 1,
             mark_as_done: 1,
+            mark_as_archived: 1,
           },
         },
       ];
@@ -769,6 +770,7 @@ class TaskService {
             attachment_count: { $size: "$attachments" },
             comments_count: { $size: "$comments" },
             mark_as_done: 1,
+            mark_as_archived: 1,
           },
         },
       ];
@@ -910,6 +912,7 @@ class TaskService {
             priority: 1,
             board_id: 1,
             mark_as_done: 1,
+            mark_as_archived: 1,
           },
         },
       ];
@@ -1625,6 +1628,7 @@ class TaskService {
       const update_data = {
         activity_status: update_status,
         ...(get_complete_status && { mark_as_done: true }),
+        ...(new_status?.key === "archived" && { mark_as_archived: true }),
         ...(check_existing_status?.key === "completed" &&
           new_status?.key !== "archived" && { mark_as_done: false }),
         ...(payload?.status &&
