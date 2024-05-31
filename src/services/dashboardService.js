@@ -4,51 +4,55 @@ const Activity = require("../models/activitySchema");
 const moment = require("moment");
 const Team_Agency = require("../models/teamAgencySchema");
 const Team_Client = require("../models/teamClientSchema");
+const mongoose = require("mongoose");
+const Task = require("../models/taskSchema");
+const { capitalizeFirstLetter } = require("../utils/utils");
+const Section = require("../models/sectionSchema");
 
 // Register Agency
 class dashboardService {
   // Todays task
-
   todayTask = async (user) => {
     try {
-      let search_id;
-      let admin_id;
-
-      if (user.role.name === "agency") search_id = "agency_id";
-      if (user.role.name === "client") search_id = "client_id";
-      if (user.role.name === "team_client") {
-        const memberRole = await Team_Client.findOne({
-          _id: user.reference_id,
-        }).lean();
-        search_id = "client_id";
-        admin_id = memberRole.client_id;
-      }
-      if (user.role.name === "team_agency") {
-        const memberRole = await Team_Agency.findOne({ _id: user.reference_id })
-          .populate("role")
-          .lean();
-        if (memberRole.role.name === "team_member") {
-          search_id = "assign_to";
+      let is_admin;
+      if (user?.role === "agency") is_admin = false;
+      if (user?.role === "client") is_admin = false;
+      if (user?.role === "team_client") is_admin = false;
+      if (user?.role === "team_agency") {
+        if (user?.sub_role === "team_member") {
+          is_admin = false;
         }
-        if (memberRole.role.name === "admin") {
-          search_id = "agency_id";
-          user.reference_id = memberRole?.agency_id;
-          admin_id = memberRole.agency_id;
+        if (user?.sub_role === "admin") {
+          is_admin = true;
         }
       }
 
-      const startOfToday = moment.utc().startOf("day");
-      const endOfToday = moment.utc().endOf("day");
+      const workspaceId = new mongoose.Types.ObjectId(user?.workspace);
+      const userId = new mongoose.Types.ObjectId(user?._id);
+
+      const startOfToday = moment.utc().startOf("day").utc();
+      const endOfToday = moment.utc().endOf("day").utc();
 
       const [todaysTasks] = await Promise.all([
-        Activity.aggregate([
+        Task.aggregate([
+          {
+            $match: {
+              workspace_id: workspaceId,
+              is_deleted: false,
+              ...(is_admin && { assign_to: userId }),
+              due_date: {
+                $gte: startOfToday.toDate(),
+                $lte: endOfToday.toDate(),
+              },
+            },
+          },
           {
             $lookup: {
-              from: "activity_status_masters",
+              from: "sections",
               localField: "activity_status",
               foreignField: "_id",
               as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
+              pipeline: [{ $project: { section_name: 1 } }],
             },
           },
           {
@@ -57,101 +61,83 @@ class dashboardService {
               preserveNullAndEmptyArrays: true,
             },
           },
+
           {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "activity_type",
-              pipeline: [{ $project: { name: 1 } }],
+            $project: {
+              _id: 1,
+              title: 1,
+              due_date: 1,
+              due_time: 1,
+              assign_by: 1,
+              activity_status: "$statusName.section_name",
+              createdAt: 1,
             },
           },
           {
-            $unwind: {
-              path: "$activity_type",
-              preserveNullAndEmptyArrays: true,
-            },
+            $limit: 5,
           },
-          {
-            $lookup: {
-              from: "authentications",
-              localField: "assign_to",
-              foreignField: "reference_id",
-              as: "assign_to_name",
-              pipeline: [
-                {
-                  $project: {
-                    name: 1,
-                    first_name: 1,
-                    last_name: 1,
-                    assigned_to_name: {
-                      $concat: ["$first_name", " ", "$last_name"],
-                    },
-                  },
-                },
-              ],
-            },
-          },
-          {
-            $unwind: {
-              path: "$assign_to_name",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $lookup: {
-              from: "authentications",
-              localField: "client_id",
-              foreignField: "reference_id",
-              as: "client_name",
-              pipeline: [
-                {
-                  $project: {
-                    name: 1,
-                    first_name: 1,
-                    last_name: 1,
-                    assigned_to_name: {
-                      $concat: ["$first_name", " ", "$last_name"],
-                    },
-                  },
-                },
-              ],
-            },
-          },
-          {
-            $unwind: {
-              path: "$client_name",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
+        ]),
+      ]);
+      return todaysTasks;
+    } catch (error) {
+      logger.error(`Error while fetch todays task: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  // Completed task
+  completedTask = async (user) => {
+    try {
+      let is_admin;
+      if (user?.role === "agency") is_admin = false;
+      if (user?.role === "client") is_admin = false;
+      if (user?.role === "team_client") is_admin = false;
+      if (user?.role === "team_agency") {
+        if (user?.sub_role === "team_member") {
+          is_admin = false;
+        }
+        if (user?.sub_role === "admin") {
+          is_admin = true;
+        }
+      }
+
+      const workspaceId = new mongoose.Types.ObjectId(user?.workspace);
+      const userId = new mongoose.Types.ObjectId(user?._id);
+      const completed_task_ids = await Section.distinct("_id", {
+        workspace_id: workspaceId,
+        key: "completed",
+      });
+
+      const [completedTasks] = await Promise.all([
+        Task.aggregate([
           {
             $match: {
-              [search_id]: user.reference_id,
-              "statusName.name": { $eq: "pending" }, // Fix: Change $nq to $ne
-              "activity_type.name": "task", // Fix: Change $nq to $ne
+              workspace_id: workspaceId,
               is_deleted: false,
-              due_date: { $lte: endOfToday.toDate() },
+              ...(is_admin && { assign_to: userId }),
+              activity_status: { $in: completed_task_ids },
             },
           },
           {
             $project: {
               _id: 1,
-              activity_type: "$activity_type.name",
               title: 1,
               due_date: 1,
               due_time: 1,
-              client_id: 1,
-              client_name: "$client_name.assigned_to_name",
-              assign_to: "$assign_to_name.assigned_to_name",
               assign_by: 1,
-              agency_id: 1,
-              activity_status: "$statusName.name",
+              activity_status: 1,
               createdAt: 1,
             },
           },
+          {
+            $limit: 5,
+          },
+          {
+            $sort: { createdAt: -1 },
+          },
         ]),
       ]);
-      return todaysTasks;
+      return completedTasks;
     } catch (error) {
       logger.error(`Error while fetch todays task: ${error}`);
       return throwError(error?.message, error?.statusCode);
