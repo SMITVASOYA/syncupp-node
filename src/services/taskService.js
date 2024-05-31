@@ -507,6 +507,9 @@ class TaskService {
 
   taskListWithOutPaination = async (searchObj, user) => {
     try {
+      if (searchObj?.section_id) {
+        return this.taskDataSectionWise(searchObj, user);
+      }
       // Validate board_id
       if (!mongoose.Types.ObjectId.isValid(searchObj?.board_id)) {
         return throwError(returnMessage("board", "invalidBoardId"));
@@ -611,13 +614,13 @@ class TaskService {
           };
         }
 
-        // Filter for
-        if (searchObj?.section_id) {
-          filter["$match"] = {
-            ...filter["$match"],
-            activity_status: new mongoose.Types.ObjectId(searchObj?.section_id),
-          };
-        }
+        // // Filter for
+        // if (searchObj?.section_id) {
+        //   filter["$match"] = {
+        //     ...filter["$match"],
+        //     activity_status: new mongoose.Types.ObjectId(searchObj?.section_id),
+        //   };
+        // }
       }
 
       const pagination = paginationObject(searchObj);
@@ -749,6 +752,201 @@ class TaskService {
             due_time: 1,
             due_date: 1,
             createdAt: 1,
+            updatedAt: 1,
+            agenda: 1,
+            assign_to: "$team_data",
+            assigned_by_first_name: "$assign_by.first_name",
+            assigned_by_last_name: "$assign_by.last_name",
+            assigned_by_name: "$assign_by.assigned_by_name",
+            column_id: "$status.name",
+            board_id: 1,
+            priority: 1,
+            attachment_count: { $size: "$attachments" },
+            comments_count: { $size: "$comments" },
+            mark_as_done: 1,
+            mark_as_archived: 1,
+          },
+        },
+        {
+          $group: {
+            _id: "$status.section_name",
+            data: { $push: "$$ROOT" },
+          },
+        },
+        {
+          $project: {
+            data: { $slice: ["$data", searchObj?.task_count || 5] },
+          },
+        },
+        {
+          $unwind: { path: "$data", preserveNullAndEmptyArrays: true },
+        },
+        {
+          $replaceRoot: { newRoot: "$data" },
+        },
+      ];
+
+      const taskCountPipeline = [
+        {
+          $lookup: {
+            from: "sections",
+            localField: "activity_status",
+            foreignField: "_id",
+            as: "status",
+            pipeline: [{ $project: { createdAt: 0, updatedAt: 0 } }],
+          },
+        },
+        {
+          $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
+        },
+
+        {
+          $match: {
+            board_id: new mongoose.Types.ObjectId(searchObj?.board_id),
+            is_deleted: false,
+          },
+        },
+        {
+          $group: {
+            _id: "$status._id", // Group by status
+            count: { $sum: 1 }, // Count documents for each status
+          },
+        },
+      ];
+
+      const activity = await Task.aggregate(taskPipeline).sort({
+        updatedAt: -1,
+      });
+      const taskCounts = await Task.aggregate(taskCountPipeline).sort({
+        updatedAt: 1,
+      });
+
+      return {
+        activity,
+        taskCounts,
+      };
+    } catch (error) {
+      logger.error(`Error while fetch list : ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+  taskDataSectionWise = async (searchObj, user) => {
+    try {
+      console.log("ssss");
+      let queryObj;
+      if (user?.role === "agency") {
+        queryObj = {
+          is_deleted: false,
+          agency_id: user?._id,
+        };
+      } else if (user?.role === "client") {
+        queryObj = {
+          is_deleted: false,
+          assign_to: user?._id,
+        };
+      } else if (user?.role === "team_agency") {
+        if (user?.sub_role === "admin") {
+          queryObj = {
+            $or: [{ assign_by: user?._id }, { assign_to: user?._id }],
+            is_deleted: false,
+          };
+        } else if (user?.sub_role === "team_member") {
+          queryObj = {
+            is_deleted: false,
+            assign_to: user?._id,
+          };
+        }
+      } else if (user?.role === "team_client") {
+        queryObj = {
+          is_deleted: false,
+          assign_to: user?._id,
+        };
+      }
+      const filter = {
+        $match: {},
+      };
+
+      // const pagination = paginationObject(searchObj);
+
+      const taskPipeline = [
+        {
+          $lookup: {
+            from: "authentications",
+            let: { assign_to_ids: "$assign_to" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $in: ["$_id", "$$assign_to_ids"],
+                  },
+                },
+              },
+              {
+                $project: {
+                  _id: 1,
+                  name: 1,
+                  first_name: 1,
+                  last_name: 1,
+                  profile_image: 1,
+                },
+              },
+            ],
+            as: "team_data",
+          },
+        },
+        {
+          $lookup: {
+            from: "authentications",
+            localField: "assign_by",
+            foreignField: "_id",
+            as: "assign_by",
+            pipeline: [
+              {
+                $project: {
+                  name: 1,
+                  first_name: 1,
+                  last_name: 1,
+                  assigned_by_name: {
+                    $concat: ["$first_name", " ", "$last_name"],
+                  },
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
+        },
+        {
+          $lookup: {
+            from: "sections",
+            localField: "activity_status",
+            foreignField: "_id",
+            as: "status",
+            pipeline: [{ $project: { createdAt: 0, updatedAt: 0 } }],
+          },
+        },
+        {
+          $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
+        },
+
+        {
+          $match: {
+            ...queryObj,
+            board_id: new mongoose.Types.ObjectId(searchObj?.board_id),
+            is_deleted: false,
+            activity_status: new mongoose.Types.ObjectId(searchObj?.section_id),
+          },
+        },
+        {
+          $project: {
+            contact_number: 1,
+            title: 1,
+            status: "$status",
+            due_time: 1,
+            due_date: 1,
+            createdAt: 1,
+            updatedAt: 1,
             agenda: 1,
             assign_to: "$team_data",
             assigned_by_first_name: "$assign_by.first_name",
@@ -765,42 +963,10 @@ class TaskService {
         },
       ];
 
-      if (!searchObj?.section_id) {
-        taskPipeline.push(
-          {
-            $group: {
-              _id: "$status.section_name",
-              data: { $push: "$$ROOT" },
-            },
-          },
-          {
-            $project: {
-              data: { $slice: ["$data", searchObj?.task_count || 5] },
-            },
-          },
-          {
-            $unwind: { path: "$data", preserveNullAndEmptyArrays: true },
-          },
-          {
-            $replaceRoot: { newRoot: "$data" },
-          }
-        );
-      }
-
-      const query = Task.aggregate(taskPipeline).sort({ createdAt: -1 });
-
-      if (searchObj.section_id) {
-        query.skip(searchObj.skip).limit(searchObj.limit);
-      }
-
-      const activity = await query;
-
-      const totalAgreementsCount = await Task.countDocuments(queryObj);
-
-      // Calculating total pages
-      const pages = Math.ceil(
-        totalAgreementsCount / pagination.result_per_page
-      );
+      const activity = await Task.aggregate(taskPipeline)
+        .sort({ updatedAt: -1 })
+        .skip(searchObj.skip)
+        .limit(searchObj.limit);
 
       return {
         activity,
