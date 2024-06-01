@@ -832,7 +832,6 @@ class TaskService {
   };
   taskDataSectionWise = async (searchObj, user) => {
     try {
-      console.log("ssss");
       let queryObj;
       if (user?.role === "agency") {
         queryObj = {
