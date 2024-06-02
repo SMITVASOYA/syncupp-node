@@ -15,8 +15,6 @@ const bcrypt = require("bcryptjs");
 const moment = require("moment");
 const { throwError } = require("../helpers/errorUtil");
 const Authentication = require("../models/authenticationSchema");
-const AgencyService = require("../services/agencyService");
-const agencyService = new AgencyService();
 const Role_Master = require("../models/masters/roleMasterSchema");
 const statusCode = require("../messages/statusCodes.json");
 const crypto = require("crypto");
@@ -25,7 +23,6 @@ const axios = require("axios");
 const Country_Master = require("../models/masters/countryMasterSchema");
 const City_Master = require("../models/masters/cityMasterSchema");
 const State_Master = require("../models/masters/stateMasterSchema");
-const Team_Agency = require("../models/teamAgencySchema");
 const ReferralHistory = require("../models/referralHistorySchema");
 const Configuration = require("../models/configurationSchema");
 const Affiliate = require("../models/affiliateSchema");
@@ -46,6 +43,7 @@ const SubscriptionPlan = require("../models/subscriptionplanSchema");
 const {
   loginGamificationPointIncrease,
 } = require("../middlewares/authMiddleware");
+const Gamification = require("../models/gamificationSchema");
 const workspaceService = new WorkspaceService();
 
 class AuthService {
@@ -251,6 +249,7 @@ class AuthService {
           const referral_registered = await this.referralSignUp({
             referral_code: referral_code,
             referred_to: user_enroll,
+            workspace_id: payload?.workspace,
           });
 
           if (typeof referral_registered === "string") {
@@ -419,6 +418,7 @@ class AuthService {
           const referral_registered = await this.referralSignUp({
             referral_code: referral_code,
             referred_to: user_enroll,
+            workspace_id: payload?.workspace,
           });
 
           if (typeof referral_registered === "string") {
@@ -544,6 +544,7 @@ class AuthService {
           const referral_registered = await this.referralSignUp({
             referral_code: payload?.referral_code,
             referred_to: user_enroll,
+            workspace_id: payload?.workspace,
           });
 
           if (typeof referral_registered === "string") {
@@ -780,6 +781,7 @@ class AuthService {
           const referral_registered = await this.referralSignUp({
             referral_code: payload?.referral_code,
             referred_to: user_enroll,
+            workspace_id: payload?.workspace,
           });
 
           if (typeof referral_registered === "string") {
@@ -1359,12 +1361,12 @@ class AuthService {
     }
   };
 
-  referralSignUp = async ({ referral_code, referred_to }) => {
+  referralSignUp = async ({ referral_code, referred_to, workspace_id }) => {
     try {
       const referral_code_exist = await Authentication.findOne({
         referral_code,
       })
-        .select("referral_code reference_id")
+        .select("referral_code")
         .lean();
 
       if (!referral_code_exist)
@@ -1375,6 +1377,7 @@ class AuthService {
         registered: false,
         referred_by: referral_code_exist?._id,
         email: referred_to?.email,
+        workspace_id,
       });
 
       await ReferralHistory.create({
@@ -1383,39 +1386,40 @@ class AuthService {
         referred_to: referred_to?._id,
         email: referred_to?.email,
         registered: true,
+        workspace_id,
       });
 
       const referral_data = await Configuration.findOne().lean();
 
-      await CompetitionPoint.create({
-        user_id: referred_to?.reference_id,
-        agency_id: referral_code_exist?.reference_id,
+      await Gamification.create({
+        user_id: referred_to?._id,
+        agency_id: referral_code_exist?._id,
         point: referral_data?.referral?.successful_referral_point,
         type: "referral",
+        workspace_id,
       });
 
-      const userData = await Authentication.findOne({
-        reference_id: referred_to?.reference_id,
-      });
+      const userData = await Authentication.findById(referred_to?._id).lean();
 
       await notificationService.addNotification({
         module_name: "referral",
         action_type: "signUp",
         referred_to: userData?.first_name + " " + userData?.last_name,
-        receiver_id: referral_code_exist?.reference_id,
+        receiver_id: referral_code_exist?._id,
         points: referral_data?.referral?.successful_referral_point,
+        workspace_id,
       });
 
-      await Agency.findOneAndUpdate(
-        { _id: referral_code_exist?.reference_id },
+      await Workspace.findOneAndUpdate(
+        { _id: workspace_id, "members.user_id": referral_code_exist?._id },
         {
           $inc: {
-            total_referral_point:
+            "members.$.gamification_points":
               referral_data?.referral?.successful_referral_point,
           },
-        },
-        { new: true }
+        }
       );
+
       return;
     } catch (error) {
       logger.error("Error while referral SignUp", error);

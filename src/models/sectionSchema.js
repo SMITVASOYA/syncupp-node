@@ -11,30 +11,14 @@ const sectionSchema = new mongoose.Schema(
     workspace_id: {
       type: mongoose.Types.ObjectId,
       required: true,
-      ref: "workspace",
+      ref: "workspaces",
     },
-    section_name: {
-      type: String,
-      required: true,
-    },
-    sort_order: {
-      type: Number,
-    },
-    is_deletable: {
-      type: Boolean,
-      default: true,
-    },
-    key: {
-      type: String,
-    },
-    color: {
-      type: String,
-      required: true,
-    },
-    test_color: {
-      type: String,
-      required: true,
-    },
+    section_name: { type: String, required: true },
+    sort_order: { type: Number },
+    is_deletable: { type: Boolean, default: true },
+    key: { type: String },
+    color: { type: String, required: true },
+    test_color: { type: String, required: true },
     is_deleted: { type: Boolean, default: false },
   },
   { timestamps: true }

@@ -969,16 +969,12 @@ class TeamMemberService {
   deleteMember = async (payload, user) => {
     try {
       const { teamMemberIds } = payload;
-      // pending to implement when we remove the team members and the tasks are assigned and pending set
-      const [workspace, sheet, activity_status] = await Promise.all([
+      const [workspace, sheet] = await Promise.all([
         Workspace.findById(user?.workspace).lean(),
         SheetManagement.findOne({
           user_id: user?._id,
           is_deleted: false,
         }).lean(),
-        Activity_Status_Master.findOne({ name: "pending" })
-          .select("_id")
-          .lean(),
       ]);
 
       if (!sheet) return throwError(returnMessage("default", "default"));
@@ -1001,18 +997,46 @@ class TeamMemberService {
           );
       }
 
-      const task_assigned = await Task.findOne({
+      /* {
         workspace_id: user.workspace,
         assign_to: { $in: teamMemberIds },
         activity_status: activity_status?._id,
         is_deleted: false,
-      }).lean();
+      } */
 
-      if (task_assigned && !payload?.force_fully_remove)
+      const task_assigned = await Task.aggregate([
+        {
+          $match: {
+            workspace_id: user.worksapce,
+            assign_to: { $in: teamMemberIds },
+            is_deleted: false,
+          },
+        },
+        {
+          $lookup: {
+            from: "sections",
+            localField: "activity_status",
+            foreignField: "_id",
+            as: "activity_status",
+          },
+        },
+        {
+          $unwind: {
+            path: "$activity_status",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        { $match: { "activity_status.key": "completed" } },
+      ]);
+
+      if (task_assigned.length && !payload?.force_fully_remove)
         return { force_fully_remove: true };
       // remove the member from the workspace
 
-      if ((task_assigned && payload?.force_fully_remove) || !task_assigned) {
+      if (
+        (task_assigned.length && payload?.force_fully_remove) ||
+        !task_assigned.length
+      ) {
         // remove the member from the workspace
         await Workspace.findOneAndUpdate(
           { _id: user.workspace, "members.user_id": { $in: teamMemberIds } },

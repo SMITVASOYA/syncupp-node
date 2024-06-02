@@ -20,11 +20,8 @@ const gamificationSchema = new mongoose.Schema(
     },
     point: { type: String, required: true },
     type: { type: String, required: true, enum: ["task", "login", "referral"] },
-    workspace_id: {
-      type: mongoose.Types.ObjectId,
-      ref: "workspaces",
-      required: true,
-    },
+    workspace_id: { type: mongoose.Types.ObjectId, ref: "workspaces" },
+    task_id: { type: mongoose.Types.ObjectId, ref: "task" },
   },
   { timestamps: true }
 );

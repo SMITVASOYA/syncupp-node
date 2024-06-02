@@ -44,6 +44,7 @@ const workspaceSchema = new mongoose.Schema(
         joining_date: { type: Date },
         gamification_points: { type: Number, default: 0 },
         last_visit_date: { type: Date },
+        total_coupon: [{ type: mongoose.Schema.Types.ObjectId }],
       },
     ],
     trial_end_date: { type: Date },
