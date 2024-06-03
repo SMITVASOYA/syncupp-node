@@ -233,14 +233,14 @@ exports.loginGamificationPointIncrease = async (user, workspace) => {
       Configuration.findOne({}).lean(),
     ]);
 
-    if (role?.name !== "agency" || role?.name !== "team_agency") return;
+    if (role?.name !== "agency" && role?.name !== "team_agency") return;
 
     const last_visit_date = moment
       .utc(workspace_user_detail?.last_visit_date)
       .startOf("day");
 
     if (
-      !last_visit_date.isAfter(today) ||
+      !last_visit_date.isSameOrAfter(today) ||
       !workspace_user_detail?.last_visit_date
     ) {
       await Gamification.create({
@@ -248,7 +248,7 @@ exports.loginGamificationPointIncrease = async (user, workspace) => {
         agency_id: workspace?.created_by,
         point: +configuration?.competition.successful_login.toString(),
         type: "login",
-        role: role?.name,
+        role: role?._id,
         workspace_id: workspace?._id,
       });
 
@@ -259,7 +259,9 @@ exports.loginGamificationPointIncrease = async (user, workspace) => {
             "members.$.gamification_points":
               configuration?.competition.successful_login,
           },
-          "memebrs.$.last_visit_date": last_visit_date,
+          $set: {
+            "members.$.last_visit_date": last_visit_date,
+          },
         }
       );
     }

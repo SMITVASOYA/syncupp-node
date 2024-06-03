@@ -2315,7 +2315,10 @@ class ActivityService {
   completionHistory = async (payload, user) => {
     try {
       const pagination = paginationObject(payload);
-      const match_obj = { worksapce_id: user?.workspace };
+      const match_obj = {
+        workspace_id: user?.workspace_detail?._id,
+        user_id: user?._id,
+      };
 
       const search_obj = {};
       if (payload?.search && payload?.search !== "") {

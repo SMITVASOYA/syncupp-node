@@ -2517,10 +2517,7 @@ class TaskService {
             point:
               configuration?.competition?.successful_task_competition?.toString(),
             type: "task",
-            role:
-              member_details?.role?.toString() === agency_role?._id?.toString()
-                ? "agency"
-                : "team_agency",
+            role: member_details?.role,
             task_id,
             workspace_id: user?.workspace,
           });
