@@ -481,7 +481,6 @@ class AgreementService {
           { new: true, useFindAndModify: false }
         );
       }
-      console.log("receiver");
       let clientDetails;
       if (status === "sent") {
         if (receiver && receiver !== null) {
@@ -601,8 +600,6 @@ class AgreementService {
           : { receiver: receiver }),
       };
 
-      console.log("receiver");
-
       if (agreement.status === "draft") {
         const dueDate = moment.utc(due_date, "DD-MM-YYYY").startOf("day");
         const updatedAgreement = await Agreement.findByIdAndUpdate(
@@ -632,7 +629,6 @@ class AgreementService {
         _id: agreementId,
         is_deleted: false,
       }).lean();
-      console.log("first");
 
       let clientDetails;
       if (agreements?.receiver) {
@@ -640,7 +636,6 @@ class AgreementService {
           _id: agreements.receiver,
         }).lean();
       }
-      console.log("first");
       // const agreement_detail = await this.getAgreement(agreementId);
       const aggregationPipeline = [
         {
@@ -786,7 +781,6 @@ class AgreementService {
       if (user.role.name === "agency" && status === "agreed") {
         return throwError(returnMessage("agreement", "canNotUpdate"));
       }
-      console.log("reciver");
 
       if (status === "draft") {
         return throwError(returnMessage("agreement", "canNotUpdate"));
@@ -799,15 +793,12 @@ class AgreementService {
           _id: agreementId,
           is_deleted: false,
         }).lean();
-        console.log("reciver");
-        console.log(agreements?.receiver);
 
         if (agreements?.receiver && agreements?.receiver !== null) {
           clientDetails = await Authentication.findOne({
             _id: agreements?.receiver,
           }).lean();
         }
-        console.log("reciver");
 
         if (clientDetails) {
           const aggregationPipeline = [
@@ -887,8 +878,6 @@ class AgreementService {
             },
           ];
 
-          console.log("reciver");
-
           agreement = await Agreement.aggregate(aggregationPipeline);
           if (status === "sent" || status === "agreed") {
             var data = {
@@ -919,7 +908,6 @@ class AgreementService {
               message: ageremantMessage,
             });
           }
-          console.log("reciver");
           // ----------------  Notification start    -----------------
           if (status === "sent") {
             await notificationService.addNotification(
@@ -940,7 +928,6 @@ class AgreementService {
           // ----------------  Notification end    -----------------
         }
       }
-      console.log("reciver");
 
       const updatedAgreement = await Agreement.findOneAndUpdate(
         {
