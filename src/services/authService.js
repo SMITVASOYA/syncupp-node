@@ -1583,6 +1583,25 @@ class AuthService {
       return throwError(error?.message, error?.statusCode);
     }
   };
+  getWorkspaceAdmin = async (workspace) => {
+    try {
+      const workspace_data = await Workspace.findById(workspace).lean();
+      const agency_role_id = await Role_Master.findOne({
+        name: "agency",
+      }).lean();
+      const find_agency = workspace_data?.members?.find(
+        (user) => user?.role.toString() === agency_role_id?._id.toString()
+      );
+
+      const admin_data = await Authentication.findById(find_agency?.user_id).lean()
+      return admin_data;
+    } catch (error) {
+      logger.error(
+        `Error while gettign the role and subrole in the workspace: ${error}`
+      );
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
 }
 
 module.exports = AuthService;
