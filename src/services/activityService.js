@@ -89,7 +89,6 @@ class ActivityService {
       );
       if (!start_date.isSameOrAfter(current_date))
         return throwError(returnMessage("activity", "dateinvalid"));
-
       if (!end_time.isAfter(start_time))
         return throwError(returnMessage("activity", "invalidTime"));
 
@@ -1285,6 +1284,10 @@ class ActivityService {
   // this function is used for to get the activity with date and user based filter
   getActivities = async (payload, user) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+
       if (payload?.pagination) {
         return await this.getWithPaginationActivities(payload, user);
       }
@@ -1475,7 +1478,6 @@ class ActivityService {
           ],
         };
       }
-
       let aggragate = [
         assign_obj,
         match_obj,
@@ -1769,7 +1771,6 @@ class ActivityService {
           ],
         };
       }
-
       let aggragate = [
         assign_obj,
         match_obj,

@@ -771,6 +771,11 @@ class TaskService {
           },
         },
         {
+          $sort: {
+            updatedAt: -1,
+          },
+        },
+        {
           $group: {
             _id: "$status.section_name",
             data: { $push: "$$ROOT" },
@@ -789,9 +794,7 @@ class TaskService {
         },
       ];
 
-      const activity = await Task.aggregate(taskPipeline).sort({
-        updatedAt: -1,
-      });
+      const activity = await Task.aggregate(taskPipeline);
 
       const taskCountPipeline = [
         {
@@ -826,7 +829,7 @@ class TaskService {
       });
 
       const task_counts = await Task.aggregate(taskCountPipeline).sort({
-        updatedAt: 1,
+        updatedAt: -1,
       });
 
       const new_data = Array.from(find_section_list)
