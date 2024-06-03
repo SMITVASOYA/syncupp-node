@@ -186,10 +186,11 @@ class CouponService {
 
       if (role?.name !== "agency" && role?.name !== "team_agency") return;
 
-      if (member_details?.total_coupon?.length > 0)
+      // removed as of now because of the duplication and no need
+      /* if (member_details?.total_coupon?.length > 0)
         coupon = coupon.filter(
           (couponItem) => !member_details?.total_coupon.includes(couponItem._id)
-        );
+        ); */
 
       const totalCouponIds = member_details?.total_coupon?.map((coupon) =>
         coupon?.toString()
