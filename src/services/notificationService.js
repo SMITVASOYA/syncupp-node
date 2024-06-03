@@ -279,6 +279,7 @@ class NotificationService {
             type: "agreement",
             data_reference_id: id,
             message: message,
+            workspace_id: payload?.workspace_id,
           });
 
           eventEmitter(
@@ -303,6 +304,8 @@ class NotificationService {
         else if (action_type === "overdue") message_type = "invoiceDue";
         else if (action_type === "updateStatusPaid")
           message_type = "invoicePaid";
+        else if (action_type === "agencyOverdue")
+          message_type = "invoiceOverdueAgency";
 
         const createAndEmitNotification = async (userId, messageType) => {
           const message = replaceFields(

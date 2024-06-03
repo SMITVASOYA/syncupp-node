@@ -46,7 +46,7 @@ class AgreementService {
         client_data = await Authentication.findById(receiver).lean();
       }
 
-      const agreements = await Agreement.create({
+      const update_data = {
         title,
         agreement_content,
         due_date: dueDate,
@@ -54,102 +54,103 @@ class AgreementService {
         ...(receiver && receiver !== "undefined" && { receiver: receiver }),
         agency_id: user?._id,
         workspace_id: user?.workspace,
-      });
+      };
+
+      const agreements = await Agreement.create(update_data);
 
       if (send === true) {
-        // const aggregationPipeline = [
-        //   {
-        //     $lookup: {
-        //       from: "authentications",
-        //       localField: "receiver",
-        //       foreignField: "_id",
-        //       as: "receiver_data",
-        //     },
-        //   },
+        const aggregationPipeline = [
+          {
+            $lookup: {
+              from: "authentications",
+              localField: "receiver",
+              foreignField: "_id",
+              as: "receiver_data",
+            },
+          },
 
-        //   {
-        //     $unwind: "$receiver_data",
-        //   },
-        //   {
-        //     $lookup: {
-        //       from: "authentications",
-        //       localField: "agency_id",
-        //       foreignField: "_id",
-        //       as: "sender_data",
-        //     },
-        //   },
+          {
+            $unwind: "$receiver_data",
+          },
+          {
+            $lookup: {
+              from: "authentications",
+              localField: "agency_id",
+              foreignField: "_id",
+              as: "sender_data",
+            },
+          },
 
-        //   {
-        //     $unwind: "$sender_data",
-        //   },
+          {
+            $unwind: "$sender_data",
+          },
 
-        //   {
-        //     $match: {
-        //       _id: new mongoose.Types.ObjectId(agreements._id),
-        //       is_deleted: false,
-        //     },
-        //   },
-        //   {
-        //     $project: {
-        //       _id: 1,
-        //       first_name: "$receiver_data.first_name",
-        //       last_name: "$receiver_data.last_name",
-        //       email: "$receiver_data.email",
-        //       receiver: "$receiver_data.name",
-        //       receiver_email: "$receiver_data.email",
-        //       receiver_number: "$receiver_data.contact_number",
-        //       receiver_id: "$receiver_data._id",
-        //       contact_number: 1,
-        //       sender: "$sender_data.name",
-        //       sender_email: "$sender_data.email",
-        //       sender_number: "$sender_data.contact_number",
-        //       sender_first_name: "$sender_data.first_name",
-        //       sender_last_name: "$sender_data.last_name",
-        //       sender_id: "$sender_data._id",
-        //       sender_full_name: {
-        //         $concat: [
-        //           "$sender_data.first_name",
-        //           " ",
-        //           "$sender_data.last_name",
-        //         ],
-        //       },
-        //       receiver_full_name: {
-        //         $concat: [
-        //           "$receiver_data.first_name",
-        //           " ",
-        //           "$receiver_data.last_name",
-        //         ],
-        //       },
-        //       title: 1,
-        //       status: 1,
-        //       agreement_content: 1,
-        //       due_date: 1,
-        //     },
-        //   },
-        // ];
-        // const agreement = await Agreement.aggregate(aggregationPipeline);
+          {
+            $match: {
+              _id: new mongoose.Types.ObjectId(agreements._id),
+              is_deleted: false,
+            },
+          },
+          {
+            $project: {
+              _id: 1,
+              first_name: "$receiver_data.first_name",
+              last_name: "$receiver_data.last_name",
+              email: "$receiver_data.email",
+              receiver: "$receiver_data.name",
+              receiver_email: "$receiver_data.email",
+              receiver_number: "$receiver_data.contact_number",
+              receiver_id: "$receiver_data._id",
+              contact_number: 1,
+              sender: "$sender_data.name",
+              sender_email: "$sender_data.email",
+              sender_number: "$sender_data.contact_number",
+              sender_first_name: "$sender_data.first_name",
+              sender_last_name: "$sender_data.last_name",
+              sender_id: "$sender_data._id",
+              sender_full_name: {
+                $concat: [
+                  "$sender_data.first_name",
+                  " ",
+                  "$sender_data.last_name",
+                ],
+              },
+              receiver_full_name: {
+                $concat: [
+                  "$receiver_data.first_name",
+                  " ",
+                  "$receiver_data.last_name",
+                ],
+              },
+              title: 1,
+              status: 1,
+              agreement_content: 1,
+              due_date: 1,
+            },
+          },
+        ];
+        const agreement = await Agreement.aggregate(aggregationPipeline);
+        if (client_data) {
+          var data = {
+            title: agreement[0]?.title,
+            dueDate: moment(agreement[0]?.due_date).format("DD/MM/YYYY"),
+            content: agreement[0]?.agreement_content,
+            receiverName: agreement[0]?.receiver_full_name,
+            senderName: agreement[0]?.sender_full_name,
+            status: agreement[0]?.status,
+            senderNumber: agreement[0]?.sender_number,
+            receiverNumber: agreement[0]?.receiver_number,
+            senderEmail: agreement[0]?.sender_email,
+            receiverEmail: agreement[0]?.receiver_email,
+          };
+          const ageremant_message = agrementEmail(data);
 
-        // if (client_data) {
-        //   var data = {
-        //     title: agreement[0]?.title,
-        //     dueDate: moment(agreement[0]?.due_date).format("DD/MM/YYYY"),
-        //     content: agreement[0]?.agreement_content,
-        //     receiverName: agreement[0]?.receiver_full_name,
-        //     senderName: agreement[0]?.sender_full_name,
-        //     status: agreement[0]?.status,
-        //     senderNumber: agreement[0]?.sender_number,
-        //     receiverNumber: agreement[0]?.receiver_number,
-        //     senderEmail: agreement[0]?.sender_email,
-        //     receiverEmail: agreement[0]?.receiver_email,
-        //   };
-        //   const ageremant_message = agrementEmail(data);
-
-        //   sendEmail({
-        //     email: client_data?.email,
-        //     subject: returnMessage("emailTemplate", "agreementReceived"),
-        //     message: ageremant_message,
-        //   });
-        // }
+          sendEmail({
+            email: client_data?.email,
+            subject: returnMessage("emailTemplate", "agreementReceived"),
+            message: ageremant_message,
+          });
+        }
 
         await Agreement.findOneAndUpdate(
           { _id: agreements._id },
@@ -159,20 +160,21 @@ class AgreementService {
         payload.status = "sent";
 
         // ----------------  Notification start    -----------------
-        // if (client_data) {
-        //   await notificationService.addNotification(
-        //     {
-        //       receiver_name: agreement[0]?.receiver_full_name,
-        //       sender_name: agreement[0]?.sender_full_name,
-        //       receiver_id: receiver,
-        //       title,
-        //       agreement_content,
-        //       module_name: "agreement",
-        //       action_type: "create",
-        //     },
-        //     agreement[0]?._id
-        //   );
-        // }
+        if (client_data) {
+          await notificationService.addNotification(
+            {
+              receiver_name: agreement[0]?.receiver_full_name,
+              sender_name: agreement[0]?.sender_full_name,
+              receiver_id: receiver,
+              title,
+              agreement_content,
+              module_name: "agreement",
+              action_type: "create",
+              workspace_id: user?.workspace,
+            },
+            agreement[0]?._id
+          );
+        }
         // ----------------  Notification end    -----------------
       }
 
@@ -479,9 +481,11 @@ class AgreementService {
           { new: true, useFindAndModify: false }
         );
       }
+      console.log("receiver");
+      let clientDetails;
       if (status === "sent") {
         if (receiver && receiver !== null) {
-          const clientDetails = await Authentication.findOne({
+          clientDetails = await Authentication.findOne({
             _id: agreement?.receiver,
           }).lean();
         }
@@ -564,26 +568,40 @@ class AgreementService {
 
         const agreement = await Agreement.aggregate(aggregationPipeline);
 
-        // var data = {
-        //   title: agreement[0].title,
-        //   dueDate: moment(agreement[0].due_date).format("DD/MM/YYYY"),
-        //   content: agreement[0].agreement_content,
-        //   receiverName: agreement[0].receiver_fullName,
-        //   senderName: agreement[0].sender_fullName,
-        //   status: agreement[0].status,
-        //   senderNumber: agreement[0].sender_number,
-        //   receiverNumber: agreement[0].receiver_number,
-        //   senderEmail: agreement[0].sender_email,
-        //   receiverEmail: agreement[0].receiver_email,
-        // };
-        // const ageremantMessage = agrementEmail(data);
-        // await sendEmail({
-        //   email: clientDetails?.email,
-        //   subject: returnMessage("emailTemplate", "agreementUpdated"),
-        //   message: ageremantMessage,
-        // });
+        var data = {
+          title: agreement[0].title,
+          dueDate: moment(agreement[0].due_date).format("DD/MM/YYYY"),
+          content: agreement[0].agreement_content,
+          receiverName: agreement[0].receiver_fullName,
+          senderName: agreement[0].sender_fullName,
+          status: agreement[0].status,
+          senderNumber: agreement[0].sender_number,
+          receiverNumber: agreement[0].receiver_number,
+          senderEmail: agreement[0].sender_email,
+          receiverEmail: agreement[0].receiver_email,
+        };
+        const ageremantMessage = agrementEmail(data);
+        await sendEmail({
+          email: clientDetails?.email,
+          subject: returnMessage("emailTemplate", "agreementUpdated"),
+          message: ageremantMessage,
+        });
         payload.status = "sent";
       }
+
+      const update_date = {
+        title,
+        agreement_content,
+        due_date: payload.due_date,
+        status,
+        ...(!receiver || receiver === "null" || receiver === "undefined"
+          ? {
+              receiver: null,
+            }
+          : { receiver: receiver }),
+      };
+
+      console.log("receiver");
 
       if (agreement.status === "draft") {
         const dueDate = moment.utc(due_date, "DD-MM-YYYY").startOf("day");
@@ -591,17 +609,7 @@ class AgreementService {
           {
             _id: agreementId,
           },
-          {
-            title,
-            agreement_content,
-            due_date: payload.due_date,
-            status,
-            ...(!receiver || receiver === "null" || receiver === "undefined"
-              ? {
-                  receiver: null,
-                }
-              : { receiver: receiver }),
-          },
+          update_date,
           { new: true, useFindAndModify: false }
         );
         return updatedAgreement;
@@ -624,9 +632,15 @@ class AgreementService {
         _id: agreementId,
         is_deleted: false,
       }).lean();
-      const clientDetails = await Authentication.findOne({
-        _id: agreements.receiver,
-      });
+      console.log("first");
+
+      let clientDetails;
+      if (agreements?.receiver) {
+        clientDetails = await Authentication.findOne({
+          _id: agreements.receiver,
+        }).lean();
+      }
+      console.log("first");
       // const agreement_detail = await this.getAgreement(agreementId);
       const aggregationPipeline = [
         {
@@ -702,27 +716,30 @@ class AgreementService {
         },
       ];
       const agreement = await Agreement.aggregate(aggregationPipeline);
-      // var data = {
-      //   title: agreement[0].title,
-      //   dueDate: moment(agreement[0].due_date).format("DD/MM/YYYY"),
-      //   content: agreement[0].agreement_content,
-      //   receiverName: agreement[0].receiver_fullName,
-      //   senderName: agreement[0].sender_fullName,
-      //   status: agreement[0].status,
-      //   senderNumber: agreement[0].sender_number,
-      //   receiverNumber: agreement[0].receiver_number,
-      //   senderEmail: agreement[0].sender_email,
-      //   receiverEmail: agreement[0].receiver_email,
-      // };
-      // const ageremantMessage = agrementEmail(data);
-      // await sendEmail({
-      //   email: clientDetails?.email,
-      //   subject: returnMessage("emailTemplate", "agreementUpdated"),
-      //   message: ageremantMessage,
-      // });
+
+      if (clientDetails) {
+        var data = {
+          title: agreement[0].title,
+          dueDate: moment(agreement[0].due_date).format("DD/MM/YYYY"),
+          content: agreement[0].agreement_content,
+          receiverName: agreement[0].receiver_fullName,
+          senderName: agreement[0].sender_fullName,
+          status: agreement[0].status,
+          senderNumber: agreement[0].sender_number,
+          receiverNumber: agreement[0].receiver_number,
+          senderEmail: agreement[0].sender_email,
+          receiverEmail: agreement[0].receiver_email,
+        };
+        const ageremantMessage = agrementEmail(data);
+        await sendEmail({
+          email: clientDetails?.email,
+          subject: returnMessage("emailTemplate", "agreementUpdated"),
+          message: ageremantMessage,
+        });
+      }
 
       if (agreements.status === "sent" || agreements.status === "draft") {
-        const updatedAgreement = await Agreement.findByIdAndUpdate(
+        await Agreement.findByIdAndUpdate(
           {
             _id: agreementId,
           },
@@ -735,19 +752,20 @@ class AgreementService {
 
       // ----------------  Notification start    -----------------
 
-      // if (agreements.status === "draft") {
-      //   await notificationService.addNotification(
-      //     {
-      //       receiver_name: agreement[0]?.receiver_fullName,
-      //       sender_name: agreement[0]?.sender_fullName,
-      //       receiver_id: clientDetails?._id,
-      //       title: agreement[0]?.title,
-      //       module_name: "agreement",
-      //       action_type: "create",
-      //     },
-      //     agreementId
-      //   );
-      // }
+      if (agreements.status === "draft" && clientDetails) {
+        await notificationService.addNotification(
+          {
+            receiver_name: agreement[0]?.receiver_fullName,
+            sender_name: agreement[0]?.sender_fullName,
+            receiver_id: clientDetails?._id,
+            title: agreement[0]?.title,
+            module_name: "agreement",
+            action_type: "create",
+            workspace_id: user?.workspace,
+          },
+          agreementId
+        );
+      }
 
       // ----------------  Notification end    -----------------
 
@@ -768,147 +786,161 @@ class AgreementService {
       if (user.role.name === "agency" && status === "agreed") {
         return throwError(returnMessage("agreement", "canNotUpdate"));
       }
+      console.log("reciver");
 
       if (status === "draft") {
         return throwError(returnMessage("agreement", "canNotUpdate"));
       }
       let agreement;
+      let clientDetails;
+
       if (status === "sent" || status === "agreed") {
         const agreements = await Agreement.findOne({
           _id: agreementId,
           is_deleted: false,
         }).lean();
+        console.log("reciver");
+        console.log(agreements?.receiver);
 
-        // if (receiver && receiver !== null) {
-        //   const clientDetails = await Authentication.findOne({
-        //     _id: agreements?.receiver,
-        //   });
-        // }
-        // const aggregationPipeline = [
-        //   {
-        //     $lookup: {
-        //       from: "authentications",
-        //       localField: "receiver",
-        //       foreignField: "_id",
-        //       as: "receiver_Data",
-        //     },
-        //   },
-        //   {
-        //     $unwind: {
-        //       path: "$receiver_Data",
-        //       preserveNullAndEmptyArrays: true,
-        //     },
-        //   },
-        //   {
-        //     $lookup: {
-        //       from: "authentications",
-        //       localField: "agency_id",
-        //       foreignField: "_id",
-        //       as: "sender_Data",
-        //     },
-        //   },
-        //   {
-        //     $unwind: {
-        //       path: "$sender_Data",
-        //       preserveNullAndEmptyArrays: true,
-        //     },
-        //   },
+        if (agreements?.receiver && agreements?.receiver !== null) {
+          clientDetails = await Authentication.findOne({
+            _id: agreements?.receiver,
+          }).lean();
+        }
+        console.log("reciver");
 
-        //   {
-        //     $match: {
-        //       _id: new mongoose.Types.ObjectId(agreementId),
-        //       is_deleted: false,
-        //     },
-        //   },
-        //   {
-        //     $project: {
-        //       _id: 1,
-        //       first_name: "$receiver_Data.first_name",
-        //       last_name: "$receiver_Data.last_name",
-        //       email: "$receiver_Data.email",
-        //       // receiver: "$receiver_Data.name",
-        //       receiver_email: "$receiver_Data.email",
-        //       receiver_number: "$receiver_Data.contact_number",
-        //       receiver_id: "$receiver_Data._id",
-        //       contact_number: 1,
-        //       // sender: "$sender_Data.name",
-        //       sender_email: "$sender_Data.email",
-        //       sender_number: "$sender_Data.contact_number",
-        //       sender_first_name: "$sender_Data.first_name",
-        //       sender_last_name: "$sender_Data.last_name",
-        //       sender_id: "$sender_Data._id",
-        //       sender_id_notification: "$sender_Data._id",
+        if (clientDetails) {
+          const aggregationPipeline = [
+            {
+              $lookup: {
+                from: "authentications",
+                localField: "receiver",
+                foreignField: "_id",
+                as: "receiver_Data",
+              },
+            },
+            {
+              $unwind: {
+                path: "$receiver_Data",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $lookup: {
+                from: "authentications",
+                localField: "agency_id",
+                foreignField: "_id",
+                as: "sender_Data",
+              },
+            },
+            {
+              $unwind: {
+                path: "$sender_Data",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
 
-        //       sender_fullName: {
-        //         $concat: [
-        //           "$sender_Data.first_name",
-        //           " ",
-        //           "$sender_Data.last_name",
-        //         ],
-        //       },
-        //       receiver_fullName: {
-        //         $concat: [
-        //           "$receiver_Data.first_name",
-        //           " ",
-        //           "$receiver_Data.last_name",
-        //         ],
-        //       },
-        //       title: 1,
-        //       status: 1,
-        //       agreement_content: 1,
-        //       due_date: 1,
-        //     },
-        //   },
-        // ];
-        // agreement = await Agreement.aggregate(aggregationPipeline);
-        // if (status === "sent" || status === "agreed") {
-        //   var data = {
-        //     title: agreement[0].title,
-        //     dueDate: moment(agreement[0].due_date).format("DD/MM/YYYY"),
-        //     content: agreement[0].agreement_content,
-        //     receiverName: agreement[0].receiver_fullName,
-        //     senderName: agreement[0].sender_fullName,
-        //     status: status === "sent" ? "sent" : "agreed",
-        //     senderNumber: agreement[0].sender_number,
-        //     receiverNumber: agreement[0].receiver_number,
-        //     senderEmail: agreement[0].sender_email,
-        //     receiverEmail: agreement[0].receiver_email,
-        //   };
-        //   const ageremantMessage = agrementEmail(data);
-        //   let templateName;
-        //   let receiverName;
-        //   if (status === "agreed") {
-        //     templateName = "agreementAgreed";
-        //     receiverName = agreement[0]?.sender_email;
-        //   } else {
-        //     templateName = "agreementUpdated";
-        //     receiverName = clientDetails?.email;
-        //   }
-        //   await sendEmail({
-        //     email: receiverName,
-        //     subject: returnMessage("emailTemplate", templateName),
-        //     message: ageremantMessage,
-        //   });
-        // }
+            {
+              $match: {
+                _id: new mongoose.Types.ObjectId(agreementId),
+                is_deleted: false,
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                first_name: "$receiver_Data.first_name",
+                last_name: "$receiver_Data.last_name",
+                email: "$receiver_Data.email",
+                // receiver: "$receiver_Data.name",
+                receiver_email: "$receiver_Data.email",
+                receiver_number: "$receiver_Data.contact_number",
+                receiver_id: "$receiver_Data._id",
+                contact_number: 1,
+                // sender: "$sender_Data.name",
+                sender_email: "$sender_Data.email",
+                sender_number: "$sender_Data.contact_number",
+                sender_first_name: "$sender_Data.first_name",
+                sender_last_name: "$sender_Data.last_name",
+                sender_id: "$sender_Data._id",
+                sender_id_notification: "$sender_Data._id",
 
-        // ----------------  Notification start    -----------------
-        // if (status === "sent") {
-        //   await notificationService.addNotification(
-        //     {
-        //       receiver_name: agreement[0]?.receiver_fullName,
-        //       sender_name: agreement[0]?.sender_fullName,
-        //       sender_id: agreement[0]?.sender_id,
-        //       title: agreement[0]?.title,
-        //       module_name: "agreement",
-        //       action_type: "create",
-        //       receiver_id: clientDetails?._id,
-        //     },
-        //     agreement[0]?._id
-        //   );
-        // }
+                sender_fullName: {
+                  $concat: [
+                    "$sender_Data.first_name",
+                    " ",
+                    "$sender_Data.last_name",
+                  ],
+                },
+                receiver_fullName: {
+                  $concat: [
+                    "$receiver_Data.first_name",
+                    " ",
+                    "$receiver_Data.last_name",
+                  ],
+                },
+                title: 1,
+                status: 1,
+                agreement_content: 1,
+                due_date: 1,
+              },
+            },
+          ];
 
-        // ----------------  Notification end    -----------------
+          console.log("reciver");
+
+          agreement = await Agreement.aggregate(aggregationPipeline);
+          if (status === "sent" || status === "agreed") {
+            var data = {
+              title: agreement[0].title,
+              dueDate: moment(agreement[0].due_date).format("DD/MM/YYYY"),
+              content: agreement[0].agreement_content,
+              receiverName: agreement[0].receiver_fullName,
+              senderName: agreement[0].sender_fullName,
+              status: status === "sent" ? "sent" : "agreed",
+              senderNumber: agreement[0].sender_number,
+              receiverNumber: agreement[0].receiver_number,
+              senderEmail: agreement[0].sender_email,
+              receiverEmail: agreement[0].receiver_email,
+            };
+            const ageremantMessage = agrementEmail(data);
+            let templateName;
+            let receiverName;
+            if (status === "agreed") {
+              templateName = "agreementAgreed";
+              receiverName = agreement[0]?.sender_email;
+            } else {
+              templateName = "agreementUpdated";
+              receiverName = clientDetails?.email;
+            }
+            await sendEmail({
+              email: receiverName,
+              subject: returnMessage("emailTemplate", templateName),
+              message: ageremantMessage,
+            });
+          }
+          console.log("reciver");
+          // ----------------  Notification start    -----------------
+          if (status === "sent") {
+            await notificationService.addNotification(
+              {
+                receiver_name: agreement[0]?.receiver_fullName,
+                sender_name: agreement[0]?.sender_fullName,
+                sender_id: agreement[0]?.sender_id,
+                title: agreement[0]?.title,
+                module_name: "agreement",
+                action_type: "create",
+                receiver_id: clientDetails?._id,
+                workspace_id: user?.workspace,
+              },
+              agreement[0]?._id
+            );
+          }
+
+          // ----------------  Notification end    -----------------
+        }
       }
+      console.log("reciver");
 
       const updatedAgreement = await Agreement.findOneAndUpdate(
         {
@@ -920,20 +952,21 @@ class AgreementService {
 
       // ----------------  Notification start    -----------------
 
-      // if (status === "agreed") {
-      //   await notificationService.addNotification(
-      //     {
-      //       receiver_name: agreement[0]?.receiver_fullName,
-      //       sender_name: agreement[0]?.sender_fullName,
-      //       receiver_id: agreement[0]?.receiver_id,
-      //       title: agreement[0]?.title,
-      //       module_name: "agreement",
-      //       action_type: "statusUpdate",
-      //       sender_id: agreement[0]?.sender_id_notification,
-      //     },
-      //     agreement[0]?._id
-      //   );
-      // }
+      if (status === "agreed" && clientDetails) {
+        await notificationService.addNotification(
+          {
+            receiver_name: agreement[0]?.receiver_fullName,
+            sender_name: agreement[0]?.sender_fullName,
+            receiver_id: agreement[0]?.receiver_id,
+            title: agreement[0]?.title,
+            module_name: "agreement",
+            action_type: "statusUpdate",
+            sender_id: agreement[0]?.sender_id_notification,
+            workspace_id: user?.workspace,
+          },
+          agreement[0]?._id
+        );
+      }
 
       // ----------------  Notification end    -----------------
 

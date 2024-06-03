@@ -584,7 +584,9 @@ exports.agrementEmail = (data) => {
                                           >
                                             <a
                                               target="_blank"
-                                              href="${process.env.REACT_APP_URL}"
+                                              href="${
+                                                process.env.REACT_APP_URL
+                                              }"
                                               style="
                                                 -webkit-text-size-adjust: none;
                                                 -ms-text-size-adjust: none;
@@ -594,7 +596,9 @@ exports.agrementEmail = (data) => {
                                                 font-size: 14px;
                                               "
                                               ><img
-                                                src="${process.env.SERVER_URL}/template/syncupp-logo.png"
+                                                src="${
+                                                  process.env.SERVER_URL
+                                                }/template/syncupp-logo.png"
                                                 style="
                                                   display: block;
                                                   border: 0;
@@ -709,7 +713,9 @@ exports.agrementEmail = (data) => {
                                               word-break: break-all;
                                             "
                                           >
-                                          <p style="word-wrap: break-word">${data?.content}</p>
+                                          <p style="word-wrap: break-word">${
+                                            data?.content
+                                          }</p>
                                                                                   <!-- <p>
                                               Lorem ipsum dolor sit, amet
                                               consectetur adipisicing elit. Quia
@@ -777,9 +783,15 @@ exports.agrementEmail = (data) => {
                                                 padding-left: 0;
                                               "
                                             >
-                                              <li>${data?.receiverName}</li>
-                                              <li>${data?.receiverEmail}</li>
-                                              <li>${data?.receiverNumber}</li>
+                                              <li>${
+                                                data?.receiverName ?? "-"
+                                              }</li>
+                                              <li>${
+                                                data?.receiverEmail ?? "-"
+                                              }</li>
+                                              <li>${
+                                                data?.receiverNumber ?? "-"
+                                              }</li>
                                             </ul>
                                           </td>
                                           <td
@@ -4514,9 +4526,8 @@ exports.invoiceTemplate = (invoiceData) => {
                                     <li></li>
                                     <li style="text-transform: capitalize;">${
                                       invoiceData?.from?.agency_full_name
-                                        ? invoiceData?.from?.agency_full_name +
-                                          ","
-                                        : "-"
+                                        ? invoiceData?.from?.agency_full_name
+                                        : invoiceData?.from?.agency_full_name
                                     }</li>
                                     <li style="text-transform: capitalize;">${
                                       invoiceData?.from?.company_name

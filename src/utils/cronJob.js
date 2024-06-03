@@ -23,10 +23,10 @@ exports.setupNightlyCronJob = async () => {
   let facebook = config?.urls?.facebook;
   let instagram = config?.urls?.instagram;
   const invoiceCronSchedule = config?.cron_job.invoice_overdue;
-  // cron.schedule(invoiceCronSchedule, () => {
-  //   console.log("Running the nightly cron job for invoice...");
-  //   invoiceService.overdueCronJob();
-  // });
+  cron.schedule(invoiceCronSchedule, () => {
+    console.log("Running the nightly cron job for invoice...");
+    invoiceService.overdueCronJob();
+  });
 
   const activityOverdueCronSchedule = config?.cron_job.activity_overdue;
   // cron.schedule(activityOverdueCronSchedule, () => {

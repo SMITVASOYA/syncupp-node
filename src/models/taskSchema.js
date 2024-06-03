@@ -41,6 +41,8 @@ const taskSchema = new mongoose.Schema(
     },
     is_deleted: { type: Boolean, default: false },
     mark_as_done: { type: Boolean, default: false },
+    mark_as_archived: { type: Boolean, default: false },
+    competition_point: { type: Number, default: 0 },
     comments: [
       {
         user_id: { type: mongoose.Types.ObjectId, ref: "authentication" },
