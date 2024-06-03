@@ -293,9 +293,10 @@ class AgencyService {
       if (image) {
         profile_image = image?.filename;
       } else if (
-        image === "" ||
+        payload?.profile_image === "" ||
         (image === undefined && !payload?.profile_image)
       ) {
+        profile_image = null;
         existingImage &&
           fs.unlink(`./src/public/${existingImage}`, (err) => {
             if (err) {
