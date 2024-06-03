@@ -11,7 +11,263 @@ const Section = require("../models/sectionSchema");
 
 // Register Agency
 class dashboardService {
-  // Todays task
+  // Dashboard data
+
+  dashboardData = async (user) => {
+    try {
+      const currentDate = moment().utc();
+      const startOfToday = moment(currentDate).startOf("day").utc();
+      const endOfToday = moment(currentDate).endOf("day").utc();
+
+      const workspaceId = new mongoose.Types.ObjectId(user?.workspace);
+      const userId = new mongoose.Types.ObjectId(user?._id);
+
+      let is_admin;
+      if (user?.role === "agency") is_admin = true;
+      else if (user?.role === "team_agency" && user?.sub_role === "team_member")
+        is_admin = false;
+      else if (user?.role === "team_agency" && user?.sub_role === "admin")
+        is_admin = true;
+      else if (user?.role === "client") is_admin = false;
+      else if (user?.role === "team_client") is_admin = false;
+
+      const assign_to_data = !is_admin ? { assign_to: userId } : {};
+      const todays_call_meeting = !is_admin ? { attendees: userId } : {};
+      const invoice_client =
+        user?.role === "client" ? { client_id: userId } : {};
+      const agreement_receiver =
+        user?.role === "client" ? { receiver: userId } : {};
+
+      // Task Counts
+      const taskPromises = await Task.aggregate([
+        {
+          $match: {
+            workspace_id: workspaceId,
+            is_deleted: false,
+            ...assign_to_data,
+          },
+        },
+        {
+          $lookup: {
+            from: "sections",
+            localField: "activity_status",
+            foreignField: "_id",
+            as: "tasks",
+          },
+        },
+        {
+          $unwind: { path: "$tasks", preserveNullAndEmptyArrays: true },
+        },
+        {
+          $project: {
+            data: "$tasks",
+          },
+        },
+      ]);
+
+      const totalTaskCount = taskPromises.length;
+
+      const overdueTaskCount = taskPromises.filter(
+        (task) => task?.data?.key === "overdue"
+      ).length;
+      const completedTaskCount = taskPromises.filter(
+        (task) => task?.data?.key === "completed"
+      ).length;
+
+      // Invoice Counts
+
+      if (
+        user?.role === "agency" ||
+        user?.role === "client" ||
+        user?.sub_role === "admin"
+      ) {
+        const InvoiceData = await Invoice.aggregate([
+          {
+            $lookup: {
+              from: "invoice_status_masters",
+              localField: "status",
+              foreignField: "_id",
+              as: "invoiceStatus",
+              pipeline: [{ $project: { name: 1 } }],
+            },
+          },
+          {
+            $unwind: {
+              path: "$invoiceStatus",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $match: {
+              workspace_id: workspaceId,
+              is_deleted: false,
+              ...invoice_client,
+            },
+          },
+          {
+            $project: {
+              data: "$invoiceStatus",
+            },
+          },
+        ]);
+
+        var overdueInvoiceCount = InvoiceData.filter(
+          (invoice) => invoice?.data?.name === "overdue"
+        ).length;
+        var invoiceSentCount = InvoiceData.filter(
+          (invoice) => invoice?.data?.name === "unpaid"
+        ).length;
+      }
+      if (
+        user?.role === "agency" ||
+        user?.role === "client" ||
+        user?.sub_role === "admin"
+      ) {
+        // Members Count
+        const membersData = await Workspace.aggregate([
+          { $match: { _id: workspaceId } },
+          { $unwind: { path: "$members", preserveNullAndEmptyArrays: true } },
+          {
+            $lookup: {
+              from: "authentications",
+              localField: "members.user_id",
+              foreignField: "_id",
+              as: "user_details",
+            },
+          },
+          {
+            $unwind: {
+              path: "$user_details",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $lookup: {
+              from: "role_masters",
+              localField: "members.role",
+              foreignField: "_id",
+              as: "status",
+            },
+          },
+          { $unwind: { path: "$status", preserveNullAndEmptyArrays: true } },
+          {
+            $match: {
+              "members.status": "confirmed",
+              "user_details.is_deleted": false,
+            },
+          },
+          {
+            $project: {
+              status: "$status",
+            },
+          },
+        ]);
+
+        if (user?.role === "agency" || user?.sub_role === "admin") {
+          var clientCount = membersData.filter(
+            (member) => member?.status?.name === "client"
+          ).length;
+
+          var teamMemberCount = membersData.filter(
+            (member) => member?.status?.name === "team_agency"
+          ).length;
+        }
+        if (user?.role === "client") {
+          var teamMemberCount = membersData.filter(
+            (member) => member?.status?.name === "team_client"
+          ).length;
+        }
+      }
+
+      // Call meeting aggregations
+      const todaysCallMeeting = await Activity.aggregate([
+        {
+          $match: {
+            is_deleted: false,
+            workspace_id: workspaceId,
+            meeting_date: {
+              $gte: startOfToday.toDate(),
+              $lte: endOfToday.toDate(),
+            },
+            ...todays_call_meeting,
+          },
+        },
+        {
+          $count: "todaysCallMeeting",
+        },
+      ]);
+
+      // Agreement aggregations
+      if (
+        user?.role === "agency" ||
+        user?.role === "client" ||
+        user?.sub_role === "admin"
+      ) {
+        var agreementPendingCount = await Agreement.aggregate([
+          {
+            $match: {
+              workspace_id: workspaceId,
+              status: "sent",
+              is_deleted: false,
+              ...agreement_receiver,
+            },
+          },
+          {
+            $count: "agreementPendingCount",
+          },
+        ]);
+      }
+
+      const commonFields = {
+        task_count: totalTaskCount ?? 0,
+        overdueTaskCount: overdueTaskCount ?? 0,
+        completed_task_count: completedTaskCount ?? 0,
+        todays_call_meeting: todaysCallMeeting[0]?.todaysCallMeeting ?? 0,
+      };
+
+      if (user?.role === "agency") {
+        return {
+          ...commonFields,
+          client_count: clientCount ?? 0,
+          team_member_count: teamMemberCount ?? 0,
+          invoice_overdue_count: overdueInvoiceCount ?? 0,
+          invoice_sent_count: invoiceSentCount ?? 0,
+          agreement_pending_count:
+            agreementPendingCount[0]?.agreementPendingCount ?? 0,
+        };
+      } else if (user?.role === "client") {
+        return {
+          ...commonFields,
+          team_member_count: teamMemberCount ?? 0,
+          invoice_overdue_count: overdueInvoiceCount ?? 0,
+          invoice_sent_count: invoiceSentCount ?? 0,
+          agreement_pending_count:
+            agreementPendingCount[0]?.agreementPendingCount ?? 0,
+        };
+      } else if (user?.role === "team_client") {
+        return commonFields;
+      } else if (
+        user?.role === "team_agency" &&
+        user?.sub_role === "team_member"
+      ) {
+        return commonFields;
+      } else if (user?.role === "team_agency" && user?.sub_role === "admin") {
+        return {
+          ...commonFields,
+          client_count: clientCount ?? 0,
+          team_member_count: teamMemberCount ?? 0,
+          invoice_overdue_count: overdueInvoiceCount ?? 0,
+          invoice_sent_count: invoiceSentCount ?? 0,
+          agreement_pending_count:
+            agreementPendingCount[0]?.agreementPendingCount ?? 0,
+        };
+      }
+    } catch (error) {
+      logger.error(`Error while fetching dashboard data for agency: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
   todayTask = async (user) => {
     try {
       let is_admin;

@@ -21,15 +21,7 @@ exports.dashboardData = catchAsyncError(async (req, res, next) => {
   const user_role_data = await authService.getRoleSubRoleInWorkspace(req?.user);
   req.user["role"] = user_role_data?.user_role;
   req.user["sub_role"] = user_role_data?.sub_role;
-  if (req?.user?.role === "agency") {
-    dashboardData = await agencyService.dashboardData(req?.user);
-  }
-  if (req?.user?.role === "client") {
-    dashboardData = await clientService.dashboardData(req?.user);
-  }
-  if (req?.user?.role === "team_agency" || req?.user?.role === "team_client") {
-    dashboardData = await teamMemberService.dashboardData(req?.user);
-  }
+  dashboardData = await dashboardService.dashboardData(req?.user);
 
   sendResponse(
     res,
