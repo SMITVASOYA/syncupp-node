@@ -26,7 +26,7 @@ class WorkspaceService {
 
       const [workspace_name_exist, configuration, role] = await Promise.all([
         Workspace.findOne({
-          name: workspace_name,
+          name: workspace_name.trim(),
           is_deleted: false,
         }).lean(),
         Configuration.findOne({}).lean(),
@@ -37,7 +37,7 @@ class WorkspaceService {
         return throwError(returnMessage("workspace", "duplicateWorkspaceName"));
 
       const workspace_obj = {
-        name: workspace_name,
+        name: workspace_name.trim(),
         created_by: user?._id,
         members: [
           {
