@@ -24,24 +24,23 @@ exports.setupNightlyCronJob = async () => {
   let instagram = config?.urls?.instagram;
 
   // For invoice overdue
-  // const invoiceCronSchedule = config?.cron_job.invoice_overdue;
-  // cron.schedule(invoiceCronSchedule, () => {
-  //   console.log("Running the nightly cron job for invoice...");
-  //   invoiceService.overdueCronJob();
-  // });
+  const invoiceCronSchedule = config?.cron_job.invoice_overdue;
+  cron.schedule(invoiceCronSchedule, () => {
+    console.log("Running the nightly cron job for invoice...");
+    invoiceService.overdueCronJob();
+  });
 
   // For task overdue
-  // const taskOverdueCronSchedule = config?.cron_job.task_overdue;
-  // cron.schedule(taskOverdueCronSchedule, () => {
-  //   console.log("Running the nightly cron job activity...");
-  //   taskService.overdueCronJob();
-  // });
-
+  const taskOverdueCronSchedule = config?.cron_job.task_overdue;
+  cron.schedule(taskOverdueCronSchedule, () => {
+    console.log("Running the nightly cron job activity...");
+    taskService.overdueCronJob();
+  });
   const taskDueDateCronSchedule = config?.cron_job.task_dueDate;
-  // cron.schedule(taskDueDateCronSchedule, () => {
-  //   console.log("Running the nightly cron job activity for due date...");
-  //   activityService.dueDateCronJob();
-  // });
+  cron.schedule(taskDueDateCronSchedule, () => {
+    console.log("Running the nightly cron job activity for due date...");
+    taskService.dueDateCronJob();
+  });
 
   const payment_cron_schedule = config?.cron_job?.payment;
   cron.schedule(payment_cron_schedule, () => {

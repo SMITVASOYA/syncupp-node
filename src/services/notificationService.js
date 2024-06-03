@@ -202,6 +202,8 @@ class NotificationService {
           type = "deleted";
         } else if (activity_type_action === "dueDateAlert")
           message_type = "taskDueDate";
+        else if (activity_type_action === "overdue")
+          message_type = "taskOverdue";
         const createAndEmitNotification = async (
           userId,
           messageType,

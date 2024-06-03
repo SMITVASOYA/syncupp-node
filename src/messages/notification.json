@@ -53,9 +53,7 @@
     "taskCompleted": {
       "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is completed for project ${board_name}. Great job!"
     },
-    "taskPending": {
-      "assignToMessage": "Hey ${assigned_to_name}! The task '${title}' assigned to you is pending for project ${board_name}."
-    },
+
     "taskUpdated": {
       "assignToMessage": "Updated: Hey ${assigned_to_name}! You're assigned to a task titled ${title} due on ${due_date} before ${due_time} for project ${board_name}. Be ready!"
     },

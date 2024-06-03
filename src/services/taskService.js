@@ -106,7 +106,7 @@ class TaskService {
         { status: activity_status, updated_by: user?._id },
       ];
 
-      const update_data = {
+      const create_data = {
         title,
         agenda,
         ...(due_date && due_date !== "null" && { due_time: timeOnly }),
@@ -123,7 +123,7 @@ class TaskService {
         workspace_id: user?.workspace,
         status_history: status_history,
       };
-      const newTask = new Task(update_data);
+      const newTask = new Task(create_data);
       const added_task = await newTask.save();
 
       const status_data = await Section.findById(activity_status)
@@ -211,7 +211,11 @@ class TaskService {
         // ----------------------- Notification END -----------------------
       }
 
-      return { ...added_task?._doc, status: status_data };
+      return {
+        ...added_task?._doc,
+        status: status_data,
+        comment: comment ? 1 : 0,
+      };
     } catch (error) {
       logger.error(`Error while creating task : ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -774,7 +778,7 @@ class TaskService {
         },
         {
           $project: {
-            data: { $slice: ["$data", searchObj?.task_count || 5] },
+            data: { $slice: ["$data", searchObj?.task_count || 10] },
           },
         },
         {
@@ -784,6 +788,10 @@ class TaskService {
           $replaceRoot: { newRoot: "$data" },
         },
       ];
+
+      const activity = await Task.aggregate(taskPipeline).sort({
+        updatedAt: -1,
+      });
 
       const taskCountPipeline = [
         {
@@ -813,16 +821,26 @@ class TaskService {
         },
       ];
 
-      const activity = await Task.aggregate(taskPipeline).sort({
-        updatedAt: -1,
+      const find_section_list = await Section.distinct("_id", {
+        board_id: searchObj?.board_id,
       });
-      const taskCounts = await Task.aggregate(taskCountPipeline).sort({
+
+      const task_counts = await Task.aggregate(taskCountPipeline).sort({
         updatedAt: 1,
       });
 
+      const new_data = Array.from(find_section_list)
+        .filter(
+          (section) =>
+            !task_counts.some(
+              (item) => item._id.toString() === section.toString()
+            )
+        )
+        .map((section) => ({ _id: section.toString(), count: 0 }));
+
       return {
         activity,
-        taskCounts,
+        task_counts: [...new_data, ...task_counts],
       };
     } catch (error) {
       logger.error(`Error while fetch list : ${error}`);
@@ -1097,126 +1115,126 @@ class TaskService {
         { $set: { is_deleted: true } }
       );
 
-      const pipeline = [
-        {
-          $lookup: {
-            from: "authentications",
-            let: { assign_to_ids: "$assign_to" },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $in: ["$_id", "$$assign_to_ids"],
-                  },
-                },
-              },
-              {
-                $project: {
-                  _id: 1,
-                  name: 1,
-                  first_name: 1,
-                  last_name: 1,
-                  email: 1,
-                  profile_image: 1,
-                  assigned_to_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
-            as: "team_data",
-          },
-        },
-        {
-          $lookup: {
-            from: "authentications",
-            localField: "assign_by",
-            foreignField: "_id",
-            as: "assign_by",
-            pipeline: [
-              {
-                $project: {
-                  name: 1,
-                  first_name: 1,
-                  last_name: 1,
-                  assigned_by_name: {
-                    $concat: ["$first_name", " ", "$last_name"],
-                  },
-                },
-              },
-            ],
-          },
-        },
-        {
-          $unwind: "$assign_by",
-        },
-        {
-          $lookup: {
-            from: "sections",
-            localField: "activity_status",
-            foreignField: "_id",
-            as: "status",
-            pipeline: [{ $project: { section_name: 1 } }],
-          },
-        },
-        {
-          $match: {
-            _id: {
-              $in: taskIdsToDelete.map((id) => new mongoose.Types.ObjectId(id)),
-            },
-          },
-        },
-        {
-          $project: {
-            agenda: 1,
-            status: "$status",
-            assigned_by_first_name: "$assign_by.first_name",
-            assigned_by_last_name: "$assign_by.last_name",
-            assigned_by_name: "$assign_by.assigned_by_name",
-            column_id: "$status.name",
-            assign_to: "$team_data",
-            due_date: 1,
-            due_time: 1,
-            title: 1,
-            board_id: 1,
-          },
-        },
-      ];
-      const getTask = await Task.aggregate(pipeline);
-      getTask.forEach(async (task) => {
-        const board = await Board.findOne({ _id: task?.board_id }).lean();
-        task?.assign_to?.forEach(async (member) => {
-          let data = {
-            TaskTitle: "Deleted Task",
-            taskName: task?.title,
-            status: task?.status?.section_name,
-            assign_by: task?.assigned_by_name,
-            dueDate: moment(task?.due_date)?.format("DD/MM/YYYY"),
-            dueTime: task?.due_time,
-            agginTo_email: member?.email,
-            assignName: member?.assigned_to_name,
-            board_name: board ? board?.project_name : "",
-          };
-          const taskMessage = taskTemplate(data);
-          await sendEmail({
-            email: member?.email,
-            subject: returnMessage("activity", "taskDeleted"),
-            message: taskMessage,
-          });
-          await notificationService.addNotification(
-            {
-              title: task?.title,
-              module_name: "task",
-              activity_type_action: "deleted",
-              activity_type: "task",
-              assign_to: member?._id,
-              // workspace_id: user?.workspace,
-            },
-            task?._id
-          );
-          return;
-        });
-      });
+      // const pipeline = [
+      //   {
+      //     $lookup: {
+      //       from: "authentications",
+      //       let: { assign_to_ids: "$assign_to" },
+      //       pipeline: [
+      //         {
+      //           $match: {
+      //             $expr: {
+      //               $in: ["$_id", "$$assign_to_ids"],
+      //             },
+      //           },
+      //         },
+      //         {
+      //           $project: {
+      //             _id: 1,
+      //             name: 1,
+      //             first_name: 1,
+      //             last_name: 1,
+      //             email: 1,
+      //             profile_image: 1,
+      //             assigned_to_name: {
+      //               $concat: ["$first_name", " ", "$last_name"],
+      //             },
+      //           },
+      //         },
+      //       ],
+      //       as: "team_data",
+      //     },
+      //   },
+      //   {
+      //     $lookup: {
+      //       from: "authentications",
+      //       localField: "assign_by",
+      //       foreignField: "_id",
+      //       as: "assign_by",
+      //       pipeline: [
+      //         {
+      //           $project: {
+      //             name: 1,
+      //             first_name: 1,
+      //             last_name: 1,
+      //             assigned_by_name: {
+      //               $concat: ["$first_name", " ", "$last_name"],
+      //             },
+      //           },
+      //         },
+      //       ],
+      //     },
+      //   },
+      //   {
+      //     $unwind: "$assign_by",
+      //   },
+      //   {
+      //     $lookup: {
+      //       from: "sections",
+      //       localField: "activity_status",
+      //       foreignField: "_id",
+      //       as: "status",
+      //       pipeline: [{ $project: { section_name: 1 } }],
+      //     },
+      //   },
+      //   {
+      //     $match: {
+      //       _id: {
+      //         $in: taskIdsToDelete.map((id) => new mongoose.Types.ObjectId(id)),
+      //       },
+      //     },
+      //   },
+      //   {
+      //     $project: {
+      //       agenda: 1,
+      //       status: "$status",
+      //       assigned_by_first_name: "$assign_by.first_name",
+      //       assigned_by_last_name: "$assign_by.last_name",
+      //       assigned_by_name: "$assign_by.assigned_by_name",
+      //       column_id: "$status.name",
+      //       assign_to: "$team_data",
+      //       due_date: 1,
+      //       due_time: 1,
+      //       title: 1,
+      //       board_id: 1,
+      //     },
+      //   },
+      // ];
+      // const getTask = await Task.aggregate(pipeline);
+      // getTask.forEach(async (task) => {
+      //   const board = await Board.findOne({ _id: task?.board_id }).lean();
+      //   task?.assign_to?.forEach(async (member) => {
+      //     let data = {
+      //       TaskTitle: "Deleted Task",
+      //       taskName: task?.title,
+      //       status: task?.status?.section_name,
+      //       assign_by: task?.assigned_by_name,
+      //       dueDate: moment(task?.due_date)?.format("DD/MM/YYYY"),
+      //       dueTime: task?.due_time,
+      //       agginTo_email: member?.email,
+      //       assignName: member?.assigned_to_name,
+      //       board_name: board ? board?.project_name : "",
+      //     };
+      //     const taskMessage = taskTemplate(data);
+      //     await sendEmail({
+      //       email: member?.email,
+      //       subject: returnMessage("activity", "taskDeleted"),
+      //       message: taskMessage,
+      //     });
+      //     await notificationService.addNotification(
+      //       {
+      //         title: task?.title,
+      //         module_name: "task",
+      //         activity_type_action: "deleted",
+      //         activity_type: "task",
+      //         assign_to: member?._id,
+      //         workspace_id: user?.workspace,
+      //       },
+      //       task?._id
+      //     );
+      //     return;
+      //   });
+      // });
 
       return;
     } catch (error) {
@@ -1955,7 +1973,7 @@ class TaskService {
           }),
       };
 
-      const updateTasks = await Task.findByIdAndUpdate(
+      await Task.findByIdAndUpdate(
         {
           _id: id,
         },
@@ -2298,31 +2316,22 @@ class TaskService {
 
   overdueCronJob = async () => {
     try {
-      const currentDate = moment();
+      const currentDate = moment().utc();
 
       const overdueActivities = await Task.find({
-        meeting_date: { $lt: currentDate.toDate() },
+        due_date: { $lt: currentDate.toDate() },
         mark_as_done: false,
         is_deleted: false,
-      });
+      }).lean();
 
       for (const task of overdueActivities) {
-        const find_overdue = await Section.findOne({
-          workspace_id: task?.workspace_id,
-          board_id: task?.board_id,
-          key: "overdue",
-        });
-        if (find_overdue) {
-          task.activity_status = find_overdue;
-          await task.save();
-          for (const member of task.assign_to) {
-            await notificationService.addNotification({
-              module_name: "task",
-              activity_type_action: "overdue",
-              title: task.title,
-              assign_to: member,
-            });
-          }
+        for (const member of task.assign_to) {
+          await notificationService.addNotification({
+            module_name: "task",
+            activity_type_action: "overdue",
+            title: task.title,
+            assign_to: member,
+          });
         }
       }
     } catch (error) {
@@ -2336,20 +2345,13 @@ class TaskService {
   dueDateCronJob = async () => {
     try {
       const currentDate = moment().startOf("day"); // Set the time part to midnight for the current date
-      const completed = await Section.findOne({
-        key: "completed",
-      });
-      const overdue = await Section.findOne({
-        key: "overdue",
-      });
+
       const overdueActivities = await Task.find({
         due_date: {
           $gte: currentDate.toDate(), // Activities with due date greater than or equal to the current date
           $lt: currentDate.add(1, "days").toDate(), // Activities with due date less than the next day
         },
-        activity_status: {
-          $nin: [completed._id, overdue._id],
-        },
+        mark_as_done: false,
         is_deleted: false,
       });
 
@@ -2359,10 +2361,9 @@ class TaskService {
           activity_type_action: "dueDateAlert",
           title: item?.title,
         });
-        // }
       });
     } catch (error) {
-      logger.error(`Error while Overdue crone Job PDF, ${error}`);
+      logger.error(`Error while  due date cron job, ${error}`);
       throwError(error?.message, error?.statusCode);
     }
   };
