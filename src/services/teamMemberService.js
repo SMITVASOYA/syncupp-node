@@ -1026,7 +1026,7 @@ class TeamMemberService {
             preserveNullAndEmptyArrays: true,
           },
         },
-        { $match: { "activity_status.key": "completed" } },
+        { $match: { "activity_status.key": { $ne: "completed" } } },
       ]);
 
       if (task_assigned.length && !payload?.force_fully_remove)
