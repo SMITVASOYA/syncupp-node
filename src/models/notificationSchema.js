@@ -30,6 +30,10 @@ const notificationSchema = new mongoose.Schema(
     user_type: { type: String },
     group_id: { type: mongoose.Types.ObjectId },
     workspace_id: { type: mongoose.Types.ObjectId, ref: "workspaces" },
+    task_status: { type: String },
+    board_name: { type: String },
+    task_comment_count: { type: String },
+    task_title: { type: String },
   },
   { timestamps: true }
 );

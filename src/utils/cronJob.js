@@ -1,9 +1,9 @@
 const cron = require("node-cron");
 const InvoiceService = require("../services/invoiceService");
 const invoiceService = new InvoiceService();
-const ActivityService = require("../services/activityService");
+const TaskService = require("../services/taskService");
 const PaymentService = require("../services/paymentService");
-const activityService = new ActivityService();
+const taskService = new TaskService();
 const Configuration = require("../models/configurationSchema");
 const paymentService = new PaymentService();
 const Activity_Type_Master = require("../models/masters/activityTypeMasterSchema");
@@ -22,23 +22,25 @@ exports.setupNightlyCronJob = async () => {
   let privacy_policy = config?.urls?.privacy_policy;
   let facebook = config?.urls?.facebook;
   let instagram = config?.urls?.instagram;
+
+  // For invoice overdue
   const invoiceCronSchedule = config?.cron_job.invoice_overdue;
   cron.schedule(invoiceCronSchedule, () => {
     console.log("Running the nightly cron job for invoice...");
     invoiceService.overdueCronJob();
   });
 
-  const activityOverdueCronSchedule = config?.cron_job.activity_overdue;
-  // cron.schedule(activityOverdueCronSchedule, () => {
-  //   console.log("Running the nightly cron job activity...");
-  //   activityService.overdueCronJob();
-  // });
-
-  const activityDueDateCronSchedule = config?.cron_job.activity_dueDate;
-  // cron.schedule(activityDueDateCronSchedule, () => {
-  //   console.log("Running the nightly cron job activity for due date...");
-  //   activityService.dueDateCronJob();
-  // });
+  // For task overdue
+  const taskOverdueCronSchedule = config?.cron_job.task_overdue;
+  cron.schedule(taskOverdueCronSchedule, () => {
+    console.log("Running the nightly cron job activity...");
+    taskService.overdueCronJob();
+  });
+  const taskDueDateCronSchedule = config?.cron_job.task_dueDate;
+  cron.schedule(taskDueDateCronSchedule, () => {
+    console.log("Running the nightly cron job activity for due date...");
+    taskService.dueDateCronJob();
+  });
 
   const payment_cron_schedule = config?.cron_job?.payment;
   cron.schedule(payment_cron_schedule, () => {
