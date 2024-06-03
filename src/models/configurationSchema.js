@@ -14,8 +14,8 @@ const configurationSchema = new mongoose.Schema(
     },
     cron_job: {
       invoice_overdue: { type: String, default: "0 0 * * *" },
-      activity_overdue: { type: String, default: "0 0 * * *" },
-      activity_dueDate: { type: String, default: "0 0 * * *" },
+      task_overdue: { type: String, default: "0 0 * * *" },
+      task_dueDate: { type: String, default: "0 0 * * *" },
       call_meeting_alert: { type: Number, default: 15 },
       call_meeting_alert_check_rate: { type: String, default: "*/15 * * * *" },
       payment: { type: String, default: "0 0 * * *" },

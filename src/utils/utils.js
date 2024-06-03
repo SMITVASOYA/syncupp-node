@@ -8392,7 +8392,17 @@ exports.taskTemplate = (data) => {
                                             <td
                                               style="
                                                                                       border-collapse: collapse; font-weight: 600; text-transform: capitalize;">
-                                              ${data.status}</td>
+                                              ${data.status_name}</td>
+                                          </tr>
+                                          <tr>
+                                            <td style=" border-top-left-radius: 5px;
+                                                                                      border-collapse: collapse;">Priority
+                                              :
+                                            </td>
+                                            <td
+                                              style="
+                                                                                      border-collapse: collapse; font-weight: 600; text-transform: capitalize;">
+                                              ${data.priority}</td>
                                           </tr>
                                           <tr>
                                             <td
@@ -8408,14 +8418,16 @@ exports.taskTemplate = (data) => {
                                           <tr>
                                             <td style=" border-top-left-radius: 5px;
                                                                                       border-collapse: collapse;">
-                                              Created On :
+                                              Due Date :
                                             </td>
                                             <td
                                               style="
                                                                                       border-collapse: collapse; font-weight: 600; text-transform: capitalize;">
-                                              ${data?.dueDate} | ${
-    data?.dueTime
-  }</td>
+                                              ${
+                                                data?.dueDate
+                                                  ? `${data?.dueDate} |`
+                                                  : ""
+                                              }  ${data?.dueTime}</td>
                                           </tr>
                                          
                                           
@@ -8423,7 +8435,11 @@ exports.taskTemplate = (data) => {
                                       </td>
                                     </tr>
                                   </table>
-                                  <a target="_blank" href="#" style="
+                                  <a target="_blank" href="${
+                                    process.env.REACT_APP_URL
+                                  }/${data.workspace_name}/tasks/board/${
+    data.board_id
+  }" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;
