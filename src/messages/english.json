@@ -438,5 +438,9 @@
     "orderUpdated": "Section order updated successfully."
   },
 
+  "task": {
+    "taskNotFound": "Task does not exist"
+  },
+
   "default": { "default": "Something went wrong." }
 }

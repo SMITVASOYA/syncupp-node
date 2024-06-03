@@ -8,7 +8,6 @@ const competitionPointSchema = new mongoose.Schema(
     role: { type: String },
     point: { type: String },
     type: { type: String, enum: ["task", "login", "referral"] },
-    login_date: { type: Date },
   },
   { timestamps: true }
 );

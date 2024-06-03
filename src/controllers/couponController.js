@@ -95,10 +95,8 @@ exports.getAllCouponWithOutPagination = catchAsyncError(
 );
 
 exports.getmyCoupon = catchAsyncError(async (req, res, next) => {
-  let getMyCoupons;
-  if (authorizeRole("agency") || authorizeRole("team_agency")) {
-    getMyCoupons = await couponService.getMyCoupons(req?.user);
-  }
+  const getMyCoupons = await couponService.getMyCoupons(req?.user);
+
   sendResponse(
     res,
     true,

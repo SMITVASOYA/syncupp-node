@@ -12,20 +12,18 @@ const {
 } = require("../utils/utils");
 const moment = require("moment");
 const { default: mongoose } = require("mongoose");
-const Team_Agency = require("../models/teamAgencySchema");
 const sendEmail = require("../helpers/sendEmail");
 const Authentication = require("../models/authenticationSchema");
 const Configuration = require("../models/configurationSchema");
-const Competition_Point = require("../models/competitionPointSchema");
 const NotificationService = require("./notificationService");
 const notificationService = new NotificationService();
 const fs = require("fs");
-const momentTimezone = require("moment-timezone");
 const Board = require("../models/boardSchema");
 const Section = require("../models/sectionSchema");
 const Workspace = require("../models/workspaceSchema");
 const Role_Master = require("../models/masters/roleMasterSchema");
 const AuthService = require("../services/authService");
+const Gamification = require("../models/gamificationSchema");
 const { eventEmitter } = require("../socket");
 const Notification = require("../models/notificationSchema");
 const authService = new AuthService();
@@ -2476,6 +2474,118 @@ class TaskService {
       return;
     } catch (error) {
       logger.error(`Error while Add task comment: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  increaseOrDecreaseGamification = async (payload, task_id, user) => {
+    try {
+      const { status } = payload;
+      const task_detail = await Task.findById(task_id)
+        .populate("activity_status")
+        .lean();
+      if (!task_detail)
+        return throwError(returnMessage("task", "taskNotFound"), 404);
+
+      const [new_status, agency_role, agency_team_role, configuration] =
+        await Promise.all([
+          Section.findById(status).lean(),
+          Role_Master.findOne({ name: "agency" }).lean(),
+          Role_Master.findOne({ name: "team_agency" }).lean(),
+          Configuration.findOne({}).lean(),
+        ]);
+
+      if (
+        task_detail?.activity_status?.key !== "completed" &&
+        new_status?.key === "completed"
+      ) {
+        // this is used to increase the gamification point as the task is completed
+
+        task_detail?.assign_to?.map(async (member) => {
+          const member_details = user?.workspace_detail?.members?.find(
+            (m) =>
+              m?.user_id?.toString() === member?.toString() &&
+              (m?.role?.toString() === agency_role?._id?.toString() ||
+                m?.role?.toString() === agency_team_role?._id?.toString())
+          );
+
+          if (!member_details) return;
+
+          await Gamification.create({
+            user_id: member,
+            agency_id: task_detail?.assign_by,
+            point:
+              configuration?.competition?.successful_task_competition?.toString(),
+            type: "task",
+            role:
+              member_details?.role?.toString() === agency_role?._id?.toString()
+                ? "agency"
+                : "team_agency",
+            task_id,
+            workspace_id: user?.workspace,
+          });
+
+          await Workspace.findOneAndUpdate(
+            { _id: user?.workspace, "members.user_id": member },
+            {
+              $set: {
+                $inc: {
+                  "members.$.gamification_points":
+                    configuration?.competition?.successful_task_competition,
+                },
+              },
+            }
+          );
+        });
+      } else if (
+        task_detail?.activity_status?.key === "completed" &&
+        (new_status?.key !== "completed" || new_status?.key !== "archived")
+      ) {
+        // this is used to decrease the point as the task is moved from the completed to the other stage
+
+        // this is used to get the users point if they have get any points on the successfull completed task
+        const gamification_history = await Gamification.find({
+          user_id: { $in: task_detail?.assign_to },
+          workspace_id: user?.workspace,
+          type: "task",
+        }).lean();
+
+        task_detail?.assign_to?.map(async (member) => {
+          const member_details = gamification_history.find(
+            (m) =>
+              m?.user_id?.toString() === member?.toString() &&
+              m?.point?.startsWith("+") &&
+              (m?.role === "agency" || m?.role === "team_agency")
+          );
+
+          if (!member_details) return;
+
+          await Gamification.create({
+            user_id: member,
+            agency_id: task_detail?.assign_by,
+            point:
+              -configuration?.competition?.successful_task_competition?.toString(),
+            type: "task",
+            role: member_details?.role,
+            task_id,
+            workspace_id: user?.workspace,
+          });
+
+          await Workspace.findOneAndUpdate(
+            { _id: user?.workspace, "members.user_id": member },
+            {
+              $set: {
+                $inc: {
+                  "members.$.gamification_points":
+                    -configuration?.competition?.successful_task_competition,
+                },
+              },
+            }
+          );
+        });
+      }
+    } catch (error) {
+      logger.error(`Error while increasing the gamification points: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
