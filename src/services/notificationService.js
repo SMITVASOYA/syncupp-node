@@ -202,13 +202,15 @@ class NotificationService {
           type = "deleted";
         } else if (activity_type_action === "dueDateAlert")
           message_type = "taskDueDate";
+        else if (activity_type_action === "overdue")
+          message_type = "taskOverdue";
         const createAndEmitNotification = async (
           userId,
           messageType,
           receiver
         ) => {
           const message = replaceFields(
-            returnNotification("activity", messageType, receiver),
+            returnNotification("task", messageType, receiver),
             { ...payload }
           );
 
@@ -217,6 +219,10 @@ class NotificationService {
             type: type,
             data_reference_id: id,
             message: message,
+            task_status: payload?.status_name,
+            board_name: payload?.board_name,
+            workspace_id: payload?.workspace_id,
+            task_comment_count: payload?.comment_count,
           });
 
           eventEmitter(
@@ -226,39 +232,11 @@ class NotificationService {
           );
         };
 
-        if (payload?.log_user === "member") {
-          if (activity_type_action === "createTask") {
-            await createAndEmitNotification(
-              payload.agency_id,
-              message_type,
-              "assignByMessage"
-            );
-
-            await createAndEmitNotification(
-              payload.assign_to,
-              message_type,
-              "assignToMessage"
-            );
-          } else if (activity_type_action === "update") {
-            await createAndEmitNotification(
-              payload.agency_id,
-              message_type,
-              "assignByMessage"
-            );
-          } else {
-            await createAndEmitNotification(
-              payload.assign_by,
-              message_type,
-              "assignByMessage"
-            );
-          }
-        } else {
-          await createAndEmitNotification(
-            assign_to,
-            message_type,
-            "assignToMessage"
-          );
-        }
+        await createAndEmitNotification(
+          assign_to,
+          message_type,
+          "assignToMessage"
+        );
       }
 
       // Agreement
@@ -279,6 +257,7 @@ class NotificationService {
             type: "agreement",
             data_reference_id: id,
             message: message,
+            workspace_id: payload?.workspace_id,
           });
 
           eventEmitter(
@@ -303,6 +282,8 @@ class NotificationService {
         else if (action_type === "overdue") message_type = "invoiceDue";
         else if (action_type === "updateStatusPaid")
           message_type = "invoicePaid";
+        else if (action_type === "agencyOverdue")
+          message_type = "invoiceOverdueAgency";
 
         const createAndEmitNotification = async (userId, messageType) => {
           const message = replaceFields(

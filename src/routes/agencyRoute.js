@@ -9,23 +9,6 @@ agencyRoute.post(
   // authorizeRole("agency"),// removed because to give access of team agency of type admin
   clientController.createClient
 );
-agencyRoute.delete(
-  "/delete-client",
-  // authorizeRole("agency"), // removed because to give access of team agency of type admin
-  clientController.deleteClient
-);
-
-agencyRoute.get(
-  "/get-client/:clientId",
-  // authorizeRole("agency"),// removed because to give access of team agency of type admin
-  agencyController.getClient
-);
-
-agencyRoute.patch(
-  "/update-client/:clientId",
-  // authorizeRole("agency"),// removed because to give access of team agency of type admin
-  agencyController.updateClient
-);
 
 agencyRoute.post("/clients", clientController.clients);
 agencyRoute.get("/get-profile", agencyController.getAgencyProfile);

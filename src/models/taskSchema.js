@@ -21,21 +21,27 @@ const taskSchema = new mongoose.Schema(
       {
         status: {
           type: mongoose.Types.ObjectId,
+          ref: "section",
         },
-        active: {
-          default: 0,
-          type: Number,
+        updated_by: {
+          type: mongoose.Types.ObjectId,
+          ref: "authentication",
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
         },
       },
     ],
     attachments: [{ type: String }],
     activity_status: {
       type: mongoose.Types.ObjectId,
-      ref: "activity_status_master",
+      ref: "section",
       required: true,
     },
     is_deleted: { type: Boolean, default: false },
     mark_as_done: { type: Boolean, default: false },
+    mark_as_archived: { type: Boolean, default: false },
     competition_point: { type: Number, default: 0 },
     comments: [
       {

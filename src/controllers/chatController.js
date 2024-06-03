@@ -78,18 +78,3 @@ exports.getAllDocuments = catchAsyncError(async (req, res, next) => {
   const documents = await chatService.getAllDocuments(req.body, req.user);
   sendResponse(res, true, undefined, documents, 200);
 });
-
-// removed as this is not a part of the 2nd phase
-/* exports.fetchLatestChat = catchAsyncError(async (req, res, next) => {
-  const latest_chat_history = await chatService.FetchLatestChat(
-    req.body,
-    req.user
-  );
-  sendResponse(
-    res,
-    true,
-    returnMessage("chat", "latesthistoryFetched"),
-    latest_chat_history,
-    statusCode.success
-  );
-}); */

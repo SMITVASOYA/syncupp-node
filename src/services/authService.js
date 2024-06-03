@@ -15,8 +15,6 @@ const bcrypt = require("bcryptjs");
 const moment = require("moment");
 const { throwError } = require("../helpers/errorUtil");
 const Authentication = require("../models/authenticationSchema");
-const AgencyService = require("../services/agencyService");
-const agencyService = new AgencyService();
 const Role_Master = require("../models/masters/roleMasterSchema");
 const statusCode = require("../messages/statusCodes.json");
 const crypto = require("crypto");
@@ -25,7 +23,6 @@ const axios = require("axios");
 const Country_Master = require("../models/masters/countryMasterSchema");
 const City_Master = require("../models/masters/cityMasterSchema");
 const State_Master = require("../models/masters/stateMasterSchema");
-const Team_Agency = require("../models/teamAgencySchema");
 const ReferralHistory = require("../models/referralHistorySchema");
 const Configuration = require("../models/configurationSchema");
 const Affiliate = require("../models/affiliateSchema");
@@ -43,6 +40,10 @@ const WorkspaceService = require("../services/workspaceService");
 const Workspace = require("../models/workspaceSchema");
 const Team_Role_Master = require("../models/masters/teamRoleSchema");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
+const {
+  loginGamificationPointIncrease,
+} = require("../middlewares/authMiddleware");
+const Gamification = require("../models/gamificationSchema");
 const workspaceService = new WorkspaceService();
 
 class AuthService {
@@ -78,6 +79,7 @@ class AuthService {
         ]);
       }
 
+      await loginGamificationPointIncrease(payload, workspace);
       const token = jwt.sign(
         { id: payload._id, workspace: workspace?._id },
         process.env.JWT_SECRET_KEY,
@@ -151,6 +153,7 @@ class AuthService {
         Team_Role_Master.findById(member_details?.sub_role).lean(),
       ]);
 
+      // await loginGamificationPointIncrease(user, workspace_exist);
       return {
         token: new_token,
         workspace: workspace_exist,
@@ -246,6 +249,7 @@ class AuthService {
           const referral_registered = await this.referralSignUp({
             referral_code: referral_code,
             referred_to: user_enroll,
+            workspace_id: payload?.workspace,
           });
 
           if (typeof referral_registered === "string") {
@@ -310,7 +314,7 @@ class AuthService {
 
       if (payload?.workspace_name) {
         await workspaceService.createWorkspace(
-          { workspace_name: payload?.workspace_name?.replace(/\s+/g, "-") },
+          { workspace_name: payload?.workspace_name?.trim() },
           user_exist
         );
       }
@@ -414,6 +418,7 @@ class AuthService {
           const referral_registered = await this.referralSignUp({
             referral_code: referral_code,
             referred_to: user_enroll,
+            workspace_id: payload?.workspace,
           });
 
           if (typeof referral_registered === "string") {
@@ -539,6 +544,7 @@ class AuthService {
           const referral_registered = await this.referralSignUp({
             referral_code: payload?.referral_code,
             referred_to: user_enroll,
+            workspace_id: payload?.workspace,
           });
 
           if (typeof referral_registered === "string") {
@@ -775,6 +781,7 @@ class AuthService {
           const referral_registered = await this.referralSignUp({
             referral_code: payload?.referral_code,
             referred_to: user_enroll,
+            workspace_id: payload?.workspace,
           });
 
           if (typeof referral_registered === "string") {
@@ -1354,12 +1361,12 @@ class AuthService {
     }
   };
 
-  referralSignUp = async ({ referral_code, referred_to }) => {
+  referralSignUp = async ({ referral_code, referred_to, workspace_id }) => {
     try {
       const referral_code_exist = await Authentication.findOne({
         referral_code,
       })
-        .select("referral_code reference_id")
+        .select("referral_code")
         .lean();
 
       if (!referral_code_exist)
@@ -1370,6 +1377,7 @@ class AuthService {
         registered: false,
         referred_by: referral_code_exist?._id,
         email: referred_to?.email,
+        workspace_id,
       });
 
       await ReferralHistory.create({
@@ -1378,39 +1386,40 @@ class AuthService {
         referred_to: referred_to?._id,
         email: referred_to?.email,
         registered: true,
+        workspace_id,
       });
 
       const referral_data = await Configuration.findOne().lean();
 
-      await CompetitionPoint.create({
-        user_id: referred_to?.reference_id,
-        agency_id: referral_code_exist?.reference_id,
+      await Gamification.create({
+        user_id: referred_to?._id,
+        agency_id: referral_code_exist?._id,
         point: referral_data?.referral?.successful_referral_point,
         type: "referral",
+        workspace_id,
       });
 
-      const userData = await Authentication.findOne({
-        reference_id: referred_to?.reference_id,
-      });
+      const userData = await Authentication.findById(referred_to?._id).lean();
 
       await notificationService.addNotification({
         module_name: "referral",
         action_type: "signUp",
         referred_to: userData?.first_name + " " + userData?.last_name,
-        receiver_id: referral_code_exist?.reference_id,
+        receiver_id: referral_code_exist?._id,
         points: referral_data?.referral?.successful_referral_point,
+        workspace_id,
       });
 
-      await Agency.findOneAndUpdate(
-        { _id: referral_code_exist?.reference_id },
+      await Workspace.findOneAndUpdate(
+        { _id: workspace_id, "members.user_id": referral_code_exist?._id },
         {
           $inc: {
-            total_referral_point:
+            "members.$.gamification_points":
               referral_data?.referral?.successful_referral_point,
           },
-        },
-        { new: true }
+        }
       );
+
       return;
     } catch (error) {
       logger.error("Error while referral SignUp", error);
@@ -1576,6 +1585,25 @@ class AuthService {
       ]);
 
       return { user_role: role?.name, sub_role: sub_role?.name, workspace };
+    } catch (error) {
+      logger.error(
+        `Error while gettign the role and subrole in the workspace: ${error}`
+      );
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+  getWorkspaceAdmin = async (workspace) => {
+    try {
+      const workspace_data = await Workspace.findById(workspace).lean();
+      const agency_role_id = await Role_Master.findOne({
+        name: "agency",
+      }).lean();
+      const find_agency = workspace_data?.members?.find(
+        (user) => user?.role.toString() === agency_role_id?._id.toString()
+      );
+
+      const admin_data = await Authentication.findById(find_agency?.user_id).lean()
+      return admin_data;
     } catch (error) {
       logger.error(
         `Error while gettign the role and subrole in the workspace: ${error}`

@@ -37,6 +37,7 @@ const Section = require("../models/sectionSchema");
 const Workspace = require("../models/workspaceSchema");
 const Role_Master = require("../models/masters/roleMasterSchema");
 const AuthService = require("../services/authService");
+const Gamification = require("../models/gamificationSchema");
 const authService = new AuthService();
 const Meeting = require("google-meet-api").meet;
 
@@ -89,7 +90,6 @@ class ActivityService {
       );
       if (!start_date.isSameOrAfter(current_date))
         return throwError(returnMessage("activity", "dateinvalid"));
-
       if (!end_time.isAfter(start_time))
         return throwError(returnMessage("activity", "invalidTime"));
 
@@ -1285,6 +1285,10 @@ class ActivityService {
   // this function is used for to get the activity with date and user based filter
   getActivities = async (payload, user) => {
     try {
+      const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
+      user["role"] = user_role_data?.user_role;
+      user["sub_role"] = user_role_data?.sub_role;
+
       if (payload?.pagination) {
         return await this.getWithPaginationActivities(payload, user);
       }
@@ -1475,7 +1479,6 @@ class ActivityService {
           ],
         };
       }
-
       let aggragate = [
         assign_obj,
         match_obj,
@@ -1769,7 +1772,6 @@ class ActivityService {
           ],
         };
       }
-
       let aggragate = [
         assign_obj,
         match_obj,
@@ -1832,6 +1834,11 @@ class ActivityService {
           $unwind: {
             path: "$activity_status",
             preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $match: {
+            is_deleted: false,
           },
         },
         {
@@ -2309,14 +2316,11 @@ class ActivityService {
   completionHistory = async (payload, user) => {
     try {
       const pagination = paginationObject(payload);
-      const match_obj = {};
+      const match_obj = {
+        workspace_id: user?.workspace_detail?._id,
+        user_id: user?._id,
+      };
 
-      if (user?.role?.name === "agency") {
-        // match_obj.agency_id = user?.reference_id;
-        match_obj.user_id = user?.reference_id;
-      } else if (user?.role?.name === "team_agency") {
-        match_obj.user_id = user?.reference_id;
-      }
       const search_obj = {};
       if (payload?.search && payload?.search !== "") {
         search_obj["$or"] = [
@@ -2357,7 +2361,7 @@ class ActivityService {
           $lookup: {
             from: "authentications",
             localField: "user_id",
-            foreignField: "reference_id",
+            foreignField: "_id",
             pipeline: [
               {
                 $project: {
@@ -2375,11 +2379,11 @@ class ActivityService {
       ];
 
       const [points_history, total_points_history] = await Promise.all([
-        Competition_Point.aggregate(aggragate)
+        Gamification.aggregate(aggragate)
           .sort(pagination.sort)
           .skip(pagination.skip)
           .limit(pagination.result_per_page),
-        Competition_Point.aggregate(aggragate),
+        Gamification.aggregate(aggragate),
       ]);
 
       return {
@@ -2398,20 +2402,20 @@ class ActivityService {
   // competition  points statistics for the agency and agency team member
   competitionStats = async (user) => {
     try {
-      let total_referral_points;
-      const match_condition = { user_id: user?.reference_id };
-      if (user?.role?.name === "agency") {
-        total_referral_points = await Agency.findById(
-          user?.reference_id
-        ).lean();
-      } else if (user?.role?.name === "team_agency") {
-        match_condition.type = { $ne: "referral" };
-        total_referral_points = await Team_Agency.findById(
-          user?.reference_id
-        ).lean();
-      }
+      const match_condition = {
+        user_id: user?._id,
+        workspace_id: user?.workspace,
+      };
 
-      const [competition] = await Competition_Point.aggregate([
+      const member_details = user?.workspace_detail?.members?.find(
+        (member) =>
+          member?.user_id?.toString() === user?._id?.toString() &&
+          member?.status == "confirmed"
+      );
+
+      if (!member_details) return { available_points: 0, earned_points: 0 };
+
+      const gamification = await Gamification.aggregate([
         { $match: match_condition },
         {
           $group: {
@@ -2426,8 +2430,8 @@ class ActivityService {
       ]);
 
       return {
-        available_points: total_referral_points?.total_referral_point || 0,
-        earned_points: competition?.totalPoints || 0,
+        available_points: member_details?.gamification_points || 0,
+        earned_points: gamification?.totalPoints || 0,
       };
     } catch (error) {
       logger.error(`Error while fetching the competition stats: ${error}`);

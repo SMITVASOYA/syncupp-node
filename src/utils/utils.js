@@ -584,7 +584,9 @@ exports.agrementEmail = (data) => {
                                           >
                                             <a
                                               target="_blank"
-                                              href="${process.env.REACT_APP_URL}"
+                                              href="${
+                                                process.env.REACT_APP_URL
+                                              }"
                                               style="
                                                 -webkit-text-size-adjust: none;
                                                 -ms-text-size-adjust: none;
@@ -594,7 +596,9 @@ exports.agrementEmail = (data) => {
                                                 font-size: 14px;
                                               "
                                               ><img
-                                                src="${process.env.SERVER_URL}/template/syncupp-logo.png"
+                                                src="${
+                                                  process.env.SERVER_URL
+                                                }/template/syncupp-logo.png"
                                                 style="
                                                   display: block;
                                                   border: 0;
@@ -709,7 +713,9 @@ exports.agrementEmail = (data) => {
                                               word-break: break-all;
                                             "
                                           >
-                                          <p style="word-wrap: break-word">${data?.content}</p>
+                                          <p style="word-wrap: break-word">${
+                                            data?.content
+                                          }</p>
                                                                                   <!-- <p>
                                               Lorem ipsum dolor sit, amet
                                               consectetur adipisicing elit. Quia
@@ -777,9 +783,15 @@ exports.agrementEmail = (data) => {
                                                 padding-left: 0;
                                               "
                                             >
-                                              <li>${data?.receiverName}</li>
-                                              <li>${data?.receiverEmail}</li>
-                                              <li>${data?.receiverNumber}</li>
+                                              <li>${
+                                                data?.receiverName ?? "-"
+                                              }</li>
+                                              <li>${
+                                                data?.receiverEmail ?? "-"
+                                              }</li>
+                                              <li>${
+                                                data?.receiverNumber ?? "-"
+                                              }</li>
                                             </ul>
                                           </td>
                                           <td
@@ -4514,9 +4526,8 @@ exports.invoiceTemplate = (invoiceData) => {
                                     <li></li>
                                     <li style="text-transform: capitalize;">${
                                       invoiceData?.from?.agency_full_name
-                                        ? invoiceData?.from?.agency_full_name +
-                                          ","
-                                        : "-"
+                                        ? invoiceData?.from?.agency_full_name
+                                        : invoiceData?.from?.agency_full_name
                                     }</li>
                                     <li style="text-transform: capitalize;">${
                                       invoiceData?.from?.company_name
@@ -8381,7 +8392,17 @@ exports.taskTemplate = (data) => {
                                             <td
                                               style="
                                                                                       border-collapse: collapse; font-weight: 600; text-transform: capitalize;">
-                                              ${data.status}</td>
+                                              ${data.status_name}</td>
+                                          </tr>
+                                          <tr>
+                                            <td style=" border-top-left-radius: 5px;
+                                                                                      border-collapse: collapse;">Priority
+                                              :
+                                            </td>
+                                            <td
+                                              style="
+                                                                                      border-collapse: collapse; font-weight: 600; text-transform: capitalize;">
+                                              ${data.priority}</td>
                                           </tr>
                                           <tr>
                                             <td
@@ -8397,14 +8418,16 @@ exports.taskTemplate = (data) => {
                                           <tr>
                                             <td style=" border-top-left-radius: 5px;
                                                                                       border-collapse: collapse;">
-                                              Created On :
+                                              Due Date :
                                             </td>
                                             <td
                                               style="
                                                                                       border-collapse: collapse; font-weight: 600; text-transform: capitalize;">
-                                              ${data?.dueDate} | ${
-    data?.dueTime
-  }</td>
+                                              ${
+                                                data?.dueDate
+                                                  ? `${data?.dueDate} |`
+                                                  : ""
+                                              }  ${data?.dueTime}</td>
                                           </tr>
                                          
                                           
@@ -8412,7 +8435,11 @@ exports.taskTemplate = (data) => {
                                       </td>
                                     </tr>
                                   </table>
-                                  <a target="_blank" href="#" style="
+                                  <a target="_blank" href="${
+                                    process.env.REACT_APP_URL
+                                  }/${data.workspace_name}/tasks/board/${
+    data.board_id
+  }" style="
                                         -webkit-text-size-adjust: none;
                                         -ms-text-size-adjust: none;
                                         mso-line-height-rule: exactly;

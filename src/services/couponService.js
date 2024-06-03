@@ -5,6 +5,7 @@ const { returnMessage, paginationObject } = require("../utils/utils");
 const Agency = require("../models/agencySchema");
 const Configuration = require("../models/configurationSchema");
 const Team_Agency = require("../models/teamAgencySchema");
+const Role_Master = require("../models/masters/roleMasterSchema");
 
 class CouponService {
   // Add Coupon
@@ -172,73 +173,38 @@ class CouponService {
 
   getAllCouponWithOutPagination = async (user) => {
     try {
-      if (user.role.name === "agency") {
-        const queryObj = { is_deleted: false };
-        const agency_data = await Agency.findById(user.reference_id)
-          .select("total_coupon")
-          .lean();
+      const member_details = user?.workspace_detail?.members?.find(
+        (member) =>
+          member?.user_id?.toString() === user?._id?.toString() &&
+          member?.status === "confirmed"
+      );
+      let [role, configuration, coupon] = await Promise.all([
+        Role_Master.findById(member_details?.role).lean(),
+        Configuration.findOne().lean(),
+        AdminCoupon.find({ is_deleted: false }).select("-couponCode").lean(),
+      ]);
 
-        let coupon = await AdminCoupon.find(queryObj)
-          .select("-couponCode")
-          .lean();
+      if (role?.name !== "agency" && role?.name !== "team_agency") return;
 
+      // removed as of now because of the duplication and no need
+      /* if (member_details?.total_coupon?.length > 0)
         coupon = coupon.filter(
-          (couponItem) =>
-            !String(agency_data.total_coupon).includes(String(couponItem._id))
-        );
+          (couponItem) => !member_details?.total_coupon.includes(couponItem._id)
+        ); */
 
-        const referral_data = await Configuration.findOne().lean();
-        const require_points = referral_data?.coupon?.reedem_coupon;
-        // Iterate over each coupon
-        const totalCouponIds =
-          agency_data &&
-          agency_data?.total_coupon?.map((coupon) => coupon.toString());
+      const totalCouponIds = member_details?.total_coupon?.map((coupon) =>
+        coupon?.toString()
+      );
 
-        // Iterate over each coupon
-        for (let i = 0; i < coupon.length; i++) {
-          const couponId = coupon[i]._id.toString();
-
-          // Check if the coupon ID exists in agency_data.total_coupon
-          const isAvailable = totalCouponIds.includes(couponId);
-
-          // Add a flag to the coupon object
-          coupon[i].isAvailable = !isAvailable;
-        }
-        return { coupon, require_points };
+      for (let i = 0; i < coupon.length; i++) {
+        const couponId = coupon[i]?._id?.toString();
+        // Check if the coupon ID exists in agency_data.total_coupon
+        const isAvailable = totalCouponIds?.includes(couponId);
+        // Add a flag to the coupon object
+        coupon[i].isAvailable = !isAvailable;
       }
 
-      if (user.role.name === "team_agency") {
-        const queryObj = { is_deleted: false };
-        const team_member = await Team_Agency.findById(user.reference_id)
-          .select("total_coupon")
-          .lean();
-
-        let coupon = await AdminCoupon.find(queryObj)
-          .select("-couponCode")
-          .lean();
-
-        coupon = coupon.filter(
-          (couponItem) =>
-            !String(team_member.total_coupon).includes(String(couponItem._id))
-        );
-
-        const referral_data = await Configuration.findOne().lean();
-        const require_points = referral_data?.coupon?.reedem_coupon;
-        // Iterate over each coupon
-        const totalCouponIds =
-          team_member &&
-          team_member?.total_coupon?.map((coupon) => coupon.toString());
-        // Iterate over each coupon
-        for (let i = 0; i < coupon.length; i++) {
-          const couponId = coupon[i]._id.toString();
-
-          // Check if the coupon ID exists in agency_data.total_coupon
-          const isAvailable = totalCouponIds.includes(couponId);
-          // Add a flag to the coupon object
-          coupon[i].isAvailable = !isAvailable;
-        }
-        return { coupon, require_points };
-      }
+      return { coupon, require_points: configuration?.coupon?.reedem_coupon };
     } catch (error) {
       logger.error(`Error whilefetching coupon list, ${error}`);
       throwError(error?.message, error?.statusCode);
@@ -247,26 +213,14 @@ class CouponService {
 
   getMyCoupons = async (user) => {
     try {
-      if (user.role.name === "agency") {
-        const agency_data = await Agency.findById(user.reference_id).select(
-          "total_coupon"
-        );
-        // Query AdminCoupon model to find coupons with IDs present in the array
-        const coupons = await AdminCoupon.find({
-          _id: { $in: agency_data?.total_coupon },
-        });
-        return coupons;
-      }
-      if (user.role.name === "team_agency") {
-        const member_data = await Team_Agency.findById(
-          user.reference_id
-        ).select("total_coupon");
-        // Query AdminCoupon model to find coupons with IDs present in the array
-        const coupons = await AdminCoupon.find({
-          _id: { $in: member_data?.total_coupon },
-        });
-        return coupons;
-      }
+      const member_detail = user?.workspace_detail?.members?.find(
+        (member) =>
+          member?.user_id?.toString() === user?._id &&
+          member?.status === "confirmed"
+      );
+      return await AdminCoupon.find({
+        _id: { $in: member_detail?.total_coupon },
+      });
     } catch (error) {
       logger.error(`Error while fetching coupon list, ${error}`);
       throwError(error?.message, error?.statusCode);

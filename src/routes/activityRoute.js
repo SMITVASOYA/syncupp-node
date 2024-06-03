@@ -4,6 +4,7 @@ const {
   createMeetMeetingValidator,
 } = require("../validators/activity.validator");
 const validatorFunc = require("../utils/validatorFunction.helper");
+const boardController = require("../controllers/boardController");
 
 const activityRoute = require("express").Router();
 
@@ -20,6 +21,8 @@ activityRoute.post("/list", activityController.getActivities);
 activityRoute.put("/update-status/:id", activityController.updateStatus);
 activityRoute.delete("/delete-activity", activityController.deleteActivity);
 activityRoute.get("/get-status-list", activityController.statusList);
+activityRoute.get("/fetch-users", boardController.allUserList);
+
 activityRoute.post(
   "/create-google-meeting",
   createMeetMeetingValidator,

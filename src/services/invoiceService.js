@@ -147,6 +147,8 @@ class InvoiceService {
               //   ),
               // },
             ],
+            "members.status": "confirmed",
+            "user_details.is_deleted": false,
           },
         },
 
@@ -224,14 +226,14 @@ class InvoiceService {
         // Generate a new invoice number and ensure it's unique
         do {
           invoiceCount += 1;
-          newInvoiceNumber = `INV-${invoiceCount}`;
+          newInvoiceNumber = invoiceCount;
           var existingInvoice = await Invoice.findOne({
             invoice_number: newInvoiceNumber,
             workspace_id: user?.workspace,
           });
         } while (existingInvoice);
       } else {
-        newInvoiceNumber = `INV-${invoice_number}`;
+        newInvoiceNumber = invoice_number;
         const isInvoice = await Invoice.findOne({
           invoice_number: newInvoiceNumber,
           workspace_id: user?.workspace,
@@ -326,7 +328,7 @@ class InvoiceService {
         name: "draft",
       }).lean();
       const isInvoice = await Invoice.findOne({
-        invoice_number: `INV-${invoice_number}`,
+        invoice_number: invoice_number,
         status: { $ne: draftKey?._id },
         workspace_id: user?.workspace,
       }).lean();
@@ -403,7 +405,7 @@ class InvoiceService {
               status: getInvoiceStatus,
               currency,
               memo,
-              invoice_number: `INV-${invoice_number}`,
+              invoice_number: invoice_number,
               ...(image_path && { invoice_logo: image_path }),
             },
           }
@@ -1300,25 +1302,41 @@ class InvoiceService {
         payload.forEach(async (invoice_id) => {
           const invoice = await this.getInvoice(invoice_id);
 
-          if (invoice[0]?.to?._id) {
-            // ----------------  Notification start    -----------------
+          // ----------------  Notification start    -----------------
 
+          let notification_sent = ["agency"];
+          if (invoice[0]?.client_id) {
+            notification_sent.push("client");
+          }
+
+          notification_sent.forEach(async (receiver) => {
             await notificationService?.addNotification(
               {
-                receiver_name: invoice[0]?.to?.client_full_name,
-                sender_name: invoice[0]?.from?.agency_full_name,
-                receiver_id: invoice[0]?.to?._id,
+                receiver_name:
+                  receiver === "client"
+                    ? invoice[0]?.to?.client_full_name
+                    : invoice[0]?.from?.agency_full_name,
+                sender_name:
+                  receiver === "client"
+                    ? invoice[0]?.from?.agency_full_name
+                    : invoice[0]?.to?.client_full_name,
+                receiver_id:
+                  receiver === "client"
+                    ? invoice[0]?.to?._id
+                    : invoice[0]?.from?._id,
                 invoice_number: invoice[0]?.invoice_number,
                 module_name: "invoice",
-                action_type: "overdue",
+                action_type:
+                  receiver === "client" ? "overdue" : "agencyOverdue",
                 workspace_id: workspace_id,
+                receiver: receiver,
               },
               invoice_id
             );
-          }
+          });
           const client_details = await Authentication.findOne({
             _id: invoice[0]?.to?._id,
-          });
+          }).lean();
           if (client_details) {
             const company_urls = await Configuration.find().lean();
             // Use a template or format the invoice message accordingly
@@ -1477,38 +1495,20 @@ class InvoiceService {
     }
   };
 
-  // GET Invoice information like address , company name pin etc before creating.  ------   AGENCY API
-  // getInvoiceInformation = async (payload, user) => {
-  //   try {
-  //     const { client_id } = payload;
-  //     const getClientData = await Client.findOne(
-  //       {
-  //         _id: client_id,
-  //       },
-  //       {
-  //         agency_ids: 0,
-  //         createdAt: 0,
-  //         updatedAt: 0,
-  //         __v: 0,
-  //         company_website: 0,
-  //         title: 0,
-  //       }
-  //     )
-  //       .populate("city", "name")
-  //       .populate("state", "name")
-  //       .populate("country", "name")
-  //       .lean();
-  //     const getClientInfo = await Authentication.findOne(
-  //       { reference_id: client_id },
-  //       { contact_number: 1 }
-  //     ).lean();
-
-  //     return { ...getClientData, contact_number: getClientInfo.contact_number };
-  //   } catch (error) {
-  //     logger.error(`Error while Get Invoice information, ${error}`);
-  //     throwError(error?.message, error?.statusCode);
-  //   }
-  // };
+  // Get Setting
+  getSetting = async (user, logo) => {
+    try {
+      const getSetting = await Setting.findOne({
+        workspace_id: user?.workspace,
+      })
+        .select("-__v")
+        .lean();
+      return getSetting;
+    } catch (error) {
+      logger.error(`Error while Get setting , ${error}`);
+      throwError(error?.message, error?.statusCode);
+    }
+  };
 }
 
 module.exports = InvoiceService;

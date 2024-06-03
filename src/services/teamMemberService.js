@@ -43,6 +43,7 @@ const PaymentService = new paymentService();
 const mongoose = require("mongoose");
 const Activity_Status_Master = require("../models/masters/activityStatusMasterSchema");
 const Task = require("../models/taskSchema");
+const Section = require("../models/sectionSchema");
 
 class TeamMemberService {
   // removed the code to create the team member for the agency
@@ -968,16 +969,12 @@ class TeamMemberService {
   deleteMember = async (payload, user) => {
     try {
       const { teamMemberIds } = payload;
-      // pending to implement when we remove the team members and the tasks are assigned and pending set
-      const [workspace, sheet, activity_status] = await Promise.all([
+      const [workspace, sheet] = await Promise.all([
         Workspace.findById(user?.workspace).lean(),
         SheetManagement.findOne({
           user_id: user?._id,
           is_deleted: false,
         }).lean(),
-        Activity_Status_Master.findOne({ name: "pending" })
-          .select("_id")
-          .lean(),
       ]);
 
       if (!sheet) return throwError(returnMessage("default", "default"));
@@ -1000,18 +997,46 @@ class TeamMemberService {
           );
       }
 
-      const task_assigned = await Task.findOne({
+      /* {
         workspace_id: user.workspace,
         assign_to: { $in: teamMemberIds },
         activity_status: activity_status?._id,
         is_deleted: false,
-      }).lean();
+      } */
 
-      if (task_assigned && !payload?.force_fully_remove)
+      const task_assigned = await Task.aggregate([
+        {
+          $match: {
+            workspace_id: user.worksapce,
+            assign_to: { $in: teamMemberIds },
+            is_deleted: false,
+          },
+        },
+        {
+          $lookup: {
+            from: "sections",
+            localField: "activity_status",
+            foreignField: "_id",
+            as: "activity_status",
+          },
+        },
+        {
+          $unwind: {
+            path: "$activity_status",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        { $match: { "activity_status.key": { $ne: "completed" } } },
+      ]);
+
+      if (task_assigned.length && !payload?.force_fully_remove)
         return { force_fully_remove: true };
       // remove the member from the workspace
 
-      if ((task_assigned && payload?.force_fully_remove) || !task_assigned) {
+      if (
+        (task_assigned.length && payload?.force_fully_remove) ||
+        !task_assigned.length
+      ) {
         // remove the member from the workspace
         await Workspace.findOneAndUpdate(
           { _id: user.workspace, "members.user_id": { $in: teamMemberIds } },
@@ -1687,288 +1712,6 @@ class TeamMemberService {
     } catch (error) {
       logger.error("Error while generating the referral code", error);
       return false;
-    }
-  };
-
-  // Dashboard Data
-  dashboardData = async (user) => {
-    try {
-      let search_id;
-      let admin_id;
-      const memberRole = await Team_Agency.findOne({
-        _id: user.reference_id,
-      }).populate("role");
-      if (memberRole.role.name === "team_member") {
-        search_id = "assign_to";
-      }
-      if (memberRole.role.name === "admin") {
-        search_id = "agency_id";
-        admin_id = memberRole.agency_id;
-      }
-
-      const currentDate = moment();
-      const startOfToday = moment(currentDate).startOf("day");
-      const endOfToday = moment(currentDate).endOf("day");
-
-      const [
-        taskCount,
-        pendingTask,
-        completedTask,
-        inprogressTask,
-        overdueTask,
-        todaysCallMeeting,
-      ] = await Promise.all([
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_status_masters",
-              localField: "activity_status",
-              foreignField: "_id",
-              as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "typeName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$typeName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
-          {
-            $match: {
-              [search_id]: admin_id ? admin_id : user.reference_id,
-              is_deleted: false,
-              "statusName.name": { $ne: "cancel" }, // Fix: Change $nq to $ne
-              "typeName.name": "task",
-            },
-          },
-          {
-            $count: "totalTaskCount",
-          },
-        ]),
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_status_masters",
-              localField: "activity_status",
-              foreignField: "_id",
-              as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "typeName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$typeName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
-          {
-            $match: {
-              [search_id]: admin_id ? admin_id : user.reference_id,
-              is_deleted: false,
-              "statusName.name": { $eq: "pending" }, // Fix: Change $nq to $ne
-              "typeName.name": "task",
-            },
-          },
-          {
-            $count: "pendingTask",
-          },
-        ]),
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_status_masters",
-              localField: "activity_status",
-              foreignField: "_id",
-              as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $match: {
-              [search_id]: admin_id ? admin_id : user.reference_id,
-              is_deleted: false,
-
-              "statusName.name": { $eq: "completed" }, // Fix: Change $nq to $ne
-            },
-          },
-          {
-            $count: "completedTask",
-          },
-        ]),
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_status_masters",
-              localField: "activity_status",
-              foreignField: "_id",
-              as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "typeName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$typeName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
-          {
-            $match: {
-              [search_id]: admin_id ? admin_id : user.reference_id,
-              is_deleted: false,
-              "typeName.name": "task",
-              "statusName.name": { $eq: "in_progress" }, // Fix: Change $nq to $ne
-            },
-          },
-          {
-            $count: "inprogressTask",
-          },
-        ]),
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_status_masters",
-              localField: "activity_status",
-              foreignField: "_id",
-              as: "statusName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$statusName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "typeName",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$typeName",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-
-          {
-            $match: {
-              [search_id]: admin_id ? admin_id : user.reference_id,
-              is_deleted: false,
-              "typeName.name": "task",
-              "statusName.name": { $eq: "overdue" }, // Fix: Change $nq to $ne
-            },
-          },
-          {
-            $count: "overdueTask",
-          },
-        ]),
-        Activity.aggregate([
-          {
-            $lookup: {
-              from: "activity_type_masters",
-              localField: "activity_type",
-              foreignField: "_id",
-              as: "activityType",
-              pipeline: [{ $project: { name: 1 } }],
-            },
-          },
-          {
-            $unwind: {
-              path: "$activityType",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $match: {
-              [search_id]: admin_id ? admin_id : user.reference_id,
-              "activityType.name": { $eq: "call_meeting" },
-              is_deleted: false,
-              meeting_start_time: {
-                $gte: startOfToday.toDate(),
-                $lte: endOfToday.toDate(),
-              },
-            },
-          },
-          {
-            $count: "todaysCallMeeting",
-          },
-        ]),
-      ]);
-      return {
-        task_count: taskCount[0]?.totalTaskCount ?? 0,
-        pending_task_count: pendingTask[0]?.pendingTask ?? 0,
-        completed_task_count: completedTask[0]?.completedTask ?? 0,
-        in_progress_task_count: inprogressTask[0]?.inprogressTask ?? 0,
-        overdue_task_count: overdueTask[0]?.overdueTask ?? 0,
-        todays_call_meeting: todaysCallMeeting[0]?.todaysCallMeeting ?? 0,
-      };
-    } catch (error) {
-      logger.error(`Error while fetch dashboard data for agency: ${error}`);
-      return throwError(error?.message, error?.statusCode);
     }
   };
 

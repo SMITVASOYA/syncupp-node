@@ -28,7 +28,6 @@ chatRoute.post(
   chatController.uploadAudio
 );
 
-// chatRoute.post("/lastest-history", chatController.fetchLatestChat);
 chatRoute.post("/documents", chatController.getAllDocuments);
 
 module.exports = chatRoute;
