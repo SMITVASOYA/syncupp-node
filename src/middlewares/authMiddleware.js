@@ -3,19 +3,16 @@ const jwt = require("jsonwebtoken");
 const Authentication = require("../models/authenticationSchema");
 const { throwError } = require("../helpers/errorUtil");
 const { returnMessage } = require("../utils/utils");
-const Competition_Point = require("../models/competitionPointSchema");
 
-const moment = require("moment");
 const NotificationService = require("../services/notificationService");
 const notificationService = new NotificationService();
 
 const Configuration = require("../models/configurationSchema");
-const Agency = require("../models/agencySchema");
-const Team_Agency = require("../models/teamAgencySchema");
 const { eventEmitter } = require("../socket");
 const Workspace = require("../models/workspaceSchema");
 const Role_Master = require("../models/masters/roleMasterSchema");
-const Team_Role_Master = require("../models/masters/teamRoleSchema");
+const Gamification = require("../models/gamificationSchema");
+const moment = require("moment");
 
 // removed the old middleware as of now
 /* exports.protect = catchAsyncErrors(async (req, res, next) => {
@@ -195,6 +192,8 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
     req.user["workspace"] = decodedUserData?.workspace;
     req.user["workspace_detail"] = workspace;
 
+    await this.loginGamificationPointIncrease(user, workspace);
+
     next();
   } else {
     return throwError(returnMessage("auth", "unAuthorized"), 401);
@@ -216,4 +215,56 @@ exports.authorizeMultipleRoles = (user, requiredRoles) => (req, res, next) => {
     return next();
   }
   return throwError(returnMessage("auth", "insufficientPermission"), 403);
+};
+
+exports.loginGamificationPointIncrease = async (user, workspace) => {
+  try {
+    if (!workspace) return;
+    const today = moment.utc().startOf("day");
+    const workspace_user_detail = workspace?.members?.find(
+      (member) => member?.user_id?.toString() === user?._id?.toString()
+    );
+
+    if (!workspace_user_detail || workspace_user_detail?.status !== "confirmed")
+      return;
+
+    const [role, configuration] = await Promise.all([
+      Role_Master.findById(workspace_user_detail?.role).lean(),
+      Configuration.findOne({}).lean(),
+    ]);
+
+    if (role?.name !== "agency" || role?.name !== "team_agency") return;
+
+    const last_visit_date = moment
+      .utc(workspace_user_detail?.last_visit_date)
+      .startOf("day");
+
+    if (
+      !last_visit_date.isAfter(today) ||
+      !workspace_user_detail?.last_visit_date
+    ) {
+      await Gamification.create({
+        user_id: user._id,
+        agency_id: workspace?.created_by,
+        point: +configuration?.competition.successful_login.toString(),
+        type: "login",
+        role: role?.name,
+        workspace_id: workspace?._id,
+      });
+
+      await Workspace.findOneAndUpdate(
+        { _id: workspace?._id, "members.user_id": user?._id },
+        {
+          $inc: {
+            "members.$.gamification_points":
+              configuration?.competition.successful_login,
+          },
+          "memebrs.$.last_visit_date": last_visit_date,
+        }
+      );
+    }
+    return;
+  } catch (error) {
+    console.log(`Error while increasing the gamification points: ${error}`);
+  }
 };

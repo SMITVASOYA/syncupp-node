@@ -247,26 +247,14 @@ class CouponService {
 
   getMyCoupons = async (user) => {
     try {
-      if (user.role.name === "agency") {
-        const agency_data = await Agency.findById(user.reference_id).select(
-          "total_coupon"
-        );
-        // Query AdminCoupon model to find coupons with IDs present in the array
-        const coupons = await AdminCoupon.find({
-          _id: { $in: agency_data?.total_coupon },
-        });
-        return coupons;
-      }
-      if (user.role.name === "team_agency") {
-        const member_data = await Team_Agency.findById(
-          user.reference_id
-        ).select("total_coupon");
-        // Query AdminCoupon model to find coupons with IDs present in the array
-        const coupons = await AdminCoupon.find({
-          _id: { $in: member_data?.total_coupon },
-        });
-        return coupons;
-      }
+      const member_detail = user?.workspace_detail?.members?.find(
+        (member) =>
+          member?.user_id?.toString() === user?._id &&
+          member?.status === "confirmed"
+      );
+      return await AdminCoupon.find({
+        _id: { $in: member_detail?.total_coupon },
+      });
     } catch (error) {
       logger.error(`Error while fetching coupon list, ${error}`);
       throwError(error?.message, error?.statusCode);

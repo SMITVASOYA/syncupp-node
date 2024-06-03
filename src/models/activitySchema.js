@@ -39,18 +39,6 @@ const activitySchema = new mongoose.Schema(
         ref: "authentications",
       },
     ],
-    // competition_point: { type: Number, default: 0 },
-    // status_history: [
-    //   {
-    //     status: {
-    //       type: mongoose.Types.ObjectId,
-    //     },
-    //     active: {
-    //       default: 0,
-    //       type: Number,
-    //     },
-    //   },
-    // ],
   },
   { timestamps: true }
 );

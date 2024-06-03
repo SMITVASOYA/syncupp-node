@@ -48,8 +48,9 @@ const Payout = require("../models/payoutSchema");
 const Notification = require("../models/notificationSchema");
 const Workspace = require("../models/workspaceSchema");
 const Task = require("../models/taskSchema");
-const Chat = require("../models/chatSchema");
 const Order_Management = require("../models/orderManagementSchema");
+const Role_Master = require("../models/masters/roleMasterSchema");
+
 class PaymentService {
   constructor() {
     this.razorpayApi = axios.create({
@@ -1515,17 +1516,38 @@ class PaymentService {
       // ---------------- Notification ---------------- */
 
       // this will used to check weather this user id has assined any task and it is in the pending state
-      let task_assigned = await Task.findOne({
-        workspace_id: user?.workspace,
-        activity_status: activity_status?._id,
-        assign_to: { $in: [user_id] },
-        is_deleted: false,
-      }).lean();
+      let task_assigned = await Task.aggregate([
+        {
+          $match: {
+            workspace_id: user.worksapce,
+            assign_to: { $in: [user_id] },
+            is_deleted: false,
+          },
+        },
+        {
+          $lookup: {
+            from: "sections",
+            localField: "activity_status",
+            foreignField: "_id",
+            as: "activity_status",
+          },
+        },
+        {
+          $unwind: {
+            path: "$activity_status",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        { $match: { "activity_status.key": "completed" } },
+      ]);
 
-      if (task_assigned && !payload?.force_fully_remove)
+      if (task_assigned.length && !payload?.force_fully_remove)
         return { force_fully_remove: true };
 
-      if ((task_assigned && payload?.force_fully_remove) || !task_assigned) {
+      if (
+        (task_assigned.length && payload?.force_fully_remove) ||
+        !task_assigned.length
+      ) {
         const update_obj = { occupied_sheets: updated_users };
         if (user?.workspace_detail?.trial_end_date) {
           update_obj.total_sheets = sheets?.total_sheets - 1;
@@ -1951,12 +1973,29 @@ class PaymentService {
   // this function is used to get the referral and available sheets
   paymentScopes = async (agency) => {
     try {
-      const [plan, subscription_detail, config, sheet] = await Promise.all([
-        SubscriptionPlan.findById(agency?.purchased_plan).lean(),
-        this.subscripionDetail(agency?.subscription_id),
-        Configuration.findOne().lean(),
-        SheetManagement.findOne({ user_id: agency?._id, is_deleted: false }),
-      ]);
+      const member_detail = agency?.workspace_detail?.members?.find(
+        (member) =>
+          member?.user_id?.toString() === agency?._id?.toString() &&
+          member?.status === "confirmed"
+      );
+
+      const [plan, subscription_detail, config, sheet, role] =
+        await Promise.all([
+          SubscriptionPlan.findById(agency?.purchased_plan).lean(),
+          this.subscripionDetail(agency?.subscription_id),
+          Configuration.findOne().lean(),
+          SheetManagement.findOne({
+            user_id: agency?._id,
+            is_deleted: false,
+          }).lean(),
+          Role_Master.findById(member_detail?.role).lean(),
+        ]);
+
+      if (role?.name !== "agency")
+        return throwError(
+          returnMessage("auth", "insufficientPermission"),
+          statusCode.forbidden
+        );
 
       let payable_amount;
 
@@ -1981,16 +2020,15 @@ class PaymentService {
           ) / 100
         ).toFixed(2);
       }
-      const agency_data = await Agency.findById(agency.reference_id).lean();
       const redirect_payment_page =
-        agency_data?.total_referral_point >=
+        member_detail?.gamification_points >=
         config?.referral?.redeem_required_point
           ? true
           : false;
 
       return {
         payable_amount: plan?.symbol + " " + payable_amount,
-        referral_point: agency_data?.total_referral_point,
+        referral_point: member_detail?.gamification_points,
         redeem_required_point: config?.referral?.redeem_required_point,
         redirect_payment_page,
         available_sheets:
@@ -2253,68 +2291,40 @@ class PaymentService {
     try {
       const coupon = await AdminCoupon.findById(payload?.couponId).lean();
       if (!coupon) return returnMessage("payment", "CouponNotExist");
-      if (user.role.name === "agency") {
-        const agency = await Agency.findById(user?.reference_id);
-        const referral_data = await Configuration.findOne().lean();
-        if (
-          !(
-            agency?.total_referral_point >= referral_data?.coupon?.reedem_coupon
-          )
-        )
-          return throwError(
-            returnMessage("referral", "insufficientReferralPoints")
-          );
 
-        await Agency.findOneAndUpdate(
-          { _id: agency?._id },
-          {
-            $inc: {
-              total_referral_point: -referral_data?.coupon?.reedem_coupon,
-            },
-            $push: {
-              total_coupon: coupon?._id,
-            },
-          },
-          { new: true }
+      const member_detail = user?.workspace_detail?.members?.find(
+        (member) =>
+          member?.user_id?.toString() === user?._id &&
+          member?.status === "confirmed"
+      );
+
+      const configuration = await Configuration.findOne().lean();
+
+      if (
+        !(
+          member_detail?.gamification_points >=
+          configuration?.coupon?.reedem_coupon
+        )
+      )
+        return throwError(
+          returnMessage("referral", "insufficientReferralPoints")
         );
 
-        return { success: true };
-      }
-
-      if (user.role.name === "team_agency") {
-        const teamMember = await Team_Agency.findById(user?.reference_id);
-        const referral_data = await Configuration.findOne().lean();
-        if (
-          !(
-            teamMember?.total_referral_point >=
-            referral_data?.coupon?.reedem_coupon
-          )
-        )
-          return throwError(
-            returnMessage("referral", "insufficientReferralPoints")
-          );
-
-        // payload?.redeem_required_point =
-        //   referral_data?.referral?.redeem_required_point;
-        // const status_change = await this.referralStatusChange(payload, user);
-        // if (!status_change.success) return { success: false };
-
-        const coupon = await AdminCoupon.findById(payload?.couponId).lean();
-        await Team_Agency.findOneAndUpdate(
-          { _id: teamMember?._id },
-          {
-            $inc: {
-              total_referral_point: -referral_data?.coupon?.reedem_coupon,
-            },
-            $push: {
-              total_coupon: coupon?._id,
-            },
+      await Workspace.findOneAndUpdate(
+        { _id: user?.worksapce, "membesrs.user_id": user?._id },
+        {
+          $inc: {
+            "members.$.gamification_points":
+              -configuration?.coupon?.reedem_coupon,
           },
-          { new: true }
-        );
+          $push: {
+            "members.$.total_coupon": coupon?._id,
+          },
+        },
+        { new: true }
+      );
 
-        return { success: true };
-      }
+      return { success: true };
     } catch (error) {
       logger.error(`Error while verifying referral: ${error}`);
       return throwError(
