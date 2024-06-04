@@ -28,7 +28,6 @@ const sendEmail = require("../helpers/sendEmail");
 const Configuration = require("../models/configurationSchema");
 const CompetitionPoint = require("../models/competitionPointSchema");
 const ReferralHistory = require("../models/referralHistorySchema");
-const Agency = require("../models/agencySchema");
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_SECRET,
@@ -51,6 +50,7 @@ const Workspace = require("../models/workspaceSchema");
 const Task = require("../models/taskSchema");
 const Order_Management = require("../models/orderManagementSchema");
 const Role_Master = require("../models/masters/roleMasterSchema");
+const Gamification = require("../models/gamificationSchema");
 
 class PaymentService {
   constructor() {
@@ -383,8 +383,8 @@ class PaymentService {
           ]);
 
           if (affiliateCheck) {
-            await Affiliate.findOneAndUpdate(
-              { _id: affiliateCheck._id },
+            await Affiliate.findByIdAndUpdate(
+              affiliateCheck._id,
               {
                 $inc: {
                   affiliate_point:
@@ -528,161 +528,6 @@ class PaymentService {
 
           return;
         }
-        //commented because it was not working properly
-        // if (body?.event === "order.paid") {
-        //   const order_id = payload?.payment?.entity?.order_id;
-        //   const payment_id = payload?.payment?.entity?.id;
-        //   const payment_history = await PaymentHistory.findOne({
-        //     payment_id,
-        //     order_id,
-        //   }).lean();
-        //   if (!payment_history)
-        //     return throwError("Payment history not found!", 400);
-
-        //   const agency_id = payment_history?.agency_id;
-        //   const user_id = payment_history?.user_id;
-        //   const [agency_details, user_details, sheets, sheets_allocated] =
-        //     await Promise.all([
-        //       Authentication.findOne({
-        //         reference_id: agency_id,
-        //       }).lean(),
-        //       Authentication.findOne({
-        //         reference_id: user_id,
-        //       })
-        //         .populate("role", "name")
-        //         .lean(),
-        //       SheetManagement.findOne({ agency_id }).lean(),
-        //       SheetManagement.findOne({
-        //         agency_id,
-        //         "occupied_sheets.user_id": user_id,
-        //       }).lean(),
-        //     ]);
-
-        //   if (!sheets || sheets_allocated) return;
-
-        //   if (user_details?.role?.name === "client") {
-        //     let link = `${
-        //       process.env.REACT_APP_URL
-        //     }/client/verify?name=${encodeURIComponent(
-        //       capitalizeFirstLetter(agency_details?.first_name) +
-        //         " " +
-        //         capitalizeFirstLetter(agency_details?.last_name)
-        //     )}&email=${encodeURIComponent(
-        //       user_details?.email
-        //     )}&agency=${encodeURIComponent(agency_details?.reference_id)}`;
-
-        //     const invitation_text = `${capitalizeFirstLetter(
-        //       agency_details?.first_name
-        //     )} ${capitalizeFirstLetter(
-        //       agency_details?.last_name
-        //     )} has sent an invitation to you. please click on below button to join SyncUpp.`;
-        //     const invitation_mail = invitationEmail(
-        //       link,
-        //       capitalizeFirstLetter(user_details?.first_name) +
-        //         " " +
-        //         capitalizeFirstLetter(user_details?.last_name),
-        //       invitation_text
-        //     );
-
-        //     await sendEmail({
-        //       email: user_details?.email,
-        //       subject: returnMessage("emailTemplate", "invitation"),
-        //       message: invitation_mail,
-        //     });
-        //     await Client.updateOne(
-        //       { _id: user_id, "agency_ids.agency_id": agency_id },
-        //       { $set: { "agency_ids.$.status": "pending" } },
-        //       { new: true }
-        //     );
-        //   } else if (user_details?.role?.name === "team_agency") {
-        //     const link = `${process.env.REACT_APP_URL}/team/verify?agency=${
-        //       capitalizeFirstLetter(agency_details?.first_name) +
-        //       " " +
-        //       capitalizeFirstLetter(agency_details?.last_name)
-        //     }&agencyId=${
-        //       agency_details?.reference_id
-        //     }&email=${encodeURIComponent(user_details?.email)}&token=${
-        //       user_details?.invitation_token
-        //     }&redirect=false`;
-
-        //     const invitation_text = `${capitalizeFirstLetter(
-        //       agency_details?.first_name
-        //     )} ${capitalizeFirstLetter(
-        //       agency_details?.last_name
-        //     )} has sent an invitation to you. please click on below button to join SyncUpp.`;
-        //     const invitation_template = invitationEmail(
-        //       link,
-        //       capitalizeFirstLetter(user_details?.first_name) +
-        //         " " +
-        //         capitalizeFirstLetter(user_details?.last_name),
-        //       invitation_text
-        //     );
-
-        //     await sendEmail({
-        //       email: user_details?.email,
-        //       subject: returnMessage("emailTemplate", "invitation"),
-        //       message: invitation_template,
-        //     });
-
-        //     await Authentication.findByIdAndUpdate(user_details?._id, {
-        //       status: "confirm_pending",
-        //     });
-        //   } else if (user_details?.role?.name === "team_client") {
-        //     const team_client_detail = await Team_Client.findById(
-        //       user_details.reference_id
-        //     ).lean();
-
-        //     const link = `${process.env.REACT_APP_URL}/team/verify?agency=${
-        //       capitalizeFirstLetter(agency_details?.first_name) +
-        //       " " +
-        //       capitalizeFirstLetter(agency_details?.last_name)
-        //     }&agencyId=${
-        //       agency_details?.reference_id
-        //     }&email=${encodeURIComponent(user_details?.email)}&clientId=${
-        //       team_client_detail.client_id
-        //     }`;
-        //     const invitation_text = `${capitalizeFirstLetter(
-        //       agency_details?.first_name
-        //     )} ${capitalizeFirstLetter(
-        //       agency_details?.last_name
-        //     )} has sent an invitation to you. please click on below button to join SyncUpp.`;
-
-        //     const invitation_template = invitationEmail(
-        //       link,
-        //       user_details?.first_name + " " + user_details?.last_name,
-        //       invitation_text
-        //     );
-
-        //     await sendEmail({
-        //       email: user_details?.email,
-        //       subject: returnMessage("emailTemplate", "invitation"),
-        //       message: invitation_template,
-        //     });
-
-        //     await Team_Client.updateOne(
-        //       { _id: user_id, "agency_ids.agency_id": agency_id },
-        //       { $set: { "agency_ids.$.status": "pending" } },
-        //       { new: true }
-        //     );
-        //   }
-
-        //   const occupied_sheets = [
-        //     ...sheets.occupied_sheets,
-        //     {
-        //       user_id,
-        //       role: user_details?.role?.name,
-        //     },
-        //   ];
-
-        //   const sheet_obj = {
-        //     total_sheets: sheets?.total_sheets + 1,
-        //     occupied_sheets,
-        //   };
-        //   await SheetManagement.findByIdAndUpdate(sheets._id, sheet_obj);
-
-        //   await this.updateSubscription(agency_id, sheet_obj.total_sheets);
-        //   return;
-        // }
       }
 
       return;
@@ -939,7 +784,6 @@ class PaymentService {
         };
       }
 
-      // await this.deleteUsers(payload);
       return { success: false };
     } catch (error) {
       console.log(JSON.stringify(error));
@@ -1138,28 +982,6 @@ class PaymentService {
       console.log(JSON.stringify(error));
 
       logger.error(`Error while changing status after the payment: ${error}`);
-      return false;
-    }
-  };
-
-  // this functio will use if the signature fails to verify after the payment
-  deleteUsers = async (payload) => {
-    try {
-      const { user_id } = payload;
-      const user_details = await Authentication.findOne({
-        reference_id: user_id,
-      })
-        .populate("role", "name")
-        .lean();
-      if (user_details?.role?.name === "team_agency") {
-        await Authentication.findByIdAndDelete(user_details._id);
-        await Team_Agency.findByIdAndDelete(user_details.reference_id);
-      }
-      return;
-    } catch (error) {
-      console.log(JSON.stringify(error));
-
-      logger.error(`Error while deleting the User: ${error}`);
       return false;
     }
   };
@@ -1619,13 +1441,14 @@ class PaymentService {
 
   getSubscription = async (agency) => {
     try {
-      let subscription, plan_details, agency_details;
+      let subscription, plan_details;
+      const agency_detail = memberDetail(agency);
 
       if (agency?.subscribe_date && agency?.subscription_id) {
         subscription = await this.subscripionDetail(agency?.subscription_id);
         plan_details = await this.planDetails(subscription.plan_id);
       }
-      /* Note:   We have not added the gamification points as of now */
+
       const [sheets_detail, earned_total] = await Promise.all([
         SheetManagement.findOne({
           user_id: agency?._id,
@@ -1655,7 +1478,7 @@ class PaymentService {
         subscription,
         referral_points: {
           erned_points: earned_total,
-          available_points: agency_details?.total_referral_point || 1000,
+          available_points: agency_detail?.gamification_points || 0,
         },
       };
     } catch (error) {
@@ -1666,21 +1489,13 @@ class PaymentService {
   /* Need to work on the referral points later */
   calculateTotalReferralPoints = async (agency) => {
     try {
-      const referral_data = await Configuration.findOne().lean();
-      const total_earned_point = await CompetitionPoint.find({
-        user_id: agency.reference_id,
-      });
-      const total_earned_points_sum = total_earned_point.reduce((acc, curr) => {
+      const total_earned_point = await Gamification.find({
+        user_id: agency?._id,
+        workspace_id: agency?.workspace,
+      }).lean();
+      return total_earned_point.reduce((acc, curr) => {
         return acc + parseInt(curr.point);
       }, 0);
-      const total_referral = await ReferralHistory.find({
-        referred_by: agency.reference_id,
-      });
-      const total_referral_points_sum =
-        total_referral.length * referral_data.referral.redeem_required_point;
-
-      const total_earned = total_referral_points_sum + total_earned_points_sum;
-      return total_earned;
     } catch (error) {
       throw error;
     }
@@ -1758,7 +1573,7 @@ class PaymentService {
       if (!status_change.success) return { success: false };
 
       await Workspace.findOneAndUpdate(
-        { _id: user?.workspace, "members.user_id": user?._id },
+        { _id: user?.workspace, "members.user_id": payload?.user_id },
         {
           $inc: {
             "members.$.gamification_points":
@@ -1780,186 +1595,83 @@ class PaymentService {
     try {
       const { user_id, redeem_required_point } = payload;
       const agency_details = user;
+
+      const new_member_detail = user?.workspace_detail?.members?.find(
+        (member) =>
+          member?.user_id?.toString() === user_id?.toString() &&
+          member?.status === "payment_pending"
+      );
+      if (!new_member_detail) return { success: false };
       if (payload?.user_id) {
-        const [user_details, sheets] = await Promise.all([
-          Authentication.findOne({
-            reference_id: payload?.user_id,
-          })
-            .populate("role", "name")
-            .lean(),
+        const [user_details, sheets, configuration, role] = await Promise.all([
+          Authentication.findById(user_id).lean(),
           SheetManagement.findOne({
-            agency_id: user?._id,
+            user_id: user?._id,
             is_deleted: false,
           }).lean(),
+          Configuration.findOne().lean(),
+          Role_Master.findById(new_member_detail?.role).lean(),
         ]);
 
         if (!sheets) return { success: false };
 
-        if (user_details?.role?.name === "client") {
-          let link = `${
-            process.env.REACT_APP_URL
-          }/client/verify?name=${encodeURIComponent(
-            capitalizeFirstLetter(agency_details?.first_name) +
-              " " +
-              capitalizeFirstLetter(agency_details?.last_name)
-          )}&email=${encodeURIComponent(
-            user_details?.email
-          )}&agency=${encodeURIComponent(agency_details?.reference_id)}`;
+        let invitation_token = crypto.randomBytes(16).toString("hex");
+        const link = `${process.env.REACT_APP_URL}/verify?workspace=${
+          workspace_exist?._id
+        }&email=${encodeURIComponent(
+          user_details?.email
+        )}&token=${invitation_token}&workspace_name=${
+          workspace_exist?.name
+        }&first_name=${user_details?.first_name}&last_name=${
+          user_details?.last_name
+        }`;
 
-          const invitation_text = `${capitalizeFirstLetter(
-            agency_details?.first_name
-          )} ${capitalizeFirstLetter(
-            agency_details?.last_name
-          )} has sent an invitation to you. please click on below button to join Syncupp.`;
-          const company_urls = await Configuration.find().lean();
-          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
-
-          let facebook = company_urls[0]?.urls?.facebook;
-
-          let instagram = company_urls[0]?.urls?.instagram;
-          const invitation_mail = invitationEmail(
-            link,
+        const email_template = templateMaker("teamInvitation.html", {
+          REACT_APP_URL: process.env.REACT_APP_URL,
+          SERVER_URL: process.env.SERVER_URL,
+          username:
             capitalizeFirstLetter(user_details?.first_name) +
-              " " +
-              capitalizeFirstLetter(user_details?.last_name),
-            invitation_text,
-            privacy_policy,
-            facebook,
-            instagram
-          );
-
-          await sendEmail({
-            email: user_details?.email,
-            subject: returnMessage("emailTemplate", "invitation"),
-            message: invitation_mail,
-          });
-          await Client.updateOne(
-            {
-              _id: user_id,
-              "agency_ids.agency_id": agency_details?.reference_id,
-            },
-            { $set: { "agency_ids.$.status": "pending" } },
-            { new: true }
-          );
-        } else if (user_details?.role?.name === "team_agency") {
-          const link = `${process.env.REACT_APP_URL}/team/verify?agency=${
+            " " +
+            capitalizeFirstLetter(user_details?.last_name),
+          invitation_text: `You are invited to the ${
+            workspace_exist?.name
+          } workspace by ${
             capitalizeFirstLetter(agency_details?.first_name) +
             " " +
             capitalizeFirstLetter(agency_details?.last_name)
-          }&agencyId=${agency_details?.reference_id}&email=${encodeURIComponent(
-            user_details?.email
-          )}&token=${user_details?.invitation_token}&redirect=false`;
-
-          const invitation_text = `${capitalizeFirstLetter(
-            agency_details?.first_name
-          )} ${capitalizeFirstLetter(
-            agency_details?.last_name
-          )} has sent an invitation to you. please click on below button to join Syncupp.`;
-          const company_urls = await Configuration.find().lean();
-          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
-
-          let facebook = company_urls[0]?.urls?.facebook;
-
-          let instagram = company_urls[0]?.urls?.instagram;
-          const invitation_template = invitationEmail(
-            link,
-            capitalizeFirstLetter(user_details?.first_name) +
-              " " +
-              capitalizeFirstLetter(user_details?.last_name),
-            invitation_text,
-            privacy_policy,
-            facebook,
-            instagram
-          );
-
-          await sendEmail({
-            email: user_details?.email,
-            subject: returnMessage("emailTemplate", "invitation"),
-            message: invitation_template,
-          });
-        } else if (user_details?.role?.name === "team_client") {
-          const team_client_detail = await Team_Client.findById(
-            user_details.reference_id
-          ).lean();
-
-          const link = `${process.env.REACT_APP_URL}/team/verify?agency=${
-            capitalizeFirstLetter(agency_details?.first_name) +
-            " " +
-            capitalizeFirstLetter(agency_details?.last_name)
-          }&agencyId=${agency_details?.reference_id}&email=${encodeURIComponent(
-            user_details?.email
-          )}&clientId=${team_client_detail.client_id}`;
-          const invitation_text = `${capitalizeFirstLetter(
-            agency_details?.first_name
-          )} ${capitalizeFirstLetter(
-            agency_details?.last_name
-          )} has sent an invitation to you. please click on below button to join Syncpp.`;
-          const company_urls = await Configuration.find().lean();
-          let privacy_policy = company_urls[0]?.urls?.privacy_policy;
-
-          let facebook = company_urls[0]?.urls?.facebook;
-
-          let instagram = company_urls[0]?.urls?.instagram;
-          const invitation_template = invitationEmail(
-            link,
-            capitalizeFirstLetter(user_details?.first_name) +
-              " " +
-              capitalizeFirstLetter(user_details?.last_name),
-            invitation_text,
-            privacy_policy,
-            facebook,
-            instagram
-          );
-
-          await sendEmail({
-            email: user_details?.email,
-            subject: returnMessage("emailTemplate", "invitation"),
-            message: invitation_template,
-          });
-
-          await Team_Client.updateOne(
-            {
-              _id: user_id,
-              "agency_ids.agency_id": agency_details?.reference_id,
-            },
-            { $set: { "agency_ids.$.status": "pending" } },
-            { new: true }
-          );
-        }
-
-        await PaymentHistory.create({
-          agency_id: agency_details?.reference_id,
-          user_id: user_details?.reference_id,
-          amount: redeem_required_point,
-          role: user_details?.role?.name,
-          payment_mode: "referral",
+          }. Click on the below link to join the workspace.`,
+          link: link,
+          instagram: configuration?.urls?.instagram,
+          facebook: configuration?.urls?.facebook,
+          privacy_policy: configuration?.urls?.privacy_policy,
         });
 
-        const occupied_sheets = [
-          ...sheets.occupied_sheets,
-          {
-            user_id,
-            role: user_details?.role?.name,
-          },
-        ];
+        sendEmail({
+          email: user_details?.email,
+          subject: returnMessage("auth", "invitationEmailSubject"),
+          message: email_template,
+        });
 
-        const sheet_obj = {
-          total_sheets: sheets?.total_sheets + 1,
-          occupied_sheets,
-        };
-        await SheetManagement.findByIdAndUpdate(sheets._id, sheet_obj);
+        await PaymentHistory.create({
+          agency_id: agency_details?._id,
+          member_id: user_details?._id,
+          amount: redeem_required_point,
+          role: role?.name,
+          payment_mode: "referral",
+          workspace_id: user?.workspace,
+        });
 
         await this.updateSubscription(
-          agency_details?.reference_id,
-          sheet_obj.total_sheets
+          agency_details?._id,
+          sheets?.total_sheets
         );
 
         let message;
-        if (user_details?.role?.name === "client") {
+        if (role?.name === "client") {
           message = returnMessage("agency", "clientCreated");
-        } else if (user_details?.role?.name === "team_agency") {
+        } else if (role?.name === "team_agency") {
           message = returnMessage("teamMember", "teamMemberCreated");
-        } else if (user_details?.role?.name === "team_client") {
+        } else if (role?.name === "team_client") {
           message = returnMessage("teamMember", "teamMemberCreated");
         }
 

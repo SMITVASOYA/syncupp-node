@@ -243,15 +243,7 @@ exports.loginGamificationPointIncrease = async (user, workspace) => {
       !last_visit_date.isSameOrAfter(today) ||
       !workspace_user_detail?.last_visit_date
     ) {
-      await Gamification.create({
-        user_id: user._id,
-        agency_id: workspace?.created_by,
-        point: +configuration?.competition.successful_login.toString(),
-        type: "login",
-        role: role?._id,
-        workspace_id: workspace?._id,
-      });
-
+      console.log(254, moment().format());
       await Workspace.findOneAndUpdate(
         { _id: workspace?._id, "members.user_id": user?._id },
         {
@@ -260,10 +252,19 @@ exports.loginGamificationPointIncrease = async (user, workspace) => {
               configuration?.competition.successful_login,
           },
           $set: {
-            "members.$.last_visit_date": last_visit_date,
+            "members.$.last_visit_date": today,
           },
-        }
+        },
+        { new: true }
       );
+      await Gamification.create({
+        user_id: user._id,
+        agency_id: workspace?.created_by,
+        point: +configuration?.competition.successful_login.toString(),
+        type: "login",
+        role: role?._id,
+        workspace_id: workspace?._id,
+      });
     }
     return;
   } catch (error) {
