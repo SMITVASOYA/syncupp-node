@@ -251,7 +251,7 @@ exports.loginGamificationPointIncrease = async (user, workspace) => {
         role: role?._id,
         workspace_id: workspace?._id,
       });
-
+      console.log(254, new date());
       await Workspace.findOneAndUpdate(
         { _id: workspace?._id, "members.user_id": user?._id },
         {
