@@ -260,7 +260,7 @@ exports.loginGamificationPointIncrease = async (user, workspace) => {
               configuration?.competition.successful_login,
           },
           $set: {
-            "members.$.last_visit_date": last_visit_date,
+            "members.$.last_visit_date": today,
           },
         }
       );
