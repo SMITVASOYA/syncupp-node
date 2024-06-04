@@ -670,34 +670,37 @@ class NotificationService {
   // Get Notifications
   getNotification = async (user, searchObj) => {
     try {
+      const { skip, limit } = searchObj;
       if (user?.role?.name === undefined) {
-        const { skip, limit } = searchObj;
-        const notifications = await Notification.find({
-          user_id: user._id,
-        })
-          .sort({ createdAt: -1, is_read: -1 })
-          .skip(skip)
-          .limit(limit);
-        const un_read_count = await Notification.find({
-          user_id: user._id,
-          is_read: false,
-        }).countDocuments();
+        const [notifications, un_read_count] = await Promise.all([
+          Notification.find({ user_id: user._id })
+            .sort({ createdAt: -1, is_read: -1 })
+            .skip(skip)
+            .limit(limit),
+          Notification.find({
+            user_id: user._id,
+            is_read: false,
+          }).countDocuments(),
+        ]);
         return {
           notificationList: notifications,
           un_read_count: un_read_count,
         };
       } else {
-        const { skip, limit } = searchObj;
-        const notifications = await Notification.find({
-          user_id: user.reference_id,
-        })
-          .sort({ createdAt: -1, is_read: -1 })
-          .skip(skip)
-          .limit(limit);
-        const un_read_count = await Notification.find({
-          user_id: user.reference_id,
-          is_read: false,
-        }).countDocuments();
+        const [notifications, un_read_count] = await Promise.all([
+          Notification.find({
+            user_id: user?._id,
+            workspace_id: user?.workspace,
+          })
+            .sort({ createdAt: -1, is_read: -1 })
+            .skip(skip)
+            .limit(limit),
+          Notification.find({
+            user_id: user?._id,
+            workspace_id: user?.workspace,
+            is_read: false,
+          }).countDocuments(),
+        ]);
         return {
           notificationList: notifications,
           un_read_count: un_read_count,
@@ -717,23 +720,13 @@ class NotificationService {
       if (user?.role?.name === undefined) {
         if (notification_id === "all") {
           await Notification.updateMany(
-            {
-              user_id: user._id,
-            },
-            {
-              is_read: true,
-            },
-            { new: true }
+            { user_id: user._id },
+            { is_read: true }
           );
         } else {
-          await Notification.findOneAndUpdate(
-            {
-              _id: notification_id,
-              user_id: user._id,
-            },
-            {
-              is_read: true,
-            },
+          await Notification.findByIdAndUpdate(
+            notification_id,
+            { is_read: true },
             { new: true, useFindAndModify: false }
           );
         }
@@ -741,30 +734,22 @@ class NotificationService {
         if (notification_id === "all") {
           await Notification.updateMany(
             {
-              user_id: user.reference_id,
+              user_id: user?._id,
+              workspace_id: user?.workspace,
             },
-            {
-              is_read: true,
-            },
-            { new: true }
+            { is_read: true }
           );
         } else {
-          await Notification.findOneAndUpdate(
-            {
-              _id: notification_id,
-              user_id: user.reference_id,
-            },
-            {
-              is_read: true,
-            },
+          await Notification.findByIdAndUpdate(
+            notification_id,
+            { is_read: true },
             { new: true, useFindAndModify: false }
           );
         }
       }
-
       return;
     } catch (error) {
-      logger.error(`Error while fetching agencies: ${error}`);
+      logger.error(`Error while reading notification: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
