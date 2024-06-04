@@ -79,7 +79,7 @@ class AuthService {
         ]);
       }
 
-      await loginGamificationPointIncrease(payload, workspace);
+      loginGamificationPointIncrease(payload);
       const token = jwt.sign(
         { id: payload._id, workspace: workspace?._id },
         process.env.JWT_SECRET_KEY,
@@ -153,7 +153,7 @@ class AuthService {
         Team_Role_Master.findById(member_details?.sub_role).lean(),
       ]);
 
-      // await loginGamificationPointIncrease(user, workspace_exist);
+      // loginGamificationPointIncrease(user, workspace_exist);
       return {
         token: new_token,
         workspace: workspace_exist,
@@ -1602,7 +1602,9 @@ class AuthService {
         (user) => user?.role.toString() === agency_role_id?._id.toString()
       );
 
-      const admin_data = await Authentication.findById(find_agency?.user_id).lean()
+      const admin_data = await Authentication.findById(
+        find_agency?.user_id
+      ).lean();
       return admin_data;
     } catch (error) {
       logger.error(

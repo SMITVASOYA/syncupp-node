@@ -192,7 +192,7 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
     req.user["workspace"] = decodedUserData?.workspace;
     req.user["workspace_detail"] = workspace;
 
-    await this.loginGamificationPointIncrease(user, workspace);
+    this.loginGamificationPointIncrease(user);
 
     next();
   } else {
@@ -217,10 +217,20 @@ exports.authorizeMultipleRoles = (user, requiredRoles) => (req, res, next) => {
   return throwError(returnMessage("auth", "insufficientPermission"), 403);
 };
 
-exports.loginGamificationPointIncrease = async (user, workspace) => {
+exports.loginGamificationPointIncrease = async (user) => {
   try {
-    if (!workspace) return;
+    if (!user?.workspace) return;
     const today = moment.utc().startOf("day");
+    const workspace = await Workspace.findOne({
+      _id: user?.workspace,
+      is_deleted: false,
+      members: {
+        $elemMatch: {
+          user_id: user?._id,
+          status: "confirmed",
+        },
+      },
+    }).lean();
     const workspace_user_detail = workspace?.members?.find(
       (member) => member?.user_id?.toString() === user?._id?.toString()
     );
