@@ -635,32 +635,33 @@ class TeamMemberService {
 
   getMember = async (member_id, user) => {
     try {
-      const workspace = await Workspace.findOne({
-        _id: user?.workspace,
-        members: {
-          $elemMatch: { user_id: member_id, status: { $ne: "deleted" } },
-        },
-        is_deleted: false,
-      }).lean();
+      const member_detail = user?.workspace_detail?.members?.find(
+        (member) =>
+          member?.user_id?.toString() === member_id?.toString() &&
+          member?.status !== "deleted"
+      );
 
-      if (!workspace)
+      if (!member_detail)
         return throwError(
           returnMessage("teamMember", "teamMemberNotFound"),
           statusCode.notFound
         );
 
-      const logged_user = workspace?.members?.find(
+      const logged_user = user?.workspace_detail?.members?.find(
         (member) => member?.user_id?.toString() === user?._id?.toString()
       );
 
-      if (workspace?.created_by?.toString() !== user?._id?.toString()) {
+      if (
+        user?.workspace_detail?.created_by?.toString() !== user?._id?.toString()
+      ) {
         const sub_role = await Team_Role_Master.findById(
           logged_user?.sub_role
         ).lean();
 
         if (
           sub_role?.name !== "admin" ||
-          workspace?.created_by?.toString() !== user?._id?.toString()
+          user?.workspace_detail?.created_by?.toString() !==
+            user?._id?.toString()
         )
           return throwError(
             returnMessage("auth", "forbidden"),
@@ -668,12 +669,14 @@ class TeamMemberService {
           );
       }
 
-      const member_detail = workspace?.members?.find(
-        (member) => member?.user_id?.toString() === member_id?.toString()
-      );
       const [member_auth, sub_role] = await Promise.all([
         Authentication.findById(member_id)
-          .select("first_name last_name email contact_number")
+          .select(
+            "first_name last_name email contact_number city state country address pincode company_website company_name no_of_people industry"
+          )
+          .populate("city", "name")
+          .populate("state", "name")
+          .populate("country", "name")
           .lean(),
         Team_Role_Master.findById(member_detail?.sub_role)
           .select("name")

@@ -29,6 +29,15 @@ exports.returnNotification = (module, key, subKey) => {
   return undefined;
 };
 
+// this function is used to get the member detail from the workspace memebers
+exports.memberDetail = (user) => {
+  return user?.workspace_detail?.members?.find(
+    (member) =>
+      member?.user_id?.toString() === user?._id?.toString() &&
+      member?.status === "confirmed"
+  );
+};
+
 exports.replaceFields = (inputString, replacements) => {
   for (const [key, value] of Object.entries(replacements)) {
     const pattern = new RegExp(`\\$\\{${key}\\}`, "g");

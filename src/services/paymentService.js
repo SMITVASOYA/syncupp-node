@@ -19,6 +19,7 @@ const {
   seatRemoved,
   paymentAboutToExpire,
   templateMaker,
+  memberDetail,
 } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const crypto = require("crypto");
@@ -1733,15 +1734,18 @@ class PaymentService {
 
   referralPay = async (payload, user) => {
     try {
-      if (payload?.without_referral === true) {
+      // removed as this has no meaning at all
+      /*  if (payload?.without_referral === true) {
         return await this.withoutReferralPay(payload, user);
-      }
-      const agency = await Agency.findById(user.reference_id);
-      const referral_data = await Configuration.findOne().lean();
+      } */
+
+      const member_detail = memberDetail(user);
+
+      const configuration = await Configuration.findOne().lean();
       if (
         !(
-          agency?.total_referral_point >=
-          referral_data?.referral?.redeem_required_point
+          member_detail?.gamification_points >=
+          configuration?.referral?.redeem_required_point
         )
       )
         return throwError(
@@ -1749,16 +1753,16 @@ class PaymentService {
         );
 
       payload.redeem_required_point =
-        referral_data?.referral?.redeem_required_point;
+        configuration?.referral?.redeem_required_point;
       const status_change = await this.referralStatusChange(payload, user);
       if (!status_change.success) return { success: false };
 
-      await Agency.findOneAndUpdate(
-        { _id: agency?._id },
+      await Workspace.findOneAndUpdate(
+        { _id: user?.workspace, "members.user_id": user?._id },
         {
           $inc: {
-            total_referral_point:
-              -referral_data?.referral?.redeem_required_point,
+            "members.$.gamification_points":
+              -configuration?.referral?.redeem_required_point,
           },
         }
       );

@@ -15,6 +15,7 @@ const Group_Chat = require("./models/groupChatSchema");
 const Configuration = require("./models/configurationSchema");
 const { default: mongoose } = require("mongoose");
 
+let socket_users = [];
 exports.socket_connection = (http_server) => {
   io = new Server(http_server, {
     cors: {
@@ -44,17 +45,33 @@ exports.socket_connection = (http_server) => {
     logger.info(`Socket connected ${socket.id}`);
     socket.on("disconnect", () => {
       logger.info(`Socket ${socket.id} has disconnected.`);
+      socket_users = socket_users.filter(
+        (user) => user?.socket_id != socket?.id
+      );
     });
 
     // this event is used to group join event
     socket.on("JOIN_ROOM", (payload) => {
-      socket.join(payload?._id?.toString());
+      socket.join(
+        payload?.workspace_id?.toString() + "." + payload?._id?.toString()
+      );
+      socket_users.push({
+        socket_id: socket?.id,
+        room_join_id:
+          payload?.workspace_id?.toString() + "." + payload?._id?.toString(),
+        user_id: payload?._id?.toString(),
+      });
     });
 
     // For user joined
     socket.on("ROOM", async (obj) => {
       logger.info(`User: ${obj.id}, workspace: ${obj?.workspace_id}`, 15);
       socket.join(obj?.workspace_id + "." + obj?.id);
+      socket_users.push({
+        socket_id: socket?.id,
+        room_join_id: obj?.workspace_id + "." + obj?.id,
+        user_id: obj?.id,
+      });
 
       // this is used to fetch the group chat id to join that group chat id so they can receive the group chat messages
       let group_ids = await Group_Chat.distinct("_id", {
@@ -66,6 +83,11 @@ exports.socket_connection = (http_server) => {
         const group_join_id =
           obj?.workspace_id?.toString() + "." + group_id?.toString();
         socket.join(group_join_id);
+        socket_users.push({
+          socket_id: socket?.id,
+          room_join_id: group_join_id,
+          user_id: group_id?.toString(),
+        });
       });
       // for the Online status
       await Authentication.findByIdAndUpdate(
@@ -83,7 +105,13 @@ exports.socket_connection = (http_server) => {
         { is_online: false },
         { new: true }
       ).lean();
-      socket.broadcast.emit("USER_OFFLINE", { user_id: user?.reference_id });
+      socket.broadcast.emit("USER_OFFLINE", { user_id: user?._id });
+
+      socket_users = socket_users.filter(
+        (user) =>
+          user?.user_id != payload?.user_id ||
+          !user?.room_join_id?.includes(payload?.user_id)
+      );
     });
 
     // When Data delivered
@@ -111,6 +139,7 @@ exports.socket_connection = (http_server) => {
         });
 
         // commenting for the better optimised solution
+        // if(!this.userJoinedToTheRoom(to_user))
         // await Notification.create({
         //   type: "chat",
         //   user_id: payload?.to_user,
@@ -488,6 +517,11 @@ exports.socket_connection = (http_server) => {
         //   members: group_detail?.members,
         // });
 
+        // commenting for the notification module
+        if (!this.userJoinedToTheRoom(group_id)) {
+          await this.groupChatNotification(group_id, new_chat);
+        }
+
         const group_sender =
           workspace_id?.toString() + "." + group_id?.toString();
         io.to(group_sender).emit("GROUP_RECEIVED_MESSAGE", {
@@ -511,54 +545,7 @@ exports.socket_connection = (http_server) => {
     socket.on("NOT_ONGOING_GROUP_CHAT", async (payload) => {
       try {
         console.log("NOT_ONGOING_GROUP_CHAT");
-        const group_detail = await Group_Chat.findById(payload?.group_id)
-          .select("group_name")
-          .lean();
-        payload?.members?.forEach(async (member) => {
-          if (member.toString() == payload?.from_user?.toString()) return;
-          const notification_exist = await Notification.findOne({
-            group_id: payload?.group_id,
-            user_id: member,
-            type: "group",
-            is_read: false,
-            is_deleted: false,
-            workspace_id: payload?.workspace_id,
-          });
-
-          if (!notification_exist) {
-            let notification_message = returnNotification(
-              "chat",
-              "newGroupMessage"
-            );
-
-            notification_message = notification_message.replaceAll(
-              "{{group_name}}",
-              capitalizeFirstLetter(group_detail?.group_name)
-            );
-            const notification = await Notification.create({
-              type: "group",
-              group_id: payload?.group_id,
-              user_id: member,
-              data_reference_id: payload?._id,
-              message: notification_message,
-              workspace_id: payload?.workspace_id,
-            });
-
-            const pending_notification = await Notification.countDocuments({
-              type: "group",
-              group_id: payload?.group_id,
-              user_id: member,
-              is_read: false,
-              workspace_id: payload?.workspace_id,
-            });
-            const member_id =
-              payload?.workspace_id?.toString() + "." + member?.toString();
-            io.to(member_id).emit("NOTIFICATION", {
-              notification,
-              un_read_count: pending_notification,
-            });
-          }
-        });
+        await this.groupChatNotification(payload?.group_id, payload);
       } catch (error) {
         logger.error(`Error while receiving the message in group: ${error}`);
         return throwError(error?.message, error?.statusCode);
@@ -799,54 +786,6 @@ exports.socket_connection = (http_server) => {
 
         // Add reaction to the message
         await messages.save();
-
-        // const message = await Chat.aggregate([
-        //   { $match: { _id: new mongoose.Types.ObjectId(chat_id) } },
-        //   {
-        //     $unwind:"$reactions",
-        //   },
-        //   {
-        //     $lookup: {
-        //       from: "authentications", // Collection name of your user model
-        //       localField: "reactions.user",
-        //       foreignField: "reference_id",
-        //       as: "reactions.user",
-        //       pipeline: [
-        //         {
-        //           $project: {
-        //             first_name: 1,
-        //             last_name: 1,
-        //             profile_image: 1,
-        //             reference_id: 1,
-        //             emoji: 1,
-        //           },
-        //         },
-        //       ],
-        //     },
-        //   },
-        //   {
-        //     $unwind: {
-        //       path: "$reactions.user",
-        //       preserveNullAndEmptyArrays: true,
-        //     },
-        //   },
-        //   {
-        //     $project: {
-        //       first_name: "$reactions.user.first_name",
-        //       last_name: "$reactions.user.last_name",
-        //       profile_image: "$reactions.user.profile_image",
-        //       message: 1,
-        //       reactions: 1,
-        //       createdAt: 1,
-        //       is_deleted: 1,
-        //       message_type: 1,
-        //       _id: 1,
-        //       to_user: 1,
-        //       from_user: 1,
-        //       emoji: "$reactions.user.emoji",
-        //     },
-        //   },
-        // ]);
         const message = await Chat.aggregate([
           { $match: { _id: new mongoose.Types.ObjectId(chat_id) } },
           {
@@ -1276,5 +1215,71 @@ exports.emitEvent = (event_name, payload, users) => {
     users?.length > 0 && io.to(users).emit(event_name, payload);
   } catch (error) {
     console.log(`Error while emiting event`, error);
+  }
+};
+
+exports.userJoinedToTheRoom = (user_id) => {
+  user_id = user_id?.toString();
+  return socket_users?.some(
+    (user) => user?.user_id == user_id || user?.room_join_id?.includes(user_id)
+  );
+};
+
+// this function is used to send the Notification in the Group chat
+
+exports.groupChatNotification = async (group_id, payload) => {
+  try {
+    const group_detail = await Group_Chat.findById(group_id)
+      .select("group_name")
+      .lean();
+    group_detail?.members?.forEach(async (member) => {
+      if (member.toString() == payload?.from_user?.toString()) return;
+      const notification_exist = await Notification.findOne({
+        group_id,
+        user_id: member,
+        type: "group",
+        is_read: false,
+        is_deleted: false,
+        workspace_id: payload?.workspace_id,
+      });
+
+      if (!notification_exist) {
+        let notification_message = returnNotification(
+          "chat",
+          "newGroupMessage"
+        );
+
+        notification_message = notification_message.replaceAll(
+          "{{group_name}}",
+          capitalizeFirstLetter(group_detail?.group_name)
+        );
+        const notification = await Notification.create({
+          type: "group",
+          group_id,
+          user_id: member,
+          data_reference_id: payload?._id,
+          message: notification_message,
+          workspace_id: payload?.workspace_id,
+        });
+
+        const pending_notification = await Notification.countDocuments({
+          type: "group",
+          group_id: payload?.group_id,
+          user_id: member,
+          is_read: false,
+          workspace_id: payload?.workspace_id,
+        });
+        const member_id =
+          payload?.workspace_id?.toString() + "." + member?.toString();
+        io.to(member_id).emit("NOTIFICATION", {
+          notification,
+          un_read_count: pending_notification,
+        });
+      }
+    });
+  } catch (error) {
+    console.log(
+      `Error while generating the Notification for the group chat: ${error}`
+    );
   }
 };
