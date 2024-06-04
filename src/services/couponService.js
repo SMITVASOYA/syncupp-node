@@ -171,8 +171,9 @@ class CouponService {
     }
   };
 
-  getAllCouponWithOutPagination = async (user) => {
+  getAllCouponWithOutPagination = async (query, user) => {
     try {
+      const coupon_count = query?.coupon_count || 0;
       const member_details = user?.workspace_detail?.members?.find(
         (member) =>
           member?.user_id?.toString() === user?._id?.toString() &&
@@ -204,7 +205,10 @@ class CouponService {
         coupon[i].isAvailable = !isAvailable;
       }
 
-      return { coupon, require_points: configuration?.coupon?.reedem_coupon };
+      return {
+        coupon: coupon_count > 0 ? coupon.slice(0, coupon_count) : coupon,
+        require_points: configuration?.coupon?.reedem_coupon,
+      };
     } catch (error) {
       logger.error(`Error whilefetching coupon list, ${error}`);
       throwError(error?.message, error?.statusCode);
