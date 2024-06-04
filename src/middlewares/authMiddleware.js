@@ -254,7 +254,7 @@ exports.loginGamificationPointIncrease = async (user) => {
       !workspace_user_detail?.last_visit_date
     ) {
       console.log(254, moment().format());
-      await Workspace.findOneAndUpdate(
+      const poin = await Workspace.findOneAndUpdate(
         { _id: workspace?._id, "members.user_id": user?._id },
         {
           $inc: {
@@ -267,7 +267,7 @@ exports.loginGamificationPointIncrease = async (user) => {
         },
         { new: true }
       );
-      await Gamification.create({
+      const gam = await Gamification.create({
         user_id: user._id,
         agency_id: workspace?.created_by,
         point: +configuration?.competition.successful_login.toString(),
@@ -275,6 +275,8 @@ exports.loginGamificationPointIncrease = async (user) => {
         role: role?._id,
         workspace_id: workspace?._id,
       });
+
+      console.log(gam, poin);
     }
     return;
   } catch (error) {
