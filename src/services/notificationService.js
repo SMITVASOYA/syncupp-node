@@ -14,8 +14,7 @@ class NotificationService {
   // Add Notification
 
   addNotification = async (payload, id) => {
-    let { module_name, activity_type_action, client_id, assign_to, agenda } =
-      payload;
+    let { module_name, activity_type_action, client_id, agenda } = payload;
     if (payload?.agenda) payload.agenda = extractTextFromHtml(agenda);
     try {
       var with_unread_count = async (notification_data, user_id) => {
@@ -26,6 +25,7 @@ class NotificationService {
         return {
           notification: notification_data,
           un_read_count: un_read_count,
+          workspace_id: payload?.workspace_id,
         };
       };
 
@@ -140,9 +140,9 @@ class NotificationService {
           //   message_type,
           //   "alertMessage"
           // );
-          // if (String(payload.assign_to) !== String(payload.assign_by)) {
+          // if (String(payload.payload?.assign_to) !== String(payload.assign_by)) {
           //   await createAndEmitNotification(
-          //     payload.assign_to,
+          //     payload.payload?.assign_to,
           //     message_type,
           //     "alertMessage"
           //   );
@@ -167,7 +167,7 @@ class NotificationService {
           }
 
           await createAndEmitNotification(
-            assign_to,
+            payload?.assign_to,
             message_type,
             "assignToMessage"
           );
@@ -228,12 +228,13 @@ class NotificationService {
           eventEmitter(
             "NOTIFICATION",
             await with_unread_count(notification, userId),
-            userId
+            userId,
+            payload?.workspace_id
           );
         };
 
         await createAndEmitNotification(
-          assign_to,
+          payload?.assign_to,
           message_type,
           "assignToMessage"
         );
@@ -263,7 +264,8 @@ class NotificationService {
           eventEmitter(
             "NOTIFICATION",
             await with_unread_count(notification, userId),
-            userId
+            userId,
+            payload?.workspace_id
           );
         };
         if (action_type === "create")
@@ -327,7 +329,8 @@ class NotificationService {
         eventEmitter(
           "NOTIFICATION",
           await with_unread_count(notification, userId),
-          userId
+          userId,
+          payload?.workspace_id
         );
       };
 

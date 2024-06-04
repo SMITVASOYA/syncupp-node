@@ -565,21 +565,16 @@ class TaskService {
           })
             .select("_id")
             .lean();
+
           filter["$match"] = {
             ...filter["$match"],
-            activity_status: activity_status?._id,
+            mark_as_done: true,
           };
         }
         if (searchObj?.filter === "in_completed") {
-          const activity_status = await Section.findOne({
-            board_id: searchObj?.board_id,
-            key: { $ne: "completed" },
-          })
-            .select("_id")
-            .lean();
           filter["$match"] = {
             ...filter["$match"],
-            activity_status: { $ne: activity_status?._id },
+            mark_as_done: false,
           };
         }
         if (searchObj?.filter === "my_task") {
@@ -623,7 +618,6 @@ class TaskService {
         //   };
         // }
       }
-
       const pagination = paginationObject(searchObj);
 
       if (searchObj.search && searchObj.search !== "") {

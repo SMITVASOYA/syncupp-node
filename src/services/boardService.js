@@ -752,6 +752,7 @@ class BoardService {
             profile_image: "$userDetails.profile_image",
             first_name: "$userDetails.first_name",
             last_name: "$userDetails.last_name",
+            _id: "$userDetails._id",
           },
         },
       ];
