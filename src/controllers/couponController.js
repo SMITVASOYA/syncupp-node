@@ -78,7 +78,7 @@ exports.getCoupon = catchAsyncError(async (req, res, next) => {
 exports.getAllCouponWithOutPagination = catchAsyncError(
   async (req, res, next) => {
     const getAllCouponWithOutPagination =
-      await couponService.getAllCouponWithOutPagination(req?.user);
+      await couponService.getAllCouponWithOutPagination(req?.query, req?.user);
     sendResponse(
       res,
       true,
