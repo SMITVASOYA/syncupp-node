@@ -1420,7 +1420,7 @@ class ActivityService {
       if (user?.role === "agency") {
         assign_obj["$match"] = {
           is_deleted: false,
-          workspace_id: user?.workspace, // this is removed because agency can also assign the activity
+          workspace_id: new mongoose.Types.ObjectId(user?.workspace), // this is removed because agency can also assign the activity
         };
       } else if (user?.role === "team_agency") {
         assign_obj["$match"] = {
@@ -1479,6 +1479,7 @@ class ActivityService {
           ],
         };
       }
+
       let aggragate = [
         assign_obj,
         match_obj,
@@ -1713,7 +1714,7 @@ class ActivityService {
       if (user?.role === "agency") {
         assign_obj["$match"] = {
           is_deleted: false,
-          workspace_id: user?.workspace, // this is removed because agency can also assign the activity
+          workspace_id: new mongoose.Types.ObjectId(user?.workspace), // this is removed because agency can also assign the activity
         };
       } else if (user?.role === "team_agency") {
         assign_obj["$match"] = {

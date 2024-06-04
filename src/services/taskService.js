@@ -795,6 +795,7 @@ class TaskService {
       const activity = await Task.aggregate(taskPipeline);
 
       const taskCountPipeline = [
+        filter,
         {
           $lookup: {
             from: "sections",
@@ -883,9 +884,66 @@ class TaskService {
         $match: {},
       };
 
-      // const pagination = paginationObject(searchObj);
-
+      if (searchObj?.filter) {
+        if (searchObj?.filter === "completed") {
+          const activity_status = await Section.findOne({
+            board_id: searchObj?.board_id,
+            key: "completed",
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: activity_status?._id,
+          };
+        }
+        if (searchObj?.filter === "in_completed") {
+          const activity_status = await Section.findOne({
+            board_id: searchObj?.board_id,
+            key: { $ne: "completed" },
+          })
+            .select("_id")
+            .lean();
+          filter["$match"] = {
+            ...filter["$match"],
+            activity_status: { $ne: activity_status?._id },
+          };
+        }
+        if (searchObj?.filter === "my_task") {
+          filter["$match"] = {
+            ...filter["$match"],
+            assign_to: { $in: user?._id },
+          };
+        }
+        // Filter for tasks due this week
+        if (searchObj?.filter === "due_this_week") {
+          const startOfWeek = moment().startOf("week").utc().toDate();
+          const endOfWeek = moment().endOf("week").utc().toDate();
+          filter["$match"] = {
+            ...filter["$match"],
+            due_date: { $gte: startOfWeek, $lte: endOfWeek },
+          };
+        }
+        // Filter for tasks due next week
+        if (searchObj?.filter === "due_next_week") {
+          const startOfNextWeek = moment()
+            .add(1, "week")
+            .startOf("week")
+            .utc()
+            .toDate();
+          const endOfNextWeek = moment()
+            .add(1, "week")
+            .endOf("week")
+            .utc()
+            .toDate();
+          filter["$match"] = {
+            ...filter["$match"],
+            due_date: { $gte: startOfNextWeek, $lte: endOfNextWeek },
+          };
+        }
+      }
       const taskPipeline = [
+        filter,
         {
           $lookup: {
             from: "authentications",
@@ -1310,11 +1368,6 @@ class TaskService {
         }
       }
 
-      // let status;
-      // if (mark_as_done === true) {
-      //   status = await ActivityStatus.findOne({ name: "completed" }).lean();
-      // }
-
       const get_complete_status = await Section.findOne({
         board_id: board_id,
         key: "completed",
@@ -1325,6 +1378,10 @@ class TaskService {
       } else {
         activity_status = payload?.status;
       }
+
+      const status_data = await Section.findById(payload?.status)
+        .select("-createdAt -updatedAt")
+        .lean();
 
       if (payload?.assign_to) {
         payload.assign_to = JSON.parse(assign_to);
@@ -1689,7 +1746,10 @@ class TaskService {
           }
         });
 
-      return updateTasks;
+      return {
+        ...updateTasks?._doc,
+        status: status_data ? status_data : "",
+      };
     } catch (error) {
       logger.error(`Error while Updating task, ${error}`);
       throwError(error?.message, error?.statusCode);
