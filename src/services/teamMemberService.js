@@ -674,7 +674,9 @@ class TeamMemberService {
           .select(
             "first_name last_name email contact_number city state country address pincode company_website company_name no_of_people industry"
           )
-          .populate("city state country")
+          .populate("city", "name")
+          .populate("state", "name")
+          .populate("country", "name")
           .lean(),
         Team_Role_Master.findById(member_detail?.sub_role)
           .select("name")
