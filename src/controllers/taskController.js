@@ -62,7 +62,7 @@ exports.deleteTask = catchAsyncError(async (req, res, next) => {
   sendResponse(
     res,
     true,
-    returnMessage("activity", "deleteActivity"),
+    returnMessage("activity", "deleteTask"),
     deleteTask,
     statusCode.success
   );

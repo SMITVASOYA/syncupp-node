@@ -40,6 +40,9 @@ const AuthService = require("../services/authService");
 const Gamification = require("../models/gamificationSchema");
 const authService = new AuthService();
 const Meeting = require("google-meet-api").meet;
+require("dotenv").config();
+const { google } = require("googleapis");
+const axios = require("axios");
 
 class ActivityService {
   // this function is used to create the call meeting and other call details
@@ -74,8 +77,17 @@ class ActivityService {
         all_day,
         alert_time,
         alert_time_unit,
-        google_meet_link,
+        recurrence_pattern,
+        recurrence_interval,
+        weekly_recurrence_days,
+        monthly_recurrence_day_of_month,
       } = payload;
+
+      let google_meet_link;
+
+      if (payload?.google_meeting) {
+        google_meet_link = await this.createCallGoogleMeeting(payload);
+      }
 
       let recurring_date;
       const current_date = moment.utc().startOf("day");
@@ -93,9 +105,9 @@ class ActivityService {
       if (!end_time.isAfter(start_time))
         return throwError(returnMessage("activity", "invalidTime"));
 
-      if (payload?.recurring_end_date) {
+      if (payload?.recurrence_end_date) {
         recurring_date = moment
-          .utc(payload?.recurring_end_date, "DD-MM-YYYY")
+          .utc(payload?.recurrence_end_date, "DD-MM-YYYY")
           .startOf("day");
         if (!recurring_date.isSameOrAfter(start_date))
           return throwError(returnMessage("activity", "invalidRecurringDate"));
@@ -108,7 +120,7 @@ class ActivityService {
         ...new Set(payload?.attendees?.map((attendee) => attendee.toString())),
       ].map((attendee) => new mongoose.Types.ObjectId(attendee));
 
-      const newActivity = await Activity.create({
+      const create_data = {
         activity_status: status?._id,
         created_by: user?._id,
         agenda,
@@ -117,14 +129,20 @@ class ActivityService {
         meeting_start_time: start_time,
         meeting_end_time: end_time,
         meeting_date: start_date,
-        recurring_end_date: recurring_date,
+        recurrence_end_date: recurring_date,
         attendees: payload?.attendees,
         workspace_id: user?.workspace,
         all_day,
         alert_time,
         alert_time_unit,
-        google_meet_link,
-      });
+        ...(google_meet_link && { google_meeting_data: google_meet_link }),
+        recurrence_pattern,
+        recurrence_interval,
+        weekly_recurrence_days,
+        monthly_recurrence_day_of_month,
+      };
+
+      const newActivity = await Activity.create(create_data);
 
       // const event = {
       //   start: [
@@ -458,13 +476,18 @@ class ActivityService {
             },
             meeting_start_time: 1,
             meeting_end_time: 1,
-            recurring_end_date: 1,
             attendees: "$attendeesData",
             internal_info: 1,
             all_day: 1,
             google_meet_link: 1,
             alert_time_unit: 1,
             alert_time: 1,
+            recurrence_pattern: 1,
+            recurrence_interval: 1,
+            weekly_recurrence_days: 1,
+            monthly_recurrence_day_of_month: 1,
+            recurrence_end_date: 1,
+            google_meeting_data: 1,
           },
         },
       ];
@@ -619,6 +642,21 @@ class ActivityService {
         update_status = await ActivityStatus.findOne({
           name: "overdue",
         }).lean();
+      } else if (status === "cancel") {
+        update_status = await ActivityStatus.findOne({
+          name: "cancel",
+        }).lean();
+      }
+      const get_activity = await Activity.findById(id).lean();
+
+      if (status === "cancel") {
+        if (get_activity?.google_meeting_data?.meet_link) {
+          google_meet_link = await this.deleteGoogleMeeting({ ...payload });
+        }
+      }
+
+      if (payload?.google_meeting) {
+        google_meet_link = await this.createCallGoogleMeeting(payload);
       }
       const updateTasks = await Activity.findByIdAndUpdate(
         {
@@ -988,6 +1026,23 @@ class ActivityService {
           statusCode.notFound
         );
 
+      const output_date = moment(activity_exist?.meeting_date).format(
+        "DD-MM-YYYY"
+      );
+      const output_time = moment(activity_exist?.meeting_start_time)
+        .tz("Asia/Kolkata")
+        .format("HH:mm");
+
+      let google_meet_link;
+
+      if (
+        payload?.meeting_date !== output_date &&
+        payload?.meeting_start_time !== output_time &&
+        payload?.google_meeting
+      ) {
+        google_meet_link = await this.updateGoogleMeeting(payload);
+      }
+
       if (activity_exist?.activity_status?.name === "completed") {
         return throwError(returnMessage("activity", "ActivityCannotUpdate"));
       }
@@ -1006,7 +1061,11 @@ class ActivityService {
         meeting_end_time,
         internal_info,
         attendees,
-        google_meet_link,
+        recurrence_pattern,
+        recurrence_interval,
+        weekly_recurrence_days,
+        monthly_recurrence_day_of_month,
+        all_day,
       } = payload;
 
       let recurring_date;
@@ -1026,9 +1085,9 @@ class ActivityService {
       if (!end_time.isSameOrAfter(start_time))
         return throwError(returnMessage("activity", "invalidTime"));
 
-      if (payload?.recurring_end_date) {
+      if (payload?.recurrence_end_date) {
         recurring_date = moment
-          .utc(payload?.recurring_end_date, "DD-MM-YYYY")
+          .utc(payload?.recurrence_end_date, "DD-MM-YYYY")
           .startOf("day");
         if (!recurring_date.isSameOrAfter(start_date))
           return throwError(returnMessage("activity", "invalidRecurringDate"));
@@ -1051,9 +1110,14 @@ class ActivityService {
           meeting_start_time: start_time,
           meeting_end_time: end_time,
           meeting_date: start_date,
-          recurring_end_date: recurring_date,
+          recurrence_end_date: recurring_date,
           attendees: payload?.attendees,
-          google_meet_link,
+          ...(google_meet_link && { google_meeting_data: google_meet_link }),
+          recurrence_pattern,
+          recurrence_interval,
+          weekly_recurrence_days,
+          monthly_recurrence_day_of_month,
+          all_day,
         },
         { new: true }
       );
@@ -1424,18 +1488,18 @@ class ActivityService {
         };
       } else if (user?.role === "team_agency") {
         assign_obj["$match"] = {
-          $or: [{ created_by: user?._id }, { assignee: user?._id }],
+          $or: [{ created_by: user?._id }, { attendees: user?._id }],
           is_deleted: false,
         };
       } else if (user?.role === "client") {
         assign_obj["$match"] = {
           is_deleted: false,
-          assignee: user?._id,
+          attendees: user?._id,
         };
       } else if (user?.role === "team_client") {
         assign_obj["$match"] = {
           is_deleted: false,
-          assignee: user?._id,
+          attendees: user?._id,
         };
       }
 
@@ -1718,18 +1782,18 @@ class ActivityService {
         };
       } else if (user?.role === "team_agency") {
         assign_obj["$match"] = {
-          $or: [{ created_by: user?._id }, { assignee: user?._id }],
+          $or: [{ created_by: user?._id }, { attendees: user?._id }],
           is_deleted: false,
         };
       } else if (user?.role === "client") {
         assign_obj["$match"] = {
           is_deleted: false,
-          assignee: user?._id,
+          attendees: new mongoose.Types.ObjectId(user?._id),
         };
       } else if (user?.role === "team_client") {
         assign_obj["$match"] = {
           is_deleted: false,
-          assignee: user?._id,
+          attendees: user?._id,
         };
       }
 
@@ -1857,13 +1921,18 @@ class ActivityService {
             },
             meeting_start_time: 1,
             meeting_end_time: 1,
-            recurring_end_date: 1,
             attendees: "$attendeesData",
             internal_info: 1,
             all_day: 1,
             google_meet_link: 1,
             alert_time_unit: 1,
             alert_time: 1,
+            recurrence_pattern: 1,
+            recurrence_interval: 1,
+            weekly_recurrence_days: 1,
+            monthly_recurrence_day_of_month: 1,
+            recurrence_end_date: 1,
+            workspace_id: 1,
           },
         },
       ];
@@ -1984,99 +2053,103 @@ class ActivityService {
     }
   };
 
-  // DueDate crone Job
-
-  dueDateCronJob = async () => {
+  meetingAlertCronJob = async (meetings) => {
     try {
-      const currentDate = moment().startOf("day"); // Set the time part to midnight for the current date
-      const completed = await Section.findOne({
-        key: "completed",
-      });
-      const overdue = await Section.findOne({
-        key: "overdue",
-      });
-      const overdueActivities = await Activity.find({
-        meeting_date: {
-          $gte: currentDate.toDate(), // Activities with due date greater than or equal to the current date
-          $lt: currentDate.add(1, "days").toDate(), // Activities with due date less than the next day
-        },
-        activity_status: {
-          $nin: [completed._id, overdue._id],
-        },
-        is_deleted: false,
-      }).populate("activity_type");
+      const currentUtcDate = moment().utc();
 
-      overdueActivities?.forEach(async (item) => {
-        if (item.activity_type.name !== "task") {
-          await notificationService.addNotification({
-            module_name: "activity",
-            activity_type_action: "dueDateAlert",
-            title: item?.title,
-            activity_type:
-              item?.activity_type.name === "others"
-                ? "activity"
-                : "call meeting",
-          });
-        } else {
-          await notificationService.addNotification({
-            module_name: "task",
-            activity_type_action: "dueDateAlert",
-            title: item?.title,
-          });
+      meetings.forEach((meeting) => {
+        const {
+          alert_time,
+          alert_time_unit,
+          meeting_start_time,
+          recurrence_pattern,
+          recurrence_interval,
+          recurrence_end_date,
+          weekly_recurrence_days,
+          monthly_recurrence_day_of_month,
+        } = meeting;
+
+        if (recurrence_pattern && alert_time && alert_time_unit) {
+          let notificationTime;
+
+          if (recurrence_pattern === "daily") {
+            notificationTime = moment(meeting_start_time).clone();
+            while (
+              notificationTime.isBefore(currentUtcDate) &&
+              notificationTime.isBefore(recurrence_end_date)
+            ) {
+              notificationTime.add(recurrence_interval, "days");
+            }
+            notificationTime.subtract(alert_time, alert_time_unit);
+          } else if (recurrence_pattern === "weekly") {
+            notificationTime = moment(meeting_start_time).clone();
+            const currentDay = currentUtcDate.day();
+            const targetDay = moment().day(weekly_recurrence_days).day();
+
+            while (
+              notificationTime.isBefore(currentUtcDate) &&
+              notificationTime.isBefore(recurrence_end_date)
+            ) {
+              if (notificationTime.day() === targetDay) {
+                notificationTime.add(recurrence_interval, "weeks");
+              } else {
+                notificationTime.add(1, "days");
+              }
+            }
+            notificationTime.subtract(alert_time, alert_time_unit);
+          } else if (recurrence_pattern === "monthly") {
+            notificationTime = moment(meeting_start_time).clone();
+
+            while (
+              notificationTime.isBefore(currentUtcDate) &&
+              notificationTime.isBefore(recurrence_end_date)
+            ) {
+              if (notificationTime.date() === monthly_recurrence_day_of_month) {
+                notificationTime.add(recurrence_interval, "months");
+              } else {
+                notificationTime.add(1, "days");
+              }
+            }
+            notificationTime.subtract(alert_time, alert_time_unit);
+          }
         }
+
+        // const activity_email_template = activityTemplate({
+        //   ...data,
+        //   status:
+        //     activityStatusName?.name === "in_progress"
+        //       ? "In Progress"
+        //       : activityStatusName.name,
+        //   assigned_by_name:
+        //     assignByData?.first_name + " " + assignByData?.last_name,
+        //   client_name: clientData
+        //     ? clientData.first_name + " " + clientData.last_name
+        //     : "",
+        //   assigned_to_name:
+        //     assignToData?.first_name + " " + assignToData?.last_name,
+
+        //   activity_type: activityTypeName?.name,
+        //   meeting_end_time: moment(data?.meeting_end_time).format("HH:mm"),
+        //   meeting_start_time: moment(data?.meeting_start_time).format("HH:mm"),
+        //   recurring_end_date: data?.recurring_end_date
+        //     ? moment(data?.recurring_end_date).format("DD-MM-YYYY")
+        //     : null,
+        //   meeting_date: moment(data?.meeting_date).format("DD-MM-YYYY"),
+        // });
+
+        // sendEmail({
+        //   email: assignByData?.email,
+        //   subject: returnMessage("emailTemplate", "meetingAlert"),
+        //   message: activity_email_template,
+        // });
+        // if (assignByData?.email !== assignToData?.email) {
+        //   sendEmail({
+        //     email: assignToData?.email,
+        //     subject: returnMessage("emailTemplate", "meetingAlert"),
+        //     message: activity_email_template,
+        //   });
+        // }
       });
-    } catch (error) {
-      logger.error(`Error while Overdue crone Job PDF, ${error}`);
-      throwError(error?.message, error?.statusCode);
-    }
-  };
-
-  meetingAlertCronJob = async (data) => {
-    try {
-      await notificationService.addNotification(
-        {
-          ...data,
-          module_name: "activity",
-          activity_type_action: "meetingAlert",
-        },
-        data._id
-      );
-
-      // const activity_email_template = activityTemplate({
-      //   ...data,
-      //   status:
-      //     activityStatusName?.name === "in_progress"
-      //       ? "In Progress"
-      //       : activityStatusName.name,
-      //   assigned_by_name:
-      //     assignByData?.first_name + " " + assignByData?.last_name,
-      //   client_name: clientData
-      //     ? clientData.first_name + " " + clientData.last_name
-      //     : "",
-      //   assigned_to_name:
-      //     assignToData?.first_name + " " + assignToData?.last_name,
-
-      //   activity_type: activityTypeName?.name,
-      //   meeting_end_time: moment(data?.meeting_end_time).format("HH:mm"),
-      //   meeting_start_time: moment(data?.meeting_start_time).format("HH:mm"),
-      //   recurring_end_date: data?.recurring_end_date
-      //     ? moment(data?.recurring_end_date).format("DD-MM-YYYY")
-      //     : null,
-      //   meeting_date: moment(data?.meeting_date).format("DD-MM-YYYY"),
-      // });
-
-      // sendEmail({
-      //   email: assignByData?.email,
-      //   subject: returnMessage("emailTemplate", "meetingAlert"),
-      //   message: activity_email_template,
-      // });
-      // if (assignByData?.email !== assignToData?.email) {
-      //   sendEmail({
-      //     email: assignToData?.email,
-      //     subject: returnMessage("emailTemplate", "meetingAlert"),
-      //     message: activity_email_template,
-      //   });
-      // }
     } catch (error) {
       logger.error(`Error while Overdue crone Job PDF, ${error}`);
       throwError(error?.message, error?.statusCode);
@@ -2440,36 +2513,441 @@ class ActivityService {
     }
   };
 
+  // createCallGoogleMeeting = async (payload) => {
+  //   try {
+  //     const {
+  //       token,
+  //       meeting_date,
+  //       meeting_start_time,
+  //       summary,
+  //       location,
+  //       description,
+  //     } = payload;
+  //     const result = await Meeting({
+  //       client_id: process.env.CLIENT_ID,
+  //       client_secret: process.env.CLIENT_SECRET,
+  //       token,
+  //       meeting_date,
+  //       meeting_start_time,
+  //       summary,
+  //       location,
+  //       description,
+  //     });
+
+  //     if (result === null) {
+  //       return throwError(
+  //         returnMessage("activity", "callMeetingAlreadyExists")
+  //       );
+  //     }
+  //     return { meeting_link: result };
+  //   } catch (error) {
+  //     logger.error(`Error while creating google meeting : ${error}`);
+  //     return throwError(error?.message, error?.statusCode);
+  //   }
+  // };
   createCallGoogleMeeting = async (payload) => {
     try {
       const {
         token,
         meeting_date,
         meeting_start_time,
-        summary,
-        location,
-        description,
+        title,
+        internal_info,
+        agenda,
       } = payload;
-      const result = await Meeting({
-        client_id,
-        client_secret,
+
+      payload.meeting_date = moment(meeting_date, "DD-MM-YYYY").format(
+        "YYYY-MM-DD"
+      );
+
+      let attendees = [];
+      if (payload?.attendees && payload?.attendees[0]) {
+        const attendee = await Authentication.findById();
+      }
+
+      const options = {
+        client_id: process.env.CLIENT_ID,
+        client_secret: process.env.CLIENT_SECRET,
+        refreshToken: token,
+        date: payload.meeting_date,
+        time: meeting_start_time,
+        summary: title,
+        location: internal_info,
+        description: agenda,
+        attendees: [
+          { email: "gusaibhavin88@gmail.com" },
+          { email: "smitvtridhyatech@gmail.com" },
+        ],
+      };
+
+      // Reference  the Npm package https://www.npmjs.com/package/google-cal-meet-api
+      const { OAuth2 } = google.auth;
+      const SCOPES = ["https://www.googleapis.com/auth/calendar"];
+
+      //upper part for api access
+
+      var date1 =
+        options.date + "T" + options.time.split(":")[0] + ":00" + ":30";
+      var date2 =
+        options.date + "T" + options.time.split(":")[0] + ":45" + ":30";
+
+      var x = new Date(
+        options.date + "T" + options.time.split(":")[0] + ":00" + ":30"
+      );
+      var y = new Date(
+        options.date + "T" + options.time.split(":")[0] + ":45" + ":30"
+      );
+
+      var end1 =
+        options.date +
+        "T" +
+        x.getUTCHours() +
+        ":" +
+        x.getUTCMinutes() +
+        ":00" +
+        ".000Z";
+      var end2 =
+        options.date +
+        "T" +
+        y.getUTCHours() +
+        ":" +
+        y.getUTCMinutes() +
+        ":00" +
+        ".000Z";
+
+      //setting details for teacher
+      let oAuth2Client = new OAuth2(
+        process.env.CLIENT_ID,
+        process.env.CLIENT_SECRET
+      );
+
+      oAuth2Client.setCredentials({
+        refresh_token: options.refreshToken,
+      });
+
+      // Create a new calender instance.
+      let calendar = google.calendar({ version: "v3", auth: oAuth2Client });
+
+      // Create a new event start date instance for teacher in their calendar.
+      const eventStartTime = new Date();
+      eventStartTime.setDate(options.date.split("-")[2]);
+      const eventEndTime = new Date();
+      eventEndTime.setDate(options.date.split("-")[2]);
+      eventEndTime.setMinutes(eventStartTime.getMinutes() + 45);
+
+      // Create a dummy event for temp users in our calendar
+      const event = {
+        summary: options.summary,
+        location: options.location,
+        description: options.description,
+        colorId: 1,
+        conferenceData: {
+          createRequest: {
+            requestId: "zzz",
+            conferenceSolutionKey: {
+              type: "hangoutsMeet",
+            },
+          },
+        },
+        start: {
+          dateTime: date1,
+          timeZone: "Asia/Kolkata",
+        },
+        end: {
+          dateTime: date2,
+          timeZone: "Asia/Kolkata",
+        },
+        attendees: options.attendees,
+      };
+
+      let link = await calendar.events.insert({
+        calendarId: "primary",
+        conferenceDataVersion: "1",
+        resource: event,
+      });
+      return {
+        meet_link: link.data.hangoutLink,
+        event_id: link.data.id, // Include eventId in the response
+      };
+    } catch (error) {
+      logger.error(`Error while creating google meeting : ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  googleMeetGenerator = async (options) => {
+    try {
+      // Reference  the Npm package https://www.npmjs.com/package/google-cal-meet-api
+      const { google } = require("googleapis");
+      const { OAuth2 } = google.auth;
+      const SCOPES = ["https://www.googleapis.com/auth/calendar"];
+
+      //upper part for api access
+
+      var date1 =
+        options.date + "T" + options.time.split(":")[0] + ":00" + ":30";
+      var date2 =
+        options.date + "T" + options.time.split(":")[0] + ":45" + ":30";
+
+      var x = new Date(
+        options.date + "T" + options.time.split(":")[0] + ":00" + ":30"
+      );
+      var y = new Date(
+        options.date + "T" + options.time.split(":")[0] + ":45" + ":30"
+      );
+
+      var end1 =
+        options.date +
+        "T" +
+        x.getUTCHours() +
+        ":" +
+        x.getUTCMinutes() +
+        ":00" +
+        ".000Z";
+      var end2 =
+        options.date +
+        "T" +
+        y.getUTCHours() +
+        ":" +
+        y.getUTCMinutes() +
+        ":00" +
+        ".000Z";
+
+      //setting details for teacher
+      let oAuth2Client = new OAuth2(
+        process.env.CLIENT_ID,
+        process.env.CLIENT_SECRET
+      );
+
+      oAuth2Client.setCredentials({
+        refresh_token: options.refreshToken,
+      });
+
+      // Create a new calender instance.
+      let calendar = google.calendar({ version: "v3", auth: oAuth2Client });
+
+      // Create a new event start date instance for teacher in their calendar.
+      const eventStartTime = new Date();
+      eventStartTime.setDate(options.date.split("-")[2]);
+      const eventEndTime = new Date();
+      eventEndTime.setDate(options.date.split("-")[2]);
+      eventEndTime.setMinutes(eventStartTime.getMinutes() + 45);
+
+      // Create a dummy event for temp users in our calendar
+      const event = {
+        summary: options.summary,
+        location: options.location,
+        description: options.description,
+        colorId: 1,
+        conferenceData: {
+          createRequest: {
+            requestId: "zzz",
+            conferenceSolutionKey: {
+              type: "hangoutsMeet",
+            },
+          },
+        },
+        start: {
+          dateTime: date1,
+          timeZone: "Asia/Kolkata",
+        },
+        end: {
+          dateTime: date2,
+          timeZone: "Asia/Kolkata",
+        },
+        attendees: options.attendees,
+      };
+
+      let link = await calendar.events.insert({
+        calendarId: "primary",
+        conferenceDataVersion: "1",
+        resource: event,
+      });
+      return link.data.hangoutLink;
+    } catch (error) {
+      logger.error(`Error while generating the Google Meet Link: ${error}`);
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  deleteGoogleMeeting = async (payload) => {
+    try {
+      const { token, eventId } = payload;
+
+      const options = {
+        client_id: process.env.CLIENT_ID,
+        client_secret: process.env.CLIENT_SECRET,
+        refreshToken: token,
+      };
+
+      // Setting up OAuth2 client
+      const { OAuth2 } = google.auth;
+      const oAuth2Client = new OAuth2(options.client_id, options.client_secret);
+
+      oAuth2Client.setCredentials({
+        refresh_token: options.refreshToken,
+      });
+
+      // Create a new calendar instance.
+      const calendar = google.calendar({ version: "v3", auth: oAuth2Client });
+
+      // Delete the event
+      await calendar.events.delete({
+        calendarId: "primary",
+        eventId: eventId,
+      });
+
+      return { message: "Meeting deleted successfully" };
+    } catch (error) {
+      console.error(`Error while deleting Google meeting: ${error}`);
+      throw new Error(error?.message || "Error deleting meeting");
+    }
+  };
+
+  updateGoogleMeeting = async (payload) => {
+    try {
+      const {
         token,
+        event_id,
         meeting_date,
         meeting_start_time,
         summary,
         location,
         description,
+        recurrence,
+        notifications,
+        recurrence_end_date,
+      } = payload;
+
+      const options = {
+        client_id: process.env.CLIENT_ID,
+        client_secret: process.env.CLIENT_SECRET,
+        refreshToken: token,
+        date: meeting_date,
+        time: meeting_start_time,
+        summary,
+        location,
+        description,
+        attendees: [
+          { email: "gusaibhavin88@gmail.com" },
+          { email: "smitvtridhyatech@gmail.com" },
+        ],
+      };
+
+      const { OAuth2 } = google.auth;
+      const SCOPES = ["https://www.googleapis.com/auth/calendar"];
+
+      // Initialize OAuth2 client
+      let oAuth2Client = new OAuth2(
+        process.env.CLIENT_ID,
+        process.env.CLIENT_SECRET
+      );
+
+      oAuth2Client.setCredentials({
+        refresh_token: options.refreshToken,
       });
 
-      if (result === null) {
-        return throwError(
-          returnMessage("activity", "callMeetingAlreadyExists")
-        );
-      }
-      return { meeting_link: result };
+      // Create a new calendar instance
+      let calendar = google.calendar({ version: "v3", auth: oAuth2Client });
+
+      // Calculate start and end times for the event
+      var date1 =
+        options.date + "T" + options.time.split(":")[0] + ":00" + ":30";
+      var date2 =
+        options.date + "T" + options.time.split(":")[0] + ":45" + ":30";
+
+      var x = new Date(date1);
+      var y = new Date(date2);
+
+      var end1 =
+        options.date +
+        "T" +
+        x.getUTCHours() +
+        ":" +
+        x.getUTCMinutes() +
+        ":00" +
+        ".000Z";
+      var end2 =
+        options.date +
+        "T" +
+        y.getUTCHours() +
+        ":" +
+        y.getUTCMinutes() +
+        ":00" +
+        ".000Z";
+
+      // Create an event object with updated details
+      const event = {
+        summary: options.summary,
+        location: options.location,
+        description: options.description,
+        colorId: 1,
+        conferenceData: {
+          createRequest: {
+            requestId: "zzz",
+            conferenceSolutionKey: {
+              type: "hangoutsMeet",
+            },
+          },
+        },
+        start: {
+          dateTime: date1,
+          timeZone: "Asia/Kolkata",
+        },
+        end: {
+          dateTime: date2,
+          timeZone: "Asia/Kolkata",
+        },
+        attendees: options.attendees,
+      };
+
+      // Update the event in Google Calendar
+      let link = await calendar.events.update({
+        calendarId: "primary",
+        eventId: event_id,
+        conferenceDataVersion: "1",
+        resource: event,
+      });
+
+      return {
+        meeting_link: link.data.hangoutLink,
+        event_id: link.data.id,
+      };
     } catch (error) {
-      logger.error(`Error while creating google meeting : ${error}`);
-      return throwError(error?.message, error?.statusCode);
+      console.error(`Error while updating google meeting: ${error}`);
+      throw new Error(
+        error?.message || "An error occurred while updating the meeting"
+      );
+    }
+  };
+  ccGoogleMeeting = async (payload) => {
+    try {
+      const { code } = payload;
+      const response = await axios.post(
+        "https://oauth2.googleapis.com/token",
+        new URLSearchParams({
+          code,
+          client_id:
+            "1002923374237-kg6vobgh44lqosct25ggeovq8m9g2mlu.apps.googleusercontent.com",
+          client_secret: "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",
+          redirect_uri: "http://localhost:3000/auth/callback",
+          grant_type: "authorization_code",
+        }),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
+
+      const tokens = response.data;
+      // Send the tokens back to the frontend, or store them securely and create a session
+      res.json(tokens);
+    } catch (error) {
+      console.error(`Error while updating google meeting: ${error}`);
+      throw new Error(
+        error?.message || "An error occurred while updating the meeting"
+      );
     }
   };
 }
