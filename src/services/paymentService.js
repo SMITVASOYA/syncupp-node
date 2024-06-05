@@ -2010,7 +2010,7 @@ class PaymentService {
 
       const member_detail = user?.workspace_detail?.members?.find(
         (member) =>
-          member?.user_id?.toString() === user?._id &&
+          member?.user_id?.toString() === user?._id?.toString() &&
           member?.status === "confirmed"
       );
 
@@ -2026,8 +2026,8 @@ class PaymentService {
           returnMessage("referral", "insufficientReferralPoints")
         );
 
-      await Workspace.findOneAndUpdate(
-        { _id: user?.worksapce, "membesrs.user_id": user?._id },
+      const updated_gamification_points = await Workspace.findOneAndUpdate(
+        { _id: user?.workspace, "members.user_id": user?._id },
         {
           $inc: {
             "members.$.gamification_points":
@@ -2039,6 +2039,17 @@ class PaymentService {
         },
         { new: true }
       );
+
+      if (updated_gamification_points) {
+        await Gamification.create({
+          user_id: user?._id,
+          agency_id: user?.workspace_detail?.created_by,
+          point: "-" + configuration?.coupon?.reedem_coupon.toString(),
+          type: "coupon_purchase",
+          role: member_detail?.role,
+          workspace_id: user?.workspace,
+        });
+      }
 
       return { success: true };
     } catch (error) {
