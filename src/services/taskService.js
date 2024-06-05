@@ -2390,7 +2390,8 @@ class TaskService {
         });
       } else if (
         task_detail?.activity_status?.key === "completed" &&
-        (new_status?.key !== "completed" || new_status?.key !== "archived")
+        new_status?.key !== "completed" &&
+        new_status?.key !== "archived"
       ) {
         // this is used to decrease the point as the task is moved from the completed to the other stage
 
@@ -2398,15 +2399,18 @@ class TaskService {
         const gamification_history = await Gamification.find({
           user_id: { $in: task_detail?.assign_to },
           workspace_id: user?.workspace,
+          task_id,
           type: "task",
-        }).lean();
+        })
+          .populate("role", "name")
+          .lean();
 
         task_detail?.assign_to?.map(async (member) => {
           const member_details = gamification_history.find(
             (m) =>
               m?.user_id?.toString() === member?.toString() &&
-              m?.point?.startsWith("+") &&
-              (m?.role === "agency" || m?.role === "team_agency")
+              !m?.point?.startsWith("-") &&
+              (m?.role?.name === "agency" || m?.role?.name === "team_agency")
           );
 
           if (!member_details) return;
@@ -2417,7 +2421,7 @@ class TaskService {
             point:
               -configuration?.competition?.successful_task_competition?.toString(),
             type: "task",
-            role: member_details?.role,
+            role: member_details?.role?._id,
             task_id,
             workspace_id: user?.workspace,
           });
