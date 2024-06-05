@@ -1342,7 +1342,7 @@ class PaymentService {
       let task_assigned = await Task.aggregate([
         {
           $match: {
-            workspace_id: user.worksapce,
+            workspace_id: user?.workspace,
             assign_to: { $in: [user_id] },
             is_deleted: false,
           },

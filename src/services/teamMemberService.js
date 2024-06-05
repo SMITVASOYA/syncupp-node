@@ -1010,7 +1010,7 @@ class TeamMemberService {
       const task_assigned = await Task.aggregate([
         {
           $match: {
-            workspace_id: user.worksapce,
+            workspace_id: user?.workspace,
             assign_to: { $in: teamMemberIds },
             is_deleted: false,
           },
