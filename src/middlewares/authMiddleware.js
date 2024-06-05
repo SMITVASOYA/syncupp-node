@@ -192,7 +192,7 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
     req.user["workspace"] = decodedUserData?.workspace;
     req.user["workspace_detail"] = workspace;
 
-    this.loginGamificationPointIncrease(user);
+    await this.loginGamificationPointIncrease(user);
 
     next();
   } else {
@@ -276,7 +276,7 @@ exports.loginGamificationPointIncrease = async (user) => {
         workspace_id: workspace?._id,
       });
 
-      console.log(gam, poin);
+      console.log("gam", gam, "point", poin);
     }
     return;
   } catch (error) {

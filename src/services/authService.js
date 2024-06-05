@@ -79,7 +79,7 @@ class AuthService {
         ]);
       }
 
-      loginGamificationPointIncrease(payload);
+      await loginGamificationPointIncrease(payload);
       const token = jwt.sign(
         { id: payload._id, workspace: workspace?._id },
         process.env.JWT_SECRET_KEY,
