@@ -31,7 +31,6 @@ const CompetitionPoint = require("../models/competitionPointSchema");
 const Agency = require("../models/agencySchema");
 const Client = require("../models/clientSchema");
 const NotificationService = require("./notificationService");
-const Admin = require("../models/adminSchema");
 const SheetManagement = require("../models/sheetManagementSchema");
 const notificationService = new NotificationService();
 const paymentService = require("../services/paymentService");
@@ -79,7 +78,7 @@ class AuthService {
         ]);
       }
 
-      loginGamificationPointIncrease(payload);
+      loginGamificationPointIncrease({ ...payload, workspace: workspace?._id });
       const token = jwt.sign(
         { id: payload._id, workspace: workspace?._id },
         process.env.JWT_SECRET_KEY,

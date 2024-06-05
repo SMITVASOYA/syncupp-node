@@ -1,6 +1,5 @@
 const catchAsyncError = require("../helpers/catchAsyncError");
 const { sendResponse } = require("../utils/sendResponse");
-const { throwError } = require("../helpers/errorUtil");
 const ReferralService = require("../services/referralService");
 const { returnMessage } = require("../utils/utils");
 const referralService = new ReferralService();

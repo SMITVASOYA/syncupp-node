@@ -3,7 +3,6 @@ const { returnMessage } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const CouponService = require("../services/couponService");
 const { sendResponse } = require("../utils/sendResponse");
-const { authorizeRole } = require("../middlewares/authMiddleware");
 const couponService = new CouponService();
 
 // Add coupon

@@ -18,24 +18,13 @@ const Team_Agency = require("../models/teamAgencySchema");
 const statusCode = require("../messages/statusCodes.json");
 const sendEmail = require("../helpers/sendEmail");
 const Authentication = require("../models/authenticationSchema");
-const Configuration = require("../models/configurationSchema");
-const Competition_Point = require("../models/competitionPointSchema");
 const NotificationService = require("./notificationService");
-const Agency = require("../models/agencySchema");
-const Activity_Status_Master = require("../models/masters/activityStatusMasterSchema");
 const notificationService = new NotificationService();
-const EventService = require("../services/eventService");
-const eventService = new EventService();
 const ics = require("ics");
 const fs = require("fs");
-const Activity_Type_Master = require("../models/masters/activityTypeMasterSchema");
 const momentTimezone = require("moment-timezone");
-const Team_Client = require("../models/teamClientSchema");
 const Board = require("../models/boardSchema");
-const { ObjectId } = require("mongoose");
 const Section = require("../models/sectionSchema");
-const Workspace = require("../models/workspaceSchema");
-const Role_Master = require("../models/masters/roleMasterSchema");
 const AuthService = require("../services/authService");
 const Gamification = require("../models/gamificationSchema");
 const authService = new AuthService();
@@ -2166,22 +2155,11 @@ class ActivityService {
         start_date = moment.utc().startOf("month");
         end_date = moment.utc().endOf("month");
       }
-      let agency_id;
-      if (user?.role?.name === "agency") {
-        agency_id = user?.reference_id;
-      }
-      if (user?.role?.name === "team_agency") {
-        const team_agency = await Team_Agency.findById(
-          user?.reference_id
-        ).lean();
-        agency_id = team_agency?.agency_id;
-      }
 
       const aggragate = [
         {
           $match: {
-            agency_id,
-            role: { $ne: "agency" },
+            workspace_id: user?.workspace,
             $or: [{ type: "task" }, { type: "login" }],
             $and: [
               { createdAt: { $gte: new Date(start_date) } },
@@ -2192,24 +2170,16 @@ class ActivityService {
         {
           $group: {
             _id: "$user_id",
-            totalPoints: {
-              $sum: {
-                $toInt: "$point",
-              },
-            },
+            totalPoints: { $sum: { $toInt: "$point" } },
           },
         },
-        {
-          $sort: { totalPoints: -1 },
-        },
-        {
-          $limit: 5,
-        },
+        { $sort: { totalPoints: -1 } },
+        { $limit: payload?.items_per_page || 5 },
         {
           $lookup: {
             from: "authentications",
             localField: "_id",
-            foreignField: "reference_id",
+            foreignField: "_id",
             as: "user",
             pipeline: [
               {
@@ -2225,11 +2195,9 @@ class ActivityService {
             ],
           },
         },
-        {
-          $unwind: { path: "$user", preserveNullAndEmptyArrays: true },
-        },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
       ];
-      return await Competition_Point.aggregate(aggragate);
+      return await Gamification.aggregate(aggragate);
     } catch (error) {
       logger.error(`Error while fetching the leaderboard users: ${error}`);
       return throwError(error?.message, error?.statusCode);

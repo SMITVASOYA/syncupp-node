@@ -1,4 +1,3 @@
-const Agency = require("../models/agencySchema");
 const logger = require("../logger");
 const { throwError } = require("../helpers/errorUtil");
 const {
@@ -6,23 +5,14 @@ const {
   capitalizeFirstLetter,
   validateRequestFields,
 } = require("../utils/utils");
-const Role_Master = require("../models/masters/roleMasterSchema");
 const Authentication = require("../models/authenticationSchema");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
-const Client = require("../models/clientSchema");
-const Team_Agency = require("../models/teamAgencySchema");
-const Activity = require("../models/activitySchema");
 const moment = require("moment");
-const Invoice = require("../models/invoiceSchema");
-const mongoose = require("mongoose");
 const PaymentService = require("../services/paymentService");
-const Agreement = require("../models/agreementSchema");
 const paymentService = new PaymentService();
 const fs = require("fs");
 const axios = require("axios");
 const Workspace = require("../models/workspaceSchema");
-const Task = require("../models/taskSchema");
-const Section = require("../models/sectionSchema");
 // Register Agency
 class AgencyService {
   // this will only avilabe for the admin panel

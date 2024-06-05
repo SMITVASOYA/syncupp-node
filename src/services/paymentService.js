@@ -4,7 +4,6 @@ const { throwError } = require("../helpers/errorUtil");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
 const Authentication = require("../models/authenticationSchema");
 const Client = require("../models/clientSchema");
-const Team_Agency = require("../models/teamAgencySchema");
 const Team_Client = require("../models/teamClientSchema");
 const PaymentHistory = require("../models/paymentHistorySchema");
 const SheetManagement = require("../models/sheetManagementSchema");
@@ -26,8 +25,6 @@ const crypto = require("crypto");
 const moment = require("moment");
 const sendEmail = require("../helpers/sendEmail");
 const Configuration = require("../models/configurationSchema");
-const CompetitionPoint = require("../models/competitionPointSchema");
-const ReferralHistory = require("../models/referralHistorySchema");
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_SECRET,
@@ -35,7 +32,6 @@ const razorpay = new Razorpay({
 const axios = require("axios");
 const AdminCoupon = require("../models/adminCouponSchema");
 const Affiliate_Referral = require("../models/affiliateReferralSchema");
-const Event = require("../models/eventSchema");
 const Invoice = require("../models/invoiceSchema");
 const Agreement = require("../models/agreementSchema");
 const { eventEmitter } = require("../socket");
@@ -1342,7 +1338,7 @@ class PaymentService {
       let task_assigned = await Task.aggregate([
         {
           $match: {
-            workspace_id: user.worksapce,
+            workspace_id: user?.workspace,
             assign_to: { $in: [user_id] },
             is_deleted: false,
           },
@@ -2010,7 +2006,7 @@ class PaymentService {
 
       const member_detail = user?.workspace_detail?.members?.find(
         (member) =>
-          member?.user_id?.toString() === user?._id &&
+          member?.user_id?.toString() === user?._id?.toString() &&
           member?.status === "confirmed"
       );
 
@@ -2026,8 +2022,8 @@ class PaymentService {
           returnMessage("referral", "insufficientReferralPoints")
         );
 
-      await Workspace.findOneAndUpdate(
-        { _id: user?.worksapce, "membesrs.user_id": user?._id },
+      const updated_gamification_points = await Workspace.findOneAndUpdate(
+        { _id: user?.workspace, "members.user_id": user?._id },
         {
           $inc: {
             "members.$.gamification_points":
@@ -2039,6 +2035,17 @@ class PaymentService {
         },
         { new: true }
       );
+
+      if (updated_gamification_points) {
+        await Gamification.create({
+          user_id: user?._id,
+          agency_id: user?.workspace_detail?.created_by,
+          point: "-" + configuration?.coupon?.reedem_coupon.toString(),
+          type: "coupon_purchase",
+          role: member_detail?.role,
+          workspace_id: user?.workspace,
+        });
+      }
 
       return { success: true };
     } catch (error) {

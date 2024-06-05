@@ -23,8 +23,6 @@ const Role_Master = require("../models/masters/roleMasterSchema");
 const Team_Agency = require("../models/teamAgencySchema");
 const Team_Role_Master = require("../models/masters/teamRoleSchema");
 const Team_Client = require("../models/teamClientSchema");
-const { ObjectId } = require("mongoose");
-const Agency = require("../models/agencySchema");
 const AuthService = require("./authService");
 const authService = new AuthService();
 const Activity_Status = require("../models/masters/activityStatusMasterSchema");
@@ -37,13 +35,10 @@ const Client = require("../models/clientSchema");
 const Configuration = require("../models/configurationSchema");
 const fs = require("fs");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
-const paymentService = require("../services/paymentService");
 const Workspace = require("../models/workspaceSchema");
-const PaymentService = new paymentService();
 const mongoose = require("mongoose");
 const Activity_Status_Master = require("../models/masters/activityStatusMasterSchema");
 const Task = require("../models/taskSchema");
-const Section = require("../models/sectionSchema");
 
 class TeamMemberService {
   // removed the code to create the team member for the agency
@@ -1010,7 +1005,7 @@ class TeamMemberService {
       const task_assigned = await Task.aggregate([
         {
           $match: {
-            workspace_id: user.worksapce,
+            workspace_id: user?.workspace,
             assign_to: { $in: teamMemberIds },
             is_deleted: false,
           },
