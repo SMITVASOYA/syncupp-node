@@ -277,6 +277,11 @@ const leaderboard = {
           type: "object",
           properties: {
             filter: { type: "string" },
+            items_per_page: {
+              type: "number",
+              description: "Enter item per page.",
+              default: 10,
+            },
           },
         },
       },
