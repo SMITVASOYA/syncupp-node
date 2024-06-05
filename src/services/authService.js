@@ -31,7 +31,6 @@ const CompetitionPoint = require("../models/competitionPointSchema");
 const Agency = require("../models/agencySchema");
 const Client = require("../models/clientSchema");
 const NotificationService = require("./notificationService");
-const Admin = require("../models/adminSchema");
 const SheetManagement = require("../models/sheetManagementSchema");
 const notificationService = new NotificationService();
 const paymentService = require("../services/paymentService");

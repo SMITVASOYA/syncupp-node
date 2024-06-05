@@ -16,7 +16,6 @@ const sendEmail = require("../helpers/sendEmail");
 const Workspace = require("../models/workspaceSchema");
 const Section = require("../models/sectionSchema");
 const notificationService = new NotificationService();
-const colorsData = require("../messages/colors.json");
 const Role_Master = require("../models/masters/roleMasterSchema");
 const AuthService = require("../services/authService");
 const authService = new AuthService();

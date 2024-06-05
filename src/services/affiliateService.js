@@ -14,7 +14,6 @@ const crypto = require("crypto");
 const sendEmail = require("../helpers/sendEmail");
 const Affiliate_Referral = require("../models/affiliateReferralSchema");
 const Authentication = require("../models/authenticationSchema");
-const PaymentHistory = require("../models/paymentHistorySchema");
 const moment = require("moment");
 const Configuration = require("../models/configurationSchema");
 const paymentService = require("../services/paymentService");

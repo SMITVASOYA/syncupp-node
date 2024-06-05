@@ -16,34 +16,16 @@ const {
 } = require("../utils/utils");
 const Authentication = require("../models/authenticationSchema");
 const sendEmail = require("../helpers/sendEmail");
-const AuthService = require("../services/authService");
-
-const authService = new AuthService();
 const statusCode = require("../messages/statusCodes.json");
 const Team_Agency = require("../models/teamAgencySchema");
 const Team_Client = require("../models/teamClientSchema");
-const Activity = require("../models/activitySchema");
 const SheetManagement = require("../models/sheetManagementSchema");
-const Activity_Status = require("../models/masters/activityStatusMasterSchema");
 const moment = require("moment");
-const Invoice = require("../models/invoiceSchema");
 const mongoose = require("mongoose");
-const Agreement = require("../models/agreementSchema");
-const NotificationService = require("./notificationService");
 const Configuration = require("../models/configurationSchema");
-const notificationService = new NotificationService();
-const TeamMemberService = require("../services/teamMemberService");
-const teamMemberService = new TeamMemberService();
-const fs = require("fs");
-const paymentService = require("../services/paymentService");
 const Workspace = require("../models/workspaceSchema");
-const WorkspaceService = require("./workspaceService");
-const PaymentService = new paymentService();
-const workspaceService = new WorkspaceService();
 const crypto = require("crypto");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
-const Section = require("../models/sectionSchema");
-const Task = require("../models/taskSchema");
 
 class ClientService {
   // create client for the agency

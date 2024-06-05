@@ -4,7 +4,6 @@ const { throwError } = require("../helpers/errorUtil");
 const SubscriptionPlan = require("../models/subscriptionplanSchema");
 const Authentication = require("../models/authenticationSchema");
 const Client = require("../models/clientSchema");
-const Team_Agency = require("../models/teamAgencySchema");
 const Team_Client = require("../models/teamClientSchema");
 const PaymentHistory = require("../models/paymentHistorySchema");
 const SheetManagement = require("../models/sheetManagementSchema");
@@ -26,8 +25,6 @@ const crypto = require("crypto");
 const moment = require("moment");
 const sendEmail = require("../helpers/sendEmail");
 const Configuration = require("../models/configurationSchema");
-const CompetitionPoint = require("../models/competitionPointSchema");
-const ReferralHistory = require("../models/referralHistorySchema");
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_SECRET,
@@ -35,7 +32,6 @@ const razorpay = new Razorpay({
 const axios = require("axios");
 const AdminCoupon = require("../models/adminCouponSchema");
 const Affiliate_Referral = require("../models/affiliateReferralSchema");
-const Event = require("../models/eventSchema");
 const Invoice = require("../models/invoiceSchema");
 const Agreement = require("../models/agreementSchema");
 const { eventEmitter } = require("../socket");

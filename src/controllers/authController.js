@@ -3,12 +3,8 @@ const { returnMessage } = require("../utils/utils");
 const statusCode = require("../messages/statusCodes.json");
 const AuthService = require("../services/authService");
 const AgencyService = require("../services/agencyService");
-const ClientService = require("../services/clientService");
-const TeamMemberService = require("../services/teamMemberService");
 const authService = new AuthService();
 const agencyService = new AgencyService();
-const clientService = new ClientService();
-const teamMemberService = new TeamMemberService();
 const { sendResponse } = require("../utils/sendResponse");
 const { throwError } = require("../helpers/errorUtil");
 
