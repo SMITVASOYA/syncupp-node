@@ -2429,13 +2429,12 @@ class TaskService {
           await Workspace.findOneAndUpdate(
             { _id: user?.workspace, "members.user_id": member },
             {
-              $set: {
-                $inc: {
-                  "members.$.gamification_points":
-                    -configuration?.competition?.successful_task_competition,
-                },
+              $inc: {
+                "members.$.gamification_points":
+                  -configuration?.competition?.successful_task_competition,
               },
-            }
+            },
+            { new: true }
           );
         });
       }
