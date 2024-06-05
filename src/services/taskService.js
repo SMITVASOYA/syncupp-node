@@ -1989,15 +1989,14 @@ class TaskService {
       const { status } = payload;
 
       let update_status = status;
-      let current_activity = await Task.findById(id).lean();
-      // let current_status = current_activity.activity_status;
+      this.increaseOrDecreaseGamification(payload, id, user);
 
-      const check_existing_status = await Section.findOne({
-        _id: current_activity?.activity_status,
-      }).lean();
-      const new_status = await Section.findOne({
-        _id: status,
-      }).lean();
+      let current_activity = await Task.findById(id).lean();
+
+      const [check_existing_status, new_status] = await Promise.all([
+        Section.findById(current_activity?.activity_status).lean(),
+        Section.findById(status).lean(),
+      ]);
 
       if (
         check_existing_status?.key !== "completed" &&
@@ -2033,8 +2032,8 @@ class TaskService {
         useFindAndModify: false,
       });
 
-      this.increaseOrDecreaseGamification(payload, id, user);
       const pipeline = [
+        { $match: { _id: new mongoose.Types.ObjectId(id), is_deleted: false } },
         {
           $lookup: {
             from: "authentications",
@@ -2063,7 +2062,6 @@ class TaskService {
             as: "team_data",
           },
         },
-
         {
           $lookup: {
             from: "authentications",
@@ -2084,9 +2082,7 @@ class TaskService {
             ],
           },
         },
-        {
-          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
-        },
+        { $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true } },
         {
           $lookup: {
             from: "sections",
@@ -2096,15 +2092,7 @@ class TaskService {
             pipeline: [{ $project: { section_name: 1 } }],
           },
         },
-        {
-          $unwind: { path: "$status", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $match: {
-            _id: new mongoose.Types.ObjectId(id),
-            is_deleted: false,
-          },
-        },
+        { $unwind: { path: "$status", preserveNullAndEmptyArrays: true } },
         {
           $project: {
             agenda: 1,
@@ -2127,9 +2115,7 @@ class TaskService {
       ];
 
       const getTask = await Task.aggregate(pipeline);
-      const [board] = await Promise.all([
-        Board.findOne({ _id: getTask[0]?.board_id }).lean(),
-      ]);
+      const board = await Board.findById(getTask[0]?.board_id).lean();
 
       getTask &&
         getTask[0] &&
@@ -2155,25 +2141,23 @@ class TaskService {
             message: taskMessage,
           });
 
-          if (user?.role === "agency") {
-            //   ----------    Notifications start ----------
-            await notificationService.addNotification(
-              {
-                assigned_to_name: assignee?.assigned_to_name,
-                ...getTask[0],
-                module_name: "task",
-                assign_to: assignee?._id,
-                activity_type_action: "statusUpdate",
-                activity_type: "task",
-                board_name: board ? board?.project_name : "",
-                status_name: getTask[0]?.status?.section_name,
-                workspace_id: user?.workspace,
-                comment_count: getTask[0]?.comments_count,
-              },
-              id
-            );
-            //   ----------    Notifications end ----------
-          }
+          //   ----------    Notifications start ----------
+          notificationService.addNotification(
+            {
+              assigned_to_name: assignee?.assigned_to_name,
+              ...getTask[0],
+              module_name: "task",
+              assign_to: assignee?._id,
+              activity_type_action: "statusUpdate",
+              activity_type: "task",
+              board_name: board ? board?.project_name : "",
+              status_name: getTask[0]?.status?.section_name,
+              workspace_id: user?.workspace,
+              comment_count: getTask[0]?.comments_count,
+            },
+            id
+          );
+          //   ----------    Notifications end ----------
         });
 
       return getTask;
@@ -2373,7 +2357,6 @@ class TaskService {
         new_status?.key === "completed"
       ) {
         // this is used to increase the gamification point as the task is completed
-
         task_detail?.assign_to?.map(async (member) => {
           const member_details = user?.workspace_detail?.members?.find(
             (m) =>
@@ -2398,11 +2381,9 @@ class TaskService {
           await Workspace.findOneAndUpdate(
             { _id: user?.workspace, "members.user_id": member },
             {
-              $set: {
-                $inc: {
-                  "members.$.gamification_points":
-                    configuration?.competition?.successful_task_competition,
-                },
+              $inc: {
+                "members.$.gamification_points":
+                  configuration?.competition?.successful_task_competition,
               },
             }
           );
