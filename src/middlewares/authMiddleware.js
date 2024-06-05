@@ -273,7 +273,7 @@ exports.loginGamificationPointIncrease = async (user) => {
         const gamification_points = await Gamification.create({
           user_id: user._id,
           agency_id: workspace?.created_by,
-          point: +configuration?.competition.successful_login.toString(),
+          point: +configuration?.competition?.successful_login.toString(),
           type: "login",
           role: role?._id,
           workspace_id: workspace?._id,
