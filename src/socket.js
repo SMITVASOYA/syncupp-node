@@ -243,6 +243,7 @@ exports.socket_connection = (http_server) => {
             notification,
             un_read_count: pending_notification,
           });
+          console.log(count);
         }
       } catch (error) {
         logger.error(`Error while receiving the message: ${error}`);
