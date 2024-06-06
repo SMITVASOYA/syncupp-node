@@ -16,6 +16,7 @@ const Configuration = require("./models/configurationSchema");
 const { default: mongoose } = require("mongoose");
 
 let socket_users = [];
+let count = 0;
 exports.socket_connection = (http_server) => {
   io = new Server(http_server, {
     cors: {
@@ -205,6 +206,7 @@ exports.socket_connection = (http_server) => {
         console.log(notification_exist, "notification_exist");
 
         if (!notification_exist) {
+          count = count + 1;
           const sender_detail = await Authentication.findById(
             payload?.from_user
           )
@@ -241,6 +243,7 @@ exports.socket_connection = (http_server) => {
             notification,
             un_read_count: pending_notification,
           });
+          console.log(count);
         }
       } catch (error) {
         logger.error(`Error while receiving the message: ${error}`);
