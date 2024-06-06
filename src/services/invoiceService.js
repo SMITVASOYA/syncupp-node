@@ -1396,9 +1396,15 @@ class InvoiceService {
         });
       });
 
-      // res.set({ "Content-Type": "application/pdf" });
+      // res.set({
+      //   "Content-Type": "application/pdf",
+      //   "Content-Disposition": `attachment; filename="invoice_${invoice_id}.pdf"`,
+      // });
       // res.send(pdfBuffer);
-      return pdfBuffer;
+      return {
+        pdfBuffer: pdfBuffer,
+        filename: `${invoice[0]?.invoice_number}.pdf`,
+      };
     } catch (error) {
       logger.error(`Error while generating PDF, ${error}`);
       throwError(error?.message, error?.statusCode);
