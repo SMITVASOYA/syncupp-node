@@ -182,7 +182,7 @@ class TeamMemberService {
           invitation_token: invitation_token,
           status:
             sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
-            !workspace_exist?.trial_end_date
+            workspace_exist?.trial_end_date
               ? "confirm_pending"
               : "payment_pending",
         });
@@ -230,7 +230,10 @@ class TeamMemberService {
         });
 
         let invitation_token;
-        if (sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length) {
+        if (
+          sheets?.total_sheets - 1 > sheets?.occupied_sheets?.length ||
+          workspace_exist?.trial_end_date
+        ) {
           invitation_token = crypto.randomBytes(16).toString("hex");
           const link = `${process.env.REACT_APP_URL}/verify?workspace=${
             workspace_exist?._id
@@ -973,13 +976,6 @@ class TeamMemberService {
           );
       }
 
-      /* {
-        workspace_id: user.workspace,
-        assign_to: { $in: teamMemberIds },
-        activity_status: activity_status?._id,
-        is_deleted: false,
-      } */
-
       const task_assigned = await Task.aggregate([
         {
           $match: {
@@ -1002,12 +998,16 @@ class TeamMemberService {
             preserveNullAndEmptyArrays: true,
           },
         },
-        { $match: { "activity_status.key": { $ne: "completed" } } },
+        {
+          $match: {
+            "activity_status.key": { $ne: "completed" },
+            "activity_status.key": { $ne: "archived" },
+          },
+        },
       ]);
 
       if (task_assigned.length && !payload?.force_fully_remove)
         return { force_fully_remove: true };
-      // remove the member from the workspace
 
       if (
         (task_assigned.length && payload?.force_fully_remove) ||
@@ -1019,7 +1019,7 @@ class TeamMemberService {
           {
             $set: {
               "members.$.status": "deleted",
-              "members.$.invitation_token": undefined,
+              "members.$.invitation_token": null,
             },
           },
           { new: true }
@@ -1051,7 +1051,6 @@ class TeamMemberService {
   deleteMemberByClient = async (payload, user) => {
     try {
       const { teamMemberIds } = payload;
-      // pending to implement when we remove the team members and the tasks are assigned and pending set
       const workspace = await Workspace.findById(user?.workspace).lean();
 
       const member_details = workspace?.members?.find(
@@ -1075,18 +1074,45 @@ class TeamMemberService {
         );
       if (!sheet) return throwError(returnMessage("default", "default"));
 
-      const task_assigned = await Task.findOne({
-        workspace_id: user.workspace,
-        assign_to: { $in: teamMemberIds },
-        activity_status: activity_status?._id,
-        is_deleted: false,
-      }).lean();
+      const task_assigned = await Task.aggregate([
+        {
+          $match: {
+            workspace_id: user?.workspace,
+            assign_to: { $in: teamMemberIds },
+            is_deleted: false,
+          },
+        },
+        {
+          $lookup: {
+            from: "sections",
+            localField: "activity_status",
+            foreignField: "_id",
+            as: "activity_status",
+          },
+        },
+        {
+          $unwind: {
+            path: "$activity_status",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $match: {
+            "activity_status.key": { $ne: "completed" },
+            "activity_status.key": { $ne: "archived" },
+          },
+        },
+      ]);
 
-      if (task_assigned && !payload?.force_fully_remove)
+      if (task_assigned.length && !payload?.force_fully_remove)
         return { force_fully_remove: true };
+
       // remove the member from the workspace
 
-      if ((task_assigned && payload?.force_fully_remove) || !task_assigned) {
+      if (
+        (task_assigned.length && payload?.force_fully_remove) ||
+        !task_assigned.length
+      ) {
         await Workspace.findOneAndUpdate(
           {
             _id: user.workspace,
@@ -1096,7 +1122,7 @@ class TeamMemberService {
           {
             $set: {
               "members.$.status": "deleted",
-              "members.$.invitation_token": undefined,
+              "members.$.invitation_token": null,
             },
           },
           { new: true }
@@ -1160,62 +1186,6 @@ class TeamMemberService {
         },
         { $set: { "members.$.sub_role": sub_role } }
       );
-
-      /* const team_member_exist = await Authentication.findById(team_member_id)
-        .populate("role", "name")
-        .where("is_deleted")
-        .ne(true)
-        .lean();
-      let check_agency = await Team_Agency.findById(user?.reference_id)
-        .populate("role", "name")
-        .lean();
-      if (
-        user?.role?.name === "agency" ||
-        (user.role.name === "team_agency" && check_agency.role.name === "admin")
-      ) {
-        if (
-          !team_member_exist ||
-          team_member_exist?.role?.name !== "team_agency"
-        )
-          return throwError(
-            returnMessage("teamMember", "userNotFound"),
-            statusCode.notFound
-          );
-
-        let role;
-        if (payload?.role && payload?.role !== "")
-          role = await Team_Role_Master.findOne({ name: payload?.role })
-            .select("_id")
-            .lean();
-
-        await Authentication.findByIdAndUpdate(
-          team_member_id,
-          {
-            name: payload?.name,
-            first_name: payload?.first_name,
-            last_name: payload?.last_name,
-            contact_number: payload?.contact_number,
-          },
-          { new: true }
-        );
-        await Team_Agency.findByIdAndUpdate(
-          team_member_exist?.reference_id,
-          { role: role?._id },
-          { new: true }
-        );
-        return;
-      } else if (user?.role?.name === "client") {
-        await Authentication.findByIdAndUpdate(
-          team_member_id,
-          {
-            name: payload?.name,
-            first_name: payload?.first_name,
-            last_name: payload?.last_name,
-            contact_number: payload?.contact_number,
-          },
-          { new: true }
-        );
-      } */
     } catch (error) {
       logger.error(`Error while Team member Edit, ${error}`);
       return throwError(error?.message, error?.statusCode);
