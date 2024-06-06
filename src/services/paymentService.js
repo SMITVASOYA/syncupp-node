@@ -2311,7 +2311,7 @@ class PaymentService {
             {
               $set: {
                 "members.$.status": "payment_pending",
-                trial_end_date: undefined,
+                trial_end_date: null,
               },
             }
           );
