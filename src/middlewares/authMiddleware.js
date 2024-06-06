@@ -191,8 +191,7 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
 
     req.user["workspace"] = decodedUserData?.workspace;
     req.user["workspace_detail"] = workspace;
-
-    this.loginGamificationPointIncrease(user);
+    await this.loginGamificationPointIncrease(user);
 
     next();
   } else {
