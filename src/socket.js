@@ -191,7 +191,7 @@ exports.socket_connection = (http_server) => {
     // So it will not display at the same time of the chat
     socket.on("NOT_ONGOING_CHAT", async (payload) => {
       try {
-        console.log("NOT_ONGOING_CHAT");
+        console.log("NOT_ONGOING_CHAT", payload);
         const notification_exist = await Notification.findOne({
           user_id: payload?.to_user,
           from_user: payload?.from_user,
@@ -199,7 +199,11 @@ exports.socket_connection = (http_server) => {
           is_read: false,
           is_deleted: false,
           workspace_id: payload?.workspace_id,
+          data_reference_id: payload?._id,
         });
+
+        console.log(notification_exist, "notification_exist");
+
         if (!notification_exist) {
           const sender_detail = await Authentication.findById(
             payload?.from_user
