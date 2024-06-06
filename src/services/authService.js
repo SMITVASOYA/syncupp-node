@@ -127,7 +127,7 @@ class AuthService {
         return throwError(returnMessage("workspace", "workspaceRequired"));
       const workspace_exist = await Workspace.findOne({
         _id: workspace_id,
-        "members.user_id": user?._id,
+        members: { $elemMatch: { user_id: user?._id, status: "confirmed" } },
         is_deleted: false,
       }).lean();
 
