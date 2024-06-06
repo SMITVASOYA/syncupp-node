@@ -472,9 +472,9 @@ class PaymentService {
               capitalizeFirstLetter(user_details?.first_name) +
               " " +
               capitalizeFirstLetter(user_details?.last_name),
-            invitation_text: `You are invited to the ${
+            invitation_text: `You are invited to the ${capitalizeFirstLetter(
               workspace_exist?.name
-            } workspace by ${
+            )} workspace by ${
               capitalizeFirstLetter(agency_details?.first_name) +
               " " +
               capitalizeFirstLetter(agency_details?.last_name)
@@ -925,9 +925,9 @@ class PaymentService {
             capitalizeFirstLetter(user_details?.first_name) +
             " " +
             capitalizeFirstLetter(user_details?.last_name),
-          invitation_text: `You are invited to the ${
+          invitation_text: `You are invited to the ${capitalizeFirstLetter(
             workspace_exist?.name
-          } workspace by ${
+          )} workspace by ${
             capitalizeFirstLetter(agency_details?.first_name) +
             " " +
             capitalizeFirstLetter(agency_details?.last_name)
@@ -1629,9 +1629,9 @@ class PaymentService {
             capitalizeFirstLetter(user_details?.first_name) +
             " " +
             capitalizeFirstLetter(user_details?.last_name),
-          invitation_text: `You are invited to the ${
+          invitation_text: `You are invited to the ${capitalizeFirstLetter(
             workspace_exist?.name
-          } workspace by ${
+          )} workspace by ${
             capitalizeFirstLetter(agency_details?.first_name) +
             " " +
             capitalizeFirstLetter(agency_details?.last_name)

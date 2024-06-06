@@ -149,9 +149,9 @@ class TeamMemberService {
               capitalizeFirstLetter(team_member_exist?.first_name) +
               " " +
               capitalizeFirstLetter(team_member_exist?.last_name),
-            invitation_text: `You are invited to the ${
+            invitation_text: `You are invited to the ${capitalizeFirstLetter(
               workspace_exist?.name
-            } workspace by ${
+            )} workspace by ${
               capitalizeFirstLetter(user?.first_name) +
               " " +
               capitalizeFirstLetter(user?.last_name)
@@ -247,9 +247,9 @@ class TeamMemberService {
               capitalizeFirstLetter(first_name) +
               " " +
               capitalizeFirstLetter(last_name),
-            invitation_text: `You are invited to the ${
+            invitation_text: `You are invited to the ${capitalizeFirstLetter(
               workspace_exist?.name
-            } workspace by ${
+            )} workspace by ${
               capitalizeFirstLetter(user?.first_name) +
               " " +
               capitalizeFirstLetter(user?.last_name)
@@ -1950,9 +1950,9 @@ class TeamMemberService {
               capitalizeFirstLetter(client_member_detail?.first_name) +
               " " +
               capitalizeFirstLetter(client_member_detail?.last_name),
-            invitation_text: `You are invited to the ${
+            invitation_text: `You are invited to the ${capitalizeFirstLetter(
               workspace?.name
-            } workspace by ${
+            )} workspace by ${
               capitalizeFirstLetter(user?.first_name) +
               " " +
               capitalizeFirstLetter(user?.last_name)

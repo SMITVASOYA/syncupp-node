@@ -110,9 +110,9 @@ class ClientService {
               capitalizeFirstLetter(client_exist?.first_name) +
               " " +
               capitalizeFirstLetter(client_exist?.last_name),
-            invitation_text: `You are invited to the ${
+            invitation_text: `You are invited to the ${capitalizeFirstLetter(
               workspace_exist?.name
-            } workspace by ${
+            )} workspace by ${
               capitalizeFirstLetter(user?.first_name) +
               " " +
               capitalizeFirstLetter(user?.last_name)
@@ -227,9 +227,9 @@ class ClientService {
               capitalizeFirstLetter(first_name) +
               " " +
               capitalizeFirstLetter(last_name),
-            invitation_text: `You are invited to the ${
+            invitation_text: `You are invited to the ${capitalizeFirstLetter(
               workspace_exist?.name
-            } workspace by ${
+            )} workspace by ${
               capitalizeFirstLetter(user?.first_name) +
               " " +
               capitalizeFirstLetter(user?.last_name)
