@@ -642,28 +642,6 @@ class TeamMemberService {
           statusCode.notFound
         );
 
-      const logged_user = user?.workspace_detail?.members?.find(
-        (member) => member?.user_id?.toString() === user?._id?.toString()
-      );
-
-      if (
-        user?.workspace_detail?.created_by?.toString() !== user?._id?.toString()
-      ) {
-        const sub_role = await Team_Role_Master.findById(
-          logged_user?.sub_role
-        ).lean();
-
-        if (
-          sub_role?.name !== "admin" ||
-          user?.workspace_detail?.created_by?.toString() !==
-            user?._id?.toString()
-        )
-          return throwError(
-            returnMessage("auth", "forbidden"),
-            statusCode.forbidden
-          );
-      }
-
       const [member_auth, sub_role] = await Promise.all([
         Authentication.findById(member_id)
           .select(
