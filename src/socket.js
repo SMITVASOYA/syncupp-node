@@ -138,16 +138,6 @@ exports.socket_connection = (http_server) => {
           workspace_id,
         });
 
-        if (!this.userJoinedToTheRoom(to_user))
-          await Notification.create({
-            type: "chat",
-            user_id: payload?.to_user,
-            from_user,
-            data_reference_id: new_chat?._id,
-            message,
-            workspace_id,
-          });
-
         // emiting the message to the sender to solve multiple device synchronous
 
         io.to(sender).emit("RECEIVED_MESSAGE", {
@@ -169,6 +159,27 @@ exports.socket_connection = (http_server) => {
           message_type: new_chat?.message_type,
           workspace_id,
         });
+
+        if (!this.userJoinedToTheRoom(to_user)) {
+          const notification_exist = await Notification.findOne({
+            user_id: payload?.to_user,
+            from_user: from_user,
+            type: "chat",
+            is_read: false,
+            is_deleted: false,
+            workspace_id: payload?.workspace_id,
+            data_reference_id: new_chat?._id,
+          });
+          if (!notification_exist)
+            await Notification.create({
+              type: "chat",
+              user_id: payload?.to_user,
+              from_user,
+              data_reference_id: new_chat?._id,
+              message,
+              workspace_id,
+            });
+        }
       } catch (error) {
         logger.error(`Error while sending the message: ${error}`);
         return throwError(error?.message, error?.statusCode);
