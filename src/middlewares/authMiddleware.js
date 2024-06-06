@@ -191,7 +191,7 @@ exports.protect = catchAsyncErrors(async (req, res, next) => {
 
     req.user["workspace"] = decodedUserData?.workspace;
     req.user["workspace_detail"] = workspace;
-    await this.loginGamificationPointIncrease(user);
+    this.loginGamificationPointIncrease(user);
 
     next();
   } else {
@@ -227,9 +227,15 @@ exports.loginGamificationPointIncrease = async (user) => {
         $elemMatch: {
           user_id: user?._id,
           status: "confirmed",
+          $or: [
+            { last_visit_date: { $lt: new Date(today) } },
+            { last_visit_date: { $exists: false } },
+          ],
         },
       },
     }).lean();
+
+    if (!workspace) return;
     const workspace_user_detail = workspace?.members?.find(
       (member) => member?.user_id?.toString() === user?._id?.toString()
     );
