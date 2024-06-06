@@ -200,7 +200,6 @@ exports.socket_connection = (http_server) => {
           is_deleted: false,
           workspace_id: payload?.workspace_id,
         });
-
         if (!notification_exist) {
           const sender_detail = await Authentication.findById(
             payload?.from_user
