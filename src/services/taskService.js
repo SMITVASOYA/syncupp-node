@@ -1484,7 +1484,6 @@ class TaskService {
       if (payload?.action_name === "date_assignee_update") {
         return this.updateDateAssigneeTask(payload, id, user);
       }
-
       let {
         title,
         agenda,
@@ -1496,7 +1495,6 @@ class TaskService {
         board_id,
         comment,
       } = payload;
-
       const status_check = await Task.findById(id).populate("activity_status");
       if (status_check?.activity_status?.name === "completed") {
         return throwError(returnMessage("activity", "CannotUpdate"));
@@ -1511,14 +1509,39 @@ class TaskService {
         });
         const existingFiles = await Task.findById(id);
 
-        existingFiles &&
-          existingFiles?.attachments.map((item) => {
-            fs.unlink(`./src/public/${item.preview}`, (err) => {
-              if (err) {
-                logger.error(`Error while unlinking the documents: ${err}`);
-              }
-            });
+        // existingFiles &&
+        //   existingFiles?.attachments.map((item) => {
+        //     fs.unlink(`./src/public/${item.preview}`, (err) => {
+        //       if (err) {
+        //         logger.error(`Error while unlinking the documents: ${err}`);
+        //       }
+        //     });
+        //   });
+      }
+
+      console.log(attachments);
+      const removed_attachments = [];
+      let objects = [];
+      // Check if attachments is an array and parse each item
+      if (Array.isArray(payload.attachments)) {
+        objects = payload.attachments.map((item) => JSON.parse(item));
+      }
+      // Check if attachments is a string and parse it
+      else if (typeof payload.attachments === "string") {
+        objects = [JSON.parse(payload.attachments)];
+      }
+
+      // Assuming status_check is a predefined variable containing attachments to compare against
+      for (const attachment of status_check?.attachments || []) {
+        const is_include = objects.find(
+          (existingAttachment) =>
+            existingAttachment._id.toString() === attachment._id.toString()
+        );
+        if (!is_include) {
+          removed_attachments.push({
+            _id: new mongoose.Types.ObjectId(attachment._id),
           });
+        }
       }
 
       if (due_date && due_date !== "null") {
@@ -1560,6 +1583,10 @@ class TaskService {
         { status: payload?.status, updated_by: user?._id },
       ];
 
+      status_check.attachments.push(...attachments);
+      await status_check.save();
+
+      console.log(attachments, "dwfwf");
       // const current_activity = await Task.findById(id).lean();
       let updateTasksPayload = {
         title,
@@ -1570,7 +1597,7 @@ class TaskService {
         ...(payload?.assign_to &&
           payload?.assign_to[0] && { assign_to: payload?.assign_to }),
         activity_status: activity_status,
-        ...(attachments?.length > 0 && { attachments }),
+
         priority,
         ...(mark_as_done && mark_as_done === "true" && { mark_as_done: true }),
         ...(payload?.status &&
@@ -1581,7 +1608,18 @@ class TaskService {
             payload?.status.toString() && {
             $push: { status_history: status_history },
           }),
+        ...(removed_attachments?.length > 0 && {
+          $pull: {
+            attachments: {
+              $or: removed_attachments,
+            },
+          },
+        }),
+        // ...(attachments?.length > 0 && {
+        //   $push: { attachments: { $each: attachments } },
+        // }),
       };
+
       const updateTasks = await Task.findByIdAndUpdate(id, updateTasksPayload, {
         new: true,
         useFindAndModify: false,
