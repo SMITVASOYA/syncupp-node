@@ -138,16 +138,15 @@ exports.socket_connection = (http_server) => {
           workspace_id,
         });
 
-        // commenting for the better optimised solution
-        // if(!this.userJoinedToTheRoom(to_user))
-        // await Notification.create({
-        //   type: "chat",
-        //   user_id: payload?.to_user,
-        //   from_user,
-        //   data_reference_id: new_chat?._id,
-        //   message,
-        //   user_type,
-        // });
+        if (!this.userJoinedToTheRoom(to_user))
+          await Notification.create({
+            type: "chat",
+            user_id: payload?.to_user,
+            from_user,
+            data_reference_id: new_chat?._id,
+            message,
+            workspace_id,
+          });
 
         // emiting the message to the sender to solve multiple device synchronous
 
@@ -216,6 +215,7 @@ exports.socket_connection = (http_server) => {
           const pending_notification = await Notification.countDocuments({
             user_id: payload?.to_user,
             is_read: false,
+            workspace_id: payload?.workspace_id,
           });
 
           const user_id =
@@ -303,7 +303,7 @@ exports.socket_connection = (http_server) => {
     socket.on("IMAGES", async (payload) => {
       try {
         console.log("IMAGES");
-        const { from_user, to_user, buffer, user_type, ext } = payload;
+        const { from_user, to_user, buffer, ext } = payload;
 
         const configuration = await Configuration.findOne().lean();
         // removed the size validaions
@@ -348,7 +348,6 @@ exports.socket_connection = (http_server) => {
             message_type: new_message?.message_type,
             _id: new_message?._id,
             createdAt: new_message?.createdAt,
-            user_type,
           });
 
           socket.to(to_user).emit("RECEIVED_IMAGE", {
@@ -358,7 +357,6 @@ exports.socket_connection = (http_server) => {
             message_type: new_message?.message_type,
             _id: new_message?._id,
             createdAt: new_message?.createdAt,
-            user_type,
           });
         }
       } catch (error) {
@@ -372,7 +370,7 @@ exports.socket_connection = (http_server) => {
     socket.on("DOCUMENTS", async (payload) => {
       try {
         console.log("DOCUMENTS");
-        const { from_user, to_user, buffer, user_type, ext } = payload;
+        const { from_user, to_user, buffer, ext } = payload;
 
         const configuration = await Configuration.findOne().lean();
 
@@ -421,7 +419,6 @@ exports.socket_connection = (http_server) => {
             "RECEIVED_DOCUMENT",
             {
               document_url: document_name,
-              user_type,
               from_user,
               to_user,
               createdAt: new_message?.createdAt,

@@ -117,6 +117,8 @@ class GroupChatService {
         data_reference_id: new_group?._id,
         from_user: user?._id,
         type: "group",
+        workspace_id: user?.workspace,
+        group_id: new_group?._id,
       };
 
       let notification_message = returnNotification("chat", "addedToGroup");
@@ -143,6 +145,7 @@ class GroupChatService {
         const pending_notification = await Notification.countDocuments({
           user_id: member,
           is_read: false,
+          workspace_id: user?.workspace,
         });
         eventEmitter(
           "NOTIFICATION",
@@ -207,6 +210,7 @@ class GroupChatService {
           group_id: { $in: unique_groups_ids },
           is_read: false,
           is_deleted: false,
+          workspace_id: user?.workspace,
         })
           .sort({ createdAt: -1 })
           .lean(),
@@ -259,12 +263,17 @@ class GroupChatService {
   chatHistory = async (payload, user) => {
     try {
       await Notification.updateMany(
-        { group_id: payload?.group_id, user_id: user?._id },
+        {
+          group_id: payload?.group_id,
+          user_id: user?._id,
+          workspace_id: user?.workspace,
+        },
         { $set: { is_read: true } }
       );
       const pending_notification = await Notification.countDocuments({
         user_id: user?._id,
         is_read: false,
+        workspace_id: user?.workspace,
       });
 
       eventEmitter(
@@ -301,12 +310,8 @@ class GroupChatService {
             ],
           },
         },
-        {
-          $unwind: { path: "$user_detail", preserveNullAndEmptyArrays: true },
-        },
-        {
-          $unwind: { path: "$reactions", preserveNullAndEmptyArrays: true },
-        },
+        { $unwind: { path: "$user_detail", preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: "$reactions", preserveNullAndEmptyArrays: true } },
         {
           $lookup: {
             from: "authentications", // Collection name of your user model
@@ -453,6 +458,7 @@ class GroupChatService {
           data_reference_id: updated_group?._id,
           from_user: user?._id,
           type: "group",
+          workspace_id: user?.workspace,
         };
 
         let notification_message = returnNotification("chat", "addedToGroup");
@@ -480,6 +486,7 @@ class GroupChatService {
           const pending_notification = await Notification.countDocuments({
             user_id: member,
             is_read: false,
+            workspace_id: user?.workspace,
           });
 
           eventEmitter(
