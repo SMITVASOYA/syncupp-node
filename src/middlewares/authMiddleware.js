@@ -216,9 +216,19 @@ exports.authorizeMultipleRoles = (user, requiredRoles) => (req, res, next) => {
   return throwError(returnMessage("auth", "insufficientPermission"), 403);
 };
 
+// this is used for the preventing multiple login gamification points
+const user_locks = {};
+
 exports.loginGamificationPointIncrease = async (user) => {
+  if (!user?.workspace) return;
+
+  const userId = user._id.toString();
+  // Check if the user is already being processed
+  if (user_locks[userId]) return;
+
+  // Set the lock for the user
+  user_locks[userId] = true;
   try {
-    if (!user?.workspace) return;
     const today = moment.utc().startOf("day");
     const workspace = await Workspace.findOne({
       _id: user?.workspace,
@@ -227,10 +237,6 @@ exports.loginGamificationPointIncrease = async (user) => {
         $elemMatch: {
           user_id: user?._id,
           status: "confirmed",
-          $or: [
-            { last_visit_date: { $lt: new Date(today) } },
-            { last_visit_date: { $exists: false } },
-          ],
         },
       },
     }).lean();
@@ -288,5 +294,8 @@ exports.loginGamificationPointIncrease = async (user) => {
     return;
   } catch (error) {
     console.log(`Error while increasing the gamification points: ${error}`);
+  } finally {
+    // Release the lock for the user
+    user_locks[userId] = false;
   }
 };
