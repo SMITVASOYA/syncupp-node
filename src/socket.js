@@ -138,16 +138,16 @@ exports.socket_connection = (http_server) => {
           workspace_id,
         });
 
-        // commenting for the better optimised solution
-        // if(!this.userJoinedToTheRoom(to_user))
-        // await Notification.create({
-        //   type: "chat",
-        //   user_id: payload?.to_user,
-        //   from_user,
-        //   data_reference_id: new_chat?._id,
-        //   message,
-        //   user_type,
-        // });
+        if (!this.userJoinedToTheRoom(to_user))
+          await Notification.create({
+            type: "chat",
+            user_id: payload?.to_user,
+            from_user,
+            data_reference_id: new_chat?._id,
+            message,
+            user_type,
+            workspace_id,
+          });
 
         // emiting the message to the sender to solve multiple device synchronous
 
@@ -216,6 +216,7 @@ exports.socket_connection = (http_server) => {
           const pending_notification = await Notification.countDocuments({
             user_id: payload?.to_user,
             is_read: false,
+            workspace_id: payload?.workspace_id,
           });
 
           const user_id =

@@ -24,12 +24,8 @@ class ChatService {
       const chats = await Chat.find({
         workspace_id: user?.workspace,
         $or: [
-          {
-            $and: [{ from_user: user?._id }, { to_user: payload?.to_user }],
-          },
-          {
-            $and: [{ from_user: payload?.to_user }, { to_user: user?._id }],
-          },
+          { $and: [{ from_user: user?._id }, { to_user: payload?.to_user }] },
+          { $and: [{ from_user: payload?.to_user }, { to_user: user?._id }] },
         ],
         is_deleted: false,
         ...search_obj,
@@ -44,7 +40,11 @@ class ChatService {
         );
       }
       await Notification.updateMany(
-        { user_id: user?._id, from_user: payload?.to_user },
+        {
+          user_id: user?._id,
+          from_user: payload?.to_user,
+          workspace_id: user?.workspace,
+        },
         { $set: { is_read: true } }
       );
       return aggregatedChats;
@@ -231,6 +231,7 @@ class ChatService {
           from_user: { $in: chat_users_ids },
           type: "chat",
           is_read: false,
+          workspace_id: user?.workspace,
         }).lean(),
         Authentication.aggregate(chatPipeline),
       ]);
