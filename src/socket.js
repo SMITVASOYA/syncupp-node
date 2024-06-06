@@ -206,7 +206,7 @@ exports.socket_connection = (http_server) => {
         console.log(notification_exist, "notification_exist");
 
         if (!notification_exist) {
-          count = count++;
+          count = count + 1;
           const sender_detail = await Authentication.findById(
             payload?.from_user
           )
