@@ -24,12 +24,8 @@ class ChatService {
       const chats = await Chat.find({
         workspace_id: user?.workspace,
         $or: [
-          {
-            $and: [{ from_user: user?._id }, { to_user: payload?.to_user }],
-          },
-          {
-            $and: [{ from_user: payload?.to_user }, { to_user: user?._id }],
-          },
+          { $and: [{ from_user: user?._id }, { to_user: payload?.to_user }] },
+          { $and: [{ from_user: payload?.to_user }, { to_user: user?._id }] },
         ],
         is_deleted: false,
         ...search_obj,
@@ -44,7 +40,11 @@ class ChatService {
         );
       }
       await Notification.updateMany(
-        { user_id: user?._id, from_user: payload?.to_user },
+        {
+          user_id: user?._id,
+          from_user: payload?.to_user,
+          workspace_id: user?.workspace,
+        },
         { $set: { is_read: true } }
       );
       return aggregatedChats;
@@ -133,18 +133,21 @@ class ChatService {
   // this function is used to fetched the all of the users where we have started the chat
   fetchUsersList = async (payload, user) => {
     try {
-      const workspace = await Workspace.findById(user?.workspace).lean();
-
-      const members_ids = workspace?.members?.map((member) => {
-        if (
-          member?.user_id?.toString() !== user?._id?.toString() &&
-          member?.status === "confirmed"
-        )
-          return member?.user_id;
-      });
+      const members_ids = user?.workspace_detail?.members?.reduce(
+        (acc, member) => {
+          if (
+            member?.user_id?.toString() !== user?._id?.toString() &&
+            member?.status === "confirmed"
+          ) {
+            acc.push(member?.user_id);
+          }
+          return acc;
+        },
+        []
+      );
 
       const chats = await Chat.find({
-        workspace_id: workspace?._id,
+        workspace_id: user?.workspace,
         $or: [
           {
             $and: [{ from_user: user?._id }, { to_user: { $in: members_ids } }],
@@ -231,6 +234,7 @@ class ChatService {
           from_user: { $in: chat_users_ids },
           type: "chat",
           is_read: false,
+          workspace_id: user?.workspace,
         }).lean(),
         Authentication.aggregate(chatPipeline),
       ]);
@@ -253,8 +257,11 @@ class ChatService {
               message?.from_user?.toString() == usr?._id?.toString())
         );
 
-        if (last_chat) usr["last_message_date"] = last_chat?.createdAt;
-        if (last_chat) usr["last_message"] = last_chat?.messsage;
+        if (last_chat) {
+          usr["last_message_date"] = last_chat?.createdAt;
+          usr["createdAt"] = last_chat?.createdAt;
+          usr["last_message"] = last_chat?.messsage;
+        }
         return;
       });
 

@@ -8,6 +8,15 @@ const boardController = require("../controllers/boardController");
 
 const activityRoute = require("express").Router();
 
+activityRoute.post("/auth/google", activityController.createCallGoogleMeeting);
+
+activityRoute.post(
+  "/create-google-meeting",
+  createMeetMeetingValidator,
+  validatorFunc,
+  activityController.createCallGoogleMeeting
+);
+
 activityRoute.use(protect);
 
 // Call Meeting & Others
@@ -22,13 +31,6 @@ activityRoute.put("/update-status/:id", activityController.updateStatus);
 activityRoute.delete("/delete-activity", activityController.deleteActivity);
 activityRoute.get("/get-status-list", activityController.statusList);
 activityRoute.get("/fetch-users", boardController.allUserList);
-
-activityRoute.post(
-  "/create-google-meeting",
-  createMeetMeetingValidator,
-  validatorFunc,
-  activityController.createCallGoogleMeeting
-);
 
 // Others
 activityRoute.post("/leaderboard", activityController.leaderboard);

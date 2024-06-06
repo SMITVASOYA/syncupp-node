@@ -59,7 +59,10 @@ class TaskService {
       const attachments = [];
       if (files && files.length > 0) {
         files.forEach((file) => {
-          attachments.push("uploads/" + file.filename);
+          attachments.push({
+            preview: "uploads/" + file.filename,
+            name: file.originalname,
+          });
         });
       }
       let agency_id;
@@ -229,7 +232,6 @@ class TaskService {
     if (!mongoose.Types.ObjectId.isValid(searchObj?.board_id)) {
       return throwError(returnMessage("board", "invalidBoardId"));
     }
-
     const board_data = await Board.findOne({
       _id: searchObj?.board_id,
     }).lean();
@@ -245,24 +247,23 @@ class TaskService {
       if (user?.role === "agency") {
         queryObj = {
           is_deleted: false,
-          agency_id: user?._id,
+          workspace_id: new mongoose.Types.ObjectId(user?.workspace),
         };
       } else if (user?.role === "client") {
         queryObj = {
           is_deleted: false,
           assign_to: user?._id,
-          // agency_id: new mongoose.Types.ObjectId(searchObj?.agency_id),
         };
       } else if (user?.role === "team_agency") {
         if (user?.sub_role === "admin") {
           queryObj = {
-            $or: [{ assign_by: user?._id }, { assign_to: user?._id }],
+            workspace_id: new mongoose.Types.ObjectId(user?.workspace),
             is_deleted: false,
           };
         } else if (user?.sub_role === "team_member") {
           queryObj = {
             is_deleted: false,
-            assign_to: user?._id,
+            $or: [{ assign_by: user?._id }, { assign_to: user?._id }],
           };
         }
       } else if (user?.role === "team_client") {
@@ -275,35 +276,65 @@ class TaskService {
       const filter = {
         $match: {},
       };
+
+      const completed_section = await Section.findOne({
+        board_id: searchObj?.board_id,
+        key: "completed",
+      })
+        .select("_id")
+        .lean();
+      const archived_section = await Section.findOne({
+        board_id: searchObj?.board_id,
+        key: "archived",
+      })
+        .select("_id")
+        .lean();
+
       if (searchObj?.filter) {
         if (searchObj?.filter === "completed") {
-          const activity_status = await Section.findOne({
-            board_id: searchObj?.board_id,
-            key: "completed",
-          })
-            .select("_id")
-            .lean();
           filter["$match"] = {
             ...filter["$match"],
-            activity_status: activity_status?._id,
+            activity_status: completed_section?._id,
+            is_deleted: false,
+          };
+        }
+        if (searchObj?.filter === "archived") {
+          filter["$match"] = {
+            ...filter["$match"],
+            mark_as_archived: true,
+            is_deleted: false,
+          };
+        }
+        if (searchObj?.filter === "overdue") {
+          const currentUtcDate = moment().utc();
+          filter["$match"] = {
+            ...filter["$match"],
+            is_deleted: false,
+            due_date: {
+              $lt: currentUtcDate.toDate(),
+            },
+            activity_status: {
+              $nin: [completed_section?._id, archived_section?._id],
+            },
           };
         }
         if (searchObj?.filter === "in_completed") {
-          const activity_status = await Section.findOne({
-            board_id: searchObj?.board_id,
-            key: "completed",
-          })
-            .select("_id")
-            .lean();
           filter["$match"] = {
             ...filter["$match"],
-            activity_status: { $ne: activity_status?._id },
+            activity_status: {
+              $nin: [completed_section?._id, archived_section?._id],
+            },
+            is_deleted: false,
           };
         }
         if (searchObj?.filter === "my_task") {
           filter["$match"] = {
             ...filter["$match"],
             assign_to: user?._id,
+            is_deleted: false,
+            activity_status: {
+              $nin: [archived_section?._id],
+            },
           };
         }
         // Filter for tasks due this week
@@ -313,6 +344,10 @@ class TaskService {
           filter["$match"] = {
             ...filter["$match"],
             due_date: { $gte: startOfWeek, $lte: endOfWeek },
+            is_deleted: false,
+            activity_status: {
+              $nin: [completed_section?._id, archived_section?._id],
+            },
           };
         }
         // Filter for tasks due next week
@@ -330,8 +365,26 @@ class TaskService {
           filter["$match"] = {
             ...filter["$match"],
             due_date: { $gte: startOfNextWeek, $lte: endOfNextWeek },
+            is_deleted: false,
+            activity_status: {
+              $nin: [completed_section?._id, archived_section?._id],
+            },
           };
         }
+      } else {
+        filter["$match"] = {
+          ...filter["$match"],
+          mark_as_archived: false,
+          is_deleted: false,
+        };
+      }
+
+      // Filter for tasks due next week
+      if (searchObj?.assignee_id) {
+        filter["$match"] = {
+          ...filter["$match"],
+          assign_to: new mongoose.Types.ObjectId(searchObj?.assignee_id),
+        };
       }
 
       if (searchObj.search && searchObj.search !== "") {
@@ -472,6 +525,7 @@ class TaskService {
             priority: 1,
             mark_as_done: 1,
             mark_as_archived: 1,
+            workspace_id: 1,
           },
         },
       ];
@@ -528,7 +582,7 @@ class TaskService {
       if (user?.role === "agency") {
         queryObj = {
           is_deleted: false,
-          agency_id: user?._id,
+          workspace_id: new mongoose.Types.ObjectId(user?.workspace),
         };
       } else if (user?.role === "client") {
         queryObj = {
@@ -538,13 +592,13 @@ class TaskService {
       } else if (user?.role === "team_agency") {
         if (user?.sub_role === "admin") {
           queryObj = {
-            $or: [{ assign_by: user?._id }, { assign_to: user?._id }],
+            workspace_id: new mongoose.Types.ObjectId(user?.workspace),
             is_deleted: false,
           };
         } else if (user?.sub_role === "team_member") {
           queryObj = {
             is_deleted: false,
-            assign_to: user?._id,
+            $or: [{ assign_by: user?._id }, { assign_to: user?._id }],
           };
         }
       } else if (user?.role === "team_client") {
@@ -557,30 +611,71 @@ class TaskService {
         $match: {},
       };
 
+      const completed_section = await Section.findOne({
+        board_id: searchObj?.board_id,
+        key: "completed",
+      })
+        .select("_id")
+        .lean();
+      const archived_section = await Section.findOne({
+        board_id: searchObj?.board_id,
+        key: "archived",
+      })
+        .select("_id")
+        .lean();
+
       if (searchObj?.filter) {
         if (searchObj?.filter === "completed") {
-          const activity_status = await Section.findOne({
-            board_id: searchObj?.board_id,
-            key: "completed",
-          })
-            .select("_id")
-            .lean();
-
           filter["$match"] = {
             ...filter["$match"],
-            mark_as_done: true,
+            activity_status: completed_section?._id,
+            is_deleted: false,
+          };
+        }
+        if (searchObj?.filter !== "archived") {
+          filter["$match"] = {
+            ...filter["$match"],
+            mark_as_archived: false,
+            is_deleted: false,
+          };
+        }
+        if (searchObj?.filter === "archived") {
+          filter["$match"] = {
+            ...filter["$match"],
+            mark_as_archived: true,
+            is_deleted: false,
+          };
+        }
+        if (searchObj?.filter === "overdue") {
+          const currentUtcDate = moment().utc();
+          filter["$match"] = {
+            ...filter["$match"],
+            is_deleted: false,
+            due_date: {
+              $lt: currentUtcDate.toDate(),
+            },
+            activity_status: {
+              $nin: [completed_section?._id, archived_section?._id],
+            },
           };
         }
         if (searchObj?.filter === "in_completed") {
           filter["$match"] = {
             ...filter["$match"],
-            mark_as_done: false,
+            activity_status: {
+              $nin: [completed_section?._id, archived_section?._id],
+            },
+            is_deleted: false,
           };
         }
         if (searchObj?.filter === "my_task") {
           filter["$match"] = {
             ...filter["$match"],
-            assign_to: { $in: user?._id },
+            assign_to: user?._id,
+            is_deleted: false,
+            activity_status: {
+              $nin: [archived_section?._id],
+            },
           };
         }
         // Filter for tasks due this week
@@ -590,6 +685,10 @@ class TaskService {
           filter["$match"] = {
             ...filter["$match"],
             due_date: { $gte: startOfWeek, $lte: endOfWeek },
+            is_deleted: false,
+            activity_status: {
+              $nin: [completed_section?._id, archived_section?._id],
+            },
           };
         }
         // Filter for tasks due next week
@@ -607,16 +706,26 @@ class TaskService {
           filter["$match"] = {
             ...filter["$match"],
             due_date: { $gte: startOfNextWeek, $lte: endOfNextWeek },
+            is_deleted: false,
+            activity_status: {
+              $nin: [completed_section?._id, archived_section?._id],
+            },
           };
         }
+      } else {
+        filter["$match"] = {
+          ...filter["$match"],
+          mark_as_archived: false,
+          is_deleted: false,
+        };
+      }
 
-        // // Filter for
-        // if (searchObj?.section_id) {
-        //   filter["$match"] = {
-        //     ...filter["$match"],
-        //     activity_status: new mongoose.Types.ObjectId(searchObj?.section_id),
-        //   };
-        // }
+      // Filter for tasks due next week
+      if (searchObj?.assignee_id) {
+        filter["$match"] = {
+          ...filter["$match"],
+          assign_to: new mongoose.Types.ObjectId(searchObj?.assignee_id),
+        };
       }
       const pagination = paginationObject(searchObj);
 
@@ -698,12 +807,13 @@ class TaskService {
         {
           $lookup: {
             from: "authentications",
-            localField: "assign_by",
+            localField: "assign_by_data",
             foreignField: "_id",
-            as: "assign_by",
+            as: "assign_by_data",
             pipeline: [
               {
                 $project: {
+                  _id: 1,
                   name: 1,
                   first_name: 1,
                   last_name: 1,
@@ -716,7 +826,10 @@ class TaskService {
           },
         },
         {
-          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
+          $unwind: {
+            path: "$assign_by_data",
+            preserveNullAndEmptyArrays: true,
+          },
         },
         {
           $lookup: {
@@ -750,9 +863,10 @@ class TaskService {
             updatedAt: 1,
             agenda: 1,
             assign_to: "$team_data",
-            assigned_by_first_name: "$assign_by.first_name",
-            assigned_by_last_name: "$assign_by.last_name",
-            assigned_by_name: "$assign_by.assigned_by_name",
+            assigned_by_first_name: "$assign_by_data.first_name",
+            assigned_by_last_name: "$assign_by_data.last_name",
+            assigned_by_name: "$assign_by_data.assigned_by_name",
+            assign_by: 1,
             column_id: "$status.name",
             board_id: 1,
             priority: 1,
@@ -760,6 +874,7 @@ class TaskService {
             comments_count: { $size: "$comments" },
             mark_as_done: 1,
             mark_as_archived: 1,
+            workspace_id: 1,
           },
         },
         {
@@ -805,8 +920,10 @@ class TaskService {
 
         {
           $match: {
+            ...queryObj,
             board_id: new mongoose.Types.ObjectId(searchObj?.board_id),
             is_deleted: false,
+            "status.is_deleted": false,
           },
         },
         {
@@ -849,7 +966,7 @@ class TaskService {
       if (user?.role === "agency") {
         queryObj = {
           is_deleted: false,
-          agency_id: user?._id,
+          workspace_id: new mongoose.Types.ObjectId(user?.workspace),
         };
       } else if (user?.role === "client") {
         queryObj = {
@@ -859,13 +976,13 @@ class TaskService {
       } else if (user?.role === "team_agency") {
         if (user?.sub_role === "admin") {
           queryObj = {
-            $or: [{ assign_by: user?._id }, { assign_to: user?._id }],
+            workspace_id: new mongoose.Types.ObjectId(user?.workspace),
             is_deleted: false,
           };
         } else if (user?.sub_role === "team_member") {
           queryObj = {
             is_deleted: false,
-            assign_to: user?._id,
+            $or: [{ assign_by: user?._id }, { assign_to: user?._id }],
           };
         }
       } else if (user?.role === "team_client") {
@@ -878,35 +995,71 @@ class TaskService {
         $match: {},
       };
 
+      const completed_section = await Section.findOne({
+        board_id: searchObj?.board_id,
+        key: "completed",
+      })
+        .select("_id")
+        .lean();
+      const archived_section = await Section.findOne({
+        board_id: searchObj?.board_id,
+        key: "archived",
+      })
+        .select("_id")
+        .lean();
+
       if (searchObj?.filter) {
         if (searchObj?.filter === "completed") {
-          const activity_status = await Section.findOne({
-            board_id: searchObj?.board_id,
-            key: "completed",
-          })
-            .select("_id")
-            .lean();
           filter["$match"] = {
             ...filter["$match"],
-            activity_status: activity_status?._id,
+            activity_status: completed_section?._id,
+            is_deleted: false,
+          };
+        }
+        if (searchObj?.filter !== "archived") {
+          filter["$match"] = {
+            ...filter["$match"],
+            mark_as_archived: false,
+            is_deleted: false,
+          };
+        }
+        if (searchObj?.filter === "archived") {
+          filter["$match"] = {
+            ...filter["$match"],
+            mark_as_archived: true,
+            is_deleted: false,
+          };
+        }
+        if (searchObj?.filter === "overdue") {
+          const currentUtcDate = moment().utc();
+          filter["$match"] = {
+            ...filter["$match"],
+            is_deleted: false,
+            due_date: {
+              $lt: currentUtcDate.toDate(),
+            },
+            activity_status: {
+              $nin: [completed_section?._id, archived_section?._id],
+            },
           };
         }
         if (searchObj?.filter === "in_completed") {
-          const activity_status = await Section.findOne({
-            board_id: searchObj?.board_id,
-            key: { $ne: "completed" },
-          })
-            .select("_id")
-            .lean();
           filter["$match"] = {
             ...filter["$match"],
-            activity_status: { $ne: activity_status?._id },
+            activity_status: {
+              $nin: [completed_section?._id, archived_section?._id],
+            },
+            is_deleted: false,
           };
         }
         if (searchObj?.filter === "my_task") {
           filter["$match"] = {
             ...filter["$match"],
-            assign_to: { $in: user?._id },
+            assign_to: user?._id,
+            is_deleted: false,
+            activity_status: {
+              $nin: [archived_section?._id],
+            },
           };
         }
         // Filter for tasks due this week
@@ -916,6 +1069,10 @@ class TaskService {
           filter["$match"] = {
             ...filter["$match"],
             due_date: { $gte: startOfWeek, $lte: endOfWeek },
+            is_deleted: false,
+            activity_status: {
+              $nin: [completed_section?._id, archived_section?._id],
+            },
           };
         }
         // Filter for tasks due next week
@@ -933,8 +1090,18 @@ class TaskService {
           filter["$match"] = {
             ...filter["$match"],
             due_date: { $gte: startOfNextWeek, $lte: endOfNextWeek },
+            is_deleted: false,
+            activity_status: {
+              $nin: [completed_section?._id, archived_section?._id],
+            },
           };
         }
+      } else {
+        filter["$match"] = {
+          ...filter["$match"],
+          mark_as_archived: false,
+          is_deleted: false,
+        };
       }
       const taskPipeline = [
         filter,
@@ -968,7 +1135,7 @@ class TaskService {
             from: "authentications",
             localField: "assign_by",
             foreignField: "_id",
-            as: "assign_by",
+            as: "assign_by_data",
             pipeline: [
               {
                 $project: {
@@ -984,7 +1151,10 @@ class TaskService {
           },
         },
         {
-          $unwind: { path: "$assign_by", preserveNullAndEmptyArrays: true },
+          $unwind: {
+            path: "$assign_by_data",
+            preserveNullAndEmptyArrays: true,
+          },
         },
         {
           $lookup: {
@@ -1018,9 +1188,9 @@ class TaskService {
             updatedAt: 1,
             agenda: 1,
             assign_to: "$team_data",
-            assigned_by_first_name: "$assign_by.first_name",
-            assigned_by_last_name: "$assign_by.last_name",
-            assigned_by_name: "$assign_by.assigned_by_name",
+            assigned_by_first_name: "$assign_by_data.first_name",
+            assigned_by_last_name: "$assign_by_data.last_name",
+            assigned_by_name: "$assign_by_data.assigned_by_name",
             column_id: "$status.name",
             board_id: 1,
             priority: 1,
@@ -1028,6 +1198,8 @@ class TaskService {
             comments_count: { $size: "$comments" },
             mark_as_done: 1,
             mark_as_archived: 1,
+            workspace_id: 1,
+            assign_by: 1,
           },
         },
       ];
@@ -1138,6 +1310,7 @@ class TaskService {
             board_id: 1,
             mark_as_done: 1,
             mark_as_archived: 1,
+            workspace_id: 1,
           },
         },
       ];
@@ -1311,7 +1484,6 @@ class TaskService {
       if (payload?.action_name === "date_assignee_update") {
         return this.updateDateAssigneeTask(payload, id, user);
       }
-
       let {
         title,
         agenda,
@@ -1323,27 +1495,53 @@ class TaskService {
         board_id,
         comment,
       } = payload;
-
       const status_check = await Task.findById(id).populate("activity_status");
       if (status_check?.activity_status?.name === "completed") {
         return throwError(returnMessage("activity", "CannotUpdate"));
       }
       const attachments = [];
-
       if (files && files.length > 0) {
         files.forEach((file) => {
-          attachments.push("uploads/" + file.filename);
+          attachments.push({
+            preview: "uploads/" + file.filename,
+            name: file.filename,
+          });
         });
         const existingFiles = await Task.findById(id);
 
-        existingFiles &&
-          existingFiles?.attachments.map((item) => {
-            fs.unlink(`./src/public/${item}`, (err) => {
-              if (err) {
-                logger.error(`Error while unlinking the documents: ${err}`);
-              }
-            });
+        // existingFiles &&
+        //   existingFiles?.attachments.map((item) => {
+        //     fs.unlink(`./src/public/${item.preview}`, (err) => {
+        //       if (err) {
+        //         logger.error(`Error while unlinking the documents: ${err}`);
+        //       }
+        //     });
+        //   });
+      }
+
+      console.log(attachments);
+      const removed_attachments = [];
+      let objects = [];
+      // Check if attachments is an array and parse each item
+      if (Array.isArray(payload.attachments)) {
+        objects = payload.attachments.map((item) => JSON.parse(item));
+      }
+      // Check if attachments is a string and parse it
+      else if (typeof payload.attachments === "string") {
+        objects = [JSON.parse(payload.attachments)];
+      }
+
+      // Assuming status_check is a predefined variable containing attachments to compare against
+      for (const attachment of status_check?.attachments || []) {
+        const is_include = objects.find(
+          (existingAttachment) =>
+            existingAttachment._id.toString() === attachment._id.toString()
+        );
+        if (!is_include) {
+          removed_attachments.push({
+            _id: new mongoose.Types.ObjectId(attachment._id),
           });
+        }
       }
 
       if (due_date && due_date !== "null") {
@@ -1385,6 +1583,10 @@ class TaskService {
         { status: payload?.status, updated_by: user?._id },
       ];
 
+      status_check.attachments.push(...attachments);
+      await status_check.save();
+
+      console.log(attachments, "dwfwf");
       // const current_activity = await Task.findById(id).lean();
       let updateTasksPayload = {
         title,
@@ -1395,7 +1597,7 @@ class TaskService {
         ...(payload?.assign_to &&
           payload?.assign_to[0] && { assign_to: payload?.assign_to }),
         activity_status: activity_status,
-        ...(attachments?.length > 0 && { attachments }),
+
         priority,
         ...(mark_as_done && mark_as_done === "true" && { mark_as_done: true }),
         ...(payload?.status &&
@@ -1406,7 +1608,18 @@ class TaskService {
             payload?.status.toString() && {
             $push: { status_history: status_history },
           }),
+        ...(removed_attachments?.length > 0 && {
+          $pull: {
+            attachments: {
+              $or: removed_attachments,
+            },
+          },
+        }),
+        // ...(attachments?.length > 0 && {
+        //   $push: { attachments: { $each: attachments } },
+        // }),
       };
+
       const updateTasks = await Task.findByIdAndUpdate(id, updateTasksPayload, {
         new: true,
         useFindAndModify: false,

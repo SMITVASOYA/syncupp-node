@@ -4,6 +4,8 @@ const invoiceService = new InvoiceService();
 const TaskService = require("../services/taskService");
 const PaymentService = require("../services/paymentService");
 const taskService = new TaskService();
+const ActivityService = require("../services/activityService");
+const activityService = new ActivityService();
 const Configuration = require("../models/configurationSchema");
 const paymentService = new PaymentService();
 const Activity_Type_Master = require("../models/masters/activityTypeMasterSchema");
@@ -51,41 +53,19 @@ exports.setupNightlyCronJob = async () => {
     paymentService.cronForFreeTrialEnd();
   });
 
-  // Crone job for 15 minutes start
-  // const callMeetingCron = config?.cron_job.call_meeting_alert;
-  const call_meeting_alert_check_rate =
-    config?.cron_job.call_meeting_alert_check_rate;
-  cron.schedule(call_meeting_alert_check_rate, async () => {
-    const currentUtcDate = moment().utc();
-    const meetings = await Activity.find({
-      is_deleted: false,
-      // meeting_start_time: {
-      //   $gte: currentUtcDate.toDate(),
-      //   $lte: moment(currentUtcDate).add(callMeetingCron, "minutes").toDate(),
-      // },
-    }).lean();
-    meetings.forEach((meeting) => {
-      const { alert_time, alert_time_unit, meeting_start_time } = meeting;
+  // // Crone job for 15 minutes start
+  // const call_meeting_alert_check_rate =
+  //   config?.cron_job.call_meeting_alert_check_rate;
+  // cron.schedule(call_meeting_alert_check_rate, async () => {
+  //   const currentUtcDate = moment().utc();
 
-      if (alert_time && alert_time_unit) {
-        // Calculate the notification time
-        let notificationTime = moment(meeting_start_time);
-        if (alert_time_unit === "h") {
-          notificationTime.subtract(alert_time, "hours");
-        } else if (alert_time_unit === "min") {
-          notificationTime.subtract(alert_time, "minutes");
-        }
-      }
-
-      // If the current time is the same or after the notification time, send the alert
-      if (
-        currentUtcDate.isSameOrAfter(notificationTime) &&
-        currentUtcDate.isBefore(moment(meeting_start_time))
-      ) {
-        activityService.meetingAlertCronJob(meeting);
-      }
-    });
-  });
+  //   // Find all activities that are not deleted and are recurring
+  //   const meetings = await Activity.find({
+  //     is_deleted: false,
+  //     recurring: true,
+  //   }).lean();
+  //   activityService.meetingAlertCronJob(meetings);
+  // });
 
   // After Expire alert
   const afterExpireAlert = config?.cron_job.after_expire_alert_time;

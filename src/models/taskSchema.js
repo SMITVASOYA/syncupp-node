@@ -33,7 +33,7 @@ const taskSchema = new mongoose.Schema(
         },
       },
     ],
-    attachments: [{ type: String }],
+    attachments: [{ preview: { type: String }, name: { type: String } }],
     activity_status: {
       type: mongoose.Types.ObjectId,
       ref: "section",

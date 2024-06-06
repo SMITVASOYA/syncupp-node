@@ -149,9 +149,9 @@ class TeamMemberService {
               capitalizeFirstLetter(team_member_exist?.first_name) +
               " " +
               capitalizeFirstLetter(team_member_exist?.last_name),
-            invitation_text: `You are invited to the ${
+            invitation_text: `You are invited to the ${capitalizeFirstLetter(
               workspace_exist?.name
-            } workspace by ${
+            )} workspace by ${
               capitalizeFirstLetter(user?.first_name) +
               " " +
               capitalizeFirstLetter(user?.last_name)
@@ -247,9 +247,9 @@ class TeamMemberService {
               capitalizeFirstLetter(first_name) +
               " " +
               capitalizeFirstLetter(last_name),
-            invitation_text: `You are invited to the ${
+            invitation_text: `You are invited to the ${capitalizeFirstLetter(
               workspace_exist?.name
-            } workspace by ${
+            )} workspace by ${
               capitalizeFirstLetter(user?.first_name) +
               " " +
               capitalizeFirstLetter(user?.last_name)
@@ -641,28 +641,6 @@ class TeamMemberService {
           returnMessage("teamMember", "teamMemberNotFound"),
           statusCode.notFound
         );
-
-      const logged_user = user?.workspace_detail?.members?.find(
-        (member) => member?.user_id?.toString() === user?._id?.toString()
-      );
-
-      if (
-        user?.workspace_detail?.created_by?.toString() !== user?._id?.toString()
-      ) {
-        const sub_role = await Team_Role_Master.findById(
-          logged_user?.sub_role
-        ).lean();
-
-        if (
-          sub_role?.name !== "admin" ||
-          user?.workspace_detail?.created_by?.toString() !==
-            user?._id?.toString()
-        )
-          return throwError(
-            returnMessage("auth", "forbidden"),
-            statusCode.forbidden
-          );
-      }
 
       const [member_auth, sub_role] = await Promise.all([
         Authentication.findById(member_id)
@@ -1950,9 +1928,9 @@ class TeamMemberService {
               capitalizeFirstLetter(client_member_detail?.first_name) +
               " " +
               capitalizeFirstLetter(client_member_detail?.last_name),
-            invitation_text: `You are invited to the ${
+            invitation_text: `You are invited to the ${capitalizeFirstLetter(
               workspace?.name
-            } workspace by ${
+            )} workspace by ${
               capitalizeFirstLetter(user?.first_name) +
               " " +
               capitalizeFirstLetter(user?.last_name)

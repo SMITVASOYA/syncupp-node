@@ -138,17 +138,6 @@ exports.socket_connection = (http_server) => {
           workspace_id,
         });
 
-        // commenting for the better optimised solution
-        // if(!this.userJoinedToTheRoom(to_user))
-        // await Notification.create({
-        //   type: "chat",
-        //   user_id: payload?.to_user,
-        //   from_user,
-        //   data_reference_id: new_chat?._id,
-        //   message,
-        //   user_type,
-        // });
-
         // emiting the message to the sender to solve multiple device synchronous
 
         io.to(sender).emit("RECEIVED_MESSAGE", {
@@ -170,6 +159,27 @@ exports.socket_connection = (http_server) => {
           message_type: new_chat?.message_type,
           workspace_id,
         });
+
+        if (!this.userJoinedToTheRoom(to_user)) {
+          const notification_exist = await Notification.findOne({
+            user_id: payload?.to_user,
+            from_user: from_user,
+            type: "chat",
+            is_read: false,
+            is_deleted: false,
+            workspace_id: payload?.workspace_id,
+            data_reference_id: new_chat?._id,
+          });
+          if (!notification_exist)
+            await Notification.create({
+              type: "chat",
+              user_id: payload?.to_user,
+              from_user,
+              data_reference_id: new_chat?._id,
+              message,
+              workspace_id,
+            });
+        }
       } catch (error) {
         logger.error(`Error while sending the message: ${error}`);
         return throwError(error?.message, error?.statusCode);
@@ -181,7 +191,7 @@ exports.socket_connection = (http_server) => {
     // So it will not display at the same time of the chat
     socket.on("NOT_ONGOING_CHAT", async (payload) => {
       try {
-        console.log("NOT_ONGOING_CHAT");
+        console.log("NOT_ONGOING_CHAT", payload);
         const notification_exist = await Notification.findOne({
           user_id: payload?.to_user,
           from_user: payload?.from_user,
@@ -189,7 +199,10 @@ exports.socket_connection = (http_server) => {
           is_read: false,
           is_deleted: false,
           workspace_id: payload?.workspace_id,
+          data_reference_id: payload?._id,
         });
+
+        console.log(notification_exist, "notification_exist");
 
         if (!notification_exist) {
           const sender_detail = await Authentication.findById(
@@ -216,6 +229,7 @@ exports.socket_connection = (http_server) => {
           const pending_notification = await Notification.countDocuments({
             user_id: payload?.to_user,
             is_read: false,
+            workspace_id: payload?.workspace_id,
           });
 
           const user_id =
@@ -303,7 +317,7 @@ exports.socket_connection = (http_server) => {
     socket.on("IMAGES", async (payload) => {
       try {
         console.log("IMAGES");
-        const { from_user, to_user, buffer, user_type, ext } = payload;
+        const { from_user, to_user, buffer, ext } = payload;
 
         const configuration = await Configuration.findOne().lean();
         // removed the size validaions
@@ -348,7 +362,6 @@ exports.socket_connection = (http_server) => {
             message_type: new_message?.message_type,
             _id: new_message?._id,
             createdAt: new_message?.createdAt,
-            user_type,
           });
 
           socket.to(to_user).emit("RECEIVED_IMAGE", {
@@ -358,7 +371,6 @@ exports.socket_connection = (http_server) => {
             message_type: new_message?.message_type,
             _id: new_message?._id,
             createdAt: new_message?.createdAt,
-            user_type,
           });
         }
       } catch (error) {
@@ -372,7 +384,7 @@ exports.socket_connection = (http_server) => {
     socket.on("DOCUMENTS", async (payload) => {
       try {
         console.log("DOCUMENTS");
-        const { from_user, to_user, buffer, user_type, ext } = payload;
+        const { from_user, to_user, buffer, ext } = payload;
 
         const configuration = await Configuration.findOne().lean();
 
@@ -421,7 +433,6 @@ exports.socket_connection = (http_server) => {
             "RECEIVED_DOCUMENT",
             {
               document_url: document_name,
-              user_type,
               from_user,
               to_user,
               createdAt: new_message?.createdAt,

@@ -370,6 +370,8 @@ class BoardService {
           ...(is_image_exist && {
             board_image: payload?.board_image,
           }),
+          // ...(removed_member[0] && { $pull: { members: removed_member } }),
+          // ...(new_member[0] && { $push: { members: new_member } }),
         };
 
         await Board.findByIdAndUpdate(board_id, update_data, { new: true });

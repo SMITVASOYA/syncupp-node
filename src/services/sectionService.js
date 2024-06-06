@@ -16,9 +16,8 @@ class sectionService {
       user["sub_role"] = user_role_data?.sub_role;
 
       if (
-        user_role_data?.user_role !== "agency" ||
-        (user_role_data?.user_role === "team_agency" &&
-          user_role_data?.sub_role !== "admin")
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.sub_role !== "admin"
       ) {
         return throwError(returnMessage("auth", "insufficientPermission"));
       }
@@ -117,9 +116,8 @@ class sectionService {
       user["sub_role"] = user_role_data?.sub_role;
 
       if (
-        user_role_data?.user_role !== "agency" ||
-        (user_role_data?.user_role === "team_agency" &&
-          user_role_data?.sub_role !== "admin")
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.sub_role !== "admin"
       ) {
         return throwError(returnMessage("auth", "insufficientPermission"));
       }
@@ -208,9 +206,8 @@ class sectionService {
       user["sub_role"] = user_role_data?.sub_role;
 
       if (
-        user_role_data?.user_role !== "agency" ||
-        (user_role_data?.user_role === "team_agency" &&
-          user_role_data?.sub_role !== "admin")
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.sub_role !== "admin"
       ) {
         return throwError(returnMessage("auth", "insufficientPermission"));
       }
@@ -219,6 +216,7 @@ class sectionService {
 
       const is_task_available = await Task.findOne({
         activity_status: section_id,
+        is_deleted: false,
       }).lean();
 
       if (is_task_available) {
@@ -244,9 +242,8 @@ class sectionService {
       user["sub_role"] = user_role_data?.sub_role;
 
       if (
-        user_role_data?.user_role !== "agency" ||
-        (user_role_data?.user_role === "team_agency" &&
-          user_role_data?.sub_role !== "admin")
+        user_role_data?.user_role !== "agency" &&
+        user_role_data?.sub_role !== "admin"
       ) {
         return throwError(returnMessage("auth", "insufficientPermission"));
       }
