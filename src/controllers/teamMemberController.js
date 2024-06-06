@@ -13,12 +13,12 @@ exports.add = catchAsyncError(async (req, res, next) => {
 
 // Team Member Verification
 exports.verify = catchAsyncError(async (req, res, next) => {
-  await teamMemberService.verify(req.body);
+  const verified_user = await teamMemberService.verify(req.body);
   sendResponse(
     res,
     true,
     returnMessage("workspace", "verified"),
-    {},
+    verified_user,
     statusCode.success
   );
 });

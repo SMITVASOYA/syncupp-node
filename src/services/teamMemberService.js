@@ -583,7 +583,8 @@ class TeamMemberService {
         },
         { new: true }
       );
-      return;
+
+      return await authService.tokenGenerator(user_exist);
     } catch (error) {
       logger.error(`Error while verify the workspace invitation: ${error}`);
       return throwError(error?.message, error?.statusCode);
@@ -947,7 +948,16 @@ class TeamMemberService {
 
   deleteMember = async (payload, user) => {
     try {
-      const { teamMemberIds } = payload;
+      let { teamMemberIds } = payload;
+      if (!Array.isArray(teamMemberIds)) {
+        teamMemberIds = [teamMemberIds];
+      }
+
+      teamMemberIds = teamMemberIds.map(
+        (member) => new mongoose.Types.ObjectId(member)
+      );
+
+      console.log(teamMemberIds);
       const [workspace, sheet] = await Promise.all([
         Workspace.findById(user?.workspace).lean(),
         SheetManagement.findOne({
