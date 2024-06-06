@@ -14,7 +14,8 @@ class NotificationService {
   // Add Notification
 
   addNotification = async (payload, id) => {
-    let { module_name, activity_type_action, client_id, agenda } = payload;
+    let { module_name, activity_type_action, client_id, agenda, workspace_id } =
+      payload;
     if (payload?.agenda) payload.agenda = extractTextFromHtml(agenda);
     try {
       var with_unread_count = async (notification_data, user_id) => {
@@ -25,7 +26,7 @@ class NotificationService {
         return {
           notification: notification_data,
           un_read_count: un_read_count,
-          workspace_id: payload?.workspace_id,
+          workspace_id,
         };
       };
 
@@ -221,7 +222,7 @@ class NotificationService {
             message: message,
             task_status: payload?.status_name,
             board_name: payload?.board_name,
-            workspace_id: payload?.workspace_id,
+            workspace_id,
             task_comment_count: payload?.comment_count,
           });
 
@@ -229,7 +230,7 @@ class NotificationService {
             "NOTIFICATION",
             await with_unread_count(notification, userId),
             userId,
-            payload?.workspace_id
+            workspace_id
           );
         };
 
@@ -265,7 +266,7 @@ class NotificationService {
             "NOTIFICATION",
             await with_unread_count(notification, userId),
             userId,
-            payload?.workspace_id
+            workspace_id
           );
         };
         if (action_type === "create")
@@ -297,7 +298,7 @@ class NotificationService {
             type: "invoice",
             data_reference_id: id,
             message: message,
-            workspace_id: payload?.workspace_id,
+            workspace_id,
           });
 
           eventEmitter(
@@ -325,12 +326,13 @@ class NotificationService {
           type: dataType,
           data_reference_id: id,
           message: message,
+          workspace_id,
         });
         eventEmitter(
           "NOTIFICATION",
           await with_unread_count(notification, userId),
           userId,
-          payload?.workspace_id
+          workspace_id
         );
       };
 
