@@ -173,7 +173,7 @@ class PaymentService {
 
       await Authentication.findByIdAndUpdate(
         user?._id,
-        { subscription_id: subscription?.id },
+        { subscription_id: subscription?.id, purchased_plan: plan?._id },
         { new: true }
       );
 
@@ -2311,7 +2311,7 @@ class PaymentService {
             {
               $set: {
                 "members.$.status": "payment_pending",
-                trial_end_date: undefined,
+                trial_end_date: null,
               },
             }
           );
