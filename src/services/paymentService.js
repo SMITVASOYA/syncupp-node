@@ -1132,7 +1132,6 @@ class PaymentService {
             _id: "$user._id",
             first_name: "$user.first_name",
             last_name: "$user.last_name",
-            name: { $concat: ["$user.first_name", " ", "$user.last_name"] },
             role: "$role.name",
             total_sheets: 1,
           },
