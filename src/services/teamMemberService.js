@@ -584,7 +584,10 @@ class TeamMemberService {
         { new: true }
       );
 
-      return await authService.tokenGenerator(user_exist);
+      return await authService.tokenGenerator({
+        ...user_exist,
+        via_invitation: true, // this used when the any user verify as a user of other's workspace even if he had workspace created
+      });
     } catch (error) {
       logger.error(`Error while verify the workspace invitation: ${error}`);
       return throwError(error?.message, error?.statusCode);

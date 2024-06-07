@@ -512,7 +512,7 @@ class NotificationService {
             payload?.members[0] &&
             payload?.members?.map(async (item) => {
               await createAndEmitNotification(
-                item,
+                item?.member_id,
                 "boardUpdated",
                 "board",
                 "board"

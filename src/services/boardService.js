@@ -158,7 +158,7 @@ class BoardService {
           workspace_id: user?.workspace,
         }),
         Section.create({
-          section_name: "Archived",
+          section_name: "Archive",
           board_id: new_board?._id,
           is_deletable: false,
           key: "archived",
@@ -257,7 +257,7 @@ class BoardService {
         return throwError(returnMessage("auth", "insufficientPermission"));
       }
 
-      const existing_board = await Board.findById(board_id).lean();
+      const existing_board = await Board.findById(board_id);
 
       // Check Permission
       if (user?.role === "team_agency" && user?.sub_role === "admin") {
@@ -309,7 +309,7 @@ class BoardService {
           .map((existingMember) => String(existingMember.member_id))
           .includes(String(member));
         if (!is_include) {
-          new_member.push(member);
+          new_member.push({ member_id: new mongoose.Types.ObjectId(member) });
         }
       }
 
@@ -319,7 +319,10 @@ class BoardService {
           .map(String)
           .includes(String(member?.member_id));
         if (!is_include) {
-          removed_member.push(member?.member_id);
+          removed_member.push({
+            member_id: member?.member_id,
+            _id: member._id,
+          });
           const task = await Task.findOne({
             board_id: board_id,
             assign_to: { $in: [member?.member_id] },
@@ -337,16 +340,15 @@ class BoardService {
         } else if (image === "") {
           image_path = "";
         }
-        const existing_image = await Board.findById(board_id).lean();
 
         // Check weather same image used in other board else do not delete
         const check_image = await Board.find({
           board_id: { $ne: board_id },
-          board_image: existing_image?.board_image,
+          board_image: existing_board?.board_image,
         }).lean();
         if (!check_image) {
-          existing_image &&
-            fs.unlink(`./src/public/${existing_image?.board_image}`, (err) => {
+          existing_board &&
+            fs.unlink(`./src/public/${existing_board?.board_image}`, (err) => {
               if (err) {
                 logger.error(`Error while unlinking the documents: ${err}`);
               }
@@ -359,32 +361,37 @@ class BoardService {
             board_image: payload?.board_image,
           }).lean();
         }
-
         const update_data = {
           project_name: lowercaseFirstLetter(project_name),
           description,
-          members: updated_members,
           ...(image_path && {
             board_image: image_path,
           }),
           ...(is_image_exist && {
             board_image: payload?.board_image,
           }),
-          // ...(removed_member[0] && { $pull: { members: removed_member } }),
-          // ...(new_member[0] && { $push: { members: new_member } }),
+          ...(removed_member &&
+            removed_member[0] && {
+              $pull: {
+                members: {
+                  _id: { $in: removed_member.map((item) => item?._id) },
+                },
+              },
+            }),
         };
 
+        if (new_member && new_member[0]) {
+          existing_board.members.push(...new_member);
+          await existing_board.save();
+        }
         await Board.findByIdAndUpdate(board_id, update_data, { new: true });
       } else {
-        await Board.findByIdAndUpdate(
-          board_id,
-          {
-            members: updated_members,
-          },
-          { new: true }
-        );
+        if (new_member && new_member[0]) {
+          existing_board.members.push(...new_member);
+          await existing_board.save();
+        }
       }
-      // ------------- Notifications -------------
+      // // ------------- Notifications -------------
       const elementsToRemove = [existing_board?.agency_id, user?._id];
       const actions = ["updated", "memberRemoved"];
       actions?.map(async (action) => {
@@ -398,25 +405,28 @@ class BoardService {
           member_list = removed_member;
           mail_subject = "memberRemovedBoard";
         }
-        await notificationService.addNotification(
-          {
-            module_name: "board",
-            workspace_id: user?.workspace,
-            action_name: action,
-            members: member_list?.filter(
-              (item) => !elementsToRemove.includes(item)
-            ),
-            project_name: existing_board?.project_name,
-            added_by:
-              capitalizeFirstLetter(user?.first_name) +
-              " " +
-              capitalizeFirstLetter(user?.last_name),
-          },
-          board_id
-        );
+
+        if (member_list && member_list[0]) {
+          await notificationService.addNotification(
+            {
+              module_name: "board",
+              workspace_id: user?.workspace,
+              action_name: action,
+              members: member_list?.filter(
+                (item) => !elementsToRemove.includes(item?.member_id)
+              ),
+              project_name: existing_board?.project_name,
+              added_by:
+                capitalizeFirstLetter(user?.first_name) +
+                " " +
+                capitalizeFirstLetter(user?.last_name),
+            },
+            board_id
+          );
+        }
 
         const member_send_mail = member_list?.filter(
-          (item) => !elementsToRemove.includes(item)
+          (item) => !elementsToRemove.includes(item?.member_id)
         );
         const board_template = boardTemplate({
           ...existing_board,
@@ -425,16 +435,18 @@ class BoardService {
             " " +
             capitalizeFirstLetter(user?.last_name),
         });
-        member_send_mail.map(async (member) => {
-          const member_data = await Authentication.findOne({
-            _id: member,
-          }).lean();
-          sendEmail({
-            email: member_data?.email,
-            subject: returnMessage("emailTemplate", mail_subject),
-            message: board_template,
+
+        member_send_mail[0] &&
+          member_send_mail.map(async (member) => {
+            const member_data = await Authentication.findOne({
+              _id: member?.member_id,
+            }).lean();
+            sendEmail({
+              email: member_data?.email,
+              subject: returnMessage("emailTemplate", mail_subject),
+              message: board_template,
+            });
           });
-        });
       });
       // ------------- Notifications -------------
 

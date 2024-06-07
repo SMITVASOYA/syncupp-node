@@ -68,7 +68,7 @@ class WorkspaceService {
           { upsert: true }
         );
 
-      return;
+      return true;
     } catch (error) {
       logger.error(`Error while creating the workspace: ${error}`);
       return throwError(error?.message, error?.statusCode);

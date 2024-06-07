@@ -187,9 +187,14 @@ class CouponService {
 
       if (role?.name !== "agency" && role?.name !== "team_agency") return;
 
+      member_details.total_coupon = member_details?.total_coupon?.map((cp) =>
+        cp?.toString()
+      );
+
       if (member_details?.total_coupon?.length > 0 && coupon_count > 0)
         coupon = coupon.filter(
-          (couponItem) => !member_details?.total_coupon.includes(couponItem._id)
+          (couponItem) =>
+            !member_details?.total_coupon.includes(couponItem?._id?.toString())
         );
 
       const totalCouponIds = member_details?.total_coupon?.map((coupon) =>
@@ -218,7 +223,7 @@ class CouponService {
     try {
       const member_detail = user?.workspace_detail?.members?.find(
         (member) =>
-          member?.user_id?.toString() === user?._id &&
+          member?.user_id?.toString() === user?._id?.toString() &&
           member?.status === "confirmed"
       );
       return await AdminCoupon.find({
