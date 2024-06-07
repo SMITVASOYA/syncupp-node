@@ -1641,7 +1641,7 @@ class AuthService {
         company_urls?.urls?.facebook
       );
       sendEmail({
-        email: client_auth?.email,
+        email: user?.email,
         subject: returnMessage("emailTemplate", "welcomeMailSubject"),
         message: welcome_mail,
       });
