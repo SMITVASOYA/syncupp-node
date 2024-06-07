@@ -56,11 +56,11 @@ app.use(errorHandler);
 
 // Set up Socket.IO server
 const http_server = require("http").createServer(app);
+socket_connection(http_server);
 
 setupNightlyCronJob();
 
 http_server.listen(port, async () => {
   // await insertData();
-  await socket_connection(http_server);
   logger.info(`Server started at port:${port}`);
 });
