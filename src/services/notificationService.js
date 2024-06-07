@@ -325,6 +325,7 @@ class NotificationService {
           type: dataType,
           data_reference_id: id,
           message: message,
+          workspace_id: payload?.workspace_id,
         });
         eventEmitter(
           "NOTIFICATION",
@@ -510,7 +511,7 @@ class NotificationService {
             payload?.members[0] &&
             payload?.members?.map(async (item) => {
               await createAndEmitNotification(
-                item,
+                item?.member_id,
                 "boardUpdated",
                 "board",
                 "board"
