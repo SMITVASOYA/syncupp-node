@@ -1180,7 +1180,7 @@ class PaymentService {
       );
 
       for (let i = 0; i < occupied_sheets.total_sheets; i++) {
-        if (occupied_sheets?.items[i] != undefined) {
+        if (occupied_sheets?.items[i]) {
           occupied_sheets.items[i] = {
             ...occupied_sheets.items[i],
             seat_no: (i + 1).toString(),
