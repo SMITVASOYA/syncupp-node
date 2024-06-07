@@ -344,9 +344,9 @@ class AuthService {
         user_enroll &&
         user_exist?.status === "signup_incomplete" &&
         user_enroll?.password &&
-        !payload?.workspace_name
+        payload?.workspace
       ) {
-        this.welcomeMailToUsers(user_exist);
+        this.welcomeMailToUsers(user_enroll);
       }
 
       if (!payload?.referral_code) {
