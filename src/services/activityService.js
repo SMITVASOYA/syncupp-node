@@ -40,7 +40,6 @@ class ActivityService {
       const user_role_data = await authService.getRoleSubRoleInWorkspace(user);
       user["role"] = user_role_data?.user_role;
       user["sub_role"] = user_role_data?.sub_role;
-
       if (
         user_role_data?.user_role !== "agency" &&
         user_role_data?.user_role !== "team_agency"
@@ -70,6 +69,7 @@ class ActivityService {
         recurrence_interval,
         weekly_recurrence_days,
         monthly_recurrence_day_of_month,
+        token,
       } = payload;
 
       let google_meet_link;
@@ -129,6 +129,7 @@ class ActivityService {
         recurrence_interval,
         weekly_recurrence_days,
         monthly_recurrence_day_of_month,
+        token,
       };
 
       const newActivity = await Activity.create(create_data);
@@ -468,7 +469,7 @@ class ActivityService {
             attendees: "$attendeesData",
             internal_info: 1,
             all_day: 1,
-            google_meet_link: 1,
+            google_meeting_data: 1,
             alert_time_unit: 1,
             alert_time: 1,
             recurrence_pattern: 1,
@@ -1027,9 +1028,20 @@ class ActivityService {
       if (
         payload?.meeting_date !== output_date &&
         payload?.meeting_start_time !== output_time &&
-        payload?.google_meeting
+        payload?.google_meeting &&
+        activity_exist?.google_meeting_data?.meet_link
       ) {
-        google_meet_link = await this.updateGoogleMeeting(payload);
+        const link = await this.updateGoogleMeeting({
+          ...payload,
+          event_id: activity_exist?.google_meeting_data?.event_id,
+        });
+
+        google_meet_link = {
+          meet_link: link.meeting_link,
+          event_id: activity_exist?.google_meeting_data?.event_id,
+        };
+      } else if (payload?.google_meeting) {
+        google_meet_link = await this.createCallGoogleMeeting(payload);
       }
 
       if (activity_exist?.activity_status?.name === "completed") {
@@ -1055,6 +1067,7 @@ class ActivityService {
         weekly_recurrence_days,
         monthly_recurrence_day_of_month,
         all_day,
+        token,
       } = payload;
 
       let recurring_date;
@@ -1068,6 +1081,7 @@ class ActivityService {
         `${meeting_date}-${meeting_end_time}`,
         "DD-MM-YYYY-HH:mm"
       );
+
       if (!start_date.isSameOrAfter(current_date))
         return throwError(returnMessage("activity", "dateinvalid"));
 
@@ -1107,6 +1121,7 @@ class ActivityService {
           weekly_recurrence_days,
           monthly_recurrence_day_of_month,
           all_day,
+          token,
         },
         { new: true }
       );
@@ -1461,7 +1476,7 @@ class ActivityService {
               {
                 $and: [
                   { meeting_date: { $gte: new Date(start_date) } },
-                  { recurring_end_date: { $lte: new Date(end_date) } },
+                  { recurrence_end_date: { $lte: new Date(end_date) } },
                 ],
               },
             ],
@@ -1600,16 +1615,17 @@ class ActivityService {
       ];
       let activity, total_activity;
       activity = await Activity.aggregate(aggragate);
+
       let activity_array = [];
       activity.forEach((act) => {
         if (
           !payload?.given_date &&
-          !payload?.filter &&
-          act?.recurring_end_date
+          payload?.filter &&
+          act?.recurrence_end_date
         ) {
           // this will give the activity based on the filter selected and recurring date activity
           if (payload?.filter?.date === "period") {
-            act.recurring_end_date = moment
+            act.recurrence_end_date = moment
               .utc(payload?.filter?.end_date, "DD-MM-YYYY")
               .endOf("day");
           }
@@ -1913,7 +1929,7 @@ class ActivityService {
             attendees: "$attendeesData",
             internal_info: 1,
             all_day: 1,
-            google_meet_link: 1,
+            google_meeting_data: 1,
             alert_time_unit: 1,
             alert_time: 1,
             recurrence_pattern: 1,
@@ -1952,7 +1968,59 @@ class ActivityService {
     const meetingTimes = [];
     let current_meeting_start = moment.utc(activity_obj?.meeting_start_time);
     const meeting_end = moment.utc(activity_obj?.meeting_end_time);
-    const recurring_end = moment.utc(activity_obj?.recurring_end_date);
+    const recurring_end = moment.utc(activity_obj?.recurrence_end_date);
+
+    // Function to add interval based on recurrence pattern
+    const addInterval = () => {
+      switch (activity_obj.recurrence_pattern) {
+        case "daily":
+          current_meeting_start.add(
+            activity_obj.recurrence_interval + 1,
+            "days"
+          );
+          break;
+        case "weekly":
+          // If weekly recurrence days are specified, adjust start date accordingly
+          if (activity_obj.weekly_recurrence_days) {
+            const daysOfWeek = [
+              "sunday",
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+            ];
+            const currentDay = current_meeting_start.day(); // Get the day of the week (0 = Sunday, 1 = Monday, ...)
+            const targetDay = daysOfWeek.indexOf(
+              activity_obj.weekly_recurrence_days
+            ); // Get the index of the target day
+            let daysToAdd = targetDay - currentDay;
+            if (daysToAdd <= 0) daysToAdd += 7; // If the target day has already passed this week, move to next occurrence
+            current_meeting_start.add(daysToAdd, "days");
+          } else {
+            current_meeting_start.add(
+              activity_obj.recurrence_interval,
+              "weeks"
+            );
+          }
+          break;
+        case "monthly":
+          // Add the recurrence interval in months while setting the day of the month
+          current_meeting_start.add(activity_obj.recurrence_interval, "months");
+          const targetDayOfMonth = activity_obj.monthly_recurrence_day_of_month;
+          const targetMonth = current_meeting_start.month();
+          current_meeting_start.date(targetDayOfMonth);
+          // Check if the day of the month is valid for the current month
+          if (current_meeting_start.month() !== targetMonth) {
+            // The day of the month does not exist in the current month, so skip this month
+            current_meeting_start.add(1, "months").date(targetDayOfMonth);
+          }
+          break;
+        default:
+          break;
+      }
+    };
 
     // Generate meeting times till recurring end time
     while (current_meeting_start.isBefore(recurring_end)) {
@@ -1962,19 +2030,101 @@ class ActivityService {
           meeting_end.diff(activity_obj?.meeting_start_time),
           "milliseconds"
         );
-      meetingTimes.push({
-        id: activity_obj?._id,
-        title: activity_obj?.title,
-        description: activity_obj?.agenda,
-        allDay: false,
-        start: current_meeting_start.format(),
-        end: currentMeetingEnd.format(),
-      });
-      current_meeting_start.add(1, "day"); // Increment meeting start time by one day
+
+      if (current_meeting_start)
+        meetingTimes.push({
+          id: activity_obj?._id,
+          title: activity_obj?.title,
+          description: activity_obj?.agenda,
+          allDay: false,
+          start: current_meeting_start.format(),
+          end: currentMeetingEnd.format(),
+        });
+
+      addInterval(); // Increment meeting start time by the defined interval
+
+      // current_meeting_start.add(1, "day"); // Increment meeting start time by one day
     }
 
     return meetingTimes;
   };
+
+  // generateMeetingTimes = (activity_obj) => {
+  //   const meetingTimes = [];
+  //   let current_meeting_start = moment.utc(activity_obj?.meeting_start_time);
+  //   const meeting_end = moment.utc(activity_obj?.meeting_end_time);
+  //   const recurring_end = moment.utc(activity_obj?.recurrence_end_date);
+
+  //   // Check if the initial meeting start date is beyond the recurrence end date
+  //   if (current_meeting_start.isAfter(recurring_end)) {
+  //     return meetingTimes; // Return empty array if initial meeting start is after recurrence end
+  //   }
+
+  //   // Function to add interval based on recurrence pattern
+  //   const addInterval = () => {
+  //     switch (activity_obj.recurrence_pattern) {
+  //       case "daily":
+  //         current_meeting_start.add(activity_obj.recurrence_interval, "days");
+  //         break;
+  //       case "weekly":
+  //         // If weekly recurrence days are specified, adjust start date accordingly
+  //         if (activity_obj.weekly_recurrence_days) {
+  //           const daysOfWeek = [
+  //             "sunday",
+  //             "monday",
+  //             "tuesday",
+  //             "wednesday",
+  //             "thursday",
+  //             "friday",
+  //             "saturday",
+  //           ];
+  //           const currentDay = current_meeting_start.day(); // Get the day of the week (0 = Sunday, 1 = Monday, ...)
+  //           const targetDay = daysOfWeek.indexOf(
+  //             activity_obj.weekly_recurrence_days
+  //           ); // Get the index of the target day
+  //           let daysToAdd = targetDay - currentDay;
+  //           if (daysToAdd <= 0) daysToAdd += 7; // If the target day has already passed this week, move to next occurrence
+  //           current_meeting_start.add(daysToAdd, "days");
+  //         } else {
+  //           current_meeting_start.add(
+  //             activity_obj.recurrence_interval,
+  //             "weeks"
+  //           );
+  //         }
+  //         break;
+  //       case "monthly":
+  //         current_meeting_start.add(activity_obj.recurrence_interval, "months");
+  //         break;
+  //       default:
+  //         break;
+  //     }
+  //   };
+
+  //   // Generate meeting times till recurring end time
+  //   while (current_meeting_start.isBefore(recurring_end)) {
+  //     const currentMeetingEnd = moment
+  //       .utc(current_meeting_start)
+  //       .add(
+  //         meeting_end.diff(activity_obj?.meeting_start_time),
+  //         "milliseconds"
+  //       );
+  //     // Check if current meeting start date is after recurrence end date
+  //     if (current_meeting_start.isAfter(recurring_end)) {
+  //       break; // Exit loop if meeting start exceeds recurrence end date
+  //     }
+  //     meetingTimes.push({
+  //       id: activity_obj?._id,
+  //       title: activity_obj?.title,
+  //       description: activity_obj?.agenda,
+  //       allDay: false,
+  //       start: current_meeting_start.format(),
+  //       end: currentMeetingEnd.format(),
+  //     });
+  //     addInterval(); // Increment meeting start time by the defined interval
+  //   }
+
+  //   return meetingTimes;
+  // };
 
   // this function is used for the only generate the calandar view objects only for event
   // because we need to generate the between dates from the start and recurring date
@@ -2524,28 +2674,33 @@ class ActivityService {
         agenda,
       } = payload;
 
-      payload.meeting_date = moment(meeting_date, "DD-MM-YYYY").format(
+      const formate_meeting_date = moment(meeting_date, "DD-MM-YYYY").format(
         "YYYY-MM-DD"
       );
 
-      let attendees = [];
+      let attendees_data = [];
       if (payload?.attendees && payload?.attendees[0]) {
-        const attendee = await Authentication.findById();
+        const promises = payload.attendees.map(async (item) => {
+          const attendee = await Authentication.findById(item);
+          return { email: attendee?.email };
+        });
+        attendees_data = await Promise.all(promises);
       }
 
       const options = {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         refreshToken: token,
-        date: payload.meeting_date,
+        date: formate_meeting_date,
         time: meeting_start_time,
         summary: title,
         location: internal_info,
         description: agenda,
-        attendees: [
-          { email: "gusaibhavin88@gmail.com" },
-          { email: "smitvtridhyatech@gmail.com" },
-        ],
+        attendees: attendees_data,
+        // attendees: [
+        //   { email: "gusaibhavin88@gmail.com" },
+        //   { email: "smitvtridhyatech@gmail.com" },
+        // ],
       };
 
       // Reference  the Npm package https://www.npmjs.com/package/google-cal-meet-api
@@ -2633,107 +2788,27 @@ class ActivityService {
         conferenceDataVersion: "1",
         resource: event,
       });
+
+      // // Check if token is expired
+      // const tokenInfo = await oAuth2Client.getTokenInfo(token);
+      // const expiryDate = new Date(tokenInfo.expiry_date);
+
+      // const currentDate = "2024-06-04T05:59:13.256+00:00";
+
+      // if (true) {
+      //   const refresh = await oAuth2Client.credentials;
+      //   console.log("Token refreshed");
+      //   console.log(refresh);
+      //   console.log(expiryDate);
+      //   console.log(tokenInfo);
+      // }
+
       return {
         meet_link: link.data.hangoutLink,
         event_id: link.data.id, // Include eventId in the response
       };
     } catch (error) {
       logger.error(`Error while creating google meeting : ${error}`);
-      return throwError(error?.message, error?.statusCode);
-    }
-  };
-
-  googleMeetGenerator = async (options) => {
-    try {
-      // Reference  the Npm package https://www.npmjs.com/package/google-cal-meet-api
-      const { google } = require("googleapis");
-      const { OAuth2 } = google.auth;
-      const SCOPES = ["https://www.googleapis.com/auth/calendar"];
-
-      //upper part for api access
-
-      var date1 =
-        options.date + "T" + options.time.split(":")[0] + ":00" + ":30";
-      var date2 =
-        options.date + "T" + options.time.split(":")[0] + ":45" + ":30";
-
-      var x = new Date(
-        options.date + "T" + options.time.split(":")[0] + ":00" + ":30"
-      );
-      var y = new Date(
-        options.date + "T" + options.time.split(":")[0] + ":45" + ":30"
-      );
-
-      var end1 =
-        options.date +
-        "T" +
-        x.getUTCHours() +
-        ":" +
-        x.getUTCMinutes() +
-        ":00" +
-        ".000Z";
-      var end2 =
-        options.date +
-        "T" +
-        y.getUTCHours() +
-        ":" +
-        y.getUTCMinutes() +
-        ":00" +
-        ".000Z";
-
-      //setting details for teacher
-      let oAuth2Client = new OAuth2(
-        process.env.CLIENT_ID,
-        process.env.CLIENT_SECRET
-      );
-
-      oAuth2Client.setCredentials({
-        refresh_token: options.refreshToken,
-      });
-
-      // Create a new calender instance.
-      let calendar = google.calendar({ version: "v3", auth: oAuth2Client });
-
-      // Create a new event start date instance for teacher in their calendar.
-      const eventStartTime = new Date();
-      eventStartTime.setDate(options.date.split("-")[2]);
-      const eventEndTime = new Date();
-      eventEndTime.setDate(options.date.split("-")[2]);
-      eventEndTime.setMinutes(eventStartTime.getMinutes() + 45);
-
-      // Create a dummy event for temp users in our calendar
-      const event = {
-        summary: options.summary,
-        location: options.location,
-        description: options.description,
-        colorId: 1,
-        conferenceData: {
-          createRequest: {
-            requestId: "zzz",
-            conferenceSolutionKey: {
-              type: "hangoutsMeet",
-            },
-          },
-        },
-        start: {
-          dateTime: date1,
-          timeZone: "Asia/Kolkata",
-        },
-        end: {
-          dateTime: date2,
-          timeZone: "Asia/Kolkata",
-        },
-        attendees: options.attendees,
-      };
-
-      let link = await calendar.events.insert({
-        calendarId: "primary",
-        conferenceDataVersion: "1",
-        resource: event,
-      });
-      return link.data.hangoutLink;
-    } catch (error) {
-      logger.error(`Error while generating the Google Meet Link: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
@@ -2779,27 +2854,28 @@ class ActivityService {
         event_id,
         meeting_date,
         meeting_start_time,
-        summary,
-        location,
-        description,
-        recurrence,
-        notifications,
-        recurrence_end_date,
+        title,
+        internal_info,
+        agenda,
       } = payload;
+
+      const formate_meeting_date = moment(meeting_date, "DD-MM-YYYY").format(
+        "YYYY-MM-DD"
+      );
 
       const options = {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         refreshToken: token,
-        date: meeting_date,
+        date: formate_meeting_date,
         time: meeting_start_time,
-        summary,
-        location,
-        description,
-        attendees: [
-          { email: "gusaibhavin88@gmail.com" },
-          { email: "smitvtridhyatech@gmail.com" },
-        ],
+        summary: title,
+        location: internal_info,
+        description: agenda,
+        // attendees: [
+        //   { email: "gusaibhavin88@gmail.com" },
+        //   { email: "smitvtridhyatech@gmail.com" },
+        // ],
       };
 
       const { OAuth2 } = google.auth;
@@ -2879,7 +2955,6 @@ class ActivityService {
 
       return {
         meeting_link: link.data.hangoutLink,
-        event_id: link.data.id,
       };
     } catch (error) {
       console.error(`Error while updating google meeting: ${error}`);

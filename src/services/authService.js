@@ -53,20 +53,14 @@ class AuthService {
         ? process.env.JWT_REMEMBER_EXPIRE
         : process.env.JWT_EXPIRES_IN;
 
-      let workspace = await Workspace.findOne({
-        created_by: payload?._id,
+      const workspace = await Workspace.findOne({
+        members: {
+          $elemMatch: { user_id: payload?._id, status: "confirmed" },
+        },
         is_deleted: false,
-      }).lean();
-      if (!workspace) {
-        workspace = await Workspace.findOne({
-          members: {
-            $elemMatch: { user_id: payload?._id, status: { $ne: "deleted" } },
-          },
-          is_deleted: false,
-        })
-          .sort({ "members.joining_date": -1 })
-          .lean();
-      }
+      })
+        .sort({ "members.joining_date": -1 })
+        .lean();
       if (workspace) {
         const member_details = workspace?.members?.find(
           (member) => member?.user_id?.toString() === payload?._id?.toString()
@@ -127,7 +121,7 @@ class AuthService {
         return throwError(returnMessage("workspace", "workspaceRequired"));
       const workspace_exist = await Workspace.findOne({
         _id: workspace_id,
-        "members.user_id": user?._id,
+        members: { $elemMatch: { user_id: user?._id, status: "confirmed" } },
         is_deleted: false,
       }).lean();
 

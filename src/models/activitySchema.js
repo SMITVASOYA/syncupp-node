@@ -70,6 +70,9 @@ const activitySchema = new mongoose.Schema(
         return this.recurrence_pattern;
       },
     },
+    token: {
+      type: String,
+    },
 
     weekly_recurrence_days: {
       type: String,

@@ -127,7 +127,7 @@ class WorkspaceService {
         Workspace.find({ created_by: user?._id, is_deleted: false }).lean(),
         Workspace.find({
           members: {
-            $elemMatch: { user_id: user?._id, status: { $ne: "deleted" } },
+            $elemMatch: { user_id: user?._id, status: "confirmed" },
           },
           is_deleted: false,
           created_by: { $ne: user?._id },
