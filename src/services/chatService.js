@@ -21,50 +21,29 @@ class ChatService {
           { message: { $regex: payload?.search.toLowerCase(), $options: "i" } },
         ];
       }
-      const chats = await Chat.find({
-        workspace_id: user?.workspace,
-        $or: [
-          { $and: [{ from_user: user?._id }, { to_user: payload?.to_user }] },
-          { $and: [{ from_user: payload?.to_user }, { to_user: user?._id }] },
-        ],
-        is_deleted: false,
-        ...search_obj,
-      })
-        .sort({ createdAt: 1 })
-        .lean();
-      const aggregatedChats = await this.aggregateChats(chats);
-
-      for (let i = 0; i < aggregatedChats?.length; i++) {
-        aggregatedChats[i].reactions = aggregatedChats[i].reactions?.filter(
-          (item) => Object.keys(item)?.length !== 0
-        );
-      }
-      await Notification.updateMany(
+      const aggragate = [
         {
-          user_id: user?._id,
-          from_user: payload?.to_user,
-          workspace_id: user?.workspace,
+          $match: {
+            workspace_id: new mongoose.Types.ObjectId(user?.workspace),
+            $or: [
+              {
+                $and: [
+                  { from_user: user?._id },
+                  { to_user: new mongoose.Types.ObjectId(payload?.to_user) },
+                ],
+              },
+              {
+                $and: [
+                  { from_user: new mongoose.Types.ObjectId(payload?.to_user) },
+                  { to_user: user?._id },
+                ],
+              },
+            ],
+            is_deleted: false,
+            ...search_obj,
+          },
         },
-        { $set: { is_read: true } }
-      );
-      return aggregatedChats;
-    } catch (error) {
-      logger.error(`Erroe while fetching the chat history: ${error}`);
-      return throwError(error?.message, error?.statusCode);
-    }
-  };
-  //for fetch reacted user details
-  aggregateChats = async (chats) => {
-    try {
-      const chatIds = chats.map((chat) => chat._id);
-
-      return await Chat.aggregate([
-        {
-          $match: { _id: { $in: chatIds } },
-        },
-        {
-          $unwind: { path: "$reactions", preserveNullAndEmptyArrays: true },
-        },
+        { $unwind: { path: "$reactions", preserveNullAndEmptyArrays: true } },
         {
           $lookup: {
             from: "authentications",
@@ -122,14 +101,34 @@ class ChatService {
             to_user: { $first: "$to_user" },
             from_user: { $first: "$from_user" },
             reactions: { $push: "$reactions" },
+            original_file_name: { $first: "$original_file_name" },
           },
         },
         { $sort: { createdAt: 1 } },
-      ]);
+      ];
+      const chats = await Chat.aggregate(aggragate);
+
+      for (let i = 0; i < chats?.length; i++) {
+        chats[i].reactions = chats[i].reactions?.filter(
+          (item) => Object.keys(item)?.length !== 0
+        );
+      }
+
+      Notification.updateMany(
+        {
+          user_id: user?._id,
+          from_user: payload?.to_user,
+          workspace_id: user?.workspace,
+        },
+        { $set: { is_read: true } }
+      );
+      return chats;
     } catch (error) {
-      throw error;
+      logger.error(`Erroe while fetching the chat history: ${error}`);
+      return throwError(error?.message, error?.statusCode);
     }
   };
+
   // this function is used to fetched the all of the users where we have started the chat
   fetchUsersList = async (payload, user) => {
     try {
