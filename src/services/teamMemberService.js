@@ -1042,7 +1042,7 @@ class TeamMemberService {
           (sh) => !teamMemberIds?.includes(sh?.user_id?.toString())
         );
 
-        SheetManagement.findByIdAndUpdate(
+        await SheetManagement.findByIdAndUpdate(
           sheet?._id,
           {
             occupied_sheets: updated_sheet,

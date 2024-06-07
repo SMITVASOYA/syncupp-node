@@ -1268,12 +1268,11 @@ class PaymentService {
           statusCode.forbidden
         );
 
-      const [sheets, activity_status] = await Promise.all([
+      const [sheets] = await Promise.all([
         SheetManagement.findOne({
           user_id: user?._id,
           is_deleted: false,
         }).lean(),
-        Activity_Status.findOne({ name: "pending" }).select("_id").lean(),
       ]);
 
       if (!sheets)
@@ -1283,7 +1282,7 @@ class PaymentService {
         );
 
       const user_exist = sheets?.occupied_sheets?.filter(
-        (sheet) => sheet?.user_id?.toString() === user_id
+        (sheet) => sheet?.user_id?.toString() === user_id?.toString()
       );
 
       if (user_exist.length === 0)
@@ -1293,7 +1292,7 @@ class PaymentService {
         );
 
       const updated_users = sheets?.occupied_sheets?.filter(
-        (sheet) => sheet?.user_id?.toString() !== user_id
+        (sheet) => sheet?.user_id?.toString() !== user_id?.toString()
       );
 
       const remove_user = user_exist[0];
@@ -1359,12 +1358,12 @@ class PaymentService {
         { $match: { "activity_status.key": { $ne: "completed" } } },
       ]);
 
-      if (task_assigned.length && !payload?.force_fully_remove)
+      if (task_assigned.length > 0 && !payload?.force_fully_remove)
         return { force_fully_remove: true };
 
       if (
-        (task_assigned.length && payload?.force_fully_remove) ||
-        !task_assigned.length
+        (task_assigned.length > 0 && payload?.force_fully_remove) ||
+        !task_assigned.length > 0
       ) {
         const update_obj = { occupied_sheets: updated_users };
         if (user?.workspace_detail?.trial_end_date) {
@@ -1376,7 +1375,7 @@ class PaymentService {
           {
             $set: {
               "members.$.status": "deleted",
-              "members.$.invitation_token": undefined,
+              "members.$.invitation_token": null,
             },
           }
         );
