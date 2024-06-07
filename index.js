@@ -1,18 +1,18 @@
 const express = require("express");
-require("./config/connection");
+require("./src/config/connection");
 const app = express();
 const dotenv = require("dotenv");
 dotenv.config();
 const port = process.env.PORT || 3000;
-const errorHandler = require("./helpers/error");
+const errorHandler = require("./src/helpers/error");
 const cors = require("cors");
-const rootRoutes = require("./routes/index");
-const logger = require("./logger");
-const { insertData } = require("./seeder/seeder");
+const rootRoutes = require("./src/routes/index");
+const logger = require("./src/logger");
+const { insertData } = require("./src/seeder/seeder");
 const swagger = require("swagger-ui-express");
-const swaggerDoc = require("./swagger/swagger.index");
+const swaggerDoc = require("./src/swagger/swagger.index");
 const basicAuth = require("express-basic-auth");
-const { setupNightlyCronJob } = require("./utils/cronJob");
+const { setupNightlyCronJob } = require("./src/utils/cronJob");
 
 // -----------------------------Swagger start-----------------------------------
 const auth = {
@@ -40,11 +40,14 @@ app.use(
 );
 const morgan = require("morgan");
 const path = require("path");
-const { socket_connection } = require("./socket");
+const { socket_connection } = require("./src/socket");
 app.use(express.json());
 app.use(morgan("dev"));
-app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
-app.use("/template", express.static(path.join(__dirname, "public/template")));
+app.use("/uploads", express.static(path.join(__dirname, "src/public/uploads")));
+app.use(
+  "/template",
+  express.static(path.join(__dirname, "src/public/template"))
+);
 
 app.use("/api/v1", rootRoutes);
 
