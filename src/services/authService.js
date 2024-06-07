@@ -10,6 +10,7 @@ const {
   capitalizeFirstLetter,
   invitationEmailTemplate,
   agencyCreatedTemplate,
+  welcomeMail,
 } = require("../utils/utils");
 const bcrypt = require("bcryptjs");
 const moment = require("moment");
@@ -53,14 +54,21 @@ class AuthService {
         ? process.env.JWT_REMEMBER_EXPIRE
         : process.env.JWT_EXPIRES_IN;
 
-      const workspace = await Workspace.findOne({
-        members: {
-          $elemMatch: { user_id: payload?._id, status: "confirmed" },
-        },
+      let workspace = await Workspace.findOne({
+        created_by: payload?._id,
         is_deleted: false,
-      })
-        .sort({ "members.joining_date": -1 })
-        .lean();
+      }).lean();
+      if (!workspace || payload?.via_invitation) {
+        workspace = await Workspace.findOne({
+          members: {
+            $elemMatch: { user_id: payload?._id, status: "confirmed" },
+          },
+          is_deleted: false,
+        })
+          .sort({ "members.joining_date": -1 })
+          .lean();
+      }
+
       if (workspace) {
         const member_details = workspace?.members?.find(
           (member) => member?.user_id?.toString() === payload?._id?.toString()
@@ -306,10 +314,12 @@ class AuthService {
         return throwError(returnMessage("user", "userAlreadyExist"));
 
       if (payload?.workspace_name) {
-        await workspaceService.createWorkspace(
+        const workspace_created = await workspaceService.createWorkspace(
           { workspace_name: payload?.workspace_name?.trim() },
           user_exist
         );
+        // this is only for the workspace creator
+        if (workspace_created) this.welcomeMailToUsers(user_exist);
       }
 
       let user_enroll = await Authentication.findByIdAndUpdate(
@@ -326,6 +336,18 @@ class AuthService {
         },
         { new: true }
       );
+
+      /* This is used when any new member has got an invite for the workspace and now if they are setting the password for 
+      the first time then we need to send the welcome email */
+
+      if (
+        user_enroll &&
+        user_exist?.status === "signup_incomplete" &&
+        user_enroll?.password &&
+        payload?.workspace
+      ) {
+        this.welcomeMailToUsers(user_enroll);
+      }
 
       if (!payload?.referral_code) {
         // commented as we will create the contact after the user will fill the details like
@@ -1603,6 +1625,28 @@ class AuthService {
       logger.error(
         `Error while gettign the role and subrole in the workspace: ${error}`
       );
+      return throwError(error?.message, error?.statusCode);
+    }
+  };
+
+  welcomeMailToUsers = async (user) => {
+    try {
+      const company_urls = await Configuration.findOne().lean();
+      const welcome_mail = welcomeMail(
+        capitalizeFirstLetter(user?.first_name) +
+          " " +
+          capitalizeFirstLetter(user?.last_name),
+        company_urls?.urls?.privacy_policy,
+        company_urls?.urls?.instagram,
+        company_urls?.urls?.facebook
+      );
+      sendEmail({
+        email: user?.email,
+        subject: returnMessage("emailTemplate", "welcomeMailSubject"),
+        message: welcome_mail,
+      });
+    } catch (error) {
+      logger.error(`Error while sending welcome email to the user: ${error}`);
       return throwError(error?.message, error?.statusCode);
     }
   };
